@@ -15,6 +15,13 @@ class User(db.Model):
     role = db.Column(db.String(50), nullable=False, default=UserRole.OWNER.value)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     last_login = db.Column(db.DateTime, nullable=True)
+    
+    # New fields for Google OAuth & Multi-provider support
+    email = db.Column(db.String(255), unique=True, nullable=True)
+    email_verified = db.Column(db.Boolean, nullable=False, default=False)
+    auth_provider = db.Column(db.String(50), nullable=False, default='local')
+    oauth_id = db.Column(db.String(255), unique=True, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

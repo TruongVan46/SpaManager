@@ -14,7 +14,10 @@ class RestoreService:
 
     @staticmethod
     def get_db_path(app):
-        """Get the absolute path to the SQLite database file."""
+        """Get the absolute path to the SQLite database file from configuration."""
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if db_uri.startswith('sqlite:///'):
+            return db_uri.replace('sqlite:///', '')
         return os.path.join(app.root_path, 'database', 'spa.db')
 
     @staticmethod

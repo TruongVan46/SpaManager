@@ -1,5 +1,7 @@
 # SpaManager
 
+[![Continuous Integration](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml/badge.svg)](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml)
+
 > Modern Spa Management System built with Flask.
 
 ## Overview
@@ -90,6 +92,18 @@ python -m unittest discover
 ```
 
 Playwright integration tests are also included.
+
+## Continuous Integration
+
+This project uses GitHub Actions for Continuous Integration (CI) to automatically run tests and verify changes on every push and pull request.
+
+[![Continuous Integration](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml/badge.svg)](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml)
+
+### CI Pipeline Steps
+1. **Checkout Code**: Retrieves the repository codebase.
+2. **Setup Python**: Provisions a Python 3.11 environment and caches pip packages for fast builds.
+3. **Install Dependencies**: Installs packages listed in `requirements.txt`.
+4. **Run Tests**: Runs Python `unittest` suite. Any test failure fails the workflow build.
 
 ## Roadmap
 

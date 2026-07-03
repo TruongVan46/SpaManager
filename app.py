@@ -3,7 +3,7 @@ import os
 import time
 from flask import Flask, request, redirect, url_for, send_from_directory
 from extensions import db
-from config import Config
+from config import get_active_config
 from routes import (
     dashboard_bp, 
     customer_bp, 
@@ -21,8 +21,8 @@ from services.auth_service import AuthService
 # Tạo ứng dụng Flask
 app = Flask(__name__)
 
-# Đọc cấu hình từ config.py
-app.config.from_object(Config)
+# Đọc cấu hình từ config.py theo môi trường hoạt động
+app.config.from_object(get_active_config())
 
 # Kết nối SQLAlchemy với Flask
 db.init_app(app)
@@ -72,9 +72,13 @@ def inject_asset_helpers():
 
     return dict(asset_version=asset_version)
 
-# Ensure the database directory exists before creating the SQLite file
-database_dir = os.path.join(app.root_path, 'database')
-os.makedirs(database_dir, exist_ok=True)
+# Ensure the database directory exists before creating the SQLite file (only if using SQLite)
+db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+if db_uri.startswith('sqlite:///'):
+    db_path = db_uri.replace('sqlite:///', '')
+    database_dir = os.path.dirname(db_path)
+    if database_dir:
+        os.makedirs(database_dir, exist_ok=True)
 
 # Ensure the avatar uploads directory exists
 avatars_dir = os.path.join(app.root_path, 'static', 'uploads', 'avatars')
@@ -93,36 +97,41 @@ with app.app_context():
     # ── Auto-migration: thêm cột mới vào bảng đã tồn tại ──
     # db.create_all() chỉ tạo bảng mới, không ALTER TABLE.
     # Logic dưới đây kiểm tra và bổ sung các cột còn thiếu.
-    import sqlite3
-    db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
+            import sqlite3
+            db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
 
-        # Danh sách các cột cần đảm bảo tồn tại: (table, column, type)
-        required_columns = [
-            ('customers', 'deleted_at', 'DATETIME'),
-            ('customers', 'deleted_by', 'VARCHAR(100)'),
-            ('services', 'deleted_at', 'DATETIME'),
-            ('services', 'deleted_by', 'VARCHAR(100)'),
-            ('appointments', 'deleted_at', 'DATETIME'),
-            ('appointments', 'deleted_by', 'VARCHAR(100)'),
-            ('invoices', 'deleted_at', 'DATETIME'),
-            ('invoices', 'deleted_by', 'VARCHAR(100)'),
-            ('activity_logs', 'user_id', 'INTEGER'),
-        ]
+            # Danh sách các cột cần đảm bảo tồn tại: (table, column, type)
+            required_columns = [
+                ('customers', 'deleted_at', 'DATETIME'),
+                ('customers', 'deleted_by', 'VARCHAR(100)'),
+                ('services', 'deleted_at', 'DATETIME'),
+                ('services', 'deleted_by', 'VARCHAR(100)'),
+                ('appointments', 'deleted_at', 'DATETIME'),
+                ('appointments', 'deleted_by', 'VARCHAR(100)'),
+                ('invoices', 'deleted_at', 'DATETIME'),
+                ('invoices', 'deleted_by', 'VARCHAR(100)'),
+                ('activity_logs', 'user_id', 'INTEGER'),
+                ('users', 'email', 'VARCHAR(255)'),
+                ('users', 'email_verified', 'BOOLEAN NOT NULL DEFAULT 0'),
+                ('users', 'auth_provider', "VARCHAR(50) NOT NULL DEFAULT 'local'"),
+                ('users', 'oauth_id', 'VARCHAR(255)'),
+            ]
 
-        for table, column, col_type in required_columns:
-            cursor.execute(f"PRAGMA table_info({table})")
-            existing_columns = [row[1] for row in cursor.fetchall()]
-            if column not in existing_columns:
-                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-                app_logger.info(f"Added column {column} to table {table}", module="MIGRATION")
+            for table, column, col_type in required_columns:
+                cursor.execute(f"PRAGMA table_info({table})")
+                existing_columns = [row[1] for row in cursor.fetchall()]
+                if column not in existing_columns:
+                    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                    app_logger.info(f"Added column {column} to table {table}", module="MIGRATION")
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
 
-        # Seed the default owner if User table is empty
+        # Seed the default owner if User table is empty (works across database types)
         AuthService.seed_owner_if_empty()
     except Exception as e:
         app_logger.critical(f"Migration/Seed failed: {e}", module="MIGRATION", exc_info=True)

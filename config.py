@@ -1,27 +1,125 @@
 # config.py - SpaManager Project
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-class Config:
-    # Khóa bảo mật của Flask
-    SECRET_KEY = "spa_manager_2026_secret_key"
+# Load environment variables from .env file at the project root
+load_dotenv(os.path.join(basedir, '.env'))
 
-    # SQLite Database
-    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(basedir, 'database', 'spa.db').replace('\\', '/')
+class BaseConfig:
+    """
+    Base configuration containing settings common to all environments.
+    """
+    # Application identity
+    APP_NAME = os.getenv("APP_NAME", "SpaManager")
+    APP_VERSION = os.getenv("APP_VERSION", "4.0.0")
 
-    # Tắt theo dõi thay đổi của SQLAlchemy để tăng hiệu năng
+    # SQLAlchemy Configurations
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Session lifetime
-    PERMANENT_SESSION_LIFETIME = timedelta(days=30)
+    # Max upload file size limit (default: 100MB)
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_UPLOAD_SIZE", 100 * 1024 * 1024))
 
-    # Static Assets Caching Header (1 year cache for maximum browser load performance)
-    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=365)
+    # Session lifetime duration
+    PERMANENT_SESSION_LIFETIME = timedelta(days=int(os.getenv("SESSION_LIFETIME_DAYS", 30)))
 
-    # Logging Configurations
-    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_DIR = os.path.join(basedir, 'logs')
-    LOG_ROTATION_SIZE = 5 * 1024 * 1024 # 5 MB
-    LOG_BACKUP_COUNT = 5
+    # Static Assets Caching Header (default: 1 year cache for maximum performance)
+    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=int(os.getenv("SEND_FILE_MAX_AGE_DAYS", 365)))
+
+    # Folders paths
+    UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(basedir, 'static', 'uploads'))
+    EXPORT_FOLDER = os.getenv("EXPORT_FOLDER", os.path.join(basedir, 'exports'))
+    BACKUP_FOLDER = os.getenv("BACKUP_FOLDER", os.path.join(basedir, 'backup'))
+    LOG_DIR = os.getenv("LOG_DIR", os.path.join(basedir, 'logs'))
+    LOG_FOLDER = LOG_DIR  # Alias for backward compatibility
+
+    # Logging configurations
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_ROTATION_SIZE = int(os.getenv('LOG_ROTATION_SIZE', 5 * 1024 * 1024)) # 5 MB
+    LOG_BACKUP_COUNT = int(os.getenv('LOG_BACKUP_COUNT', 5))
+
+    # Google OAuth 2.0 Configurations
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+    GOOGLE_DISCOVERY_URL = os.getenv("GOOGLE_DISCOVERY_URL", "https://accounts.google.com/.well-known/openid-configuration")
+    GOOGLE_SCOPES = os.getenv("GOOGLE_SCOPES", "openid email profile").split()
+
+
+class DevelopmentConfig(BaseConfig):
+    """
+    Configuration for local development environment.
+    """
+    DEBUG = True
+    TESTING = False
+    
+    # Development mode cookies (no HTTPS constraint for localhost)
+    SESSION_COOKIE_SECURE = False
+    
+    # Fallback to local developer key
+    SECRET_KEY = os.getenv("SECRET_KEY", "spa_manager_dev_key")
+
+    # Local SQLite fallback
+    SQLALCHEMY_DATABASE_URI = (
+        os.getenv("DATABASE_URL") or 
+        os.getenv("SQLALCHEMY_DATABASE_URI") or 
+        ("sqlite:///" + os.path.join(basedir, 'database', 'spa.db').replace('\\', '/'))
+    )
+
+
+class TestingConfig(BaseConfig):
+    """
+    Configuration for automated unit and integration tests.
+    """
+    DEBUG = False
+    TESTING = True
+    
+    SESSION_COOKIE_SECURE = False
+    SECRET_KEY = "spa_manager_testing_key"
+
+    # SQLite in-memory database for fast test isolation
+    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
+
+
+class ProductionConfig(BaseConfig):
+    """
+    Strict configuration for live production environment.
+    """
+    DEBUG = False
+    TESTING = False
+
+    # Production session cookie security flags (anti-session hijacking / CSRF)
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+
+    # Database configuration (no default SQLite fallback, must be supplied)
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URI")
+
+    def __init__(self):
+        # In python-dotenv or environment variables, SECRET_KEY must be defined
+        self.SECRET_KEY = os.getenv("SECRET_KEY")
+        if not self.SECRET_KEY:
+            raise RuntimeError("SECRET_KEY must be configured in Production.")
+
+
+# Map configurations by environment name
+config_by_name = {
+    "development": DevelopmentConfig,
+    "testing": TestingConfig,
+    "production": ProductionConfig
+}
+
+def get_active_config():
+    """
+    Resolve the active configuration instance based on the APP_ENV environment variable.
+    Defaults to DevelopmentConfig instance if not defined.
+    """
+    env_name = os.getenv("APP_ENV", "development").lower()
+    config_cls = config_by_name.get(env_name, DevelopmentConfig)
+    return config_cls()
+
+# Instantiate active config to preserve Config import usage
+Config = get_active_config()

@@ -83,10 +83,10 @@
                                 <h6 class="fw-bold text-muted mb-3"><i class="bi bi-plus-circle-dotted me-2"></i>Thông tin mở rộng (Sắp ra mắt)</h6>
                             </div>
 
-                            <!-- Email (Future field) -->
+                            <!-- Email -->
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold text-muted">Địa chỉ Email</label>
-                                <input type="email" class="form-control app-form-control app-bg-main" placeholder="owner@spamanager.com" readonly disabled aria-label="owner@spamanager.com">
+                                <label class="form-label fw-semibold">Địa chỉ Email</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.email if user.email else 'Chưa liên kết' }}" readonly>
                             </div>
 
                             <!-- Phone (Future field) -->

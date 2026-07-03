@@ -1,7 +1,7 @@
 # core/auth/dto.py
 
 class UserDTO:
-    def __init__(self, id, username, full_name, role, avatar, last_login, created_at):
+    def __init__(self, id, username, full_name, role, avatar, last_login, created_at, email=None, auth_provider=None):
         self.id = id
         self.username = username
         self.full_name = full_name
@@ -9,6 +9,8 @@ class UserDTO:
         self.avatar = avatar
         self.last_login = last_login
         self.created_at = created_at
+        self.email = email
+        self.auth_provider = auth_provider
 
     @classmethod
     def from_model(cls, user_model):
@@ -22,5 +24,7 @@ class UserDTO:
             role=user_model.role,
             avatar=user_model.avatar,
             last_login=user_model.last_login,
-            created_at=user_model.created_at
+            created_at=user_model.created_at,
+            email=getattr(user_model, 'email', None),
+            auth_provider=getattr(user_model, 'auth_provider', None)
         )
