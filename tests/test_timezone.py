@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from datetime import date, datetime, timedelta
+from datetime import datetime, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -74,7 +74,8 @@ class TimezoneTestCase(unittest.TestCase):
 
     def test_timezone_configuration_defaults_and_rejects_invalid(self):
         self.assertEqual(app.config["APP_TIMEZONE"], "Asia/Ho_Chi_Minh")
-        self.assertEqual(get_app_timezone().utcoffset(None), timedelta(hours=7))
+        tz = get_app_timezone()
+        self.assertEqual(datetime(2026, 1, 1, tzinfo=tz).utcoffset(), timedelta(hours=7))
 
         with patch.dict(os.environ, {"APP_TIMEZONE": "Invalid/Zone"}, clear=False):
             with self.assertRaises(ValueError):
