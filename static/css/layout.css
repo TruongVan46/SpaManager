@@ -245,6 +245,36 @@ body {
 
 }
 
+.topbar-search-hint{
+    background: linear-gradient(135deg, rgba(78, 115, 223, 0.12), rgba(78, 115, 223, 0.04));
+    color: var(--spa-primary);
+    white-space: nowrap;
+}
+
+.topbar-search-hint:hover{
+    background: linear-gradient(135deg, rgba(78, 115, 223, 0.18), rgba(78, 115, 223, 0.08));
+    color: var(--spa-primary);
+}
+
+.topbar-search-hint:focus-visible{
+    outline: 2px solid rgba(78, 115, 223, 0.45);
+    outline-offset: 2px;
+}
+
+.topbar-search-hint i{
+    font-size: 1rem;
+}
+
+.topbar-search-hint-kbd{
+    border: 1px solid rgba(78, 115, 223, 0.18);
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--spa-primary);
+    font-size: 0.72rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 8px;
+    line-height: 1;
+}
+
 .profile{
 
     display:flex;
@@ -343,6 +373,13 @@ body {
     .topbar-right {
         width: 100% !important;
         justify-content: flex-end !important;
+    }
+    .topbar-search-hint {
+        padding: 8px 12px !important;
+        min-width: 42px;
+    }
+    .topbar-search-hint i {
+        font-size: 1.05rem;
     }
     .profile i {
         font-size: 24px !important;

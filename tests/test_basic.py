@@ -725,6 +725,20 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('class="appointment-item schedule-item"', html)
         self.assertIn('id="appt-footer"', html)
 
+    def test_topbar_exposes_command_palette_hint(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        html = self.client.get("/").get_data(as_text=True)
+        source = Path("static/js/command-palette.js").read_text(encoding="utf-8")
+
+        self.assertIn('data-command-palette-open', html)
+        self.assertIn('type="button"', html)
+        self.assertIn('Tìm nhanh', html)
+        self.assertIn('Ctrl K', html)
+        self.assertIn('window.openCommandPalette = function ()', source)
+        self.assertIn('[data-command-palette-open]', source)
+
     def test_page_size_handler_is_scoped_to_explicit_controls(self):
         source = Path("static/js/shared-table.js").read_text(encoding="utf-8")
         self.assertIn("[data-stf-filter]", source)

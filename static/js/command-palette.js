@@ -46,7 +46,11 @@
                 const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
                 if (isCtrlK) {
                     e.preventDefault();
-                    this.paletteService.toggle();
+                    if (typeof window.toggleCommandPalette === 'function') {
+                        window.toggleCommandPalette();
+                    } else {
+                        this.paletteService.toggle();
+                    }
                     return;
                 }
 
@@ -579,6 +583,21 @@
 
         // Initialize elements
         palette.init();
+        window.openCommandPalette = function () {
+            palette.open();
+        };
+        window.toggleCommandPalette = function () {
+            palette.toggle();
+        };
+        window.closeCommandPalette = function () {
+            palette.close();
+        };
+
+        document.querySelectorAll('[data-command-palette-open]').forEach(button => {
+            button.addEventListener('click', function () {
+                window.openCommandPalette();
+            });
+        });
 
         // Handle direct url actions (e.g. /settings?action=backup)
         const urlParams = new URLSearchParams(window.location.search);
