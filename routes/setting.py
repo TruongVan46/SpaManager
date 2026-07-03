@@ -3,6 +3,7 @@ import uuid
 import shutil
 from datetime import datetime
 from flask import render_template, request, flash, redirect, url_for, send_file, current_app, jsonify
+from werkzeug.utils import secure_filename
 from routes import setting_bp
 from models.setting import Setting
 from models.customer import Customer
@@ -16,6 +17,7 @@ from repositories.backup_repository import BackupRepository
 from core.logger import app_logger
 from services.activity_log_service import ActivityLogService
 from services.auth_service import AuthService
+from utils.media_storage import resolve_media_file_path
 
 
 class SimplePagination:
@@ -99,26 +101,46 @@ def save_spa_info():
 
     # Handle logo upload
     logo_file = request.files.get('spa_logo')
+    old_logo_setting = Setting.get('spa_logo')
+    new_logo_path = None
     if logo_file and logo_file.filename:
-        # Save logo file
-        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads')
+        # Save logo file into persistent storage
+        upload_dir = current_app.config['LOGO_UPLOAD_FOLDER']
         os.makedirs(upload_dir, exist_ok=True)
 
-        # Use a fixed name so it's easy to reference
-        ext = os.path.splitext(logo_file.filename)[1].lower()
-        allowed_exts = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp']
+        filename = secure_filename(logo_file.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        allowed_exts = ['.png', '.jpg', '.jpeg', '.webp']
         if ext in allowed_exts:
-            logo_filename = f'spa_logo{ext}'
+            logo_filename = f'{uuid.uuid4().hex}{ext}'
             logo_path = os.path.join(upload_dir, logo_filename)
             logo_file.save(logo_path)
-            data['spa_logo'] = f'uploads/{logo_filename}'
+            new_logo_path = logo_path
+            data['spa_logo'] = f'logos/{logo_filename}'
         else:
-            flash('Định dạng logo không hợp lệ. Chấp nhận: PNG, JPG, GIF, SVG, WEBP', 'warning')
+            flash('Định dạng logo không hợp lệ. Chấp nhận: PNG, JPG, JPEG, WEBP', 'warning')
 
     try:
         Setting.save_spa_info(data)
+        if new_logo_path and old_logo_setting and old_logo_setting != data.get('spa_logo'):
+            old_logo_file = resolve_media_file_path(
+                old_logo_setting,
+                'logo',
+                current_app.config['UPLOAD_ROOT'],
+                current_app.root_path
+            )
+            if old_logo_file and os.path.exists(old_logo_file):
+                try:
+                    os.remove(old_logo_file)
+                except Exception:
+                    pass
         flash('Lưu thông tin Spa thành công!', 'success')
     except Exception as e:
+        if new_logo_path and os.path.exists(new_logo_path):
+            try:
+                os.remove(new_logo_path)
+            except Exception:
+                pass
         flash(f'Lỗi khi lưu thông tin: {str(e)}', 'danger')
 
     return redirect(url_for('setting.index'))
@@ -131,15 +153,19 @@ def delete_logo():
         # Get current logo setting
         logo_path_setting = Setting.get('spa_logo')
         if logo_path_setting:
-            # Delete file if exists
-            full_path = os.path.join(current_app.root_path, 'static', logo_path_setting)
-            if os.path.exists(full_path):
+            # Update database first, then delete file if it exists
+            Setting.set('spa_logo', '')
+            full_path = resolve_media_file_path(
+                logo_path_setting,
+                'logo',
+                current_app.config['UPLOAD_ROOT'],
+                current_app.root_path
+            )
+            if full_path and os.path.exists(full_path):
                 try:
                     os.remove(full_path)
                 except Exception:
                     pass
-            # Update database
-            Setting.set('spa_logo', '')
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

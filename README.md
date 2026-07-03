@@ -87,6 +87,8 @@ The application automatically creates the SQLite database on first launch.
 
 You can override the first owner account with `DEFAULT_OWNER_USERNAME`, `DEFAULT_OWNER_PASSWORD`, and `DEFAULT_OWNER_EMAIL` in your environment file if needed.
 
+Uploaded logos and avatars are stored under the persistent media root (`PERSISTENT_ROOT` / `UPLOAD_ROOT`) so they survive Railway redeploys.
+
 ## Testing
 
 ```bash

@@ -78,6 +78,13 @@ static/uploads/avatars/*
 static/uploads/import/*
 !static/uploads/import/.gitkeep
 
+database/uploads/*
+!database/uploads/.gitkeep
+database/uploads/logos/*
+!database/uploads/logos/.gitkeep
+database/uploads/avatars/*
+!database/uploads/avatars/.gitkeep
+
 exports/*
 !exports/.gitkeep
 

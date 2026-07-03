@@ -27,19 +27,20 @@
                     <div class="row g-3">
                         <!-- Logo preview -->
                         <div class="col-12 text-center mb-2">
+                            {% set logo_url = media_url(spa_info.spa_logo, 'logo') %}
                             <div class="spa-logo-preview">
-                                <div class="logo-placeholder {% if spa_info.spa_logo %}d-none{% endif %}" id="logoPlaceholder">
+                                <div class="logo-placeholder {% if logo_url %}d-none{% endif %}" id="logoPlaceholder">
                                     <i class="bi bi-image"></i>
                                     <span>Logo Spa</span>
                                 </div>
-                                <img src="{% if spa_info.spa_logo %}{{ url_for('static', filename=spa_info.spa_logo) }}{% endif %}" alt="Logo Spa" class="logo-img {% if not spa_info.spa_logo %}d-none{% endif %}" id="logoPreview" loading="lazy">
+                                <img src="{{ logo_url or '' }}" alt="Logo Spa" class="logo-img {% if not logo_url %}d-none{% endif %}" id="logoPreview" loading="lazy">
                             </div>
                             <div class="mt-2 d-flex justify-content-center gap-2">
                                 <label class="btn btn-sm btn-outline-secondary mb-0">
                                     <i class="bi bi-upload"></i> Chọn logo
                                     <input type="file" name="spa_logo" accept="image/*" class="d-none" id="logoInput">
                                 </label>
-                                <button type="button" class="btn btn-sm btn-outline-danger" id="btnDeleteLogo" {% if not spa_info.spa_logo %}style="display: none;"{% endif %}>
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="btnDeleteLogo" {% if not logo_url %}style="display: none;"{% endif %}>
                                     <i class="bi bi-trash"></i> Xóa logo
                                 </button>
                             </div>

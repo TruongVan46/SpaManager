@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 import unittest
 from datetime import datetime
@@ -9,10 +10,17 @@ from sqlalchemy import event, text
 from sqlalchemy.exc import IntegrityError
 
 TEST_DB_FILE = Path(tempfile.gettempdir()) / "spamanager_owner_seed_test.sqlite"
+TEST_MEDIA_ROOT = Path(tempfile.gettempdir()) / "spamanager_media_seed_test"
 if TEST_DB_FILE.exists():
     TEST_DB_FILE.unlink()
+if TEST_MEDIA_ROOT.exists():
+    shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
 os.environ["APP_ENV"] = "testing"
 os.environ["TEST_DATABASE_URL"] = f"sqlite:///{TEST_DB_FILE.as_posix()}"
+os.environ["PERSISTENT_ROOT"] = TEST_MEDIA_ROOT.as_posix()
+os.environ["UPLOAD_ROOT"] = (TEST_MEDIA_ROOT / "uploads").as_posix()
+os.environ["LOGO_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "logos").as_posix()
+os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").as_posix()
 
 from app import app
 from config import ProductionConfig
@@ -31,6 +39,8 @@ class BasicTestCase(unittest.TestCase):
         finally:
             if TEST_DB_FILE.exists():
                 TEST_DB_FILE.unlink()
+            if TEST_MEDIA_ROOT.exists():
+                shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.app_context = app.app_context()
@@ -57,6 +67,12 @@ class BasicTestCase(unittest.TestCase):
         db.session.add(user)
         db.session.commit()
         return user
+
+    def create_media_file(self, relative_path, content=b"media-bytes"):
+        absolute_path = TEST_MEDIA_ROOT / relative_path
+        absolute_path.parent.mkdir(parents=True, exist_ok=True)
+        absolute_path.write_bytes(content)
+        return absolute_path
 
     def insert_owner_row(self):
         now = datetime.utcnow()
@@ -90,6 +106,21 @@ class BasicTestCase(unittest.TestCase):
     def test_login_page_loads(self):
         response = self.client.get("/login")
         self.assertEqual(response.status_code, 200)
+
+    def test_media_route_serves_logo_from_persistent_folder(self):
+        self.create_media_file(Path("uploads") / "logos" / "sample-logo.png", b"\x89PNG\r\n\x1a\n")
+
+        response = self.client.get("/media/logos/sample-logo.png")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        response.close()
+
+    def test_missing_media_returns_404_without_redirect(self):
+        response = self.client.get("/media/logos/missing.png", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
 
     def test_seed_owner_creates_owner_when_database_is_empty(self):
         owner = AuthService.seed_owner_if_empty()

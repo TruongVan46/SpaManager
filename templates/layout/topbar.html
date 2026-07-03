@@ -58,8 +58,9 @@
 
         <div class="dropdown">
             <div class="profile" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer; user-select: none;">
-                {% if current_user and current_user.avatar %}
-                    <img src="{{ current_user.avatar }}" alt="Avatar" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" loading="lazy">
+                {% set avatar_url = media_url(current_user.avatar, 'avatar') if current_user else None %}
+                {% if avatar_url %}
+                    <img src="{{ avatar_url }}" alt="Avatar" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" loading="lazy">
                 {% else %}
                     <i class="bi bi-person-circle" style="font-size: 30px; color: var(--spa-primary, #a67c52);"></i>
                 {% endif %}

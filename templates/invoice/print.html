@@ -235,8 +235,9 @@
     <div class="invoice-box">
         <div class="header">
             <div class="spa-info">
-                {% if settings.get('spa_logo') %}
-                <img src="{{ settings.get('spa_logo') }}" alt="Logo" class="spa-logo">
+                {% set logo_url = media_url(settings.get('spa_logo'), 'logo') %}
+                {% if logo_url %}
+                <img src="{{ logo_url }}" alt="Logo" class="spa-logo">
                 {% endif %}
                 <div class="spa-details">
                     <h1>{{ settings.get('spa_name', 'SPA MANAGER') }}</h1>

@@ -15,6 +15,7 @@ from core.logger import app_logger
 from core.exceptions import ValidationException
 from validators.auth_validator import AuthValidator
 from validators.profile_validator import ProfileValidator
+from utils.media_storage import resolve_media_file_path
 
 # services/auth_service.py
 
@@ -267,13 +268,14 @@ class AuthService:
         sanitized_name = full_name.strip()
 
         # 2. Process avatar upload if provided
+        old_avatar_path = None
         if avatar_file and avatar_file.filename:
 
             filename = secure_filename(avatar_file.filename)
             ext = os.path.splitext(filename)[1].lower()
             # Create unique filename
             unique_name = f"{uuid.uuid4().hex}{ext}"
-            uploads_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
+            uploads_dir = current_app.config['AVATAR_UPLOAD_FOLDER']
             
             # Ensure upload folder exists
             os.makedirs(uploads_dir, exist_ok=True)
@@ -284,22 +286,34 @@ class AuthService:
             avatar_file.save(file_path)
 
             # Delete old custom avatar if it exists
-            if user.avatar and user.avatar.startswith('/static/uploads/avatars/'):
-                old_avatar_filename = user.avatar.replace('/static/uploads/avatars/', '')
-                old_avatar_path = os.path.join(uploads_dir, old_avatar_filename)
-                if os.path.exists(old_avatar_path):
-                    try:
-                        os.remove(old_avatar_path)
-                    except Exception as e:
-                        app_logger.error(f"Error deleting old avatar file: {e}", module="SECURITY", exc_info=True)
+            old_avatar_path = resolve_media_file_path(
+                user.avatar,
+                'avatar',
+                current_app.config['UPLOAD_ROOT'],
+                current_app.root_path
+            )
 
             # Update avatar path in DB
-            user.avatar = f"/static/uploads/avatars/{unique_name}"
+            user.avatar = f"avatars/{unique_name}"
 
         # Update full name
         user.full_name = sanitized_name
         user.updated_at = datetime.utcnow()
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            if avatar_file and avatar_file.filename and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+            raise
+
+        if old_avatar_path and os.path.exists(old_avatar_path):
+            try:
+                os.remove(old_avatar_path)
+            except Exception as e:
+                app_logger.error(f"Error deleting old avatar file: {e}", module="SECURITY", exc_info=True)
 
         # Trigger hook
         AuthService.on_profile_update_success(user)

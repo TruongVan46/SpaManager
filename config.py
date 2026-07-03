@@ -52,6 +52,12 @@ class BaseConfig:
     DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD", "owner123")
     DEFAULT_OWNER_EMAIL = os.getenv("DEFAULT_OWNER_EMAIL", "")
 
+    # Persistent media storage
+    PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or os.path.join(basedir, "database")
+    UPLOAD_ROOT = os.getenv("UPLOAD_ROOT") or os.path.join(PERSISTENT_ROOT, "uploads")
+    LOGO_UPLOAD_FOLDER = os.getenv("LOGO_UPLOAD_FOLDER") or os.path.join(UPLOAD_ROOT, "logos")
+    AVATAR_UPLOAD_FOLDER = os.getenv("AVATAR_UPLOAD_FOLDER") or os.path.join(UPLOAD_ROOT, "avatars")
+
 
 class DevelopmentConfig(BaseConfig):
     """
@@ -114,6 +120,11 @@ class ProductionConfig(BaseConfig):
         self.DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD")
         if not self.DEFAULT_OWNER_PASSWORD:
             raise RuntimeError("DEFAULT_OWNER_PASSWORD must be configured in Production.")
+
+        self.PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or "/app/database"
+        self.UPLOAD_ROOT = os.getenv("UPLOAD_ROOT") or os.path.join(self.PERSISTENT_ROOT, "uploads")
+        self.LOGO_UPLOAD_FOLDER = os.getenv("LOGO_UPLOAD_FOLDER") or os.path.join(self.UPLOAD_ROOT, "logos")
+        self.AVATAR_UPLOAD_FOLDER = os.getenv("AVATAR_UPLOAD_FOLDER") or os.path.join(self.UPLOAD_ROOT, "avatars")
 
 
 # Map configurations by environment name

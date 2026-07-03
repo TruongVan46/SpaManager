@@ -1,9 +1,10 @@
 # app.py - SpaManager Project
 import os
 import time
-from flask import Flask, request, redirect, url_for, send_from_directory
+from flask import Flask, abort, request, redirect, url_for, send_from_directory
 from extensions import db
 from config import get_active_config
+from utils.media_storage import normalize_media_reference, resolve_media_file_path
 from routes import (
     dashboard_bp, 
     customer_bp, 
@@ -45,11 +46,24 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static', 'img'),
                                'logo.png', mimetype='image/png')
 
+@app.route('/media/<path:path>')
+def media_file(path):
+    normalized_path = normalize_media_reference(path)
+    resolved_path = resolve_media_file_path(
+        normalized_path,
+        None,
+        app.config['UPLOAD_ROOT'],
+        app.root_path
+    )
+    if not resolved_path:
+        abort(404)
+    return send_from_directory(os.path.dirname(resolved_path), os.path.basename(resolved_path))
+
 # Global Authentication filter and context injector
 @app.before_request
 def require_login():
     # Skip check for static assets, login route, and favicon
-    if request.endpoint in ['static', 'auth.login', 'favicon']:
+    if request.endpoint in ['static', 'auth.login', 'favicon', 'media_file']:
         return
 
     # Redirect to login if user is not authenticated
@@ -70,7 +84,22 @@ def inject_asset_helpers():
         except OSError:
             return str(int(time.time()))
 
-    return dict(asset_version=asset_version)
+    def media_url(media_value, media_type=None):
+        normalized_path = normalize_media_reference(media_value, media_type)
+        if not normalized_path or normalized_path.startswith(("http://", "https://")):
+            return normalized_path
+
+        resolved_path = resolve_media_file_path(
+            normalized_path,
+            media_type,
+            app.config['UPLOAD_ROOT'],
+            app.root_path
+        )
+        if not resolved_path:
+            return None
+        return url_for('media_file', path=normalized_path)
+
+    return dict(asset_version=asset_version, media_url=media_url)
 
 # Ensure the database directory exists before creating the SQLite file (only if using SQLite)
 db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -80,9 +109,11 @@ if db_uri.startswith('sqlite:///'):
     if database_dir:
         os.makedirs(database_dir, exist_ok=True)
 
-# Ensure the avatar uploads directory exists
-avatars_dir = os.path.join(app.root_path, 'static', 'uploads', 'avatars')
-os.makedirs(avatars_dir, exist_ok=True)
+# Ensure persistent upload directories exist at runtime
+os.makedirs(app.config['PERSISTENT_ROOT'], exist_ok=True)
+os.makedirs(app.config['UPLOAD_ROOT'], exist_ok=True)
+os.makedirs(app.config['LOGO_UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['AVATAR_UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize Logging Framework
 from core.logger import app_logger

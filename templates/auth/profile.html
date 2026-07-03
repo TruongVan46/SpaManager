@@ -15,8 +15,9 @@
             <div class="app-card text-center py-5">
                 <div class="app-card-body">
                     <div class="avatar-upload-preview mb-4 position-relative d-inline-block">
-                        {% if user.avatar %}
-                            <img src="{{ user.avatar }}" alt="Avatar" id="profile-avatar-preview" class="rounded-circle border" style="width: 140px; height: 140px; object-fit: cover;" loading="lazy">
+                        {% set avatar_url = media_url(user.avatar, 'avatar') %}
+                        {% if avatar_url %}
+                            <img src="{{ avatar_url }}" alt="Avatar" id="profile-avatar-preview" class="rounded-circle border" style="width: 140px; height: 140px; object-fit: cover;" loading="lazy">
                         {% else %}
                             <div id="profile-avatar-placeholder" class="rounded-circle border d-flex align-items-center justify-content-center app-bg-main" style="width: 140px; height: 140px; margin: 0 auto;">
                                 <i class="bi bi-person-circle text-muted" style="font-size: 80px;"></i>
@@ -44,7 +45,7 @@
                 <div class="app-card-body">
                     <form id="profile-form" novalidate enctype="multipart/form-data">
                         <!-- Hidden input for file upload -->
-                        <input type="file" id="avatar-input" name="avatar" accept="image/png, image/jpeg, image/jpg" style="display: none;">
+                        <input type="file" id="avatar-input" name="avatar" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
 
                         <div class="row g-3">
                             <!-- Username (Readonly) -->
