@@ -2,9 +2,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -30,4 +30,8 @@ jobs:
       env:
         APP_ENV: testing
       run: |
-        python -m unittest discover -s tests
+        python -m unittest discover -s tests -p "test*.py" -v
+
+    - name: Compile Python
+      run: |
+        python -m compileall .

@@ -1266,6 +1266,24 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(config.GOOGLE_CLIENT_SECRET, "")
         self.assertEqual(config.GOOGLE_REDIRECT_URI, "")
 
+    def test_readme_and_env_template_match_current_production_setup(self):
+        readme = Path("README.md").read_text(encoding="utf-8")
+        env_example = Path(".env.example").read_text(encoding="utf-8")
+        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+        self.assertIn("SpaManager is a Flask-based web app", readme)
+        self.assertIn("Command Palette with `Ctrl+K`", readme)
+        self.assertIn("badge.svg?branch=main", readme)
+        self.assertIn("compileall .", readme)
+        self.assertIn("DATABASE_URL=sqlite:///database/spa.db", env_example)
+        self.assertIn("# DATABASE_URL=sqlite:////app/database/spa.db", env_example)
+        self.assertIn("change-this-to-a-strong-password", env_example)
+        self.assertIn("CSRF_ENABLED=1", env_example)
+        self.assertIn("python -m compileall .", workflow)
+        self.assertNotIn("master", workflow)
+        self.assertNotIn("owner123", readme)
+        self.assertNotIn("owner123", env_example)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,200 +1,130 @@
 # SpaManager
 
-[![Continuous Integration](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml/badge.svg)](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml)
+[![Continuous Integration](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml)
 
-> Modern Spa Management System built with Flask.
+SpaManager is a Flask-based web app for managing a spa, nail, and makeup business. It runs with SQLite, Bootstrap, and Railway-friendly persistent storage for media, backups, and the database file.
 
-## Overview
+## Features
 
-SpaManager is a modern web-based management system for spa and beauty salons. It provides customer management, appointment scheduling, invoice management, statistics, backup & restore, Dark Mode, and responsive UI. The project follows a layered architecture and is being prepared for migration to a cloud-native SaaS platform.
+- Dashboard
+- Customer management
+- Service management
+- Appointment calendar
+- Invoice management
+- Statistics and reports
+- Activity log
+- Settings
+- Backup and restore
+- Recycle bin
+- Logo and avatar uploads
+- Command Palette with `Ctrl+K`
 
-## Highlights
+## Security and production hardening
 
-- Dashboard Analytics
-- Customer Management
-- Appointment Scheduling
-- Invoice Management
-- Statistics & Reports
-- Backup & Restore Center
-- Command Palette
-- Recycle Bin
-- Dark Mode
-- Responsive Design
-- Accessibility (WCAG 2.1 AA)
+- CSRF protection for state-changing form and API requests
+- Secure session cookie settings in production
+- `GET /health` for health checks
+- HTML and JSON 404/500 error handling
+- `deleted_by` audit tracking
+- Timezone standardization to `Asia/Ho_Chi_Minh`
 
-## Why SpaManager?
-
-Unlike a typical academic CRUD project, SpaManager emphasizes clean architecture, maintainability, accessibility, performance, and a future cloud migration path.
-
-## Technology Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | Flask |
-| ORM | SQLAlchemy |
-| Database | SQLite |
-| Frontend | Bootstrap 5 |
-| JavaScript | Vanilla JavaScript |
-| Charts | Chart.js |
-| Testing | Playwright + unittest |
-
-## Architecture
-
-- MVC
-- Repository Pattern
-- Service Layer
-- Validator Layer
-- Core Layer
-
-## Folder Structure
-
-```text
-core/
-models/
-repositories/
-routes/
-services/
-validators/
-templates/
-static/
-docs/
-
-Runtime folders (ignored by Git):
-database/
-backup/
-logs/
-exports/
-instance/
-```
-
-## Installation
+## Local setup
 
 ```bash
 git clone https://github.com/<your-username>/SpaManager.git
 cd SpaManager
 
 python -m venv venv
-
 # Windows
 venv\Scripts\activate
 
 pip install -r requirements.txt
-
+copy .env.example .env
 python run.py
 ```
 
-## Local environment
+The first run seeds the default owner account from `.env`.
 
-Use `APP_ENV=development` for local work. The app falls back to a local SQLite database at `database/spa.db` if `DATABASE_URL` is not provided.
+## Environment variables
 
-Useful local variables:
+Required or commonly used variables:
 
-- `SECRET_KEY`
-- `DEFAULT_OWNER_USERNAME`
-- `DEFAULT_OWNER_PASSWORD`
-- `DEFAULT_OWNER_EMAIL`
-- `APP_TIMEZONE`
-- `PERSISTENT_ROOT`
-- `LOG_DIR`
-
-CSRF protection is enabled by default for all state-changing requests. HTML forms receive a hidden token automatically, and same-origin JSON fetches use the `X-CSRFToken` header.
-
-The application automatically creates the SQLite database on first launch.
-
-## Railway production variables
-
-### Required
-
-- `APP_ENV=production`
-- `SECRET_KEY`
-- `DATABASE_URL`
-- `DEFAULT_OWNER_PASSWORD`
-- `APP_TIMEZONE`
-
-### Optional
-
-- `DEFAULT_OWNER_USERNAME`
-- `DEFAULT_OWNER_EMAIL`
+- `APP_ENV`
 - `APP_NAME`
 - `APP_VERSION`
 - `APP_TIMEZONE`
+- `DATABASE_URL`
+- `DEFAULT_OWNER_USERNAME`
+- `DEFAULT_OWNER_PASSWORD`
+- `DEFAULT_OWNER_EMAIL`
+- `LOG_LEVEL`
 - `PERSISTENT_ROOT`
+- `SECRET_KEY`
+
+Other supported values:
+
+- `CSRF_ENABLED`
+- `CSRF_TIME_LIMIT`
+- `SESSION_LIFETIME_DAYS`
+- `SEND_FILE_MAX_AGE_DAYS`
+- `MAX_UPLOAD_SIZE`
+- `LOG_DIR`
+- `LOG_ROTATION_SIZE`
+- `LOG_BACKUP_COUNT`
 - `UPLOAD_ROOT`
 - `LOGO_UPLOAD_FOLDER`
 - `AVATAR_UPLOAD_FOLDER`
-- `LOG_LEVEL`
+- `EXPORT_FOLDER`
+- `BACKUP_FOLDER`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `GOOGLE_DISCOVERY_URL`
+- `GOOGLE_SCOPES`
 
-Production uses the persistent media root under `/app/database` by default, so uploaded logos and avatars survive Railway redeploys.
+## Railway deployment
 
-CSRF protection also stays enabled in production without requiring an extra Railway variable.
+- Use `APP_ENV=production`
+- Set `DATABASE_URL` to the Railway SQLite volume path
+- Set `PERSISTENT_ROOT` to the Railway persistent volume root
+- Keep uploaded media under the persistent root so redeploys do not remove files
+- Point Railway health checks to `GET /health`
 
-Railway health checks should target `GET /health`. The endpoint returns JSON for app and database status and does not require login.
+Example production values:
+
+```env
+DATABASE_URL=sqlite:////app/database/spa.db
+PERSISTENT_ROOT=/app/database
+```
+
+## Backup and restore
+
+- Back up the SQLite database file regularly
+- Restore with care because it overwrites live data
+- Logo and avatar files live under the persistent media folder
 
 ## Testing
 
 ```bash
-python -m unittest discover
+.\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test*.py" -v
+.\\venv\\Scripts\\python.exe -m compileall .
 ```
 
-Playwright integration tests are also included.
+## Project structure
 
-## Continuous Integration
+- `routes/` - Flask route modules
+- `services/` - business logic
+- `models/` - database models
+- `validators/` - validation helpers
+- `core/` - app utilities and middleware
+- `utils/` - shared helpers
+- `templates/` - Jinja templates
+- `static/` - CSS, JavaScript, and assets
+- `tests/` - automated tests
 
-This project uses GitHub Actions for Continuous Integration (CI) to automatically run tests and verify changes on every push and pull request.
+## Notes
 
-[![Continuous Integration](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml/badge.svg)](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml)
-
-### CI Pipeline Steps
-1. **Checkout Code**: Retrieves the repository codebase.
-2. **Setup Python**: Provisions a Python 3.11 environment and caches pip packages for fast builds.
-3. **Install Dependencies**: Installs packages listed in `requirements.txt`.
-4. **Run Tests**: Runs Python `unittest` suite. Any test failure fails the workflow build.
-
-## Roadmap
-
-### Completed
-- Dashboard
-- Customer
-- Appointment
-- Invoice
-- Statistics
-- Backup Center
-- Restore Center
-- Dark Mode
-- Responsive Design
-
-### Next
-- PostgreSQL
-- Docker
-- Google OAuth
-- REST API
-- Cloud Deployment
-- SaaS Architecture
-
-## Development Status
-
-| Item | Status |
-|---|---|
-| Current Version | v5.0 Cloud Foundation |
-| Architecture | Local-first |
-| Next Milestone | Cloud Edition (v5.x) |
-| Long-term Goal | SaaS Platform |
-
-## Documentation
-
-- CHANGELOG.md
-- CSS_ARCHITECTURE.md
-- JAVASCRIPT_ARCHITECTURE.md
-- AUDIT_REPORT_v3.7.md
-
-## License
-
-MIT License.
-
-## Author
-
-**Trường Văn**
-
-Software Engineering Student
-
-GitHub: https://github.com/truongvan46
+- Google OAuth is not implemented.
+- Advanced user management is not included.
+- PostgreSQL migration is not the current deployment path.
+- SpaManager remains a local-first application with Railway production support.
