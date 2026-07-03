@@ -14,7 +14,7 @@ class BaseConfig:
     """
     # Application identity
     APP_NAME = os.getenv("APP_NAME", "SpaManager")
-    APP_VERSION = os.getenv("APP_VERSION", "4.0.0")
+    APP_VERSION = os.getenv("APP_VERSION", "5.0.0")
 
     # SQLAlchemy Configurations
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -107,13 +107,17 @@ class ProductionConfig(BaseConfig):
     SESSION_COOKIE_SAMESITE = "Lax"
 
     # Database configuration (no default SQLite fallback, must be supplied)
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URI")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
     def __init__(self):
         # In python-dotenv or environment variables, SECRET_KEY must be defined
         self.SECRET_KEY = os.getenv("SECRET_KEY")
         if not self.SECRET_KEY:
             raise RuntimeError("SECRET_KEY must be configured in Production.")
+
+        self.SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+        if not self.SQLALCHEMY_DATABASE_URI:
+            raise RuntimeError("DATABASE_URL must be configured in Production.")
 
         self.DEFAULT_OWNER_USERNAME = os.getenv("DEFAULT_OWNER_USERNAME", "owner")
         self.DEFAULT_OWNER_EMAIL = os.getenv("DEFAULT_OWNER_EMAIL", "")

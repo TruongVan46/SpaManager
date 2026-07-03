@@ -83,13 +83,45 @@ pip install -r requirements.txt
 python run.py
 ```
 
+## Local environment
+
+Use `APP_ENV=development` for local work. The app falls back to a local SQLite database at `database/spa.db` if `DATABASE_URL` is not provided.
+
+Useful local variables:
+
+- `SECRET_KEY`
+- `DEFAULT_OWNER_USERNAME`
+- `DEFAULT_OWNER_PASSWORD`
+- `DEFAULT_OWNER_EMAIL`
+- `PERSISTENT_ROOT`
+- `LOG_DIR`
+
 The application automatically creates the SQLite database on first launch.
 
-You can override the first owner account with `DEFAULT_OWNER_USERNAME`, `DEFAULT_OWNER_PASSWORD`, and `DEFAULT_OWNER_EMAIL` in your environment file if needed.
+## Railway production variables
 
-Uploaded logos and avatars are stored under the persistent media root (`PERSISTENT_ROOT` / `UPLOAD_ROOT`) so they survive Railway redeploys.
+### Required
 
-Production exposes a lightweight `GET /health` endpoint for Railway health checks. It returns JSON for app and database status and does not require login.
+- `APP_ENV=production`
+- `SECRET_KEY`
+- `DATABASE_URL`
+- `DEFAULT_OWNER_PASSWORD`
+
+### Optional
+
+- `DEFAULT_OWNER_USERNAME`
+- `DEFAULT_OWNER_EMAIL`
+- `APP_NAME`
+- `APP_VERSION`
+- `PERSISTENT_ROOT`
+- `UPLOAD_ROOT`
+- `LOGO_UPLOAD_FOLDER`
+- `AVATAR_UPLOAD_FOLDER`
+- `LOG_LEVEL`
+
+Production uses the persistent media root under `/app/database` by default, so uploaded logos and avatars survive Railway redeploys.
+
+Railway health checks should target `GET /health`. The endpoint returns JSON for app and database status and does not require login.
 
 ## Testing
 
@@ -136,7 +168,7 @@ This project uses GitHub Actions for Continuous Integration (CI) to automaticall
 
 | Item | Status |
 |---|---|
-| Current Version | v4.0 Stable |
+| Current Version | v5.0 Cloud Foundation |
 | Architecture | Local-first |
 | Next Milestone | Cloud Edition (v5.x) |
 | Long-term Goal | SaaS Platform |

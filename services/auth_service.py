@@ -120,14 +120,17 @@ class AuthService:
         """
         Seed the initial owner account if it does not already exist.
         """
-        owner_username = os.getenv("DEFAULT_OWNER_USERNAME", "owner")
-        owner_password = os.getenv("DEFAULT_OWNER_PASSWORD", "owner123")
-        owner_email = os.getenv("DEFAULT_OWNER_EMAIL", "") or None
-
         if has_app_context():
-            owner_username = current_app.config.get("DEFAULT_OWNER_USERNAME", owner_username)
-            owner_password = current_app.config.get("DEFAULT_OWNER_PASSWORD", owner_password)
-            owner_email = current_app.config.get("DEFAULT_OWNER_EMAIL", owner_email) or None
+            owner_username = current_app.config.get("DEFAULT_OWNER_USERNAME", "owner")
+            owner_password = current_app.config.get("DEFAULT_OWNER_PASSWORD")
+            owner_email = current_app.config.get("DEFAULT_OWNER_EMAIL", "") or None
+        else:
+            from config import get_active_config
+
+            active_config = get_active_config()
+            owner_username = getattr(active_config, "DEFAULT_OWNER_USERNAME", "owner")
+            owner_password = getattr(active_config, "DEFAULT_OWNER_PASSWORD", None)
+            owner_email = getattr(active_config, "DEFAULT_OWNER_EMAIL", "") or None
 
         def get_owner():
             return User.query.filter_by(username=owner_username).first()

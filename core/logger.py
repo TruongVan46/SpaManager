@@ -115,7 +115,7 @@ class AppLogger:
         self.sec_logger.addHandler(sec_handler)
 
         # 4. Console Handler (for Development color logging)
-        is_dev = os.environ.get('FLASK_ENV') == 'development' or (app and app.debug)
+        is_dev = bool(app and app.debug)
         if is_dev:
             # Enable ANSI colors for Windows terminals if needed
             if os.name == 'nt':

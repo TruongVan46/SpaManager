@@ -23,7 +23,7 @@ os.environ["LOGO_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "logos").as_po
 os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").as_posix()
 
 from app import app
-from config import ProductionConfig
+from config import DevelopmentConfig, ProductionConfig
 from extensions import db
 from models.user import User
 from services.auth_service import AuthService
@@ -163,6 +163,32 @@ class BasicTestCase(unittest.TestCase):
         self.assertIsNotNone(query_result)
         self.assertEqual(query_result.username, "session-safe")
 
+    def test_production_requires_secret_key(self):
+        with patch.dict(
+            os.environ,
+            {
+                "DATABASE_URL": "sqlite:///prod.sqlite",
+                "DEFAULT_OWNER_PASSWORD": "prod-owner-pass",
+                "SECRET_KEY": "",
+            },
+            clear=True,
+        ):
+            with self.assertRaises(RuntimeError):
+                ProductionConfig()
+
+    def test_production_requires_database_url(self):
+        with patch.dict(
+            os.environ,
+            {
+                "SECRET_KEY": "prod-secret",
+                "DEFAULT_OWNER_PASSWORD": "prod-owner-pass",
+                "DATABASE_URL": "",
+            },
+            clear=True,
+        ):
+            with self.assertRaises(RuntimeError):
+                ProductionConfig()
+
     def test_media_route_serves_logo_from_persistent_folder(self):
         self.create_media_file(Path("uploads") / "logos" / "sample-logo.png", b"\x89PNG\r\n\x1a\n")
 
@@ -288,10 +314,61 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(User.query.count(), 1)
 
     def test_production_requires_owner_password(self):
-        with patch.dict(os.environ, {"SECRET_KEY": "prod-secret"}, clear=False):
-            with patch.dict(os.environ, {"DEFAULT_OWNER_PASSWORD": ""}, clear=False):
-                with self.assertRaises(RuntimeError):
-                    ProductionConfig()
+        with patch.dict(
+            os.environ,
+            {
+                "SECRET_KEY": "prod-secret",
+                "DATABASE_URL": "sqlite:///prod.sqlite",
+                "DEFAULT_OWNER_PASSWORD": "",
+            },
+            clear=True,
+        ):
+            with self.assertRaises(RuntimeError):
+                ProductionConfig()
+
+    def test_production_reads_database_url_and_persistent_paths(self):
+        with patch.dict(
+            os.environ,
+            {
+                "SECRET_KEY": "prod-secret",
+                "DATABASE_URL": "sqlite:////app/database/spa.db",
+                "DEFAULT_OWNER_PASSWORD": "prod-owner-pass",
+                "PERSISTENT_ROOT": "/app/database",
+            },
+            clear=True,
+        ):
+            config = ProductionConfig()
+
+        self.assertEqual(config.SQLALCHEMY_DATABASE_URI, "sqlite:////app/database/spa.db")
+        self.assertEqual(config.PERSISTENT_ROOT, "/app/database")
+        self.assertEqual(config.UPLOAD_ROOT.replace("\\", "/"), "/app/database/uploads")
+        self.assertEqual(config.LOGO_UPLOAD_FOLDER.replace("\\", "/"), "/app/database/uploads/logos")
+        self.assertEqual(config.AVATAR_UPLOAD_FOLDER.replace("\\", "/"), "/app/database/uploads/avatars")
+        self.assertFalse(config.DEBUG)
+
+    def test_local_config_can_still_initialize(self):
+        config = DevelopmentConfig()
+
+        self.assertTrue(config.DEBUG)
+        self.assertTrue(config.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"))
+        self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
+        self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
+
+    def test_google_oauth_variables_remain_optional(self):
+        with patch.dict(
+            os.environ,
+            {
+                "SECRET_KEY": "prod-secret",
+                "DATABASE_URL": "sqlite:///prod.sqlite",
+                "DEFAULT_OWNER_PASSWORD": "prod-owner-pass",
+            },
+            clear=True,
+        ):
+            config = ProductionConfig()
+
+        self.assertEqual(config.GOOGLE_CLIENT_ID, "")
+        self.assertEqual(config.GOOGLE_CLIENT_SECRET, "")
+        self.assertEqual(config.GOOGLE_REDIRECT_URI, "")
 
 
 if __name__ == "__main__":
