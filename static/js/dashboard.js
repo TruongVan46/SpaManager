@@ -196,14 +196,14 @@ function initDashboard() {
                                 else if (appt.status === 'Đã hủy') badgeClass = 'app-badge-cancelled';
 
                                 html += `
-                                    <div class="schedule-item">
-                                        <div class="schedule-time">${appt.time}</div>
-                                        <div class="schedule-details">
-                                            <div class="schedule-customer">${appt.customer}</div>
-                                            <div class="schedule-service">${appt.service}</div>
+                                    <div class="appointment-item schedule-item">
+                                        <div class="appointment-time schedule-time">${appt.time}</div>
+                                        <div class="appointment-details schedule-details">
+                                            <div class="appointment-customer schedule-customer">${appt.customer}</div>
+                                            <div class="appointment-service schedule-service">${appt.service}</div>
                                         </div>
-                                        <div class="schedule-status">
-                                            <span class="app-badge badge ${badgeClass}">
+                                        <div class="appointment-status schedule-status">
+                                            <span class="app-badge badge status-badge ${badgeClass}">
                                                 ${appt.status}
                                             </span>
                                         </div>

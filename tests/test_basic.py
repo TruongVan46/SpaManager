@@ -712,6 +712,25 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("boom-json", response.get_data(as_text=True))
         self.assertNotIn("Traceback", response.get_data(as_text=True))
 
+    def test_dashboard_today_appointments_render_expected_classes(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        response = self.client.get("/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="dashboard-schedule-list"', html)
+        self.assertIn('class="schedule-list"', html)
+        self.assertIn('class="appointment-item schedule-item"', html)
+        self.assertIn('id="appt-footer"', html)
+
+    def test_page_size_handler_is_scoped_to_explicit_controls(self):
+        source = Path("static/js/shared-table.js").read_text(encoding="utf-8")
+        self.assertIn("[data-stf-filter]", source)
+        self.assertNotIn(".app-filter-bar select", source)
+        self.assertNotIn(".app-filter-main select", source)
+
     def test_seed_owner_creates_owner_when_database_is_empty(self):
         owner = AuthService.seed_owner_if_empty()
 

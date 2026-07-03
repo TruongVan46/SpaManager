@@ -413,7 +413,7 @@
         var perPageParam = this.opts.perPageParam;
         var pageParam = this.opts.pageParam;
         var self = this;
-        document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
+        document.querySelectorAll('.page-size-select[data-stf-per-page]').forEach(function(sel) {
             var moduleAttr = sel.getAttribute('data-stf-per-page-module');
             if (moduleAttr && moduleAttr !== 'table' && moduleAttr !== self.module) return;
 
@@ -673,7 +673,7 @@
     }
 
     function initFilterAutoSubmit() {
-        document.querySelectorAll('[data-stf-filter], .app-filter-bar select, .app-filter-main select').forEach(function(sel) {
+        document.querySelectorAll('[data-stf-filter]').forEach(function(sel) {
             sel.addEventListener('change', function() {
                 var form = sel.closest('form');
                 if (form) { form.submit(); }

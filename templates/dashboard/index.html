@@ -53,15 +53,15 @@ Dashboard
             </div>
             <div class="app-card-body">
                 <!-- Items rendered by JS pagination -->
-                <div id="dashboard-schedule-list">
+                <div id="dashboard-schedule-list" class="schedule-list">
                     {% for i in range(3) %}
-                    <div class="schedule-item">
-                        <div class="schedule-time stf-skeleton stf-skeleton-text" style="width: 55px; height: 16px;"></div>
-                        <div class="schedule-details">
-                            <div class="schedule-customer stf-skeleton stf-skeleton-text" style="width: 120px; height: 18px; margin-bottom: 6px;"></div>
-                            <div class="schedule-service stf-skeleton stf-skeleton-text" style="width: 90px; height: 14px;"></div>
+                    <div class="appointment-item schedule-item">
+                        <div class="appointment-time schedule-time stf-skeleton stf-skeleton-text" style="width: 55px; height: 16px;"></div>
+                        <div class="appointment-details schedule-details">
+                            <div class="appointment-customer schedule-customer stf-skeleton stf-skeleton-text" style="width: 120px; height: 18px; margin-bottom: 6px;"></div>
+                            <div class="appointment-service schedule-service stf-skeleton stf-skeleton-text" style="width: 90px; height: 14px;"></div>
                         </div>
-                        <div class="schedule-status">
+                        <div class="appointment-status schedule-status">
                             <span class="stf-skeleton stf-skeleton-badge"></span>
                         </div>
                     </div>
@@ -209,14 +209,14 @@ Dashboard
         var slice = appointments.slice(start, start + perPage);
         listEl.innerHTML = slice.map(function (appt) {
             var cls = statusClassMap[appt.status] || 'app-badge-default';
-            return '<div class="schedule-item">'
-                 + '<div class="schedule-time">' + appt.time + '</div>'
-                 + '<div class="schedule-details">'
-                 +   '<div class="schedule-customer">' + appt.customer + '</div>'
-                 +   '<div class="schedule-service">' + appt.service + '</div>'
+            return '<div class="appointment-item schedule-item">'
+                 + '<div class="appointment-time schedule-time">' + appt.time + '</div>'
+                 + '<div class="appointment-details schedule-details">'
+                 +   '<div class="appointment-customer schedule-customer">' + appt.customer + '</div>'
+                 +   '<div class="appointment-service schedule-service">' + appt.service + '</div>'
                  + '</div>'
-                 + '<div class="schedule-status">'
-                 +   '<span class="app-badge badge ' + cls + '">' + appt.status + '</span>'
+                 + '<div class="appointment-status schedule-status">'
+                 +   '<span class="app-badge badge status-badge ' + cls + '">' + appt.status + '</span>'
                  + '</div>'
                  + '</div>';
         }).join('');
