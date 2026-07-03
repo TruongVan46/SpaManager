@@ -64,6 +64,9 @@ class ErrorHandler:
         # Check if request is AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
 
+        if request.path.startswith('/health') and isinstance(e, HTTPException):
+            return e.get_response()
+
         if request.path.startswith('/media/') or request.endpoint == 'media_file' or request.path.startswith('/static/'):
             return e.get_response()
         

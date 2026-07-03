@@ -89,6 +89,8 @@ You can override the first owner account with `DEFAULT_OWNER_USERNAME`, `DEFAULT
 
 Uploaded logos and avatars are stored under the persistent media root (`PERSISTENT_ROOT` / `UPLOAD_ROOT`) so they survive Railway redeploys.
 
+Production exposes a lightweight `GET /health` endpoint for Railway health checks. It returns JSON for app and database status and does not require login.
+
 ## Testing
 
 ```bash

@@ -1,10 +1,12 @@
 # app.py - SpaManager Project
 import os
 import time
-from flask import Flask, abort, request, redirect, url_for, send_from_directory
+from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory
 from extensions import db
 from config import get_active_config
 from utils.media_storage import normalize_media_reference, resolve_media_file_path
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from routes import (
     dashboard_bp, 
     customer_bp, 
@@ -59,11 +61,33 @@ def media_file(path):
         abort(404)
     return send_from_directory(os.path.dirname(resolved_path), os.path.basename(resolved_path))
 
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    try:
+        db.session.execute(text("SELECT 1"))
+        response = jsonify({
+            "status": "ok",
+            "app": app.config.get("APP_NAME", "SpaManager"),
+            "database": "connected",
+        })
+        response.headers["Cache-Control"] = "no-store"
+        return response, 200
+    except SQLAlchemyError:
+        db.session.rollback()
+        response = jsonify({
+            "status": "unhealthy",
+            "app": app.config.get("APP_NAME", "SpaManager"),
+            "database": "unavailable",
+        })
+        response.headers["Cache-Control"] = "no-store"
+        return response, 503
+
 # Global Authentication filter and context injector
 @app.before_request
 def require_login():
     # Skip check for static assets, login route, and favicon
-    if request.endpoint in ['static', 'auth.login', 'favicon', 'media_file']:
+    if request.endpoint in ['static', 'auth.login', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
         return
 
     # Redirect to login if user is not authenticated

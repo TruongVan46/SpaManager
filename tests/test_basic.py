@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from sqlalchemy import event, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 TEST_DB_FILE = Path(tempfile.gettempdir()) / "spamanager_owner_seed_test.sqlite"
 TEST_MEDIA_ROOT = Path(tempfile.gettempdir()) / "spamanager_media_seed_test"
@@ -106,6 +106,62 @@ class BasicTestCase(unittest.TestCase):
     def test_login_page_loads(self):
         response = self.client.get("/login")
         self.assertEqual(response.status_code, 200)
+
+    def test_health_check_returns_json_without_login(self):
+        response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        self.assertTrue(response.is_json)
+        self.assertEqual(response.get_json(), {
+            "status": "ok",
+            "app": "SpaManager",
+            "database": "connected",
+        })
+
+    def test_health_check_executes_database_probe(self):
+        with patch("app.db.session.execute") as mocked_execute:
+            response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        mocked_execute.assert_called_once()
+        self.assertEqual(str(mocked_execute.call_args.args[0]), "SELECT 1")
+
+    def test_health_check_returns_503_on_database_error_and_rolls_back(self):
+        self.create_user("health-check-user", password="health-pass", full_name="Health Check", role="STAFF")
+        original_rollback = db.session.rollback
+
+        with patch("app.db.session.execute", side_effect=SQLAlchemyError("database unavailable")) as mocked_execute:
+            with patch("app.db.session.rollback", wraps=original_rollback) as mocked_rollback:
+                response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "unhealthy")
+        self.assertEqual(payload["database"], "unavailable")
+        self.assertNotIn("password", response.get_data(as_text=True).lower())
+        self.assertNotIn("database unavailable", response.get_data(as_text=True).lower())
+        mocked_execute.assert_called_once()
+        mocked_rollback.assert_called_once()
+        self.assertEqual(User.query.filter_by(username="health-check-user").count(), 1)
+
+    def test_health_check_post_method_is_not_allowed(self):
+        response = self.client.post("/health")
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_health_check_session_remains_usable_after_rollback(self):
+        self.create_user("session-safe", password="session-pass", full_name="Session Safe", role="STAFF")
+
+        with patch("app.db.session.execute", side_effect=SQLAlchemyError("database unavailable")):
+            response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 503)
+        query_result = User.query.filter_by(username="session-safe").first()
+        self.assertIsNotNone(query_result)
+        self.assertEqual(query_result.username, "session-safe")
 
     def test_media_route_serves_logo_from_persistent_folder(self):
         self.create_media_file(Path("uploads") / "logos" / "sample-logo.png", b"\x89PNG\r\n\x1a\n")
