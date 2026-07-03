@@ -287,6 +287,7 @@
                                                  <i class="bi bi-pencil-square"></i>
                                              </a>
                                              <form action="{{ url_for('appointment.delete', id=appointment.id) }}" method="POST" class="d-inline">
+                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                  <button type="submit" class="btn btn-outline-danger btn-delete rounded-start-0" title="Xóa" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0;">
                                                      <i class="bi bi-trash"></i>
                                                  </button>

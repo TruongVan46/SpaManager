@@ -878,6 +878,147 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(invoice_result.status_code, 200)
         self.assertEqual(Invoice.query.get(invoice.id).deleted_by, "owner")
 
+    def test_appointment_pages_render_hidden_csrf_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        self.create_customer_record("Appointment Render Customer")
+        self.create_service_record("Appointment Render Service")
+        appointment = self.create_appointment_record()
+
+        create_html = self.client.get("/appointments/create").get_data(as_text=True)
+        edit_html = self.client.get(f"/appointments/edit/{appointment.id}").get_data(as_text=True)
+        index_html = self.client.get("/appointments").get_data(as_text=True)
+
+        self.assertIn('name="csrf_token"', create_html)
+        self.assertIn('name="csrf_token"', edit_html)
+        self.assertIn('name="csrf_token"', index_html)
+
+    def test_appointment_create_requires_and_accepts_csrf_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Appointment Create Customer")
+        service = self.create_service_record("Appointment Create Service")
+        before_count = Appointment.query.count()
+
+        missing = self.client.post(
+            "/appointments/create",
+            data={
+                "customer_id": customer.id,
+                "service_id": service.id,
+                "appointment_date": "2026-07-04",
+                "appointment_time": "10:00",
+                "status": "Pending",
+                "notes": "Test create",
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(Appointment.query.count(), before_count)
+
+        token = self.get_csrf_token("/appointments/create")
+        response = self.client.post(
+            "/appointments/create",
+            data={
+                "customer_id": customer.id,
+                "service_id": service.id,
+                "appointment_date": "2026-07-04",
+                "appointment_time": "10:00",
+                "status": "Pending",
+                "notes": "Test create",
+            },
+            headers={"X-CSRFToken": token},
+            follow_redirects=False
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Appointment.query.count(), before_count + 1)
+
+    def test_appointment_edit_requires_and_accepts_csrf_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        appointment = self.create_appointment_record()
+        customer = self.create_customer_record("Appointment Edit Customer")
+        service = self.create_service_record("Appointment Edit Service")
+
+        missing = self.client.post(
+            f"/appointments/edit/{appointment.id}",
+            data={
+                "customer_id": customer.id,
+                "service_id": service.id,
+                "appointment_time": "2026-07-05T11:30",
+                "status": "Confirmed",
+                "notes": "Edited",
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(missing.status_code, 400)
+        untouched = Appointment.query.get(appointment.id)
+        self.assertEqual(untouched.status, "Pending")
+
+        token = self.get_csrf_token(f"/appointments/edit/{appointment.id}")
+        response = self.client.post(
+            f"/appointments/edit/{appointment.id}",
+            data={
+                "customer_id": customer.id,
+                "service_id": service.id,
+                "appointment_time": "2026-07-05T11:30",
+                "status": "Confirmed",
+                "notes": "Edited",
+            },
+            headers={"X-CSRFToken": token},
+            follow_redirects=False
+        )
+        self.assertEqual(response.status_code, 302)
+        updated = Appointment.query.get(appointment.id)
+        self.assertEqual(updated.status, "Confirmed")
+
+    def test_appointment_update_status_requires_header_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        appointment = self.create_appointment_record()
+        token = self.get_csrf_token("/appointments")
+
+        success = self.client.post(
+            "/appointments/update_status",
+            json={"id": appointment.id, "status": "Confirmed"},
+            headers={"X-CSRFToken": token}
+        )
+        self.assertEqual(success.status_code, 200)
+        self.assertEqual(Appointment.query.get(appointment.id).status, "Confirmed")
+
+        self.create_appointment_record()
+        missing = self.client.post(
+            "/appointments/update_status",
+            json={"id": appointment.id, "status": "Completed"}
+        )
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(Appointment.query.get(appointment.id).status, "Confirmed")
+
+    def test_appointment_delete_requires_csrf_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        appointment = self.create_appointment_record()
+
+        missing = self.client.post(f"/appointments/delete/{appointment.id}")
+        self.assertEqual(missing.status_code, 400)
+        untouched = Appointment.query.get(appointment.id)
+        self.assertIsNone(untouched.deleted_at)
+        self.assertIsNone(untouched.deleted_by)
+
+        response = self.post_with_csrf(
+            f"/appointments/delete/{appointment.id}",
+            path="/appointments",
+            headers={"X-Requested-With": "XMLHttpRequest"}
+        )
+        self.assertEqual(response.status_code, 200)
+        deleted = Appointment.query.get(appointment.id)
+        self.assertIsNotNone(deleted.deleted_at)
+        self.assertEqual(deleted.deleted_by, "owner")
+
+    def test_appointment_calendar_script_uses_csrf_token_for_delete_form(self):
+        source = Path("static/js/appointment-calendar.js").read_text(encoding="utf-8")
+        self.assertIn("window.SpaCsrf.getToken()", source)
+        self.assertIn('name="csrf_token"', source)
+
     def test_permanent_delete_logs_current_actor_before_removal(self):
         owner = AuthService.seed_owner_if_empty()
         customer = self.create_customer_record("Permanent Customer")
