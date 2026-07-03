@@ -97,6 +97,8 @@ Useful local variables:
 - `PERSISTENT_ROOT`
 - `LOG_DIR`
 
+CSRF protection is enabled by default for all state-changing requests. HTML forms receive a hidden token automatically, and same-origin JSON fetches use the `X-CSRFToken` header.
+
 The application automatically creates the SQLite database on first launch.
 
 ## Railway production variables
@@ -123,6 +125,8 @@ The application automatically creates the SQLite database on first launch.
 - `LOG_LEVEL`
 
 Production uses the persistent media root under `/app/database` by default, so uploaded logos and avatars survive Railway redeploys.
+
+CSRF protection also stays enabled in production without requiring an extra Railway variable.
 
 Railway health checks should target `GET /health`. The endpoint returns JSON for app and database status and does not require login.
 

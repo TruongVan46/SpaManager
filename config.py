@@ -29,6 +29,12 @@ class BaseConfig:
     # Static Assets Caching Header (default: 1 year cache for maximum performance)
     SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=int(os.getenv("SEND_FILE_MAX_AGE_DAYS", 365)))
 
+    # CSRF protection
+    CSRF_ENABLED = os.getenv("CSRF_ENABLED", "1") != "0"
+    CSRF_TIME_LIMIT = int(os.getenv("CSRF_TIME_LIMIT", 3600))
+    CSRF_METHODS = ("POST", "PUT", "PATCH", "DELETE")
+    CSRF_HEADER_NAMES = ("X-CSRFToken", "X-CSRF-Token")
+
     # Folders paths
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(basedir, 'static', 'uploads'))
     EXPORT_FOLDER = os.getenv("EXPORT_FOLDER", os.path.join(basedir, 'exports'))
@@ -90,6 +96,7 @@ class TestingConfig(BaseConfig):
     
     SESSION_COOKIE_SECURE = False
     SECRET_KEY = "spa_manager_testing_key"
+    CSRF_ENABLED = True
 
     # SQLite in-memory database for fast test isolation
     SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
@@ -101,6 +108,7 @@ class ProductionConfig(BaseConfig):
     """
     DEBUG = False
     TESTING = False
+    CSRF_ENABLED = True
 
     # Production session cookie security flags (anti-session hijacking / CSRF)
     SESSION_COOKIE_SECURE = True

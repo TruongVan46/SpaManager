@@ -15,7 +15,8 @@
         </div>
 
         <!-- Form -->
-        <form id="login-form" novalidate>
+        <form id="login-form" method="post" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="username" class="form-label fw-semibold">Tên đăng nhập</label>
                 <div class="input-group">
@@ -145,7 +146,7 @@
             }
 
             // AJAX login submission
-            fetch("{{ url_for('auth.login') }}", {
+            csrfFetch("{{ url_for('auth.login') }}", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -1,7 +1,18 @@
 # routes/auth.py
+from urllib.parse import urlparse, urljoin
+
 from flask import render_template, request, jsonify, redirect, url_for
 from routes import auth_bp
 from services.auth_service import AuthService
+
+
+def _is_safe_next_url(target):
+    if not target:
+        return False
+
+    base_url = request.host_url
+    test_url = urljoin(base_url, target)
+    return urlparse(test_url).scheme in ("http", "https") and urlparse(base_url).netloc == urlparse(test_url).netloc
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -19,7 +30,8 @@ def login():
         success, user = AuthService.login(username, password, remember=remember)
         if success:
             # Safe redirect extraction
-            next_url = request.args.get('next') or url_for('dashboard.index')
+            next_target = request.args.get('next')
+            next_url = next_target if _is_safe_next_url(next_target) else url_for('dashboard.index')
             return jsonify(
                 success=True,
                 redirect=next_url,
@@ -30,7 +42,7 @@ def login():
 
     return render_template('auth/login.html')
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 def logout():
     AuthService.logout()
     return redirect(url_for('auth.login', logout=1))

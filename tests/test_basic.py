@@ -2,6 +2,10 @@ import os
 import shutil
 import tempfile
 import unittest
+import re
+import uuid
+import inspect
+from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -40,6 +44,7 @@ from services.customer_service import CustomerService
 from services.invoice_service import InvoiceService
 from services.service_service import ServiceService
 from services.auth_service import AuthService
+import core.csrf as csrf_module
 
 
 class BasicTestCase(unittest.TestCase):
@@ -84,6 +89,20 @@ class BasicTestCase(unittest.TestCase):
     def login_as(self, user):
         with self.client.session_transaction() as sess:
             sess[AUTH_SESSION_KEY] = user.id
+
+    def get_csrf_token(self, path="/login"):
+        response = self.client.get(path, follow_redirects=True)
+        html = response.get_data(as_text=True)
+        match = re.search(r'name="csrf-token" content="([^"]+)"', html)
+        if not match:
+            match = re.search(r'name="csrf_token" value="([^"]+)"', html)
+        self.assertIsNotNone(match, "CSRF token not found in response HTML")
+        return match.group(1)
+
+    def post_with_csrf(self, url, path="/login", **kwargs):
+        headers = dict(kwargs.pop("headers", {}) or {})
+        headers["X-CSRFToken"] = self.get_csrf_token(path)
+        return self.client.post(url, headers=headers, **kwargs)
 
     def create_customer_record(self, name="Test Customer"):
         customer = Customer(name=name, phone="0900000000", email=f"{name.lower().replace(' ', '')}@example.com")
@@ -172,6 +191,334 @@ class BasicTestCase(unittest.TestCase):
     def test_login_page_loads(self):
         response = self.client.get("/login")
         self.assertEqual(response.status_code, 200)
+        self.assertIn('csrf-token', response.get_data(as_text=True))
+
+    def test_login_post_requires_csrf_token(self):
+        self.create_user("login-csrf", password="login-pass", full_name="Login CSRF", role="STAFF")
+
+        response = self.client.post(
+            "/login",
+            json={
+                "username": "login-csrf",
+                "password": "login-pass",
+                "remember": False,
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertEqual(payload["error"], "csrf_failed")
+        self.assertNotIn("Location", response.headers)
+
+    def test_login_post_succeeds_with_csrf_token(self):
+        self.create_user("login-ok", password="login-pass", full_name="Login OK", role="STAFF")
+        csrf_token = self.get_csrf_token("/login")
+
+        response = self.client.post(
+            "/login",
+            json={
+                "username": "login-ok",
+                "password": "login-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrf_token,
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+
+    def test_login_rejects_external_next_redirect(self):
+        self.create_user("login-next", password="login-pass", full_name="Login Next", role="STAFF")
+        csrf_token = self.get_csrf_token("/login")
+
+        response = self.client.post(
+            "/login?next=https://evil.example",
+            json={
+                "username": "login-next",
+                "password": "login-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrf_token,
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["redirect"], "/")
+
+    def test_csrf_token_uses_compare_digest(self):
+        source = inspect.getsource(csrf_module.validate_csrf_request)
+        self.assertIn("compare_digest", source)
+
+    def test_csrf_token_is_session_bound(self):
+        self.create_user("bound-user", password="bound-pass", full_name="Bound User", role="STAFF")
+        client_a = app.test_client()
+        client_b = app.test_client()
+
+        login_page = client_a.get("/login")
+        token_a = re.search(r'name="csrf-token" content="([^"]+)"', login_page.get_data(as_text=True)).group(1)
+
+        response = client_b.post(
+            "/login",
+            json={
+                "username": "bound-user",
+                "password": "bound-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": token_a,
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.is_json)
+        self.assertEqual(response.get_json()["error"], "csrf_failed")
+
+    def test_csrf_fetch_only_adds_token_for_same_origin_unsafe_methods(self):
+        source = Path("static/js/csrf.js").read_text(encoding="utf-8")
+        self.assertIn("isUnsafeMethod", source)
+        self.assertIn("isSameOrigin", source)
+        self.assertIn("credentials = 'same-origin'", source)
+        self.assertNotIn("window.fetch =", source)
+        self.assertNotIn("Content-Type: 'multipart/form-data'", source)
+
+    def test_global_csrf_protects_all_unsafe_routes(self):
+        self.assertEqual(
+            set(csrf_module.CSRF_SAFE_PATH_PREFIXES),
+            {"/health", "/static/", "/media/"}
+        )
+        unsafe_methods = {"POST", "PUT", "PATCH", "DELETE"}
+        for rule in app.url_map.iter_rules():
+            rule_unsafe_methods = unsafe_methods.intersection(rule.methods or set())
+            if not rule_unsafe_methods:
+                continue
+            concrete_rule = re.sub(r"<[^>]+>", "1", rule.rule)
+            for method in rule_unsafe_methods:
+                with app.test_request_context(concrete_rule, method=method):
+                    if rule.rule.startswith(csrf_module.CSRF_SAFE_PATH_PREFIXES):
+                        self.assertFalse(csrf_module.requires_csrf_protection(), rule.rule)
+                    else:
+                        self.assertTrue(csrf_module.requires_csrf_protection(), rule.rule)
+
+    def test_no_state_changing_get_routes(self):
+        allowed_read_only_get_routes = {
+            "/settings/backup/download/<string:backup_id>",
+            "/settings/restore-wizard/validate/<string:backup_id>",
+            "/settings/template/customers",
+            "/settings/template/services",
+            "/settings/import/errors/download/<string:filename>",
+            "/customers/<int:id>/can-delete",
+        }
+        banned_keywords = ("logout", "delete", "restore", "permanent", "import", "backup", "update", "upload", "status")
+
+        for rule in app.url_map.iter_rules():
+            if "GET" not in (rule.methods or set()):
+                continue
+            lower_rule = rule.rule.lower()
+            if any(keyword in lower_rule for keyword in banned_keywords):
+                self.assertIn(rule.rule, allowed_read_only_get_routes)
+
+    def test_csrf_token_rotates_after_login_and_old_token_stops_working(self):
+        self.create_user("rotate-user", password="rotate-pass", full_name="Rotate User", role="STAFF")
+        old_token = self.get_csrf_token("/login")
+
+        login_response = self.client.post(
+            "/login",
+            json={
+                "username": "rotate-user",
+                "password": "rotate-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": old_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        stale_token_response = self.client.post(
+            "/customers/create",
+            data={
+                "name": f"Rotate Reject {uuid.uuid4().hex[:8]}",
+                "phone": f"09{uuid.uuid4().int % 100000000:08d}",
+                "email": f"rotate-reject-{uuid.uuid4().hex[:8]}@example.com",
+                "address": "HCMC",
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": old_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(stale_token_response.status_code, 400)
+        self.assertEqual(stale_token_response.get_json()["error"], "csrf_failed")
+
+        fresh_token = self.get_csrf_token("/customers")
+        success_response = self.client.post(
+            "/customers/create",
+            data={
+                "name": f"Rotate Accept {uuid.uuid4().hex[:8]}",
+                "phone": f"09{uuid.uuid4().int % 100000000:08d}",
+                "email": f"rotate-accept-{uuid.uuid4().hex[:8]}@example.com",
+                "address": "HCMC",
+            },
+            headers={"X-CSRFToken": fresh_token},
+            follow_redirects=False
+        )
+        self.assertEqual(success_response.status_code, 302)
+
+    def test_logout_clears_session_and_csrf_token(self):
+        self.create_user("logout-user", password="logout-pass", full_name="Logout User", role="STAFF")
+        login_token = self.get_csrf_token("/login")
+
+        login_response = self.client.post(
+            "/login",
+            json={
+                "username": "logout-user",
+                "password": "logout-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        logout_response = self.client.post(
+            "/logout",
+            headers={"X-CSRFToken": self.get_csrf_token("/customers")},
+            follow_redirects=False
+        )
+        self.assertEqual(logout_response.status_code, 302)
+
+        relogin_attempt = self.client.post(
+            "/login",
+            json={
+                "username": "logout-user",
+                "password": "logout-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(relogin_attempt.status_code, 400)
+        self.assertEqual(relogin_attempt.get_json()["error"], "csrf_failed")
+
+        new_login_token = self.get_csrf_token("/login")
+        self.assertNotEqual(login_token, new_login_token)
+
+    def test_html_form_post_requires_csrf_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        response = self.client.post(
+            "/customers/create",
+            data={
+                "name": "CSRF Customer",
+                "phone": "0900000000",
+                "email": "csrf@example.com",
+                "address": "HCMC",
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content_type.split(";")[0], "text/html")
+        self.assertIn("Yêu cầu không hợp lệ", response.get_data(as_text=True))
+        self.assertEqual(Customer.query.filter_by(email="csrf@example.com").count(), 0)
+
+        success_response = self.post_with_csrf(
+            "/customers/create",
+            path="/customers",
+            data={
+                "name": f"CSRF Customer {uuid.uuid4().hex[:8]}",
+                "phone": f"09{uuid.uuid4().int % 100000000:08d}",
+                "email": f"csrf-{uuid.uuid4().hex[:8]}@example.com",
+                "address": "HCMC",
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(success_response.status_code, 302)
+        self.assertEqual(Customer.query.filter(Customer.name.like("CSRF Customer %")).count(), 1)
+
+    def test_multipart_profile_update_requires_csrf_token(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        response = self.client.post(
+            "/profile",
+            data={
+                "full_name": "Owner Updated",
+                "avatar": (BytesIO(b"avatar-bytes"), "avatar.png"),
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            content_type="multipart/form-data",
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.is_json)
+        self.assertEqual(response.get_json()["error"], "csrf_failed")
+        refreshed_owner = User.query.filter_by(username="owner").first()
+        self.assertEqual(refreshed_owner.full_name, owner.full_name)
+
+        success_response = self.post_with_csrf(
+            "/profile",
+            path="/profile",
+            data={
+                "full_name": "Owner Updated",
+                "avatar": (BytesIO(b"avatar-bytes"), "avatar.png"),
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            content_type="multipart/form-data",
+            follow_redirects=False
+        )
+
+        self.assertEqual(success_response.status_code, 200)
+        self.assertTrue(success_response.is_json)
+        self.assertTrue(success_response.get_json()["success"])
+
+    def test_logout_get_is_safe_and_post_requires_csrf(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        get_response = self.client.get("/logout", follow_redirects=False)
+        self.assertEqual(get_response.status_code, 405)
+        still_authenticated = self.client.get("/customers", follow_redirects=False)
+        self.assertEqual(still_authenticated.status_code, 200)
+
+        csrf_token = self.get_csrf_token("/customers")
+        post_response = self.client.post(
+            "/logout",
+            headers={"X-CSRFToken": csrf_token},
+            follow_redirects=False
+        )
+
+        self.assertEqual(post_response.status_code, 302)
+        self.assertIn("/login", post_response.headers.get("Location", ""))
+        post_logout_access = self.client.get("/customers", follow_redirects=False)
+        self.assertEqual(post_logout_access.status_code, 302)
 
     def test_health_check_returns_json_without_login(self):
         response = self.client.get("/health")
@@ -479,7 +826,7 @@ class BasicTestCase(unittest.TestCase):
         customer = self.create_customer_record("Audit Customer")
         self.login_as(owner)
 
-        response = self.client.post(f"/customers/{customer.id}/delete")
+        response = self.post_with_csrf(f"/customers/{customer.id}/delete", path="/customers")
 
         self.assertEqual(response.status_code, 302)
         deleted_customer = Customer.query.get(customer.id)
@@ -490,9 +837,9 @@ class BasicTestCase(unittest.TestCase):
         owner = AuthService.seed_owner_if_empty()
         customer = self.create_customer_record("Restore Customer")
         self.login_as(owner)
-        self.client.post(f"/customers/{customer.id}/delete")
+        self.post_with_csrf(f"/customers/{customer.id}/delete", path="/customers")
 
-        response = self.client.post(f"/recycle-bin/restore/Customer/{customer.id}")
+        response = self.post_with_csrf(f"/recycle-bin/restore/Customer/{customer.id}", path="/recycle-bin")
 
         self.assertEqual(response.status_code, 200)
         restored_customer = Customer.query.get(customer.id)
@@ -505,24 +852,27 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
 
         service = self.create_service_record("Audit Service")
-        service_result = self.client.post(
+        service_result = self.post_with_csrf(
             f"/services/delete/{service.id}",
+            path="/services",
             headers={"X-Requested-With": "XMLHttpRequest"}
         )
         self.assertEqual(service_result.status_code, 200)
         self.assertEqual(Service.query.get(service.id).deleted_by, "owner")
 
         appointment = self.create_appointment_record()
-        appointment_result = self.client.post(
+        appointment_result = self.post_with_csrf(
             f"/appointments/delete/{appointment.id}",
+            path="/appointments",
             headers={"X-Requested-With": "XMLHttpRequest"}
         )
         self.assertEqual(appointment_result.status_code, 200)
         self.assertEqual(Appointment.query.get(appointment.id).deleted_by, "owner")
 
         invoice = self.create_invoice_record()
-        invoice_result = self.client.post(
+        invoice_result = self.post_with_csrf(
             f"/invoices/delete/{invoice.id}",
+            path="/invoices",
             headers={"X-Requested-With": "XMLHttpRequest"}
         )
         self.assertEqual(invoice_result.status_code, 200)
@@ -532,9 +882,9 @@ class BasicTestCase(unittest.TestCase):
         owner = AuthService.seed_owner_if_empty()
         customer = self.create_customer_record("Permanent Customer")
         self.login_as(owner)
-        self.client.post(f"/customers/{customer.id}/delete")
+        self.post_with_csrf(f"/customers/{customer.id}/delete", path="/customers")
 
-        response = self.client.post(f"/recycle-bin/delete/Customer/{customer.id}")
+        response = self.post_with_csrf(f"/recycle-bin/delete/Customer/{customer.id}", path="/recycle-bin")
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(Customer.query.get(customer.id))
@@ -601,10 +951,10 @@ class BasicTestCase(unittest.TestCase):
         customer_b = self.create_customer_record("Customer B")
 
         self.login_as(user_a)
-        self.client.post(f"/customers/{customer_a.id}/delete")
+        self.post_with_csrf(f"/customers/{customer_a.id}/delete", path="/customers")
 
         self.login_as(user_b)
-        self.client.post(f"/customers/{customer_b.id}/delete")
+        self.post_with_csrf(f"/customers/{customer_b.id}/delete", path="/customers")
 
         self.assertEqual(Customer.query.get(customer_a.id).deleted_by, "user-a")
         self.assertEqual(Customer.query.get(customer_b.id).deleted_by, "user-b")

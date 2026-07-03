@@ -337,7 +337,7 @@
        ============================ */
     async function updateEventStatus(id, newStatus) {
         try {
-            const resp = await fetch(UPDATE_STATUS_URL, {
+            const resp = await csrfFetch(UPDATE_STATUS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: id, status: newStatus })

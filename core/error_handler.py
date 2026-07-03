@@ -9,6 +9,7 @@ from models.activity_log import ActivityLog
 from services.notification_service import NotificationService
 from services.auth_service import AuthService
 from sqlalchemy.exc import SQLAlchemyError
+from core.csrf import CSRFError, csrf_error_json
 
 class ExceptionMapper:
     @staticmethod
@@ -81,6 +82,21 @@ class ErrorHandler:
     @staticmethod
     def render_html_status(template_name, status_code):
         response = make_response(render_template(template_name), status_code)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @staticmethod
+    def handle_csrf_error(e):
+        message = getattr(e, "message", "Phiên làm việc đã hết hạn hoặc yêu cầu không hợp lệ. Vui lòng tải lại trang.")
+        status_code = getattr(e, "status_code", 400)
+
+        if ErrorHandler.is_media_or_static_request() or ErrorHandler.is_health_request():
+            return csrf_error_json(message, status_code)
+
+        if ErrorHandler.is_json_request():
+            return csrf_error_json(message, status_code)
+
+        response = make_response(render_template("errors/csrf.html", message=message), status_code)
         response.headers["Cache-Control"] = "no-store"
         return response
 

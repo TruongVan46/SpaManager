@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     confirmDeleteBtn.disabled = true;
                     confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                     
-                    fetch(formToDelete.action, {
+                    csrfFetch(formToDelete.action, {
                         method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (newStatus === oldStatus) return;
 
                 try {
-                    const response = await fetch('/appointments/update_status', {
+                    const response = await csrfFetch('/appointments/update_status', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

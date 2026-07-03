@@ -38,6 +38,8 @@ class AuthService:
         if user and user.is_active and user.check_password(password):
             session[AUTH_SESSION_KEY] = user.id
             session.permanent = remember
+            from core.csrf import rotate_csrf_token
+            rotate_csrf_token()
             user.last_login = utc_now()
             db.session.commit()
             
@@ -58,6 +60,8 @@ class AuthService:
         if user:
             AuthService.on_logout(user)
         session.pop(AUTH_SESSION_KEY, None)
+        from core.csrf import clear_csrf_token
+        clear_csrf_token()
         return True
 
     @staticmethod

@@ -43,7 +43,8 @@
                     </h5>
                 </div>
                 <div class="app-card-body">
-                    <form id="profile-form" novalidate enctype="multipart/form-data">
+                    <form id="profile-form" method="post" novalidate enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Hidden input for file upload -->
                         <input type="file" id="avatar-input" name="avatar" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
 
@@ -191,7 +192,7 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Đang lưu...';
 
-            fetch("{{ url_for('auth.profile') }}", {
+            csrfFetch("{{ url_for('auth.profile') }}", {
                 method: "POST",
                 body: formData,
                 headers: {

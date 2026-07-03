@@ -22,6 +22,7 @@ from routes import (
     auth_bp
 )
 from services.auth_service import AuthService
+from core.csrf import validate_csrf_request, csrf_token, CSRFError
 
 # Tạo ứng dụng Flask
 app = Flask(__name__)
@@ -107,6 +108,11 @@ def require_login():
         next_url = request.full_path
         return redirect(url_for('auth.login', next=next_url))
 
+
+@app.before_request
+def validate_state_changing_request_csrf():
+    validate_csrf_request()
+
 @app.context_processor
 def inject_user():
     return dict(current_user=AuthService.get_current_user())
@@ -136,6 +142,10 @@ def inject_asset_helpers():
         return url_for('media_file', path=normalized_path)
 
     return dict(asset_version=asset_version, media_url=media_url)
+
+@app.context_processor
+def inject_csrf_helper():
+    return dict(csrf_token=csrf_token)
 
 # Ensure the database directory exists before creating the SQLite file (only if using SQLite)
 db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -245,6 +255,10 @@ def inject_active_page():
 
 # Global Exception Handler registration
 from core.error_handler import ErrorHandler
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    return ErrorHandler.handle_csrf_error(e)
 
 @app.errorhandler(HTTPException)
 def handle_http_exception(e):

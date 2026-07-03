@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 // Request backend to delete saved logo
-                fetch('/settings/delete-logo', {
+                csrfFetch('/settings/delete-logo', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('import_file', file);
             formData.append('import_type', wImportType);
 
-            fetch('/settings/import/analyze', {
+            csrfFetch('/settings/import/analyze', {
                 method: 'POST',
                 body: formData
             })
@@ -419,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
         wBtnCloseHeader.style.display = 'none';
         wBtnExecute.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang tạo backup & Import dữ liệu...';
 
-        fetch('/settings/import/execute', {
+        csrfFetch('/settings/import/execute', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -655,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData(createBackupForm);
             formData.append('format', 'json');
             
-            fetch('/settings/backup', {
+            csrfFetch('/settings/backup', {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
@@ -721,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const newNotes = editBackupNotesInput.value.trim();
             
-            fetch(`/settings/backup/notes/${activeBackupId}`, {
+            csrfFetch(`/settings/backup/notes/${activeBackupId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -947,7 +947,7 @@ if (uploadBackupForm) {
         
         const formData = new FormData(uploadBackupForm);
         
-        fetch('/settings/backup/upload', {
+        csrfFetch('/settings/backup/upload', {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1048,7 +1048,7 @@ wizardBtnConfirm.addEventListener('click', function () {
         btn.disabled = true;
     });
 
-    fetch('/settings/restore-wizard/confirm', {
+    csrfFetch('/settings/restore-wizard/confirm', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1147,7 +1147,7 @@ restoreWizardModalEl.addEventListener('hide.bs.modal', function (e) {
             
             confirmDeleteBackupBtn.disabled = true;
             
-            fetch(`/settings/backup/delete/${activeBackupId}`, {
+            csrfFetch(`/settings/backup/delete/${activeBackupId}`, {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'

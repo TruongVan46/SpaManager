@@ -1,0 +1,16 @@
+{% extends "layout/base.html" %}
+
+{% block title %}400 - Yêu cầu không hợp lệ{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page text-center py-5">
+    <div class="fs-1 text-warning mb-3"><i class="bi bi-shield-exclamation"></i> 400</div>
+    <h2 class="app-title mb-4">Yêu cầu không hợp lệ!</h2>
+    <p class="app-text lead text-muted">{{ message or 'Phiên làm việc đã hết hạn hoặc yêu cầu không hợp lệ. Vui lòng tải lại trang.' }}</p>
+    <div class="mt-4">
+        <button type="button" class="app-btn app-btn-primary btn btn-primary" onclick="window.location.reload()">
+            <i class="bi bi-arrow-clockwise" style="margin-right: 8px;"></i>Tải lại trang
+        </button>
+    </div>
+</div>
+{% endblock %}
