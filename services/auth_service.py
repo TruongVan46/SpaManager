@@ -2,8 +2,9 @@ import os
 import uuid
 from datetime import datetime
 
+from flask import current_app, has_app_context, session
+from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
-from flask import session, current_app
 
 from extensions import db
 from models.user import User
@@ -116,23 +117,61 @@ class AuthService:
     @staticmethod
     def seed_owner_if_empty():
         """
-        Seed the initial owner account if the User table is currently empty.
+        Seed the initial owner account if it does not already exist.
         """
+        owner_username = os.getenv("DEFAULT_OWNER_USERNAME", "owner")
+        owner_password = os.getenv("DEFAULT_OWNER_PASSWORD", "owner123")
+        owner_email = os.getenv("DEFAULT_OWNER_EMAIL", "") or None
+
+        if has_app_context():
+            owner_username = current_app.config.get("DEFAULT_OWNER_USERNAME", owner_username)
+            owner_password = current_app.config.get("DEFAULT_OWNER_PASSWORD", owner_password)
+            owner_email = current_app.config.get("DEFAULT_OWNER_EMAIL", owner_email) or None
+
+        def get_owner():
+            return User.query.filter_by(username=owner_username).first()
+
+        existing_owner = get_owner()
+        if existing_owner is not None:
+            app_logger.info(
+                f"Default owner already exists (username={owner_username}).",
+                module="AUTHENTICATION"
+            )
+            return existing_owner
+
+        owner = User(
+            username=owner_username,
+            full_name="Chủ Spa",
+            role=UserRole.OWNER.value,
+            is_active=True,
+            email=owner_email
+        )
+        owner.set_password(owner_password)
+        db.session.add(owner)
+
         try:
-            if User.query.first() is None:
-                owner = User(
-                    username="owner",
-                    full_name="Chủ Spa",
-                    role=UserRole.OWNER.value,
-                    is_active=True
-                )
-                owner.set_password("owner123")
-                db.session.add(owner)
-                db.session.commit()
-                app_logger.info("Seeding default Owner successful.", module="AUTHENTICATION")
-        except Exception as e:
+            db.session.commit()
+            app_logger.info(
+                f"Default owner seeded successfully (username={owner_username}).",
+                module="AUTHENTICATION"
+            )
+            return owner
+        except IntegrityError:
             db.session.rollback()
-            app_logger.critical(f"Error seeding default Owner: {e}", module="AUTHENTICATION", exc_info=True)
+            existing_owner = get_owner()
+            if existing_owner is not None:
+                app_logger.info(
+                    f"Default owner was created concurrently by another worker (username={owner_username}).",
+                    module="AUTHENTICATION"
+                )
+                return existing_owner
+
+            app_logger.critical(
+                f"IntegrityError while seeding default owner (username={owner_username}).",
+                module="AUTHENTICATION",
+                exc_info=True
+            )
+            raise
 
     @staticmethod
     def change_password(user, current_password, new_password, confirm_password=None):

@@ -47,6 +47,11 @@ class BaseConfig:
     GOOGLE_DISCOVERY_URL = os.getenv("GOOGLE_DISCOVERY_URL", "https://accounts.google.com/.well-known/openid-configuration")
     GOOGLE_SCOPES = os.getenv("GOOGLE_SCOPES", "openid email profile").split()
 
+    # Default owner account seed settings
+    DEFAULT_OWNER_USERNAME = os.getenv("DEFAULT_OWNER_USERNAME", "owner")
+    DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD", "owner123")
+    DEFAULT_OWNER_EMAIL = os.getenv("DEFAULT_OWNER_EMAIL", "")
+
 
 class DevelopmentConfig(BaseConfig):
     """
@@ -103,6 +108,12 @@ class ProductionConfig(BaseConfig):
         self.SECRET_KEY = os.getenv("SECRET_KEY")
         if not self.SECRET_KEY:
             raise RuntimeError("SECRET_KEY must be configured in Production.")
+
+        self.DEFAULT_OWNER_USERNAME = os.getenv("DEFAULT_OWNER_USERNAME", "owner")
+        self.DEFAULT_OWNER_EMAIL = os.getenv("DEFAULT_OWNER_EMAIL", "")
+        self.DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD")
+        if not self.DEFAULT_OWNER_PASSWORD:
+            raise RuntimeError("DEFAULT_OWNER_PASSWORD must be configured in Production.")
 
 
 # Map configurations by environment name

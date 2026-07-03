@@ -85,6 +85,8 @@ python run.py
 
 The application automatically creates the SQLite database on first launch.
 
+You can override the first owner account with `DEFAULT_OWNER_USERNAME`, `DEFAULT_OWNER_PASSWORD`, and `DEFAULT_OWNER_EMAIL` in your environment file if needed.
+
 ## Testing
 
 ```bash
