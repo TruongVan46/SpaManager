@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from core.logger import app_logger
 
 from extensions import db
 from models.activity_log import ActivityLog
+from utils.timezone_utils import local_day_bounds_utc, local_today, parse_datetime_value, utc_now
 
 
 class ActivityLogService:
@@ -55,7 +56,7 @@ class ActivityLogService:
                     description=description,
                     reference_id=reference_id,
                     severity=severity,
-                    created_at=datetime.utcnow()
+                    created_at=utc_now()
                 )
                 session.add(log_entry)
                 session.commit()
@@ -162,46 +163,45 @@ class ActivityLogService:
         if severity and severity != 'Tất cả':
             query = query.filter(ActivityLog.severity == severity)
 
-        # Time range filter (Vietnamese GMT+7 converted to UTC)
-        from datetime import timedelta
-        utc_now = datetime.utcnow()
-        local_now = utc_now + timedelta(hours=7)
-        local_today_start = datetime(local_now.year, local_now.month, local_now.day)
-        local_today_end = local_today_start + timedelta(days=1) - timedelta(microseconds=1)
+        # Time range filter (local time converted back to stored UTC)
+        local_today_start_utc, local_today_end_utc = local_day_bounds_utc(local_today())
         
         start_dt = None
         end_dt = None
         
         if time_range == 'today':
-            start_dt = local_today_start
-            end_dt = local_today_end
+            start_dt = local_today_start_utc
+            end_dt = local_today_end_utc
         elif time_range == '7_days':
-            start_dt = local_today_start - timedelta(days=6)
-            end_dt = local_today_end
+            start_dt, end_dt = local_day_bounds_utc(local_today() - timedelta(days=6))
+            end_dt = local_today_end_utc
         elif time_range == '30_days':
-            start_dt = local_today_start - timedelta(days=29)
-            end_dt = local_today_end
+            start_dt, end_dt = local_day_bounds_utc(local_today() - timedelta(days=29))
+            end_dt = local_today_end_utc
         elif time_range == 'this_month':
-            start_dt = datetime(local_now.year, local_now.month, 1)
-            end_dt = local_today_end
+            current_day = local_today()
+            start_dt = local_day_bounds_utc(date(current_day.year, current_day.month, 1))[0]
+            end_dt = local_today_end_utc
         elif time_range == 'custom':
             if from_date:
                 try:
-                    start_dt = datetime.strptime(from_date, '%Y-%m-%d')
-                except ValueError:
+                    parsed_from = parse_datetime_value(from_date)
+                    if parsed_from:
+                        start_dt = local_day_bounds_utc(parsed_from.date())[0]
+                except (AttributeError, ValueError):
                     pass
             if to_date:
                 try:
-                    end_dt = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
-                except ValueError:
+                    parsed_to = parse_datetime_value(to_date)
+                    if parsed_to:
+                        end_dt = local_day_bounds_utc(parsed_to.date())[1]
+                except (AttributeError, ValueError):
                     pass
                     
         if start_dt:
-            utc_start = start_dt - timedelta(hours=7)
-            query = query.filter(ActivityLog.created_at >= utc_start)
+            query = query.filter(ActivityLog.created_at >= start_dt)
         if end_dt:
-            utc_end = end_dt - timedelta(hours=7)
-            query = query.filter(ActivityLog.created_at <= utc_end)
+            query = query.filter(ActivityLog.created_at <= end_dt)
 
         # Sorting
         if sort_by == 'oldest':
@@ -210,4 +210,3 @@ class ActivityLogService:
             query = query.order_by(ActivityLog.created_at.desc())
             
         return query.paginate(page=page, per_page=per_page, error_out=False)
-

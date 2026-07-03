@@ -289,7 +289,7 @@
                         </thead>
                         <tbody id="backup-list-tbody">
                             {% for b in backups %}
-                            <tr data-name="{{ b.display_name | lower }}" data-filename="{{ b.filename | lower }}" data-notes="{{ b.notes | lower }}" data-size="{{ b.size }}" data-time="{{ b.created_at.timestamp() }}" data-version-db="{{ b.version_db }}" data-version-app="{{ b.version_app }}" data-source="{{ b.source | default('Local') | lower }}">
+                            <tr data-name="{{ b.display_name | lower }}" data-filename="{{ b.filename | lower }}" data-notes="{{ b.notes | lower }}" data-size="{{ b.size }}" data-time="{{ b.created_at_timestamp }}" data-version-db="{{ b.version_db }}" data-version-app="{{ b.version_app }}" data-source="{{ b.source | default('Local') | lower }}">
                                 <td>
                                     <span class="fw-bold app-text-primary">{{ b.display_name }}</span>
                                 </td>

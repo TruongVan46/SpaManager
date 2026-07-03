@@ -11,6 +11,7 @@ from core.exceptions import ValidationException
 from core.cache import dashboard_cache
 from validators.invoice_validator import InvoiceValidator
 from services.activity_log_service import ActivityLogService
+from utils.timezone_utils import local_today, utc_now
 
 
 class InvoiceService:
@@ -45,6 +46,8 @@ class InvoiceService:
                     from_date = datetime.strptime(from_date.strip(), "%Y-%m-%d").date()
                 except ValueError:
                     pass
+            elif isinstance(from_date, datetime):
+                from_date = from_date.date()
             query = query.filter(Invoice.invoice_date >= from_date)
             
         if to_date:
@@ -53,6 +56,8 @@ class InvoiceService:
                     to_date = datetime.strptime(to_date.strip(), "%Y-%m-%d").date()
                 except ValueError:
                     pass
+            elif isinstance(to_date, datetime):
+                to_date = to_date.date()
             query = query.filter(Invoice.invoice_date <= to_date)
             
         # Apply payment method filter
@@ -135,6 +140,8 @@ class InvoiceService:
                     from_date = datetime.strptime(from_date.strip(), "%Y-%m-%d").date()
                 except ValueError:
                     pass
+            elif isinstance(from_date, datetime):
+                from_date = from_date.date()
             query = query.filter(Invoice.invoice_date >= from_date)
             
         if to_date:
@@ -143,6 +150,8 @@ class InvoiceService:
                     to_date = datetime.strptime(to_date.strip(), "%Y-%m-%d").date()
                 except ValueError:
                     pass
+            elif isinstance(to_date, datetime):
+                to_date = to_date.date()
             query = query.filter(Invoice.invoice_date <= to_date)
             
         # Apply payment method filter
@@ -274,9 +283,9 @@ class InvoiceService:
             try:
                 invoice_date_val = datetime.strptime(invoice_date_val.strip(), "%Y-%m-%d").date()
             except ValueError:
-                invoice_date_val = datetime.utcnow().date()
+                invoice_date_val = local_today()
         elif not invoice_date_val:
-            invoice_date_val = datetime.utcnow().date()
+            invoice_date_val = local_today()
 
         try:
             invoice = Invoice(
@@ -323,7 +332,7 @@ class InvoiceService:
             if not invoice or invoice.deleted_at is not None:
                 return False
 
-            invoice.deleted_at = datetime.utcnow()
+            invoice.deleted_at = utc_now()
             invoice.deleted_by = None
             db.session.commit()
             

@@ -1,8 +1,8 @@
 # models/user.py
 from extensions import db
-from datetime import datetime
 from core.auth.enums import UserRole
 from core.auth.security import PasswordHasher
+from utils.timezone_utils import utc_now
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -22,8 +22,8 @@ class User(db.Model):
     auth_provider = db.Column(db.String(50), nullable=False, default='local')
     oauth_id = db.Column(db.String(255), unique=True, nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     def set_password(self, password):
         self.password_hash = PasswordHasher.hash_password(password)

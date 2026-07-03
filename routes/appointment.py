@@ -8,6 +8,7 @@ from datetime import datetime
 from utils.pagination import get_pagination_params
 from core.exceptions import BusinessException
 from services.notification_service import NotificationService
+from utils.timezone_utils import local_now
 
 @appointment_bp.route('/appointments')
 def index():
@@ -42,7 +43,7 @@ def create():
     if request.method == 'GET':
         customers = CustomerService.get_all()
         services = ServiceService.get_all_services()
-        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_date = local_now().strftime('%Y-%m-%d')
         return render_template('appointment/create.html', customers=customers, services=services, current_date=current_date)
 
     if request.method == 'POST':
@@ -70,7 +71,7 @@ def create():
             NotificationService.flash_error(e.message)
             customers = CustomerService.get_all()
             services = ServiceService.get_all_services()
-            current_date = datetime.now().strftime('%Y-%m-%d')
+            current_date = local_now().strftime('%Y-%m-%d')
             form_data = {
                 'customer_id': customer_id,
                 'service_id': service_id,
@@ -91,7 +92,7 @@ def edit(id):
         
         customers = CustomerService.get_all()
         services = ServiceService.get_all_services()
-        current_datetime = datetime.now().strftime('%Y-%m-%dT%H:%M')
+        current_datetime = local_now().strftime('%Y-%m-%dT%H:%M')
         return render_template('appointment/edit.html', appointment=appointment, customers=customers, services=services, current_datetime=current_datetime)
 
     if request.method == 'POST':
@@ -145,7 +146,7 @@ def edit(id):
                 
             customers = CustomerService.get_all()
             services = ServiceService.get_all_services()
-            current_datetime = datetime.now().strftime('%Y-%m-%dT%H:%M')
+            current_datetime = local_now().strftime('%Y-%m-%dT%H:%M')
             return render_template('appointment/edit.html', appointment=appointment, customers=customers, services=services, current_datetime=current_datetime)
 
 @appointment_bp.route('/appointments/detail/<int:id>')

@@ -93,6 +93,7 @@ Useful local variables:
 - `DEFAULT_OWNER_USERNAME`
 - `DEFAULT_OWNER_PASSWORD`
 - `DEFAULT_OWNER_EMAIL`
+- `APP_TIMEZONE`
 - `PERSISTENT_ROOT`
 - `LOG_DIR`
 
@@ -106,6 +107,7 @@ The application automatically creates the SQLite database on first launch.
 - `SECRET_KEY`
 - `DATABASE_URL`
 - `DEFAULT_OWNER_PASSWORD`
+- `APP_TIMEZONE`
 
 ### Optional
 
@@ -113,6 +115,7 @@ The application automatically creates the SQLite database on first launch.
 - `DEFAULT_OWNER_EMAIL`
 - `APP_NAME`
 - `APP_VERSION`
+- `APP_TIMEZONE`
 - `PERSISTENT_ROOT`
 - `UPLOAD_ROOT`
 - `LOGO_UPLOAD_FOLDER`

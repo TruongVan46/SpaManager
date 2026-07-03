@@ -18,6 +18,7 @@ from core.logger import app_logger
 from services.activity_log_service import ActivityLogService
 from services.auth_service import AuthService
 from utils.media_storage import resolve_media_file_path
+from utils.timezone_utils import local_now, to_local_datetime
 
 
 class SimplePagination:
@@ -355,7 +356,7 @@ def upload_backup():
                 
         # Generate final file name and UUID
         backup_id = str(uuid.uuid4())
-        timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp_str = local_now().strftime('%Y-%m-%d_%H-%M-%S')
         db_version = metadata_or_error['database_version']
         final_filename = f"SpaManager_Imported_{timestamp_str}_v{db_version}{ext}"
         final_filepath = os.path.join(backup_dir, final_filename)
@@ -367,7 +368,7 @@ def upload_backup():
         current_user = AuthService.get_current_user()
         created_by_name = current_user.username if current_user else None
         
-        display_name = f"Backup Imported {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        display_name = f"Backup Imported {local_now().strftime('%d/%m/%Y %H:%M')}"
         notes_str = notes if notes else f"Nhập từ tệp {filename}"
         
         meta_entry = {
@@ -399,7 +400,7 @@ def upload_backup():
         )
         
         # Prepare backup info for wizard trigger
-        dt_created = datetime.fromisoformat(metadata_or_error['created_at'])
+        dt_created = to_local_datetime(metadata_or_error['created_at'], assume_utc=True)
         backup_info = {
             'id': backup_id,
             'display_name': display_name,

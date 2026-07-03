@@ -1,5 +1,5 @@
 from extensions import db
-from datetime import datetime
+from utils.timezone_utils import utc_now
 
 class Customer(db.Model):
     __tablename__ = 'customers'
@@ -9,7 +9,7 @@ class Customer(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(100), nullable=True)
     address = db.Column(db.String(200), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by = db.Column(db.String(100), nullable=True)
 

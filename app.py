@@ -4,6 +4,7 @@ import time
 from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory
 from extensions import db
 from config import get_active_config
+from utils.timezone_utils import to_local_datetime
 from utils.media_storage import normalize_media_reference, resolve_media_file_path
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -204,12 +205,11 @@ def format_currency(value):
 
 @app.template_filter('vietnam_time')
 def vietnam_time(dt):
-    if dt is None:
-        return None
-    from datetime import datetime, timedelta
-    if isinstance(dt, datetime):
-        return dt + timedelta(hours=7)
-    return dt
+    from datetime import date as date_type, datetime as datetime_type
+
+    if dt is None or (isinstance(dt, date_type) and not isinstance(dt, datetime_type)):
+        return dt
+    return to_local_datetime(dt, assume_utc=True)
 
 @app.template_filter('highlight')
 def highlight_filter(text, keyword):

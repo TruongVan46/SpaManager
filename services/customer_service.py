@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from extensions import db
 from models.customer import Customer
 from models.appointment import Appointment
@@ -9,6 +7,7 @@ from core.exceptions import NotFoundException, ConflictException
 from core.cache import dashboard_cache
 from validators.customer_validator import CustomerValidator
 from services.activity_log_service import ActivityLogService
+from utils.timezone_utils import utc_now
 
 
 class CustomerService:
@@ -206,7 +205,7 @@ class CustomerService:
             raise ConflictException("Không thể xóa khách hàng này vì đã phát sinh lịch hẹn hoặc hóa đơn liên quan.")
         
         name = customer.name
-        customer.deleted_at = datetime.utcnow()
+        customer.deleted_at = utc_now()
         customer.deleted_by = None
         db.session.commit()
         

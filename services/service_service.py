@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from extensions import db
 from models.service import Service
 from models.appointment import Appointment
@@ -8,6 +6,7 @@ from core.exceptions import NotFoundException, ConflictException
 from core.cache import dashboard_cache
 from validators.service_validator import ServiceValidator
 from services.activity_log_service import ActivityLogService
+from utils.timezone_utils import utc_now
 
 
 class ServiceService:
@@ -129,7 +128,7 @@ class ServiceService:
             raise ConflictException("Không thể xóa dịch vụ này vì đã phát sinh lịch hẹn hoặc chi tiết hóa đơn liên quan.")
             
         name = service.name
-        service.deleted_at = datetime.utcnow()
+        service.deleted_at = utc_now()
         service.deleted_by = None
         db.session.commit()
         

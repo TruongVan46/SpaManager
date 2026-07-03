@@ -1,10 +1,11 @@
 # validators/appointment_validator.py
-from datetime import datetime, date as datetime_date
+from datetime import datetime
 from validators.base_validator import BaseValidator
 from validators.messages import ValidationMessages
 from validators.rules import validate_required, validate_date, validate_regex
 from models.customer import Customer
 from models.service import Service
+from utils.timezone_utils import local_today
 
 
 class AppointmentValidator(BaseValidator):
@@ -42,7 +43,7 @@ class AppointmentValidator(BaseValidator):
             # Check if in past
             try:
                 appt_date = datetime.strptime(str(date_str).strip(), "%Y-%m-%d").date()
-                if appt_date < datetime_date.today():
+                if appt_date < local_today():
                     self.add_error('date', ValidationMessages.PAST_DATE)
             except Exception:
                 pass

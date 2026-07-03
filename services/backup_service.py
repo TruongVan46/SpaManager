@@ -10,6 +10,7 @@ from repositories.backup_repository import BackupRepository
 from models.setting import Setting
 from validators.backup_validator import BackupValidator
 from services.activity_log_service import ActivityLogService
+from utils.timezone_utils import get_app_timezone, local_now, to_local_datetime
 
 
 
@@ -63,7 +64,7 @@ class BackupService:
             return None, None, None
 
         backup_dir = BackupService.get_backup_dir(app)
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp = local_now().strftime('%Y-%m-%d_%H-%M-%S')
         backup_filename = f"SpaManager_Backup_{timestamp}_v{BackupService.APP_VERSION}.sqlite"
         backup_filepath = os.path.join(backup_dir, backup_filename)
 
@@ -75,7 +76,7 @@ class BackupService:
             
             # Generate UUID and metadata
             backup_id = str(uuid.uuid4())
-            created_at = datetime.now()
+            created_at = local_now()
             
             # Default note if blank
             if not notes or not notes.strip():
@@ -148,7 +149,7 @@ class BackupService:
                 # Generate new metadata entry for this file
                 bid = str(uuid.uuid4())
                 mtime = os.path.getmtime(filepath)
-                dt_created = datetime.fromtimestamp(mtime)
+                dt_created = datetime.fromtimestamp(mtime, tz=get_app_timezone())
                 size = os.path.getsize(filepath)
                 
                 # Check status
@@ -205,13 +206,14 @@ class BackupService:
         # 6. Format and return list of backups for UI rendering
         formatted_list = []
         for bid, meta in metadata.items():
-            dt = datetime.fromisoformat(meta['created_at'])
+            dt = to_local_datetime(meta['created_at'], assume_utc=True)
             formatted_list.append({
                 'id': bid,
                 'filename': meta['filename'],
                 'display_name': meta['display_name'],
                 'created_at': dt,
-                'created_at_friendly': BackupService.format_friendly_time(dt),
+                'created_at_timestamp': dt.timestamp() if dt else 0,
+                'created_at_friendly': BackupService.format_friendly_time(dt) if dt else 'N/A',
                 'size': meta['size'],
                 'size_friendly': BackupService.format_size(meta['size']),
                 'version_db': meta.get('database_version', 'v1.0'),
@@ -309,7 +311,7 @@ class BackupService:
 
     @staticmethod
     def format_friendly_time(dt):
-        now = datetime.now()
+        now = local_now()
         if dt.date() == now.date():
             return f"Hôm nay {dt.strftime('%H:%M')}"
         elif dt.date() == (now - timedelta(days=1)).date():
@@ -401,7 +403,7 @@ class BackupService:
             return True, {
                 'database_version': db_version,
                 'app_version': app_version,
-                'created_at': original_date or datetime.now().isoformat(),
+                'created_at': original_date or local_now().isoformat(),
                 'size': size,
                 'checksum': checksum
             }

@@ -3,6 +3,7 @@ from routes import statistics_bp
 from services.statistics_service import StatisticsService
 from datetime import datetime, date
 from utils.pagination import get_pagination_params
+from utils.timezone_utils import local_now
 
 def parse_date(date_val):
     if not date_val:
@@ -141,7 +142,7 @@ def export_excel():
     
     excel_stream = generate_statistics_excel(summary, customer_statistics, service_statistics)
     
-    filename = f"ThongKe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"ThongKe_{local_now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     
     return send_file(
         excel_stream,
@@ -165,7 +166,7 @@ def export_pdf():
     
     pdf_stream = generate_statistics_pdf(summary, customer_statistics, service_statistics, from_date, to_date)
     
-    filename = f"ThongKe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filename = f"ThongKe_{local_now().strftime('%Y%m%d_%H%M%S')}.pdf"
     
     return send_file(
         pdf_stream,

@@ -1,11 +1,11 @@
 from extensions import db
-from datetime import datetime
+from utils.timezone_utils import utc_now
 
 class ActivityLog(db.Model):
     __tablename__ = 'activity_logs'
     
     id = db.Column(db.Integer, primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False, index=True)
     module = db.Column(db.String(100), nullable=False, index=True) # e.g. Customer, Appointment, Invoice, Service, Settings
     action = db.Column(db.String(100), nullable=False, index=True) # e.g. CREATE, UPDATE, DELETE, BACKUP, RESTORE, IMPORT, EXPORT
     description = db.Column(db.Text, nullable=False)   # Detailed log message

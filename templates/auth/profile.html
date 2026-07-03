@@ -69,13 +69,15 @@
                             <!-- Created At (Readonly) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Ngày tạo tài khoản</label>
-                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}" readonly>
+                                {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}" readonly>
                             </div>
 
                             <!-- Last Login (Readonly) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Đăng nhập lần cuối</label>
-                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else 'N/A' }}" readonly>
+                                {% set last_login_local = user.last_login | vietnam_time if user.last_login else None %}
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ last_login_local.strftime('%d/%m/%Y %H:%M') if last_login_local else 'N/A' }}" readonly>
                             </div>
 
                             <!-- Divider for future expansion fields -->

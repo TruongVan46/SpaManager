@@ -1,5 +1,5 @@
 # services/dashboard_statistics_service.py
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from extensions import db
 from models.customer import Customer
 from models.appointment import Appointment
@@ -8,6 +8,32 @@ from models.service import Service
 from models.invoice_detail import InvoiceDetail
 from models.activity_log import ActivityLog
 from sqlalchemy import func, or_
+from utils.timezone_utils import format_local_datetime, local_day_bounds, local_today
+
+
+def _coerce_date(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.strptime(value.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    return None
+
+
+def _appointment_bounds_for_date_range(from_date=None, to_date=None):
+    start_dt = None
+    end_dt = None
+    if from_date:
+        start_dt = datetime.combine(from_date, time.min)
+    if to_date:
+        end_dt = datetime.combine(to_date, time.max)
+    return start_dt, end_dt
 
 class DashboardStatisticsService:
     @staticmethod
@@ -18,7 +44,8 @@ class DashboardStatisticsService:
         if cached_data is not None:
             return cached_data
 
-        today = date.today()
+        today = local_today()
+        today_start, today_end = local_day_bounds(today)
         
         # 1. Tổng khách hàng (hoạt động)
         customers_count = db.session.query(func.count(Customer.id)).filter(Customer.deleted_at.is_(None)).scalar() or 0
@@ -28,7 +55,8 @@ class DashboardStatisticsService:
         
         # 3. Lịch hẹn hôm nay (hoạt động)
         appointments_today_count = db.session.query(func.count(Appointment.id)).filter(
-            func.date(Appointment.appointment_time) == today,
+            Appointment.appointment_time >= today_start,
+            Appointment.appointment_time <= today_end,
             Appointment.deleted_at.is_(None)
         ).scalar() or 0
         
@@ -50,7 +78,8 @@ class DashboardStatisticsService:
             db.joinedload(Appointment.customer),
             db.joinedload(Appointment.service)
         ).filter(
-            func.date(Appointment.appointment_time) == today,
+            Appointment.appointment_time >= today_start,
+            Appointment.appointment_time <= today_end,
             Appointment.deleted_at.is_(None)
         ).order_by(Appointment.appointment_time.asc()).all()
         
@@ -83,7 +112,7 @@ class DashboardStatisticsService:
                 'id': inv.id,
                 'customer': inv.customer.name if inv.customer else 'N/A',
                 'total': f"{int(inv.total_amount):,}".replace(',', '.') + 'đ',
-                'date': inv.created_at.strftime('%d/%m/%Y %H:%M') if inv.created_at else 'N/A',
+                'date': format_local_datetime(inv.created_at, assume_utc=True) if inv.created_at else 'N/A',
                 'status': 'Hoàn thành'
             }
             for inv in latest_invoices_query
@@ -96,7 +125,7 @@ class DashboardStatisticsService:
                 'module': log.module,
                 'action': log.action,
                 'description': log.description,
-                'time': (log.created_at + timedelta(hours=7)).strftime('%d/%m/%Y %H:%M') if log.created_at else 'N/A',
+                'time': format_local_datetime(log.created_at, assume_utc=True) if log.created_at else 'N/A',
                 'severity': log.severity
             }
             for log in recent_logs
@@ -126,7 +155,7 @@ class DashboardStatisticsService:
     @staticmethod
     def get_revenue_chart_data():
         """Retrieve last 7 days revenue, excluding soft-deleted invoices."""
-        today = date.today()
+        today = local_today()
         labels = []
         values = []
         
@@ -147,6 +176,9 @@ class DashboardStatisticsService:
     def get_summary(from_date=None, to_date=None):
         """Retrieve overall summary numbers for stats calculations, excluding soft-deleted items."""
         # Revenue calculation (active only)
+        from_date = _coerce_date(from_date)
+        to_date = _coerce_date(to_date)
+
         rev_query = db.session.query(func.sum(Invoice.total_amount)).filter(Invoice.deleted_at.is_(None))
         if from_date:
             rev_query = rev_query.filter(Invoice.invoice_date >= from_date)
@@ -168,9 +200,9 @@ class DashboardStatisticsService:
         # Appointment count calculation (active only)
         app_query = db.session.query(func.count(Appointment.id)).filter(Appointment.deleted_at.is_(None))
         if from_date:
-            app_query = app_query.filter(Appointment.appointment_time >= from_date)
+            app_query = app_query.filter(Appointment.appointment_time >= datetime.combine(from_date, time.min))
         if to_date:
-            app_query = app_query.filter(Appointment.appointment_time <= to_date)
+            app_query = app_query.filter(Appointment.appointment_time <= datetime.combine(to_date, time.max))
         appointment_count = app_query.scalar() or 0
         
         return {
@@ -183,12 +215,15 @@ class DashboardStatisticsService:
     @staticmethod
     def get_revenue_chart(from_date=None, to_date=None, group_by="day"):
         """Get revenue chart data, excluding soft-deleted invoices."""
-        today = date.today()
+        today = local_today()
 
         if hasattr(from_date, 'date'):
             from_date = from_date.date()
         if hasattr(to_date, 'date'):
             to_date = to_date.date()
+
+        from_date = _coerce_date(from_date)
+        to_date = _coerce_date(to_date)
 
         if group_by in ("month", "year"):
             if not to_date:

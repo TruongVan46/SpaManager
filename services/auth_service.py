@@ -15,6 +15,7 @@ from core.logger import app_logger
 from core.exceptions import ValidationException
 from validators.auth_validator import AuthValidator
 from validators.profile_validator import ProfileValidator
+from utils.timezone_utils import utc_now
 from utils.media_storage import resolve_media_file_path
 
 # services/auth_service.py
@@ -37,7 +38,7 @@ class AuthService:
         if user and user.is_active and user.check_password(password):
             session[AUTH_SESSION_KEY] = user.id
             session.permanent = remember
-            user.last_login = datetime.utcnow()
+            user.last_login = utc_now()
             db.session.commit()
             
             # Trigger hook
@@ -206,7 +207,7 @@ class AuthService:
 
         # 3. Update password
         user.set_password(new_password)
-        user.updated_at = datetime.utcnow()
+        user.updated_at = utc_now()
         db.session.commit()
 
         # Trigger hook
@@ -301,7 +302,7 @@ class AuthService:
 
         # Update full name
         user.full_name = sanitized_name
-        user.updated_at = datetime.utcnow()
+        user.updated_at = utc_now()
         try:
             db.session.commit()
         except Exception:

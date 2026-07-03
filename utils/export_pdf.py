@@ -7,6 +7,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from utils.timezone_utils import local_now
 
 # Register Unicode Calibri Font from Windows Fonts
 try:
@@ -172,7 +173,7 @@ def generate_invoice_pdf(invoices, summary, keyword=None, from_date=None, to_dat
     else:
         story.append(Paragraph("Không áp dụng bộ lọc (Hiển thị tất cả)", meta_style))
         
-    now_str = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    now_str = local_now().strftime('%d/%m/%Y %H:%M:%S')
     story.append(Paragraph(f"<b>Ngày xuất báo cáo:</b> {now_str}", meta_style))
     story.append(Spacer(1, 12))
     
@@ -349,7 +350,7 @@ def generate_statistics_pdf(summary, customer_stats, service_stats, from_date=No
     elif to_date:
         date_range_str = f"Đến ngày {to_date.strftime('%d/%m/%Y')}"
         
-    now_str = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    now_str = local_now().strftime('%d/%m/%Y %H:%M:%S')
     
     story.append(Paragraph(f"<b>Khoảng thời gian:</b> {date_range_str}", meta_style))
     story.append(Paragraph(f"<b>Ngày xuất báo cáo:</b> {now_str}", meta_style))

@@ -11,6 +11,7 @@ from core.exceptions import ConflictException, ValidationException, NotFoundExce
 from core.cache import dashboard_cache
 from validators.appointment_validator import AppointmentValidator
 from services.activity_log_service import ActivityLogService
+from utils.timezone_utils import local_now_naive, local_today, utc_now
 
 class AppointmentService:
     @staticmethod
@@ -21,7 +22,7 @@ class AppointmentService:
             appt.is_overdue = False
             return
         
-        now = datetime.now()
+        now = local_now_naive()
         today = now.date()
         appt.is_today = (appt.appointment_time.date() == today)
         
@@ -154,15 +155,15 @@ class AppointmentService:
             query = query.filter(Appointment.status == status)
 
         if period == 'today':
-            today = datetime.now().date()
+            today = local_today()
             from_date = today
             to_date = today
         elif period == 'this_week':
-            today = datetime.now().date()
+            today = local_today()
             from_date = today - timedelta(days=today.weekday())
             to_date = from_date + timedelta(days=6)
         elif period == 'this_month':
-            today = datetime.now().date()
+            today = local_today()
             from_date = today.replace(day=1)
             _, last_day = calendar.monthrange(today.year, today.month)
             to_date = today.replace(day=last_day)
@@ -180,6 +181,8 @@ class AppointmentService:
             try:
                 if isinstance(from_date, str):
                     from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+                elif isinstance(from_date, datetime):
+                    from_date_obj = from_date.date()
                 else:
                     from_date_obj = from_date
                 query = query.filter(func.date(Appointment.appointment_time) >= from_date_obj)
@@ -190,6 +193,8 @@ class AppointmentService:
             try:
                 if isinstance(to_date, str):
                     to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+                elif isinstance(to_date, datetime):
+                    to_date_obj = to_date.date()
                 else:
                     to_date_obj = to_date
                 query = query.filter(func.date(Appointment.appointment_time) <= to_date_obj)
@@ -375,7 +380,7 @@ class AppointmentService:
         if appointment and appointment.deleted_at is None:
             customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
 
-            appointment.deleted_at = datetime.utcnow()
+            appointment.deleted_at = utc_now()
             appointment.deleted_by = None
             db.session.commit()
             

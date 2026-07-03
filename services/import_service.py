@@ -15,6 +15,7 @@ from core.logger import app_logger
 from validators.import_validator import ImportValidator
 from services.backup_service import BackupService
 from services.activity_log_service import ActivityLogService
+from utils.timezone_utils import local_now
 
 # services/import_service.py
 
@@ -524,7 +525,7 @@ class ImportService:
                 
                 with open(report_filepath, 'w', encoding='utf-8') as f:
                     f.write(f"BÁO CÁO CHI TIẾT IMPORT {import_type.upper()}\n")
-                    f.write(f"Thời gian: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+                    f.write(f"Thời gian: {local_now().strftime('%d/%m/%Y %H:%M:%S')}\n")
                     f.write(f"Tổng số dòng: {total_rows}\n")
                     f.write(f"Thành công (Thêm mới): {report['success']}\n")
                     f.write(f"Ghi đè (Cập nhật): {report['overwritten']}\n")

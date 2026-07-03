@@ -15,6 +15,7 @@ class BaseConfig:
     # Application identity
     APP_NAME = os.getenv("APP_NAME", "SpaManager")
     APP_VERSION = os.getenv("APP_VERSION", "5.0.0")
+    APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
 
     # SQLAlchemy Configurations
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -124,6 +125,7 @@ class ProductionConfig(BaseConfig):
         self.DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD")
         if not self.DEFAULT_OWNER_PASSWORD:
             raise RuntimeError("DEFAULT_OWNER_PASSWORD must be configured in Production.")
+        self.APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
 
         self.PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or "/app/database"
         self.UPLOAD_ROOT = os.getenv("UPLOAD_ROOT") or os.path.join(self.PERSISTENT_ROOT, "uploads")

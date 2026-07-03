@@ -43,7 +43,8 @@
                     </div>
                     <div class="row mb-0">
                         <div class="col-sm-4 text-muted">Ngày tạo:</div>
-                        <div class="col-sm-8">{{ customer.created_at.strftime('%d/%m/%Y %H:%M') if customer.created_at else 'N/A' }}</div>
+                        {% set created_local = customer.created_at | vietnam_time if customer.created_at else None %}
+                        <div class="col-sm-8">{{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}</div>
                     </div>
                 </div>
             </div>

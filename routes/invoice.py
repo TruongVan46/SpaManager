@@ -9,6 +9,7 @@ from flask import send_file
 from utils.export_excel import generate_invoice_excel
 from utils.export_pdf import generate_invoice_pdf
 from utils.pagination import get_pagination_params
+from utils.timezone_utils import local_now
 
 @invoice_bp.route('/invoices')
 def index():
@@ -204,7 +205,7 @@ def export_excel():
     
     excel_stream = generate_invoice_excel(invoices, summary)
     
-    filename = f"Danh_sach_hoa_don_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"Danh_sach_hoa_don_{local_now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return send_file(
         excel_stream,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -246,7 +247,7 @@ def export_pdf():
         payment_method=payment_method if payment_method else None
     )
     
-    filename = f"Danh_sach_hoa_don_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filename = f"Danh_sach_hoa_don_{local_now().strftime('%Y%m%d_%H%M%S')}.pdf"
     return send_file(
         pdf_stream,
         mimetype="application/pdf",

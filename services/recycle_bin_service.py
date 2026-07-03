@@ -4,6 +4,7 @@ from models.appointment import Appointment
 from models.invoice import Invoice
 from models.invoice_detail import InvoiceDetail
 from datetime import datetime
+from utils.timezone_utils import utc_now
 
 class PythonPagination:
     """A pagination helper that mimics Flask-SQLAlchemy's Pagination object."""
@@ -117,7 +118,7 @@ class RecycleBinService:
         and permanently deletes them safely in a transaction.
         """
         from datetime import datetime, timedelta
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = utc_now() - timedelta(days=days)
         
         registry = RecycleBinRegistry.get_all()
         results = {"success": True, "deleted_count": 0, "errors": []}

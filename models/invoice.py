@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from utils.timezone_utils import utc_now
 
 class Invoice(db.Model):
     __tablename__ = 'invoices'
@@ -12,7 +12,7 @@ class Invoice(db.Model):
     total_amount = db.Column(db.Float, nullable=False)
     payment_method = db.Column(db.String(50), nullable=True)
     notes = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by = db.Column(db.String(100), nullable=True)
 
