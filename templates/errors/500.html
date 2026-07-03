@@ -1,0 +1,16 @@
+{% extends "layout/base.html" %}
+
+{% block title %}500 - Lỗi hệ thống{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page text-center py-5">
+    <div class="fs-1 text-warning mb-3"><i class="bi bi-exclamation-circle-fill"></i> 500</div>
+    <h2 class="app-title mb-4">Lỗi hệ thống!</h2>
+    <p class="app-text lead text-muted">Rất tiếc, đã có lỗi xảy ra trong quá trình xử lý yêu cầu của bạn. Vui lòng thử lại sau hoặc liên hệ quản trị viên.</p>
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard.index') }}" class="app-btn app-btn-primary btn btn-primary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại Trang chủ
+        </a>
+    </div>
+</div>
+{% endblock %}

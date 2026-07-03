@@ -1,0 +1,159 @@
+{% extends "layout/base.html" %}
+
+{% block title %}Chỉnh sửa lịch hẹn - Spa Manager{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/appointment.css') }}">
+
+<div class="container-fluid app-page appointment-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Chỉnh sửa lịch hẹn</h1>
+        <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-calendar-check" style="font-size: 18px; margin-right: 8px;"></i>Thông tin lịch hẹn
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form action="{{ url_for('appointment.edit', id=appointment.id) }}" method="POST" id="editAppointmentForm" class="needs-validation" novalidate>
+                <div class="row">
+                    <!-- Khách hàng -->
+                    <div class="col-md-6 mb-3">
+                        <label for="customer_id" class="form-label fw-bold">Khách hàng <span class="text-danger">*</span></label>
+                        <select class="app-form-select form-select" id="customer_id" name="customer_id" required>
+                            {% if appointment.customer %}
+                                <option value="{{ appointment.customer.id }}" selected>{{ appointment.customer.name }}{% if appointment.customer.phone %} - {{ appointment.customer.phone }}{% endif %}</option>
+                            {% else %}
+                                <option value="" selected disabled>Nhập tên hoặc SĐT để tìm</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <!-- Dịch vụ -->
+                    <div class="col-md-6 mb-3">
+                        <label for="service_id" class="form-label fw-bold">Dịch vụ <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-scissors"></i></span>
+                            <select class="app-form-select form-select" id="service_id" name="service_id" required>
+                                <option value="">Chọn dịch vụ...</option>
+                                {% for service in services %}
+                                <option value="{{ service.id }}" {% if service.id == appointment.service_id %}selected{% endif %}>{{ service.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Ngày hẹn -->
+                    <div class="col-md-6 mb-3">
+                        <label for="appointment_time" class="form-label fw-bold">Ngày & Giờ hẹn <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-calendar-clock"></i></span>
+                            <input type="datetime-local" class="app-form-control form-control" id="appointment_time" name="appointment_time" value="{{ appointment.appointment_time.strftime('%Y-%m-%dT%H:%M') if appointment.appointment_time else '' }}" required min="{{ current_datetime }}">
+                        </div>
+                    </div>
+
+                    <!-- Trạng thái -->
+                    <div class="col-md-6 mb-3">
+                        <label for="status" class="form-label fw-bold">Trạng thái</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-info-circle"></i></span>
+                            <select class="app-form-select form-select" id="status" name="status">
+                                <option value="Pending" {% if appointment.status == 'Pending' %}selected{% endif %}>Chờ xác nhận</option>
+                                <option value="Confirmed" {% if appointment.status == 'Confirmed' %}selected{% endif %}>Đã xác nhận</option>
+                                <option value="Completed" {% if appointment.status == 'Completed' %}selected{% endif %}>Đã hoàn thành</option>
+                                <option value="Cancelled" {% if appointment.status == 'Cancelled' %}selected{% endif %}>Đã hủy</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Ghi chú -->
+                    <div class="col-12 mb-3">
+                        <label for="notes" class="form-label fw-bold">Ghi chú</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-pencil-square"></i></span>
+                            <textarea class="app-form-control form-control" id="notes" name="notes" rows="3" placeholder="Nhập ghi chú chi tiết cho lịch hẹn...">{{ appointment.notes }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end mt-4">
+                    <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-secondary me-2">
+                        <i class="bi bi-x-circle" style="margin-right: 8px;"></i>Hủy
+                    </a>
+                    <button type="submit" class="app-btn app-btn-primary btn btn-primary px-4">
+                        <i class="bi bi-check-circle" style="margin-right: 8px;"></i>Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/vi.js"></script>
+<script>
+$(document).ready(function() {
+    $('#customer_id').select2({
+        language: "vi",
+        placeholder: 'Nhập tên hoặc SĐT để tìm',
+        minimumInputLength: 1,
+        width: '100%',
+        ajax: {
+            url: "{{ url_for('customer.search') }}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data
+                };
+            },
+            cache: true
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('editAppointmentForm');
+    const timeInput = document.getElementById('appointment_time');
+
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            const now = new Date();
+            const selectedTimeStr = timeInput.value;
+
+            if (selectedTimeStr) {
+                const selectedTime = new Date(selectedTimeStr);
+
+                if (selectedTime < now) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    Notification.warning('Thời gian lịch hẹn phải lớn hơn hoặc bằng thời điểm hiện tại.');
+                    return false;
+                }
+            }
+
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                Notification.error('Vui lòng kiểm tra lại thông tin và điền đầy đủ các trường bắt buộc.');
+            }
+            form.classList.add('was-validated');
+        });
+    }
+});
+</script>
+{% endblock %}

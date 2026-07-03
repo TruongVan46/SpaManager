@@ -1,0 +1,61 @@
+/* Statistics Page Styles */
+
+/* container-fluid overrides removed */
+
+
+
+
+/* Statistics Summary Cards borders */
+.statistics-page .row.mb-4 .col-md-3 .card {
+    border-left: 4px solid var(--spa-info) !important;
+    background: linear-gradient(to right, #ffffff, #f8f9fc);
+}
+
+.statistics-page .row.mb-4 .col-md-3:nth-child(2) .card {
+    border-left-color: var(--spa-success) !important;
+}
+
+.statistics-page .row.mb-4 .col-md-3:nth-child(3) .card {
+    border-left-color: var(--spa-info) !important;
+}
+
+.statistics-page .row.mb-4 .col-md-3:nth-child(4) .card {
+    border-left-color: var(--spa-warning) !important;
+}
+
+.statistics-page .row.mb-4 .col-md-3 .card-body h6 {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+
+.statistics-page .row.mb-4 .col-md-3 .card-body h3 {
+    font-weight: 700;
+    color: var(--spa-text-primary);
+}
+
+/* Placeholder Frames */
+.statistics-page .card-body[style*="border: 2px dashed"] {
+    background-color: #fdfdfd !important;
+    border: 2px dashed var(--spa-border-color) !important;
+    color: var(--spa-text-muted);
+    font-style: italic;
+    transition: all 0.3s ease;
+}
+
+.statistics-page .card-body[style*="border: 2px dashed"]:hover {
+    background-color: var(--spa-bg) !important;
+    border-color: var(--spa-info) !important;
+    color: var(--spa-info);
+}
+
+/* Breadcrumb styling */
+.statistics-page .breadcrumb-item a {
+    color: var(--spa-info);
+    text-decoration: none;
+}
+
+.statistics-page .breadcrumb-item.active {
+    color: var(--spa-text-secondary);
+}

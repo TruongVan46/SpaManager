@@ -1,0 +1,166 @@
+{% extends "layout/base.html" %}
+
+{% block title %}Thêm Lịch Hẹn{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/appointment.css') }}">
+
+<div class="container-fluid app-page appointment-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Thêm Lịch Hẹn Mới</h1>
+        <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-calendar-check" style="font-size: 18px; margin-right: 8px;"></i>Thông tin lịch hẹn
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form action="{{ url_for('appointment.create') }}" method="POST" class="needs-validation" novalidate>
+                <div class="row g-3">
+                    
+                    <div class="col-md-6">
+                        <label for="customer_id" class="form-label">Khách hàng <span class="text-danger">*</span></label>
+                        <select class="app-form-select form-select" id="customer_id" name="customer_id" required>
+                            {% if form_data and form_data.customer_id %}
+                                {% set cust = customers|selectattr("id", "equalto", form_data.customer_id|int)|first %}
+                                {% if cust %}
+                                    <option value="{{ cust.id }}" selected>{{ cust.name }}{% if cust.phone %} - {{ cust.phone }}{% endif %}</option>
+                                {% endif %}
+                            {% elif selected_customer_id and selected_customer_name %}
+                                <option value="{{ selected_customer_id }}" selected>{{ selected_customer_name }}</option>
+                            {% else %}
+                                <option value="" selected disabled>Nhập tên hoặc SĐT để tìm</option>
+                            {% endif %}
+                        </select>
+                        <div class="invalid-feedback">Vui lòng chọn khách hàng.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="service_id" class="form-label">Dịch vụ <span class="text-danger">*</span></label>
+                        <select class="app-form-select form-select" id="service_id" name="service_id" required>
+                            <option value="" selected disabled>-- Chọn dịch vụ --</option>
+                            {% for service in services %}
+                                <option value="{{ service.id }}" {{ 'selected' if (form_data and form_data.service_id|int == service.id) or (not form_data and service.id == selected_service_id) else '' }}>
+                                    {{ service.name }} ({{ service.price }}đ)
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">Vui lòng chọn dịch vụ.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="appointment_date" class="form-label">Ngày hẹn <span class="text-danger">*</span></label>
+                        <input type="date" class="app-form-control form-control" id="appointment_date" name="appointment_date" required 
+                               value="{{ form_data.appointment_date if form_data else appointment_date }}" min="{{ current_date }}">
+                        <div class="invalid-feedback">Vui lòng chọn ngày hẹn từ hôm nay trở đi.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="appointment_time" class="form-label">Giờ hẹn <span class="text-danger">*</span></label>
+                        <input type="time" class="app-form-control form-control" id="appointment_time" name="appointment_time" required 
+                               value="{{ form_data.appointment_time if form_data else appointment_time }}">
+                        <div class="invalid-feedback">Vui lòng chọn giờ hẹn.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
+                         <select class="app-form-select form-select" id="status" name="status" required>
+                             <option value="Pending" {{ 'selected' if (form_data and form_data.status == 'Pending') or (not form_data and status == 'Pending') else '' }}>Chờ xác nhận</option>
+                             <option value="Confirmed" {{ 'selected' if (form_data and form_data.status == 'Confirmed') or (not form_data and status == 'Confirmed') else '' }}>Đã xác nhận</option>
+                             <option value="Completed" {{ 'selected' if (form_data and form_data.status == 'Completed') or (not form_data and status == 'Completed') else '' }}>Hoàn thành</option>
+                             <option value="Cancelled" {{ 'selected' if (form_data and form_data.status == 'Cancelled') or (not form_data and status == 'Cancelled') else '' }}>Đã hủy</option>
+                         </select>
+                        <div class="invalid-feedback">Vui lòng chọn trạng thái.</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="notes" class="form-label">Ghi chú</label>
+                        <textarea class="app-form-control form-control" id="notes" name="notes" rows="3">{{ form_data.notes if form_data else '' }}</textarea>
+                    </div>
+
+                    <div class="col-12 text-end mt-4">
+                        <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-secondary me-2">
+                            <i class="bi bi-x-circle" style="margin-right: 8px;"></i>Hủy
+                        </a>
+                        <button type="submit" class="app-btn app-btn-primary btn btn-primary">
+                            <i class="bi bi-check-circle" style="margin-right: 8px;"></i>Lưu lịch hẹn
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/vi.js"></script>
+<script>
+$(document).ready(function() {
+    // Kích hoạt ô tìm kiếm khách hàng
+    $('#customer_id').select2({
+        language: "vi",
+        placeholder: 'Nhập tên hoặc SĐT để tìm',
+        minimumInputLength: 1,
+        width: '100%',
+        ajax: {
+            url: "{{ url_for('customer.search') }}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data
+                };
+            },
+            cache: true
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.needs-validation');
+    const dateInput = document.getElementById('appointment_date');
+    const timeInput = document.getElementById('appointment_time');
+
+    form.addEventListener('submit', function(event) {
+        const now = new Date();
+        const selectedDateStr = dateInput.value;
+        const selectedTimeStr = timeInput.value;
+
+        if (selectedDateStr && selectedTimeStr) {
+            const [year, month, day] = selectedDateStr.split('-');
+            const [hours, minutes] = selectedTimeStr.split(':');
+            
+            const appointmentDateTime = new Date(year, month - 1, day, hours, minutes);
+
+            if (appointmentDateTime < now) {
+                event.preventDefault();
+                event.stopPropagation();
+                Notification.warning('Thời gian lịch hẹn phải lớn hơn hoặc bằng thời điểm hiện tại.');
+                return false;
+            }
+        }
+        
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+            Notification.error('Vui lòng kiểm tra lại thông tin và điền đầy đủ các trường bắt buộc.');
+        }
+        form.classList.add('was-validated');
+    }, false);
+});
+</script>
+{% endblock %}

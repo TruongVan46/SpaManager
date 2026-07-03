@@ -1,0 +1,93 @@
+<header class="topbar">
+
+    <button class="btn d-lg-none me-3 p-0 border-0" id="sidebar-toggle" aria-label="Mở menu" style="color: var(--spa-primary);">
+        <i class="bi bi-list" style="font-size: 26px;"></i>
+    </button>
+
+    <div class="topbar-left">
+
+        <h2>Xin chào {{ current_user.full_name.split(' ')[-1] if current_user else 'Chủ Spa' }} 👋</h2>
+
+        <span>Chúc bạn một ngày làm việc hiệu quả.</span>
+
+    </div>
+
+    <div class="topbar-right">
+
+        <!-- Theme Switcher Dropdown -->
+        <div class="dropdown me-1">
+            <button class="btn btn-topbar dropdown-toggle d-flex align-items-center gap-2 border-0 shadow-sm" 
+                    id="theme-switcher-btn"
+                    type="button" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false" 
+                    style="background: var(--spa-card-bg); border-radius: 12px; padding: 10px 14px; color: var(--spa-text-primary); transition: none !important;">
+                <i id="theme-current-icon" class="bi bi-circle-half"></i>
+                <span id="theme-current-text" class="d-none d-sm-inline">Tự động</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" id="theme-menu" style="background: var(--spa-card-bg); border-radius: 12px; margin-top: 15px; border: 1px solid var(--spa-border-color) !important;">
+                <li>
+                    <button class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" type="button" data-theme="light">
+                        <span class="d-flex align-items-center gap-2">
+                            <i class="bi bi-sun-fill text-warning"></i>
+                            <span>Sáng</span>
+                        </span>
+                        <i class="bi bi-check2 d-none theme-check-icon"></i>
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" type="button" data-theme="dark">
+                        <span class="d-flex align-items-center gap-2">
+                            <i class="bi bi-moon-stars-fill text-primary"></i>
+                            <span>Tối</span>
+                        </span>
+                        <i class="bi bi-check2 d-none theme-check-icon"></i>
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" type="button" data-theme="auto">
+                        <span class="d-flex align-items-center gap-2">
+                            <i class="bi bi-circle-half text-info"></i>
+                            <span>Tự động</span>
+                        </span>
+                        <i class="bi bi-check2 d-none theme-check-icon"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="dropdown">
+            <div class="profile" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer; user-select: none;">
+                {% if current_user and current_user.avatar %}
+                    <img src="{{ current_user.avatar }}" alt="Avatar" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" loading="lazy">
+                {% else %}
+                    <i class="bi bi-person-circle" style="font-size: 30px; color: var(--spa-primary, #a67c52);"></i>
+                {% endif %}
+                <span>{{ current_user.full_name if current_user else 'Chủ Spa' }}</span>
+            </div>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="background: var(--spa-card-bg); border-radius: 12px; margin-top: 15px; border: 1px solid var(--spa-border-color) !important;">
+                <li>
+                    <a class="dropdown-item py-2 px-3 d-flex align-items-center gap-2" href="{{ url_for('auth.profile') }}">
+                        <i class="bi bi-person-circle" style="color: var(--spa-primary, #a67c52);"></i>
+                        <span>Hồ sơ cá nhân</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-2 px-3 d-flex align-items-center gap-2" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="bi bi-shield-lock" style="color: var(--spa-primary, #a67c52);"></i>
+                        <span>Đổi mật khẩu</span>
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider" style="opacity: 0.08;"></li>
+                <li>
+                    <a class="dropdown-item py-2 px-3 d-flex align-items-center gap-2 text-danger" href="{{ url_for('auth.logout') }}">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Đăng xuất</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+    </div>
+
+</header>

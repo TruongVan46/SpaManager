@@ -1,0 +1,229 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Hồ sơ cá nhân - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Thông tin cá nhân</h1>
+        <span class="text-muted" style="font-size: 0.9rem;">Quản lý thông tin tài khoản chủ Spa</span>
+    </div>
+
+    <div class="row">
+        <!-- Avatar card left -->
+        <div class="col-lg-4 mb-4">
+            <div class="app-card text-center py-5">
+                <div class="app-card-body">
+                    <div class="avatar-upload-preview mb-4 position-relative d-inline-block">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar }}" alt="Avatar" id="profile-avatar-preview" class="rounded-circle border" style="width: 140px; height: 140px; object-fit: cover;" loading="lazy">
+                        {% else %}
+                            <div id="profile-avatar-placeholder" class="rounded-circle border d-flex align-items-center justify-content-center app-bg-main" style="width: 140px; height: 140px; margin: 0 auto;">
+                                <i class="bi bi-person-circle text-muted" style="font-size: 80px;"></i>
+                            </div>
+                        {% endif %}
+                        <button type="button" class="btn btn-sm btn-primary position-absolute bottom-0 start-50 translate-middle-x rounded-circle" id="btn-trigger-upload" title="Tải lên ảnh mới" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+                            <i class="bi bi-camera-fill" style="font-size: 16px;"></i>
+                        </button>
+                    </div>
+                    <h4 class="fw-bold mb-1">{{ user.full_name }}</h4>
+                    <span class="badge bg-primary px-3 py-2 text-uppercase mb-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">{{ 'CHỦ SPA' if user.role == 'OWNER' else user.role }}</span>
+                    <p class="text-muted small mb-0">Định dạng hỗ trợ: JPG, JPEG, PNG (Tối đa 2MB)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details card right -->
+        <div class="col-lg-8 mb-4">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-person-lines-fill me-2" style="color: var(--spa-primary);"></i>Thông tin tài khoản
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    <form id="profile-form" novalidate enctype="multipart/form-data">
+                        <!-- Hidden input for file upload -->
+                        <input type="file" id="avatar-input" name="avatar" accept="image/png, image/jpeg, image/jpg" style="display: none;">
+
+                        <div class="row g-3">
+                            <!-- Username (Readonly) -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Tên đăng nhập</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.username }}" readonly>
+                            </div>
+
+                            <!-- Role (Readonly) -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Vai trò hệ thống</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ 'Chủ Spa' if user.role == 'OWNER' else user.role }}" readonly>
+                            </div>
+
+                            <!-- Full Name (Editable) -->
+                            <div class="col-md-6">
+                                <label for="full_name" class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
+                                <input type="text" id="full_name" name="full_name" class="form-control app-form-control" value="{{ user.full_name }}" required>
+                            </div>
+
+                            <!-- Created At (Readonly) -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Ngày tạo tài khoản</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}" readonly>
+                            </div>
+
+                            <!-- Last Login (Readonly) -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Đăng nhập lần cuối</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else 'N/A' }}" readonly>
+                            </div>
+
+                            <!-- Divider for future expansion fields -->
+                            <div class="col-12 my-4">
+                                <hr style="opacity: 0.08;">
+                                <h6 class="fw-bold text-muted mb-3"><i class="bi bi-plus-circle-dotted me-2"></i>Thông tin mở rộng (Sắp ra mắt)</h6>
+                            </div>
+
+                            <!-- Email (Future field) -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted">Địa chỉ Email</label>
+                                <input type="email" class="form-control app-form-control app-bg-main" placeholder="owner@spamanager.com" readonly disabled aria-label="owner@spamanager.com">
+                            </div>
+
+                            <!-- Phone (Future field) -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted">Số điện thoại</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" placeholder="0901234567" readonly disabled aria-label="0901234567">
+                            </div>
+
+                            <!-- Address (Future field) -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted">Địa chỉ liên hệ</label>
+                                <input type="text" class="form-control app-form-control app-bg-main" placeholder="Hồ Chí Minh, Việt Nam" readonly disabled aria-label="Hồ Chí Minh, Việt Nam">
+                            </div>
+                        </div>
+
+                        <!-- Buttons footer -->
+                        <div class="d-flex justify-content-end gap-2 mt-5">
+                            <button type="submit" class="btn btn-primary app-btn-primary py-2 px-4 fw-semibold" id="btn-submit-profile">
+                                <i class="bi bi-save me-1"></i> Lưu thay đổi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnTriggerUpload = document.getElementById('btn-trigger-upload');
+        const avatarInput = document.getElementById('avatar-input');
+        const avatarPreview = document.getElementById('profile-avatar-preview');
+        const avatarPlaceholder = document.getElementById('profile-avatar-placeholder');
+
+        // Trigger file input click
+        btnTriggerUpload.addEventListener('click', function() {
+            avatarInput.click();
+        });
+
+        // Instant local preview when file chosen
+        avatarInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                // Size validation: under 2MB
+                if (file.size > 2 * 1024 * 1024) {
+                    Notification.error("Kích thước ảnh vượt quá giới hạn 2MB.");
+                    this.value = ''; // Reset input
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (avatarPreview) {
+                        avatarPreview.src = e.target.result;
+                    } else if (avatarPlaceholder) {
+                        // Dynamically create preview image if placeholder existed
+                        const parent = avatarPlaceholder.parentNode;
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.id = 'profile-avatar-preview';
+                        img.className = 'rounded-circle border';
+                        img.style.width = '140px';
+                        img.style.height = '140px';
+                        img.style.objectFit = 'cover';
+                        
+                        parent.replaceChild(img, avatarPlaceholder);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submit handler
+        const profileForm = document.getElementById('profile-form');
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const fullNameInput = document.getElementById('full_name');
+            const fullName = fullNameInput.value.trim();
+
+            // Client-side validations
+            if (!fullName) {
+                Notification.error("Họ và tên không được để trống.");
+                fullNameInput.focus();
+                return;
+            }
+
+            // Create form data payload supporting files upload
+            const formData = new FormData();
+            formData.append('full_name', fullName);
+            if (avatarInput.files[0]) {
+                formData.append('avatar', avatarInput.files[0]);
+            }
+
+            // UI loading feedback
+            const submitBtn = document.getElementById('btn-submit-profile');
+            const originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Đang lưu...';
+
+            fetch("{{ url_for('auth.profile') }}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+            .then(res => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+
+                if (!res.ok) {
+                    return res.json().then(data => {
+                        throw new Error(data.message || "Cập nhật hồ sơ thất bại.");
+                    });
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    Notification.success(data.message || "Cập nhật hồ sơ thành công.");
+                    // Reload after slight delay to update topbar avatar/name
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    Notification.error(data.message || "Cập nhật hồ sơ thất bại.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+                Notification.error(err.message || "Không thể cập nhật hồ sơ cá nhân.");
+            });
+        });
+    });
+</script>
+{% endblock %}

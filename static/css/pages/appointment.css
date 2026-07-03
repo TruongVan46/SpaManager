@@ -1,0 +1,263 @@
+/* appointment.css - Specific stylesheet for appointments */
+
+/* Page-specific transition/animation */
+.appointment-page {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Statistics Cards unique styling */
+.appointment-summary-card {
+    min-height: 140px;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+}
+
+.appointment-summary-card .card-body {
+    padding: 1.25rem 1.5rem !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.appointment-summary-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.appointment-summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--spa-text-secondary);
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.appointment-summary-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.appointment-summary-icon i {
+    color: var(--spa-border-color);
+}
+
+/* Border colors for the left border */
+.appointment-summary-card.border-left-primary {
+    border-left: 4px solid var(--spa-info) !important;
+}
+.appointment-summary-card.border-left-warning {
+    border-left: 4px solid var(--spa-warning) !important;
+}
+.appointment-summary-card.border-left-info {
+    border-left: 4px solid var(--spa-info) !important;
+}
+.appointment-summary-card.border-left-success {
+    border-left: 4px solid var(--spa-success) !important;
+}
+.appointment-summary-card.border-left-danger {
+    border-left: 4px solid var(--spa-danger) !important;
+}
+
+/* Filter inputs specific layouts */
+.filter-width-status {
+    width: 170px;
+}
+
+.filter-width-sort {
+    width: 170px;
+}
+
+.filter-width-order {
+    width: 160px;
+}
+
+.filter-width-limit {
+    width: 110px;
+}
+
+.filter-btn-width {
+    width: 110px;
+}
+
+/* Select2 Customization (Create/Edit forms) to hide fallback select */
+select#customer_id {
+    position: absolute !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    pointer-events: none;
+}
+
+.select2-container {
+    width: 100% !important;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 38px !important;
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-md) !important;
+    background-color: var(--spa-white) !important;
+    display: flex !important;
+    align-items: center !important;
+    box-shadow: none !important;
+    transition: var(--spa-transition) !important;
+}
+
+.select2-container--default .select2-selection--single:focus,
+.select2-container--default .select2-selection--single[aria-expanded="true"] {
+    border-color: var(--spa-primary) !important;
+    box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.15) !important;
+    outline: none !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--spa-text-main) !important;
+    padding-left: 12px !important;
+    padding-right: 30px !important;
+    font-size: 14px !important;
+    font-family: var(--spa-font) !important;
+    line-height: 26px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #6c757d !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px !important;
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    right: 8px !important;
+    width: 20px !important;
+}
+
+.select2-dropdown {
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-md) !important;
+    box-shadow: var(--spa-shadow-lg) !important;
+    z-index: var(--z-index-popover) !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--spa-primary) !important;
+    color: var(--spa-white) !important;
+}
+
+.select2-container--default .select2-results__option[aria-selected="true"] {
+    background-color: #f8f9fa !important;
+    color: var(--spa-text-main) !important;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-sm) !important;
+    outline: none !important;
+}
+
+.appointment-page .empty-state {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.appointment-page .empty-state-icon {
+    font-size: 3rem;
+}
+
+.form-delete-inline {
+    display: inline;
+}
+
+/* Dropdown Status Badge specific styling */
+.status-dropdown .status-badge-btn {
+    border: none;
+    font-weight: 500;
+    font-size: 0.8rem;
+    height: 30px;
+    padding: 0.25rem 0.75rem;
+    min-width: 125px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: filter 0.15s ease-in-out;
+}
+
+.status-dropdown .status-badge-btn:hover {
+    filter: brightness(92%);
+}
+
+.status-dropdown .status-badge-btn::after {
+    display: inline-block;
+    margin-left: 0.5em;
+    vertical-align: 0.255em;
+    content: "";
+    border-top: 0.3em solid;
+    border-right: 0.3em solid transparent;
+    border-bottom: 0;
+    border-left: 0.3em solid transparent;
+}
+
+/* Dropdown menu animation */
+.status-dropdown .dropdown-menu {
+    border-radius: 0.5rem;
+    box-shadow: var(--spa-shadow-lg) !important;
+    animation: dropdownFadeIn 0.15s ease-out;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: var(--z-index-dropdown);
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.status-dropdown .dropdown-item {
+    font-size: 0.85rem;
+    color: #495057;
+    transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+.status-dropdown .dropdown-item:hover:not(.disabled) {
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+.status-dropdown .dropdown-item.active {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+
+
+/* Transition Collapse (Custom Dates) */
+.transition-collapse {
+    transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out, max-height 0.25s ease-in-out;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-5px);
+}
+.transition-collapse.show {
+    max-height: 150px;
+    opacity: 1;
+    transform: translateY(0);
+}

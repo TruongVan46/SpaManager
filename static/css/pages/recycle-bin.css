@@ -1,0 +1,270 @@
+/* ==========================================================================
+   Recycle Bin Page CSS
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Layout
+   -------------------------------------------------------------------------- */
+.recycle-bin-page .app-filter-bar {
+    margin-bottom: 24px !important;
+}
+
+/* Statistics header count */
+.recycle-bin-page .recycle-bin-stats-bar {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--spa-text-muted);
+}
+
+.recycle-bin-page .recycle-bin-stats-bar strong {
+    color: var(--spa-text-main);
+}
+
+/* --------------------------------------------------------------------------
+   2. Toolbar
+   -------------------------------------------------------------------------- */
+.recycle-bin-page .recycle-bin-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.recycle-bin-page .filter-item {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 15%;
+    min-width: 110px;
+}
+
+.recycle-bin-page .filter-item.flex-grow-1 {
+    flex: 2 1 35%;
+    min-width: 200px;
+}
+
+.recycle-bin-page .filter-item label {
+    font-weight: 600;
+    color: var(--spa-text-main);
+}
+
+.recycle-bin-page .filter-buttons {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+}
+
+.recycle-bin-page .filter-buttons button,
+.recycle-bin-page .filter-buttons a {
+    height: 31px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.recycle-bin-page .input-group-custom-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.recycle-bin-page .input-group-custom-search i {
+    position: absolute;
+    left: 12px;
+    color: var(--spa-text-secondary);
+    z-index: 10;
+    pointer-events: none;
+    font-size: 14px;
+}
+
+.recycle-bin-page .input-group-custom-search input {
+    padding-left: 32px !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Table
+   -------------------------------------------------------------------------- */
+.recycle-bin-page .recycle-bin-table-container {
+    border: 1px solid var(--spa-border-color);
+    border-radius: var(--spa-radius-lg);
+    overflow-x: auto;
+    background-color: var(--spa-white);
+    box-shadow: var(--spa-shadow-light);
+    position: relative;
+}
+
+.recycle-bin-page .recycle-bin-table {
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+/* Row Hover Effects */
+.recycle-bin-page .recycle-bin-table tbody tr {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.recycle-bin-page .recycle-bin-table tbody tr:hover {
+    background-color: var(--spa-primary-light) !important;
+}
+
+/* Empty State Styling */
+.recycle-bin-page .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.recycle-bin-page .empty-state-icon {
+    font-size: 48px;
+    color: var(--spa-text-muted);
+    opacity: 0.5;
+}
+
+.recycle-bin-page .empty-state-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--spa-text-main);
+    margin: 0;
+}
+
+.recycle-bin-page .empty-state-description {
+    font-size: 14px;
+    color: var(--spa-text-muted);
+    max-width: 400px;
+    margin: 0 0 8px 0;
+}
+
+/* --------------------------------------------------------------------------
+   4. Badge
+   -------------------------------------------------------------------------- */
+/* Soft Data Type Badges */
+.recycle-bin-page .badge-type-customer {
+    background-color: var(--spa-info-light) !important;
+    color: var(--spa-info) !important;
+    border: 1px solid var(--spa-info-border) !important;
+}
+
+.recycle-bin-page .badge-type-service {
+    background-color: var(--spa-warning-light) !important;
+    color: var(--spa-warning) !important;
+    border: 1px solid var(--spa-warning-border) !important;
+}
+
+.recycle-bin-page .badge-type-appointment {
+    background-color: var(--spa-info-light) !important;
+    color: var(--spa-info) !important;
+    border: 1px solid var(--spa-info-border) !important;
+}
+
+.recycle-bin-page .badge-type-invoice {
+    background-color: var(--spa-success-light) !important;
+    color: var(--spa-success) !important;
+    border: 1px solid var(--spa-success-border) !important;
+}
+
+/* Status badge (Red or gray) */
+.recycle-bin-page .badge-status-deleted {
+    background-color: var(--spa-danger-light) !important;
+    color: var(--spa-danger) !important;
+    border: 1px solid var(--spa-danger-border) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+/* Desktop layout nowrap */
+@media (min-width: 1200px) {
+    .recycle-bin-page .recycle-bin-toolbar-row {
+        flex-wrap: nowrap;
+    }
+}
+
+/* Laptop layout wrapping */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .recycle-bin-page .recycle-bin-toolbar-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .recycle-bin-page .filter-item {
+        flex: 1 1 calc(25% - 10px);
+        min-width: 100px;
+    }
+    .recycle-bin-page .filter-item.flex-grow-1 {
+        flex: 2 1 calc(50% - 10px);
+        min-width: 180px;
+    }
+    .recycle-bin-page .filter-buttons {
+        flex: 1 1 auto;
+        justify-content: flex-end;
+    }
+}
+
+/* Tablet layout grid */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .recycle-bin-page .recycle-bin-toolbar-row {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+    }
+    .recycle-bin-page .filter-item.search-box {
+        grid-column: span 6;
+    }
+    .recycle-bin-page .filter-item.type-box {
+        grid-column: span 3;
+    }
+    .recycle-bin-page .filter-item.sort-box {
+        grid-column: span 3;
+    }
+    .recycle-bin-page .filter-item.per-page-box {
+        grid-column: span 2;
+    }
+    .recycle-bin-page .filter-item.filter-buttons {
+        grid-column: span 2;
+        margin-top: 0;
+        width: 100%;
+    }
+    .recycle-bin-page .filter-buttons button,
+    .recycle-bin-page .filter-buttons a {
+        width: 100%;
+    }
+    
+    .recycle-bin-page .app-badge {
+        min-width: 75px !important;
+        font-size: 10px !important;
+        padding: 4px 8px !important;
+    }
+}
+
+/* Mobile layout stacks */
+@media (max-width: 767.98px) {
+    .recycle-bin-page .recycle-bin-toolbar-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .recycle-bin-page .filter-item {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+    .recycle-bin-page .filter-buttons {
+        flex: 1 1 100%;
+        width: 100%;
+        margin-top: 5px;
+    }
+    .recycle-bin-page .filter-buttons button,
+    .recycle-bin-page .filter-buttons a {
+        flex: 1 1 50%;
+        text-align: center;
+        justify-content: center;
+        height: 38px;
+    }
+    .recycle-bin-page .recycle-bin-table-container {
+        border-radius: var(--spa-radius-md);
+    }
+}

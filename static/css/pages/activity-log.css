@@ -1,0 +1,436 @@
+/* ==========================================================================
+   Activity Log Page CSS
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Layout
+   -------------------------------------------------------------------------- */
+.activity-log-page .app-filter-bar {
+    margin-bottom: 24px !important;
+}
+
+.activity-log-page .search-highlight {
+    background-color: rgba(166, 124, 82, 0.2); /* Soft highlight matching theme */
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Toolbar
+   -------------------------------------------------------------------------- */
+.activity-log-page .activity-log-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.activity-log-page .filter-item {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 12%;
+    min-width: 110px;
+}
+
+.activity-log-page .filter-item.flex-grow-1 {
+    flex: 2 1 25%;
+    min-width: 200px;
+}
+
+.activity-log-page .filter-item label {
+    font-weight: 600;
+    color: var(--spa-text-main);
+}
+
+.activity-log-page .filter-buttons {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+}
+
+.activity-log-page .filter-buttons button,
+.activity-log-page .filter-buttons a {
+    height: 31px; /* Matches input-group-sm heights */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.activity-log-page .input-group-custom-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.activity-log-page .input-group-custom-search i {
+    position: absolute;
+    left: 12px;
+    color: #858796;
+    z-index: 10;
+    pointer-events: none;
+    font-size: 14px;
+}
+
+.activity-log-page .input-group-custom-search input {
+    padding-left: 32px !important;
+}
+
+.activity-log-page .activity-log-custom-date-row {
+    display: flex;
+    gap: 12px;
+    border-top: 1px dashed var(--spa-border-color);
+    padding-top: 12px;
+}
+
+.activity-log-page .custom-date-item {
+    flex: 1 1 50%;
+    display: flex;
+    flex-direction: column;
+}
+
+.activity-log-page .custom-date-item label {
+    font-weight: 600;
+    color: var(--spa-text-main);
+}
+
+/* --------------------------------------------------------------------------
+   3. Table
+   -------------------------------------------------------------------------- */
+.activity-log-page .activity-log-table-container {
+    border: 1px solid var(--spa-border-color);
+    border-radius: var(--spa-radius-lg);
+    overflow-x: auto;
+    background-color: var(--spa-white);
+    box-shadow: var(--spa-shadow-light);
+    position: relative;
+}
+
+.activity-log-page .activity-log-table {
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    table-layout: fixed; /* Crucial to enforce specific column widths and text-overflow ellipsis */
+}
+
+/* Sticky Header */
+.activity-log-page .activity-log-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--spa-card-bg) !important; /* Matches --spa-secondary or layout background */
+    border-bottom: 2px solid var(--spa-border-color) !important;
+    box-shadow: inset 0 -2px 0 var(--spa-border-color); /* Avoid gap between border and sticky th */
+}
+
+/* Row Hover Effects */
+.activity-log-page .activity-log-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.activity-log-page .activity-log-table tbody tr:hover {
+    background-color: rgba(166, 124, 82, 0.05) !important; /* Subtle primary color tint matching other pages */
+}
+
+/* Column Widths Definition */
+.activity-log-page .activity-log-table .col-time {
+    width: 130px;
+    min-width: 130px;
+}
+
+.activity-log-page .activity-log-table .col-module {
+    width: 110px;
+    min-width: 110px;
+}
+
+.activity-log-page .activity-log-table .col-action {
+    width: 120px;
+    min-width: 120px;
+}
+
+.activity-log-page .activity-log-table .col-severity {
+    width: 110px;
+    min-width: 110px;
+}
+
+.activity-log-page .activity-log-table .col-reference {
+    width: 100px;
+    min-width: 100px;
+}
+
+/* Description takes the remaining space, text ellipsis configuration */
+.activity-log-page .activity-log-table .col-description {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Datetime display inside cell */
+.activity-log-page .log-datetime {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.activity-log-page .log-date {
+    font-size: 13px;
+    color: var(--spa-text-main);
+    font-weight: 500;
+}
+
+.activity-log-page .log-time {
+    font-size: 12px;
+    color: var(--spa-text-muted);
+}
+
+/* Empty State Styling */
+.activity-log-page .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.activity-log-page .empty-state-icon {
+    font-size: 48px;
+    color: var(--spa-text-muted);
+    opacity: 0.5;
+}
+
+.activity-log-page .empty-state-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--spa-text-main);
+    margin: 0;
+}
+
+.activity-log-page .empty-state-description {
+    font-size: 14px;
+    color: var(--spa-text-muted);
+    max-width: 400px;
+    margin: 0 0 8px 0;
+}
+
+/* --------------------------------------------------------------------------
+   4. Badge
+   -------------------------------------------------------------------------- */
+/* Severity Badges (softer, in harmony with Design System) */
+.activity-log-page .badge-severity-success {
+    background-color: rgba(28, 200, 138, 0.08) !important;
+    color: #1cc88a !important;
+    border: 1px solid rgba(28, 200, 138, 0.15) !important;
+}
+
+.activity-log-page .badge-severity-info {
+    background-color: rgba(54, 185, 204, 0.08) !important;
+    color: #36b9cc !important;
+    border: 1px solid rgba(54, 185, 204, 0.15) !important;
+}
+
+.activity-log-page .badge-severity-warning {
+    background-color: rgba(246, 194, 62, 0.08) !important;
+    color: #f6c23e !important;
+    border: 1px solid rgba(246, 194, 62, 0.15) !important;
+}
+
+.activity-log-page .badge-severity-error {
+    background-color: rgba(231, 74, 59, 0.08) !important;
+    color: #e74a3b !important;
+    border: 1px solid rgba(231, 74, 59, 0.15) !important;
+}
+
+/* Action Badges */
+.activity-log-page .badge-action-create {
+    background-color: rgba(28, 200, 138, 0.08) !important;
+    color: #1cc88a !important;
+    border: 1px solid rgba(28, 200, 138, 0.15) !important;
+}
+
+.activity-log-page .badge-action-update {
+    background-color: rgba(78, 115, 223, 0.08) !important;
+    color: #4e73df !important;
+    border: 1px solid rgba(78, 115, 223, 0.15) !important;
+}
+
+.activity-log-page .badge-action-delete {
+    background-color: rgba(231, 74, 59, 0.08) !important;
+    color: #e74a3b !important;
+    border: 1px solid rgba(231, 74, 59, 0.15) !important;
+}
+
+/* Neutral Actions (Backup, Restore, Login, etc. mapped to neutral gray badge) */
+.activity-log-page .badge-action-neutral {
+    background-color: rgba(133, 135, 150, 0.08) !important;
+    color: #858796 !important;
+    border: 1px solid rgba(133, 135, 150, 0.15) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. Modal
+   -------------------------------------------------------------------------- */
+.activity-log-page .modal-detail-label {
+    font-weight: 600;
+    color: var(--spa-text-muted);
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.activity-log-page .modal-detail-value {
+    color: var(--spa-text-main);
+    font-size: 15px;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+/* --------------------------------------------------------------------------
+   6. Responsive
+   -------------------------------------------------------------------------- */
+/* Desktop layout constraint (strict nowrap on very wide screens) */
+@media (min-width: 1300px) {
+    .activity-log-page .activity-log-toolbar-row {
+        flex-wrap: nowrap;
+    }
+}
+
+/* Laptop layout constraint (balanced wrapping to prevent cut-off) */
+@media (min-width: 992px) and (max-width: 1299.98px) {
+    .activity-log-page .activity-log-toolbar-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .activity-log-page .filter-item {
+        flex: 1 1 calc(20% - 10px);
+        min-width: 100px;
+    }
+    .activity-log-page .filter-item.search-box {
+        flex: 2 1 calc(40% - 10px);
+        min-width: 180px;
+    }
+    .activity-log-page .filter-buttons {
+        flex: 1 1 auto;
+        justify-content: flex-end;
+    }
+}
+
+/* Tablet layout (2-row grid) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .activity-log-page .activity-log-toolbar-row {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+    }
+    .activity-log-page .filter-item.search-box {
+        grid-column: span 6;
+    }
+    .activity-log-page .filter-item.module-box {
+        grid-column: span 3;
+    }
+    .activity-log-page .filter-item.action-box {
+        grid-column: span 3;
+    }
+    .activity-log-page .filter-item.severity-box {
+        grid-column: span 3;
+    }
+    .activity-log-page .filter-item.time-box {
+        grid-column: span 3;
+    }
+    .activity-log-page .filter-item.sort-box {
+        grid-column: span 2;
+    }
+    .activity-log-page .filter-item.per-page-box {
+        grid-column: span 2;
+    }
+    .activity-log-page .filter-item.filter-buttons {
+        grid-column: span 2;
+        margin-top: 0;
+        width: 100%;
+    }
+    .activity-log-page .filter-buttons button,
+    .activity-log-page .filter-buttons a {
+        width: 100%;
+    }
+    
+    /* Table tablet adjustments */
+    .activity-log-page .activity-log-table .col-time {
+        width: 110px;
+        min-width: 110px;
+    }
+    .activity-log-page .activity-log-table .col-module {
+        width: 90px;
+        min-width: 90px;
+    }
+    .activity-log-page .activity-log-table .col-action {
+        width: 100px;
+        min-width: 100px;
+    }
+    .activity-log-page .activity-log-table .col-severity {
+        width: 100px;
+        min-width: 100px;
+    }
+    .activity-log-page .activity-log-table .col-reference {
+        width: 80px;
+        min-width: 80px;
+    }
+    .activity-log-page .app-badge {
+        min-width: 75px !important;
+        font-size: 10px !important;
+        padding: 4px 8px !important;
+    }
+}
+
+/* Mobile layout (100% vertical stacks) */
+@media (max-width: 767.98px) {
+    .activity-log-page .activity-log-toolbar-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .activity-log-page .filter-item {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+    .activity-log-page .filter-buttons {
+        flex: 1 1 100%;
+        width: 100%;
+        margin-top: 5px;
+    }
+    .activity-log-page .filter-buttons button,
+    .activity-log-page .filter-buttons a {
+        flex: 1 1 50%;
+        text-align: center;
+        justify-content: center;
+        height: 38px; /* Touch friendly on mobile */
+    }
+    .activity-log-page .activity-log-custom-date-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .activity-log-page .activity-log-table {
+        table-layout: fixed;
+    }
+    .activity-log-page .activity-log-table .col-time {
+        width: 90px;
+        min-width: 90px;
+    }
+    .activity-log-page .activity-log-table .col-module {
+        width: 80px;
+        min-width: 80px;
+    }
+    .activity-log-page .activity-log-table .col-action {
+        width: 90px;
+        min-width: 90px;
+    }
+    .activity-log-page .activity-log-table .col-severity {
+        width: 90px;
+        min-width: 90px;
+    }
+    .activity-log-page .activity-log-table-container {
+        border-radius: var(--spa-radius-md);
+    }
+}

@@ -1,0 +1,688 @@
+/* theme.css - SpaManager Design System Tokens */
+
+:root {
+    /* Brand Colors (Màu chủ đạo thương hiệu Tiệm Nhà Nhím) */
+    --spa-primary: #a67c52;
+    --spa-primary-hover: #8e6843;
+    --spa-primary-light: rgba(166, 124, 82, 0.08);
+    --spa-primary-light-hover: rgba(166, 124, 82, 0.15);
+    
+    /* Functional Colors */
+    --spa-success: #2ec4b6;
+    --spa-success-light: rgba(46, 196, 182, 0.1);
+    --spa-danger: #e71d36;
+    --spa-danger-light: rgba(231, 29, 54, 0.1);
+    --spa-warning: #ff9f1c;
+    --spa-warning-light: rgba(255, 159, 28, 0.1);
+    --spa-info: #00b4d8;
+    
+    /* Background & Text Colors */
+    --spa-bg: #f7f8fc;
+    --spa-white: #ffffff;
+    --spa-card-bg: #ffffff;
+    --spa-text-primary: #2b2b2b;
+    --spa-text-secondary: #6c757d;
+    --spa-text-muted: #adb5bd;
+    --spa-border-color: #e9ecef;
+    --spa-white-rgb: 255, 255, 255;
+    --spa-black-rgb: 0, 0, 0;
+    
+    /* Layout Dimensions */
+    --spa-sidebar-width: 280px;
+    --spa-radius-sm: 6px;
+    --spa-radius-md: 12px;
+    --spa-radius-lg: 16px;
+    
+    /* Elevation Shadows (Bóng đổ tạo chiều sâu) */
+    --spa-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+    --spa-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04);
+    --spa-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+    
+    /* Motion Durations */
+    --transition-fast: 150ms;
+    --transition-normal: 200ms;
+    --transition-slow: 250ms;
+    --primary-color-rgb: 166, 124, 82;
+    
+    /* Z-Index Hierarchy */
+    --z-index-dropdown: 1000;
+    --z-index-sticky: 1020;
+    --z-index-fixed: 1030;
+    --z-index-modal-backdrop: 1040;
+    --z-index-modal: 1050;
+    --z-index-popover: 1060;
+    --z-index-toast: 1090;
+    --z-index-command-palette: 2000;
+    --z-index-loader: 9999;
+
+    /* Semantic Tints & Borders */
+    --spa-info-light: rgba(0, 180, 216, 0.08);
+    --spa-info-border: rgba(0, 180, 216, 0.15);
+    --spa-success-border: rgba(46, 196, 182, 0.15);
+    --spa-warning-border: rgba(255, 159, 28, 0.15);
+    --spa-danger-border: rgba(231, 29, 54, 0.15);
+}
+
+body.light-theme {
+    /* Brand Colors (Màu chủ đạo thương hiệu Tiệm Nhà Nhím) */
+    --spa-primary: #a67c52;
+    --spa-primary-hover: #8e6843;
+    --spa-primary-light: rgba(166, 124, 82, 0.08);
+    --spa-primary-light-hover: rgba(166, 124, 82, 0.15);
+    
+    /* Functional Colors */
+    --spa-success: #2ec4b6;
+    --spa-success-light: rgba(46, 196, 182, 0.1);
+    --spa-danger: #e71d36;
+    --spa-danger-light: rgba(231, 29, 54, 0.1);
+    --spa-warning: #ff9f1c;
+    --spa-warning-light: rgba(255, 159, 28, 0.1);
+    --spa-info: #00b4d8;
+    
+    /* Background & Text Colors */
+    --spa-bg: #f7f8fc;
+    --spa-white: #ffffff;
+    --spa-card-bg: #ffffff;
+    --spa-text-primary: #2b2b2b;
+    --spa-text-secondary: #6c757d;
+    --spa-text-muted: #adb5bd;
+    --spa-border-color: #e9ecef;
+    
+    /* Layout Dimensions */
+    --spa-sidebar-width: 280px;
+    --spa-radius-sm: 6px;
+    --spa-radius-md: 12px;
+    --spa-radius-lg: 16px;
+    
+    /* Elevation Shadows (Bóng đổ tạo chiều sâu) */
+    --spa-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+    --spa-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04);
+    --spa-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+    
+    /* Motion Durations */
+    --transition-fast: 150ms;
+    --transition-normal: 200ms;
+    --transition-slow: 250ms;
+    --primary-color-rgb: 166, 124, 82;
+    
+    /* Z-Index Hierarchy */
+    --z-index-dropdown: 1000;
+    --z-index-sticky: 1020;
+    --z-index-fixed: 1030;
+    --z-index-modal-backdrop: 1040;
+    --z-index-modal: 1050;
+    --z-index-popover: 1060;
+    --z-index-toast: 1090;
+    --z-index-command-palette: 2000;
+    --z-index-loader: 9999;
+
+    /* Semantic Tints & Borders */
+    --spa-info-light: rgba(0, 180, 216, 0.08);
+    --spa-info-border: rgba(0, 180, 216, 0.15);
+    --spa-success-border: rgba(46, 196, 182, 0.15);
+    --spa-warning-border: rgba(255, 159, 28, 0.15);
+    --spa-danger-border: rgba(231, 29, 54, 0.15);
+}
+
+body.dark-theme {
+    /* Brand Colors (Màu chủ đạo thương hiệu Tiệm Nhà Nhím - Dark Mode optimized) */
+    --spa-primary: #c5a880; /* Lighter gold-brown for WCAG AA contrast on dark bg */
+    --spa-primary-hover: #d2bba1;
+    --spa-primary-light: rgba(197, 168, 128, 0.15);
+    --spa-primary-light-hover: rgba(197, 168, 128, 0.25);
+    
+    /* Functional Colors */
+    --spa-success: #3be4d3; /* Brighter teal */
+    --spa-success-light: rgba(59, 228, 211, 0.12);
+    --spa-danger: #ff5263; /* Brighter red */
+    --spa-danger-light: rgba(255, 82, 99, 0.12);
+    --spa-warning: #ffb74d; /* Brighter orange */
+    --spa-warning-light: rgba(255, 183, 77, 0.12);
+    --spa-info: #33c9eb;
+    
+    /* Background & Text Colors (Dark Mode Surface Colors) */
+    --spa-bg: #121212; /* Dark background */
+    --spa-white: #1e1e1e; /* Dark surface / card background */
+    --spa-card-bg: #1e1e1e;
+    --spa-text-primary: #f5f5f5; /* High contrast off-white text */
+    --spa-text-secondary: #b0b0b0; /* Muted text */
+    --spa-text-muted: #707070; /* Muted placeholder/disabled */
+    --spa-border-color: #2d2d2d; /* Dark border */
+    --spa-white-rgb: 30, 30, 30;
+    --spa-black-rgb: 0, 0, 0;
+    
+    /* Overrides for variables originally in base-page.css :root */
+    --spa-bg-main: #121212;
+    --spa-text-main: #f5f5f5;
+    --spa-secondary: #252525;
+    --spa-secondary-hover: #2e2e2e;
+    --spa-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --spa-shadow-normal: 0 4px 12px rgba(0, 0, 0, 0.5);
+    
+    /* Layout Dimensions */
+    --spa-sidebar-width: 280px;
+    --spa-radius-sm: 6px;
+    --spa-radius-md: 12px;
+    --spa-radius-lg: 16px;
+    
+    /* Elevation Shadows (Darker, less opacity shadows for dark mode) */
+    --spa-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --spa-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --spa-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    
+    /* Motion Durations */
+    --transition-fast: 150ms;
+    --transition-normal: 200ms;
+    --transition-slow: 250ms;
+    --primary-color-rgb: 197, 168, 128;
+    
+    /* Semantic Tints & Borders */
+    --spa-info-light: rgba(51, 201, 235, 0.08);
+    --spa-info-border: rgba(51, 201, 235, 0.15);
+    --spa-success-border: rgba(59, 228, 211, 0.15);
+    --spa-warning-border: rgba(255, 183, 77, 0.15);
+    --spa-danger-border: rgba(255, 82, 99, 0.15);
+
+    /* Bootstrap 5 Theme Variables Overrides */
+    --bs-body-bg: var(--spa-bg);
+    --bs-body-color: var(--spa-text-primary);
+    --bs-tertiary-bg: var(--spa-secondary);
+    
+    --bs-dropdown-bg: var(--spa-card-bg);
+    --bs-dropdown-color: var(--spa-text-primary);
+    --bs-dropdown-link-color: var(--spa-text-primary);
+    --bs-dropdown-link-hover-bg: var(--spa-secondary-hover);
+    --bs-dropdown-link-hover-color: var(--spa-primary);
+    --bs-dropdown-border-color: var(--spa-border-color);
+    
+    --bs-modal-bg: var(--spa-card-bg);
+    --bs-modal-color: var(--spa-text-primary);
+    --bs-modal-header-border-color: var(--spa-border-color);
+    --bs-modal-footer-border-color: var(--spa-border-color);
+    --bs-modal-border-color: var(--spa-border-color);
+    
+    --bs-offcanvas-bg: var(--spa-card-bg);
+    --bs-offcanvas-color: var(--spa-text-primary);
+    --bs-offcanvas-border-color: var(--spa-border-color);
+    
+    --bs-border-color: var(--spa-border-color);
+    
+    --bs-card-bg: var(--spa-card-bg);
+    --bs-card-color: var(--spa-text-primary);
+    --bs-card-border-color: var(--spa-border-color);
+    
+    --bs-table-bg: var(--spa-card-bg);
+    --bs-table-color: var(--spa-text-primary);
+    --bs-table-border-color: var(--spa-border-color);
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.02);
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* ==========================================================================
+   Dark Theme Component Fixes
+   ========================================================================== */
+
+/* Form controls & inputs */
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+    background-color: #252525 !important;
+    border-color: var(--spa-border-color) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .form-control::placeholder {
+    color: var(--spa-text-muted) !important;
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus {
+    background-color: #2a2a2a !important;
+    border-color: var(--spa-primary) !important;
+    color: var(--spa-text-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(197, 168, 128, 0.25) !important;
+}
+
+body.dark-theme .form-control:disabled,
+body.dark-theme .form-control[readonly],
+body.dark-theme .form-select:disabled {
+    background-color: #1a1a1a !important;
+    border-color: var(--spa-border-color) !important;
+    color: var(--spa-text-muted) !important;
+    opacity: 0.8;
+}
+
+/* Select2 Dark Mode support */
+body.dark-theme .select2-dropdown {
+    background-color: var(--spa-card-bg) !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+body.dark-theme .select2-container--default .select2-results__option {
+    color: var(--spa-text-primary) !important;
+    background-color: var(--spa-card-bg);
+}
+
+body.dark-theme .select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--spa-primary) !important;
+    color: #121212 !important;
+}
+
+body.dark-theme .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: var(--spa-text-muted) !important;
+}
+
+/* FullCalendar Dark theme overrides */
+body.dark-theme .fc {
+    --fc-border-color: var(--spa-border-color) !important;
+    --fc-page-bg-color: var(--spa-card-bg) !important;
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme #calendar {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .fc-theme-standard td, 
+body.dark-theme .fc-theme-standard th {
+    border-color: var(--spa-border-color) !important;
+}
+
+body.dark-theme .fc .fc-list-empty {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-muted) !important;
+}
+
+body.dark-theme .fc .fc-col-header-cell-cushion,
+body.dark-theme .fc .fc-daygrid-day-number,
+body.dark-theme .fc .fc-timegrid-slot-label-cushion {
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .fc .fc-day-today {
+    background-color: rgba(197, 168, 128, 0.08) !important;
+}
+
+body.dark-theme .fc .fc-button {
+    background-color: #252525 !important;
+    border-color: var(--spa-border-color) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .fc .fc-button:hover {
+    background-color: #2e2e2e !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+body.dark-theme .fc .fc-button-active {
+    background-color: var(--spa-primary) !important;
+    border-color: var(--spa-primary) !important;
+    color: #121212 !important;
+}
+
+/* Event status overrides for dark mode */
+body.dark-theme .fc-evt-confirmed {
+    background-color: rgba(30, 136, 229, 0.15) !important;
+    border-left-color: #1e88e5 !important;
+    color: #90caf9 !important;
+}
+body.dark-theme .fc-evt-confirmed .cal-evt-time,
+body.dark-theme .fc-evt-confirmed .cal-evt-name {
+    color: #90caf9 !important;
+}
+
+body.dark-theme .fc-evt-pending {
+    background-color: rgba(249, 168, 37, 0.15) !important;
+    border-left-color: #f9a825 !important;
+    color: #ffe082 !important;
+}
+body.dark-theme .fc-evt-pending .cal-evt-time,
+body.dark-theme .fc-evt-pending .cal-evt-name {
+    color: #ffe082 !important;
+}
+
+body.dark-theme .fc-evt-completed {
+    background-color: rgba(67, 160, 71, 0.15) !important;
+    border-left-color: #43a047 !important;
+    color: #a5d6a7 !important;
+}
+body.dark-theme .fc-evt-completed .cal-evt-time,
+body.dark-theme .fc-evt-completed .cal-evt-name {
+    color: #a5d6a7 !important;
+}
+
+body.dark-theme .fc-evt-cancelled {
+    background-color: rgba(229, 57, 53, 0.15) !important;
+    border-left-color: #e53935 !important;
+    color: #ef9a9a !important;
+}
+body.dark-theme .fc-evt-cancelled .cal-evt-time,
+body.dark-theme .fc-evt-cancelled .cal-evt-name {
+    color: #ef9a9a !important;
+}
+
+/* Daygrid cell overrides */
+body.dark-theme .fc-daygrid-day {
+    background-color: var(--spa-card-bg) !important;
+}
+body.dark-theme .fc-timegrid-slot {
+    background-color: var(--spa-card-bg) !important;
+}
+
+/* Command Palette Dark overrides */
+body.dark-theme .command-palette-container {
+    background: rgba(30, 30, 30, 0.98) !important;
+    border-color: rgba(197, 168, 128, 0.2) !important;
+    box-shadow: var(--spa-shadow-lg) !important;
+}
+
+body.dark-theme .command-palette-search-wrapper {
+    background: #252525 !important;
+    border-bottom-color: rgba(197, 168, 128, 0.15) !important;
+}
+
+body.dark-theme .command-palette-input {
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .command-palette-input::placeholder {
+    color: var(--spa-text-muted) !important;
+}
+
+body.dark-theme .command-palette-esc-badge {
+    color: var(--spa-text-secondary) !important;
+    background: rgba(var(--spa-white-rgb), 0.05) !important;
+    border-color: rgba(var(--spa-white-rgb), 0.1) !important;
+    box-shadow: none !important;
+}
+
+body.dark-theme .command-palette-results {
+    background: #1e1e1e !important;
+}
+
+body.dark-theme .command-palette-item-icon {
+    color: var(--spa-text-secondary) !important;
+}
+
+body.dark-theme .command-palette-item-title {
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .command-palette-key-badge {
+    color: var(--spa-text-secondary) !important;
+    background: rgba(var(--spa-white-rgb), 0.05) !important;
+    border-color: rgba(var(--spa-white-rgb), 0.1) !important;
+}
+
+body.dark-theme .command-palette-item.active {
+    background: rgba(197, 168, 128, 0.1) !important;
+    border-left-color: var(--spa-primary) !important;
+}
+
+body.dark-theme .command-palette-item.active .command-palette-item-title {
+    color: var(--spa-primary) !important;
+}
+
+body.dark-theme .command-palette-item.active .command-palette-item-icon {
+    color: var(--spa-primary) !important;
+}
+
+body.dark-theme .command-palette-footer {
+    background: #252525 !important;
+    border-top-color: var(--spa-border-color) !important;
+    color: var(--spa-text-secondary) !important;
+}
+
+/* ==========================================================================
+   Smooth Theme Switch Transitions
+   ========================================================================== */
+body, 
+.sidebar, 
+.topbar, 
+.card, 
+.stat-card, 
+.main-content, 
+.table, 
+.modal-content, 
+.offcanvas, 
+.dropdown-menu, 
+.form-control, 
+.form-select, 
+.command-palette-container,
+.fc,
+.fc td,
+.fc th,
+.fc-list-empty,
+.select2-dropdown,
+.select2-container--default .select2-selection--single {
+    transition: background-color 200ms ease, 
+                border-color 200ms ease, 
+                color 200ms ease, 
+                box-shadow 200ms ease !important;
+}
+
+/* ==========================================================================
+   Bootstrap Tooltip & Popover Dark theme overrides
+   ========================================================================== */
+body.dark-theme .popover {
+    background-color: var(--spa-card-bg) !important;
+    border-color: var(--spa-border-color) !important;
+    box-shadow: var(--spa-shadow-lg) !important;
+}
+
+body.dark-theme .popover-header {
+    background-color: var(--spa-bg) !important;
+    color: var(--spa-text-primary) !important;
+    border-bottom-color: var(--spa-border-color) !important;
+}
+
+body.dark-theme .popover-body {
+    color: var(--spa-text-primary) !important;
+}
+
+/* Popover arrows in dark theme */
+body.dark-theme .popover .popover-arrow::before {
+    border-right-color: var(--spa-border-color) !important;
+    border-left-color: var(--spa-border-color) !important;
+    border-top-color: var(--spa-border-color) !important;
+    border-bottom-color: var(--spa-border-color) !important;
+}
+
+body.dark-theme .popover .popover-arrow::after {
+    border-right-color: var(--spa-card-bg) !important;
+    border-left-color: var(--spa-card-bg) !important;
+    border-top-color: var(--spa-card-bg) !important;
+    border-bottom-color: var(--spa-card-bg) !important;
+}
+
+body.dark-theme .tooltip-inner {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+    border: 1px solid var(--spa-border-color) !important;
+    box-shadow: var(--spa-shadow-md) !important;
+}
+
+body.dark-theme .tooltip .tooltip-arrow::before {
+    border-right-color: var(--spa-border-color) !important;
+    border-left-color: var(--spa-border-color) !important;
+    border-top-color: var(--spa-border-color) !important;
+    border-bottom-color: var(--spa-border-color) !important;
+}
+
+/* ==========================================================================
+   Bootstrap Utility & Inline style overrides for Dark Mode
+   ========================================================================== */
+body.dark-theme .bg-white {
+    background-color: var(--spa-card-bg) !important;
+}
+
+body.dark-theme .text-muted,
+body.dark-theme .text-secondary {
+    color: var(--spa-text-secondary) !important;
+}
+
+body.dark-theme .bg-light {
+    background-color: var(--spa-bg) !important;
+}
+
+body.dark-theme .text-dark {
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .table-light {
+    --bs-table-bg: var(--spa-card-bg);
+    --bs-table-color: var(--spa-text-primary);
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .table-light th,
+body.dark-theme .table-light td {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+body.dark-theme .input-group-text.bg-white {
+    background-color: var(--spa-card-bg) !important;
+    border-color: var(--spa-border-color) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+/* Overriding topbar profile dropdown menu inline styles background: #fff */
+body.dark-theme .profile + .dropdown-menu {
+    background: var(--spa-card-bg) !important;
+    border: 1px solid var(--spa-border-color) !important;
+}
+
+body.dark-theme .profile + .dropdown-menu .dropdown-item {
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .profile + .dropdown-menu .dropdown-item:hover {
+    background: var(--spa-secondary-hover) !important;
+}
+
+/* Overriding skeleton UI inline background var(--spa-white, #ffffff) */
+body.dark-theme #chart-skeleton {
+    background-color: var(--spa-card-bg) !important;
+}
+
+body.dark-theme #restore-loading-overlay {
+    background-color: rgba(var(--spa-bg-rgb), 0.75) !important;
+}
+
+body.dark-theme .stf-loading-overlay {
+    background-color: rgba(var(--spa-card-bg-rgb), 0.7) !important;
+}
+
+/* Search Highlight custom styles for command palette */
+.search-highlight {
+    background-color: rgba(166, 124, 82, 0.25) !important;
+    color: var(--spa-text-primary) !important;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+
+/* Select2 dropdown selected option and search input dark overrides */
+body.dark-theme .select2-container--default .select2-results__option[aria-selected="true"] {
+    background-color: var(--spa-secondary) !important;
+    color: var(--spa-text-primary) !important;
+}
+
+body.dark-theme .select2-container--default .select2-search--dropdown .select2-search__field {
+    background-color: var(--spa-bg) !important;
+    color: var(--spa-text-primary) !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+/* Settings page Quick Stats Icons dark overrides */
+body.dark-theme .data-stats-grid .data-stat-item:nth-child(1) .data-stat-icon {
+    background-color: var(--spa-info-light) !important;
+    color: var(--spa-info) !important;
+}
+body.dark-theme .data-stats-grid .data-stat-item:nth-child(2) .data-stat-icon {
+    background-color: var(--spa-primary-light) !important;
+    color: var(--spa-primary) !important;
+}
+body.dark-theme .data-stats-grid .data-stat-item:nth-child(3) .data-stat-icon {
+    background-color: var(--spa-warning-light) !important;
+    color: var(--spa-warning) !important;
+}
+body.dark-theme .data-stats-grid .data-stat-item:nth-child(4) .data-stat-icon {
+    background-color: var(--spa-success-light) !important;
+    color: var(--spa-success) !important;
+}
+
+/* Password visibility toggle button border override */
+body.dark-theme .toggle-password-visibility {
+    border-color: var(--spa-border-color) !important;
+}
+
+
+
+/* ==========================================================================
+   Design System Compliance Helper Classes (Sprint D3.1.4)
+   ========================================================================== */
+.app-text-primary {
+    color: var(--spa-text-primary) !important;
+}
+
+.app-text-secondary {
+    color: var(--spa-text-secondary) !important;
+}
+
+.app-text-muted {
+    color: var(--spa-text-muted) !important;
+}
+
+.app-bg-card {
+    background-color: var(--spa-card-bg) !important;
+}
+
+.app-bg-main {
+    background-color: var(--spa-bg) !important;
+}
+
+.app-table-header {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+.app-table-header th {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-primary) !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+/* Global Scrollbar Customization for Design System Compliance */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--spa-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--spa-border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--spa-text-muted);
+}
+
+/* Visible Focus outline override for WCAG 2.1 AA Keyboard Navigation */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid var(--spa-primary) !important;
+    outline-offset: 2px !important;
+}

@@ -1,0 +1,968 @@
+/* ==========================================================================
+   SpaManager Design System CSS (base-page.css)
+   ========================================================================== */
+
+:root {
+    /* Color Palette */
+    --spa-primary: #a67c52;
+    --spa-primary-hover: #8e663f;
+    --spa-secondary: #f8f9fc;
+    --spa-secondary-hover: #eaecf4;
+    --spa-accent: #f6c23e;
+    --spa-white: #ffffff;
+    --spa-bg-main: #f8f9fa;
+    
+    /* Text Colors */
+    --spa-text-main: #2b2b2b;
+    --spa-text-muted: #858796;
+    
+    /* System Colors */
+    --spa-success: #1cc88a;
+    --spa-info: #36b9cc;
+    --spa-warning: #f6c23e;
+    --spa-danger: #e74a3b;
+    
+    /* Borders & Shadow System */
+    --spa-border-color: #e3e6f0;
+    --spa-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.04);
+    --spa-shadow-normal: 0 4px 12px rgba(0, 0, 0, 0.06);
+    
+    /* Border Radius System */
+    --spa-radius-lg: 12px;     /* Card, Modal, Dropdown, Table container */
+    --spa-radius-md: 8px;      /* Button, Input, Form fields */
+    --spa-radius-sm: 4px;      /* Badge, tiny UI elements */
+    
+    /* Transitions */
+    --spa-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --spa-font: 'Inter', sans-serif;
+}
+
+/* Base resets that respect Bootstrap but enforce branding */
+body {
+    font-family: var(--spa-font) !important;
+    background-color: var(--spa-bg-main);
+    color: var(--spa-text-main);
+}
+
+/* Typography Token Classes */
+.app-title {
+    font-family: var(--spa-font) !important;
+    font-size: 32px !important;
+    font-weight: 600 !important; /* SemiBold */
+    color: var(--spa-text-main) !important;
+    line-height: 1.5 !important;
+}
+
+.app-subtitle {
+    font-family: var(--spa-font) !important;
+    font-size: 24px !important;
+    font-weight: 600 !important; /* SemiBold */
+    color: var(--spa-text-main) !important;
+    line-height: 1.5 !important;
+}
+
+.app-section-title {
+    font-family: var(--spa-font) !important;
+    font-size: 24px !important;
+    font-weight: 600 !important; /* SemiBold */
+    color: var(--spa-text-main) !important;
+    line-height: 1.5 !important;
+}
+
+.app-card-title {
+    font-family: var(--spa-font) !important;
+    font-size: 18px !important;
+    font-weight: 600 !important; /* SemiBold */
+    color: var(--spa-text-main) !important;
+    line-height: 1.4 !important;
+}
+
+.app-text {
+    font-family: var(--spa-font) !important;
+    font-size: 14px !important;
+    font-weight: 400 !important; /* Regular */
+    color: var(--spa-text-main) !important;
+    line-height: 1.5 !important;
+}
+
+.app-small {
+    font-family: var(--spa-font) !important;
+    font-size: 12px !important;
+    font-weight: 400 !important; /* Regular */
+    color: var(--spa-text-muted) !important;
+    line-height: 1.5 !important;
+}
+
+.app-muted {
+    font-family: var(--spa-font) !important;
+    font-size: 12px !important;
+    font-weight: 400 !important; /* Regular */
+    color: var(--spa-text-muted) !important;
+    line-height: 1.5 !important;
+}
+
+/* Backward compatibility for original styling */
+.app-h1 {
+    font-family: var(--spa-font) !important;
+    font-size: 32px !important;
+    font-weight: 600 !important;
+    color: var(--spa-text-main) !important;
+}
+
+.app-h2 {
+    font-family: var(--spa-font) !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    color: var(--spa-text-main) !important;
+}
+
+.app-label {
+    font-family: var(--spa-font) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important; /* Medium */
+    color: var(--spa-text-main) !important;
+    margin-bottom: 6px;
+    display: inline-block;
+}
+
+.app-body-text {
+    font-family: var(--spa-font) !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    color: var(--spa-text-main) !important;
+    line-height: 1.5 !important;
+}
+
+.app-small-text {
+    font-family: var(--spa-font) !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    color: var(--spa-text-muted) !important;
+}
+
+/* ==========================================================================
+   1. CARD SYSTEM (.app-card)
+   ========================================================================== */
+.app-card {
+    background-color: var(--spa-white) !important;
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-lg) !important;
+    box-shadow: var(--spa-shadow-light) !important;
+    transition: var(--spa-transition) !important;
+    overflow: hidden;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-card:hover {
+    box-shadow: var(--spa-shadow-normal) !important;
+    transform: translateY(-2px);
+}
+
+.app-card-header {
+    background-color: var(--spa-white) !important;
+    border-bottom: 1px solid #edf2f9 !important;
+    padding: 16px 20px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.app-card-header-title {
+    margin: 0 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--spa-primary) !important;
+    font-family: var(--spa-font) !important;
+}
+
+.app-card-body {
+    padding: 20px !important;
+    flex: 1 1 auto;
+}
+
+/* Backwards compatibility for dashboard classes */
+.dashboard-card {
+    background-color: var(--spa-white) !important;
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-lg) !important;
+    box-shadow: var(--spa-shadow-light) !important;
+    transition: var(--spa-transition) !important;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.dashboard-card:hover {
+    box-shadow: var(--spa-shadow-normal) !important;
+    transform: translateY(-2px);
+}
+
+.dashboard-card .card-header {
+    background-color: var(--spa-white) !important;
+    border-bottom: 1px solid #edf2f9 !important;
+    padding: 16px 20px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.dashboard-card .card-header .card-title {
+    margin: 0 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--spa-primary) !important;
+}
+
+.dashboard-card .card-body {
+    padding: 20px !important;
+}
+
+/* Stat Card layout */
+.stat-card {
+    background-color: var(--spa-white) !important;
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-lg) !important;
+    box-shadow: var(--spa-shadow-light) !important;
+    padding: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 20px !important;
+    margin-bottom: 12px;
+    transition: var(--spa-transition) !important;
+}
+
+.stat-card:hover {
+    box-shadow: var(--spa-shadow-normal) !important;
+    transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   2. BUTTON SYSTEM (.app-btn)
+   ========================================================================== */
+.app-btn {
+    font-family: var(--spa-font) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    height: 38px !important;
+    padding: 8px 16px !important;
+    border-radius: var(--spa-radius-md) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    transition: var(--spa-transition) !important;
+    border: 1px solid transparent !important;
+    cursor: pointer;
+    text-decoration: none !important;
+}
+
+.app-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--spa-shadow-light) !important;
+}
+
+.app-btn i {
+    font-size: 16px !important;
+    line-height: 1 !important;
+}
+
+/* Button Colors */
+.app-btn-primary {
+    background-color: var(--spa-primary) !important;
+    border-color: var(--spa-primary) !important;
+    color: var(--spa-white) !important;
+}
+.app-btn-primary:hover {
+    background-color: var(--spa-primary-hover) !important;
+    border-color: var(--spa-primary-hover) !important;
+}
+
+.app-btn-warning {
+    background-color: var(--spa-warning) !important;
+    border-color: var(--spa-warning) !important;
+    color: #333333 !important;
+}
+.app-btn-warning:hover {
+    background-color: #dfae2a !important;
+    border-color: #dfae2a !important;
+}
+
+.app-btn-danger {
+    background-color: var(--spa-danger) !important;
+    border-color: var(--spa-danger) !important;
+    color: var(--spa-white) !important;
+}
+.app-btn-danger:hover {
+    background-color: #be3226 !important;
+    border-color: #be3226 !important;
+}
+
+.app-btn-secondary {
+    background-color: var(--spa-secondary) !important;
+    border-color: var(--spa-border-color) !important;
+    color: var(--spa-text-main) !important;
+}
+.app-btn-secondary:hover {
+    background-color: var(--spa-secondary-hover) !important;
+    border-color: var(--spa-border-color) !important;
+}
+
+.app-btn-success {
+    background-color: var(--spa-success) !important;
+    border-color: var(--spa-success) !important;
+    color: var(--spa-white) !important;
+}
+.app-btn-success:hover {
+    background-color: #17a673 !important;
+    border-color: #17a673 !important;
+}
+
+.app-btn-outline-danger {
+    background-color: transparent !important;
+    border-color: var(--spa-danger) !important;
+    color: var(--spa-danger) !important;
+}
+.app-btn-outline-danger:hover {
+    background-color: var(--spa-danger) !important;
+    color: var(--spa-white) !important;
+}
+
+/* Small Button Specific Override */
+.app-btn-sm {
+    height: 30px !important;
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    border-radius: var(--spa-radius-sm) !important;
+}
+
+/* ==========================================================================
+   3. BADGE SYSTEM (.app-badge)
+   ========================================================================== */
+.app-badge {
+    padding: 6px 12px !important;
+    border-radius: var(--spa-radius-sm) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    min-width: 95px !important;
+    text-align: center !important;
+    letter-spacing: 0.02em !important;
+    border: 1px solid transparent !important;
+    text-transform: uppercase !important;
+}
+
+/* Badge Status Styles */
+/* Đã xác nhận -> Xanh dương */
+.app-badge-confirmed,
+.badge.status-confirmed,
+.badge.bg-primary {
+    background-color: rgba(78, 115, 223, 0.1) !important;
+    color: #4e73df !important;
+    border-color: rgba(78, 115, 223, 0.2) !important;
+}
+
+/* Hoàn thành -> Xanh lá */
+.app-badge-completed,
+.badge.status-completed,
+.badge.bg-success {
+    background-color: rgba(28, 200, 138, 0.1) !important;
+    color: #1cc88a !important;
+    border-color: rgba(28, 200, 138, 0.2) !important;
+}
+
+/* Chờ xác nhận -> Vàng */
+.app-badge-pending,
+.badge.status-pending,
+.badge.bg-warning {
+    background-color: rgba(246, 194, 62, 0.1) !important;
+    color: #f6c23e !important;
+    border-color: rgba(246, 194, 62, 0.2) !important;
+}
+
+/* Đã hủy -> Đỏ */
+.app-badge-cancelled,
+.badge.status-cancelled,
+.badge.bg-danger {
+    background-color: rgba(231, 74, 59, 0.1) !important;
+    color: #e74a3b !important;
+    border-color: rgba(231, 74, 59, 0.2) !important;
+}
+
+/* ==========================================================================
+   4. FORM SYSTEM (.app-form-control, .app-form-select)
+   ========================================================================== */
+.app-form-control,
+.app-form-select {
+    font-family: var(--spa-font) !important;
+    font-size: 14px !important;
+    height: 38px !important;
+    border-radius: var(--spa-radius-md) !important;
+    border: 1px solid var(--spa-border-color) !important;
+    padding: 6px 12px !important;
+    color: var(--spa-text-main) !important;
+    background-color: var(--spa-white) !important;
+    transition: var(--spa-transition) !important;
+    box-shadow: none !important;
+}
+
+.app-form-control:focus,
+.app-form-select:focus {
+    border-color: var(--spa-primary) !important;
+    background-color: var(--spa-white) !important;
+    box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.15) !important;
+    outline: none !important;
+}
+
+textarea.app-form-control {
+    height: auto !important;
+    min-height: 80px !important;
+}
+
+/* ==========================================================================
+   5. TABLE SYSTEM (.app-table)
+   ========================================================================== */
+.app-table-container {
+    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--spa-radius-lg) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    background-color: var(--spa-white) !important;
+    box-shadow: var(--spa-shadow-light) !important;
+}
+
+.app-table {
+    margin-bottom: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    width: 100% !important;
+}
+
+.app-table thead th {
+    background-color: var(--spa-card-bg) !important;
+    color: var(--spa-text-main) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 14px 16px !important;
+    border-bottom: 2px solid var(--spa-border-color) !important;
+    vertical-align: middle !important;
+}
+
+.app-table tbody tr:nth-of-type(odd) {
+    background-color: var(--spa-white) !important;
+}
+
+.app-table tbody tr:nth-of-type(even) {
+    background-color: #fbfbfc !important;
+}
+
+.app-table tbody tr {
+    transition: var(--spa-transition) !important;
+}
+
+.app-table tbody tr:hover {
+    background-color: #f1f3f9 !important;
+}
+
+.app-table tbody td {
+    padding: 14px 16px !important;
+    vertical-align: middle !important;
+    color: var(--spa-text-main) !important;
+    border-bottom: 1px solid #edf2f9 !important;
+}
+
+/* ==========================================================================
+   6. MODAL & OFFCANVAS & DROPDOWNS
+   ========================================================================== */
+.modal-content {
+    border: none !important;
+    border-radius: var(--spa-radius-lg) !important;
+    box-shadow: var(--spa-shadow-normal) !important;
+    overflow: hidden !important;
+}
+
+.modal-header {
+    background-color: var(--spa-white) !important;
+    border-bottom: 1px solid #edf2f9 !important;
+    padding: 18px 24px !important;
+}
+
+.modal-body {
+    padding: 24px !important;
+}
+
+.modal-footer {
+    background-color: var(--spa-bg) !important;
+    border-top: 1px solid var(--spa-border-color) !important;
+    padding: 16px 24px !important;
+}
+
+/* Offcanvas custom style */
+.offcanvas {
+    border: none !important;
+    box-shadow: var(--spa-shadow-normal) !important;
+    transition: transform 0.25s ease-in-out !important;
+}
+
+.offcanvas-header {
+    border-bottom: 1px solid #edf2f9 !important;
+    padding: 18px 24px !important;
+}
+
+.offcanvas-body {
+    padding: 24px !important;
+}
+
+/* Dropdown styling */
+.dropdown-menu {
+    border: 1px solid #edf2f9 !important;
+    border-radius: var(--spa-radius-lg) !important;
+    box-shadow: var(--spa-shadow-normal) !important;
+    padding: 8px 0 !important;
+    animation: dropdownFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top left;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-item {
+    font-size: 13px;
+    padding: 8px 16px !important;
+    color: var(--spa-text-main);
+    transition: var(--spa-transition) !important;
+}
+
+.dropdown-item:hover {
+    background-color: var(--spa-secondary) !important;
+    color: var(--spa-primary) !important;
+}
+
+/* Alert Styling */
+.alert {
+    border-radius: var(--spa-radius-md) !important;
+    padding: 12px 20px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+    width: 100%;
+    box-shadow: var(--spa-shadow-light);
+}
+
+.alert-success {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+    border: 1px solid #badbcc !important;
+}
+
+.alert-danger, .alert-error {
+    background-color: #f8d7da !important;
+    color: #842029 !important;
+    border: 1px solid #f5c2c7 !important;
+}
+
+.alert-warning {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+    border: 1px solid #ffecb5 !important;
+}
+
+.alert-info {
+    background-color: #cff4fc !important;
+    color: #087990 !important;
+    border: 1px solid #b6effb !important;
+}
+
+/* ==========================================================================
+   7. STANDARDIZED FILTER BAR COMPONENT (.app-filter-bar)
+   ========================================================================== */
+
+/* Main Container */
+.app-filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px; /* Row spacing */
+    width: 100%;
+}
+
+/* Main Section: Search Box, Date range, Quick range, etc. */
+.app-filter-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px; /* Column spacing 12-16px, Row spacing 16px */
+    width: 100%;
+    align-items: flex-end;
+}
+
+/* Secondary Filters & Action buttons Row */
+.app-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px 16px;
+    width: 100%;
+}
+
+/* Group containing sub-filters */
+.app-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 16px;
+}
+
+/* Search Box Container */
+.app-search-box {
+    flex: 1 1 40%; /* Search takes the most width (40-50%) */
+    min-width: 280px;
+}
+
+.app-search-box .input-group {
+    display: flex;
+    align-items: stretch;
+    height: 38px;
+}
+
+.app-search-box .input-group-text {
+    background-color: var(--spa-white) !important;
+    border: 1px solid var(--spa-border-color) !important;
+    border-right: none !important;
+    border-top-left-radius: var(--spa-radius-md) !important;
+    border-bottom-left-radius: var(--spa-radius-md) !important;
+    padding: 6px 12px !important;
+    color: var(--spa-text-muted) !important;
+    display: flex;
+    align-items: center;
+}
+
+.app-search-box .app-form-control {
+    border-left: none !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    flex: 1;
+}
+
+/* Date Range Container */
+.app-date-group {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex: 1 1 auto;
+}
+
+.app-date-group .date-item {
+    flex: 1;
+    min-width: 130px;
+}
+
+/* Select Group */
+.app-select-group {
+    flex: 0 0 auto;
+    min-width: 150px;
+}
+
+/* Button & Toolbar Groups */
+.app-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+/* Unified styles for input controls inside filter bar */
+.app-filter-bar input,
+.app-filter-bar select,
+.app-filter-bar button,
+.app-filter-bar a.app-btn {
+    height: 38px !important;
+    font-size: 13px !important;
+    font-family: var(--spa-font) !important;
+}
+
+/* Input placeholder styling */
+.app-filter-bar input::placeholder {
+    color: var(--spa-text-muted) !important;
+    opacity: 0.8;
+}
+
+/* Form labels in filter bar */
+.app-filter-bar label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--spa-text-muted) !important;
+    margin-bottom: 6px !important;
+    display: block;
+}
+
+/* Specific Select controls minimal width to prevent squeezing */
+.app-filter-bar select.app-form-select {
+    min-width: 140px;
+    width: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    /* Tablet / Mobile general */
+    .app-filter-main,
+    .app-filter-actions,
+    .app-filter-group,
+    .app-date-group,
+    .app-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 12px;
+    }
+    
+    .app-search-box,
+    .app-date-group .date-item,
+    .app-select-group,
+    .app-filter-bar select.app-form-select,
+    .app-toolbar .app-btn,
+    .app-toolbar button,
+    .app-toolbar a {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 0 !important;
+    }
+    
+    .app-filter-actions {
+        justify-content: flex-start;
+    }
+}
+
+/* ==========================================================================
+   8. UNIFIED KPI CARD COMPONENT (.app-kpi-card)
+   ========================================================================== */
+.app-kpi-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid var(--spa-border-color);
+    background-color: var(--spa-white);
+    border-radius: var(--spa-radius-lg);
+    box-shadow: var(--spa-shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--spa-shadow-md);
+}
+
+.app-kpi-card .app-card-body {
+    padding: var(--app-space-20) !important;
+    position: relative;
+    z-index: 2;
+    padding-right: 64px !important; /* Prevent text overlap with icon */
+}
+
+.app-kpi-icon {
+    position: absolute;
+    right: 16px;
+    bottom: 12px;
+    font-size: 36px;
+    opacity: 0.12; /* Low opacity to avoid obscuring text */
+    color: inherit;
+    pointer-events: none;
+    z-index: 1;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.app-kpi-card:hover .app-kpi-icon {
+    transform: scale(1.1);
+}
+
+/* Color thematic left border options */
+.app-kpi-border-primary {
+    border-left: 4px solid var(--spa-primary) !important;
+}
+.app-kpi-border-success {
+    border-left: 4px solid var(--spa-success) !important;
+}
+.app-kpi-border-warning {
+    border-left: 4px solid var(--spa-warning) !important;
+}
+.app-kpi-border-info {
+    border-left: 4px solid var(--spa-info) !important;
+}
+.app-kpi-border-danger {
+    border-left: 4px solid var(--spa-danger) !important;
+}
+
+/* Layout Grid for KPIs - Uses .app-card-grid defined in layout-spacing.css */
+/* .app-card-grid is defined in layout-spacing.css - no duplicate needed here */
+
+.btn-light-brown {
+    background-color: rgba(166, 124, 82, 0.1) !important;
+    border: 1px solid rgba(166, 124, 82, 0.25) !important;
+    color: #a67c52 !important;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+.btn-light-brown:hover {
+    background-color: #a67c52 !important;
+    border-color: #a67c52 !important;
+    color: #ffffff !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   9. GLOBAL SEARCH & FILTER OPTIMIZATION STYLES
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Search input wrapper for the clear button */
+.stf-search-wrapper {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+.stf-search-wrapper input {
+    padding-right: 36px !important;
+    width: 100%;
+}
+
+.input-group > .stf-search-wrapper:not(:first-child) > .form-control {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+.input-group > .stf-search-wrapper:not(:last-child) > .form-control {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.stf-search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 4px;
+    font-size: 16px;
+    color: var(--spa-text-muted, #858796);
+    cursor: pointer;
+    z-index: 5;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.stf-search-clear:hover {
+    color: var(--spa-danger, #e74a3b);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.stf-search-clear:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+/* Highlight matching search keywords */
+mark.search-highlight {
+    background-color: rgba(246, 194, 62, 0.3) !important;
+    color: var(--spa-text-main, #2b2b2b) !important;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: 600;
+}
+
+/* Empty State visual updates */
+.stf-empty-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.stf-empty-state-icon {
+    font-size: 48px;
+    color: var(--spa-text-muted, #858796);
+    opacity: 0.5;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+.stf-empty-state-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--spa-text-main, #2b2b2b);
+    margin-bottom: 0.5rem;
+}
+
+.stf-empty-state-desc {
+    font-size: 14px;
+    color: var(--spa-text-muted, #858796);
+    margin-bottom: 1rem;
+}
+
+/* Responsive grid layout for toolbars & filter bars */
+@media (max-width: 992px) {
+    .stf-toolbar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px;
+    }
+    
+    .stf-toolbar-left {
+        flex-direction: column;
+        align-items: stretch !important;
+        width: 100%;
+    }
+    
+    .stf-toolbar-left > div,
+    .stf-toolbar-left > select,
+    .stf-toolbar-left > input {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .stf-toolbar-right {
+        align-self: flex-end;
+    }
+    
+    .app-filter-main {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .app-search-box,
+    .app-select-group,
+    .app-date-group {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .stf-toolbar-right {
+        align-self: stretch;
+    }
+    .stf-toolbar-right > .dropdown,
+    .stf-toolbar-right > button,
+    .stf-toolbar-right > a {
+        width: 100%;
+        display: block;
+    }
+}

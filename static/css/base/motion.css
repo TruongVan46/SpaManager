@@ -1,0 +1,300 @@
+/* motion.css - Motion & Interaction System */
+
+:root {
+    --transition-fast: 150ms;
+    --transition-normal: 200ms;
+    --transition-slow: 250ms;
+    --primary-color-rgb: 166, 124, 82; /* SpaManager primary brand color */
+}
+
+/* 1. Utility classes */
+.app-transition {
+    transition: all var(--transition-normal) ease-in-out;
+}
+
+.app-hover {
+    transition: background-color var(--transition-normal) ease,
+                color var(--transition-normal) ease,
+                border-color var(--transition-normal) ease,
+                box-shadow var(--transition-normal) ease,
+                transform var(--transition-normal) ease;
+}
+
+.app-card-hover {
+    transition: transform var(--transition-normal) ease, box-shadow var(--transition-normal) ease;
+}
+.app-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--spa-shadow-lg) !important;
+}
+
+.app-btn-hover {
+    transition: background-color var(--transition-fast) ease,
+                border-color var(--transition-fast) ease,
+                box-shadow var(--transition-fast) ease,
+                transform var(--transition-fast) ease;
+}
+.app-btn-hover:hover {
+    filter: brightness(0.95);
+    box-shadow: var(--spa-shadow-md);
+}
+.app-btn-hover:active {
+    transform: scale(0.98);
+}
+
+.app-fade {
+    animation: fadeIn var(--transition-normal) ease-out forwards;
+}
+
+.app-slide {
+    animation: slideUp var(--transition-normal) ease-out forwards;
+}
+
+.app-focus {
+    transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+.app-focus:focus {
+    border-color: rgba(var(--primary-color-rgb), 0.5) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.15) !important;
+    outline: 0;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 2. Page Loader Overlay */
+.page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(var(--spa-white-rgb), 0.85);
+    z-index: var(--z-index-loader);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--transition-normal) ease, visibility var(--transition-normal) ease;
+}
+.page-loader.fade-out {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* 3. Hover Effects - Buttons & Cards & Badges */
+.btn, .app-btn {
+    transition: background-color var(--transition-fast) ease,
+                border-color var(--transition-fast) ease,
+                box-shadow var(--transition-fast) ease,
+                transform var(--transition-fast) ease;
+}
+.btn:hover, .app-btn:hover {
+    filter: brightness(0.95);
+    box-shadow: var(--spa-shadow-md);
+}
+.btn:active, .app-btn:active {
+    transform: scale(0.98);
+}
+
+/* Cards (Dashboard, Statistics, Appointment, KPI) */
+.card, .spa-kpi-card, .dashboard-card, .appointment-card, .statistics-card, .app-card, .app-kpi-card {
+    transition: transform var(--transition-normal) ease, box-shadow var(--transition-normal) ease;
+}
+.card:hover, .spa-kpi-card:hover, .dashboard-card:hover, .appointment-card:hover, .statistics-card:hover, .app-card:hover, .app-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--spa-shadow-lg) !important;
+}
+
+/* Badge hover */
+.badge, .app-badge {
+    transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.badge:hover, .app-badge:hover {
+    filter: brightness(0.9);
+}
+
+/* 4. Sidebar & Navigation Interactivity */
+.sidebar-link, .sidebar-menu-item, .nav-link-custom, .page-link {
+    transition: background-color var(--transition-fast) ease,
+                color var(--transition-fast) ease,
+                border-color var(--transition-fast) ease,
+                box-shadow var(--transition-fast) ease;
+}
+.sidebar-link:hover, .sidebar-menu-item:hover, .nav-link-custom:hover, .page-link:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.08) !important;
+    color: var(--spa-primary, var(--bs-primary)) !important;
+    border-color: rgba(var(--primary-color-rgb), 0.2) !important;
+}
+.sidebar-link:hover i, .sidebar-menu-item:hover i, .nav-link-custom:hover i {
+    color: var(--spa-primary, var(--bs-primary)) !important;
+}
+
+/* Active Menu styling */
+.sidebar-link.active, .sidebar-menu-item.active, .nav-link-custom.active {
+    background-color: var(--spa-primary, var(--bs-primary)) !important;
+    color: #fff !important;
+}
+.sidebar-link.active i, .sidebar-menu-item.active i, .nav-link-custom.active i {
+    color: #fff !important;
+}
+
+/* 5. Table Interaction */
+.table tbody tr {
+    transition: background-color var(--transition-fast) ease;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(var(--spa-black-rgb), 0.02) !important;
+}
+.table tbody tr.table-active, .table tbody tr.active-row {
+    background-color: rgba(var(--primary-color-rgb), 0.08) !important;
+}
+
+/* 6. Input Focus */
+.form-control, .form-select, .form-check-input {
+    transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+.form-control:focus, .form-select:focus {
+    border-color: rgba(var(--primary-color-rgb), 0.5) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.15) !important;
+}
+
+/* 7. Dropdown animation (using margin-top to avoid overriding popper transform positioning) */
+.dropdown-menu {
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    margin-top: -6px !important;
+    transition: opacity var(--transition-fast) ease,
+                margin-top var(--transition-fast) ease,
+                visibility var(--transition-fast) ease;
+}
+.dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    margin-top: 0 !important;
+}
+
+/* 8. Modal transition */
+.modal.fade .modal-dialog {
+    transform: scale(0.97) translateY(0);
+    transition: transform var(--transition-normal) ease-out;
+}
+.modal.show .modal-dialog {
+    transform: scale(1) translateY(0);
+}
+
+/* 9. Toast transition */
+.toast {
+    transition: transform var(--transition-normal) ease, opacity var(--transition-normal) ease;
+}
+.toast.showing {
+    opacity: 0;
+    transform: translateX(100%);
+}
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* 10. Scrollbars styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* 11. Calendar Interactivity */
+.fc-daygrid-day {
+    transition: background-color var(--transition-fast) ease;
+}
+.fc-daygrid-day:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.03) !important;
+}
+.fc-event, .spa-summary-card {
+    transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+.fc-event:hover, .spa-summary-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--spa-shadow-md) !important;
+    cursor: pointer;
+}
+/* Click active event */
+.fc-event:active, .spa-summary-card:active {
+    transform: translateY(0);
+    box-shadow: none !important;
+}
+
+/* Calendar Navigation transitions */
+.fc-view-harness {
+    animation: fadeIn var(--transition-normal) ease-out;
+}
+
+/* 13. Empty State Styling */
+.empty-state {
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    border-radius: 8px;
+    background-color: var(--spa-bg);
+    border: 1px dashed var(--spa-border-color);
+    transition: border-color var(--transition-normal) ease, background-color var(--transition-normal) ease;
+}
+.empty-state:hover {
+    border-color: rgba(var(--primary-color-rgb), 0.3);
+    background-color: rgba(var(--primary-color-rgb), 0.01);
+}
+.empty-state-icon {
+    font-size: 32px !important;
+    color: var(--spa-text-muted) !important;
+    margin-bottom: 1rem;
+    display: inline-block;
+    transition: transform var(--transition-normal) ease, color var(--transition-normal) ease;
+}
+.empty-state:hover .empty-state-icon {
+    transform: scale(1.05);
+    color: rgba(var(--primary-color-rgb), 0.5) !important;
+}
+
+/* 14. Active states for calendar events */
+.fc-event.active-event, .spa-summary-card.active-card {
+    outline: 2px solid rgba(var(--primary-color-rgb), 1) !important;
+    outline-offset: 1px;
+}
+
+/* 12. Accessibility (prefers-reduced-motion) */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-delay: 0s !important;
+        animation-duration: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-delay: 0s !important;
+        transition-duration: 0s !important;
+        scroll-behavior: auto !important;
+        transform: none !important;
+    }
+    .page-loader {
+        display: none !important;
+    }
+}

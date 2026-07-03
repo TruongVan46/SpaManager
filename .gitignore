@@ -1,0 +1,85 @@
+# ====================================================================
+# SpaManager Gitignore (Production-Ready)
+# ====================================================================
+
+# --- Python Cache & Compiled Files ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Virtual Environment ---
+venv/
+ENV/
+env/
+.env
+.venv
+pip-wheel-metadata/
+
+# --- IDE & Editor Specifics ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# --- OS Specific Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Build & Temporary Outputs ---
+build/
+dist/
+*.egg-info/
+scratch/
+tmp/
+*.tmp
+*.temp
+*.log
+
+# --- Project Specific Runtime Logs ---
+logs/*
+!logs/.gitkeep
+
+# --- Project Specific Databases ---
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+!database/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- Project Specific Backups ---
+backup/*
+!backup/.gitkeep
+
+# --- Project Specific Uploads & Exports ---
+static/uploads/*
+!static/uploads/.gitkeep
+
+static/uploads/avatars/*
+!static/uploads/avatars/.gitkeep
+
+static/uploads/import/*
+!static/uploads/import/.gitkeep
+
+exports/*
+!exports/.gitkeep
+
+instance/*
+!instance/.gitkeep

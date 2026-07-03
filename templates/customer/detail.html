@@ -1,0 +1,74 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Chi tiết Khách hàng - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Chi tiết Khách hàng</h1>
+        <div>
+            <a href="{{ url_for('customer.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+            </a>
+            <a href="{{ url_for('customer.edit', id=customer.id) }}" class="app-btn app-btn-primary btn btn-primary">
+                <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Chỉnh sửa
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="app-card mb-4">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Thông tin chi tiết
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Họ và Tên:</div>
+                        <div class="col-sm-8"><strong>{{ customer.name }}</strong></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Số điện thoại:</div>
+                        <div class="col-sm-8">{{ customer.phone or 'Không có thông tin' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Email:</div>
+                        <div class="col-sm-8">{{ customer.email or 'Không có thông tin' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Địa chỉ:</div>
+                        <div class="col-sm-8">{{ customer.address or 'Không có thông tin' }}</div>
+                    </div>
+                    <div class="row mb-0">
+                        <div class="col-sm-4 text-muted">Ngày tạo:</div>
+                        <div class="col-sm-8">{{ customer.created_at.strftime('%d/%m/%Y %H:%M') if customer.created_at else 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="app-card mb-4">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-gear" style="font-size: 18px; margin-right: 8px;"></i>Thao tác nhanh
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('customer.edit', id=customer.id) }}" class="app-btn app-btn-primary btn btn-outline-primary text-start">
+                            <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Chỉnh sửa thông tin
+                        </a>
+                        <form action="{{ url_for('customer.delete', id=customer.id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa khách hàng này không?');">
+                            <button type="submit" class="app-btn app-btn-outline-danger btn btn-outline-danger w-100 text-start">
+                                <i class="bi bi-trash" style="margin-right: 8px;"></i>Xóa khách hàng
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

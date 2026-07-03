@@ -1,0 +1,292 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Nhật ký hoạt động - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page activity-log-page">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Nhật ký hoạt động</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Nhật ký hoạt động</h1>
+        <a href="{{ url_for('activity_log.index') }}" class="app-btn app-btn-secondary btn btn-secondary" id="btn-refresh" aria-label="Làm mới trang">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+        </a>
+    </div>
+
+    <!-- Data Card -->
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0 d-flex align-items-center">
+                <i class="bi bi-clock-history" style="font-size: 18px; margin-right: 8px;"></i>Lịch sử hoạt động hệ thống
+                <div class="spinner-border spinner-border-sm text-primary ms-3 d-none" id="loading-spinner" role="status" style="width: 1rem; height: 1rem;">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <!-- Thanh bộ lọc (Toolbar) -->
+            <form method="GET" action="{{ url_for('activity_log.index') }}" class="app-filter-bar mb-3" id="activity-log-filter-form">
+                <input type="hidden" name="per_page" value="{{ per_page }}">
+                <div class="activity-log-toolbar-row">
+                    <!-- 1. Search Box -->
+                    <div class="filter-item flex-grow-1 search-box">
+                        <label class="form-label small mb-1" for="search-input">Tìm kiếm</label>
+                        <div class="input-group-custom-search">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="search-input" name="q" class="app-form-control form-control form-control-sm" placeholder="Tìm theo mô tả, module, action..." value="{{ q or '' }}">
+                        </div>
+                    </div>
+                    
+                    <!-- 2. Filter Module -->
+                    <div class="filter-item module-box">
+                        <label class="form-label small mb-1" for="module-select">Module</label>
+                        <select id="module-select" name="module" class="app-form-select form-select form-select-sm">
+                            <option value="" {% if not module or module == 'Tất cả' %}selected{% endif %}>Tất cả</option>
+                            <option value="Customer" {% if module == 'Customer' %}selected{% endif %}>Khách hàng</option>
+                            <option value="Service" {% if module == 'Service' %}selected{% endif %}>Dịch vụ</option>
+                            <option value="Appointment" {% if module == 'Appointment' %}selected{% endif %}>Lịch hẹn</option>
+                            <option value="Invoice" {% if module == 'Invoice' %}selected{% endif %}>Hóa đơn</option>
+                            <option value="Statistics" {% if module == 'Statistics' %}selected{% endif %}>Thống kê</option>
+                            <option value="Dashboard" {% if module == 'Dashboard' %}selected{% endif %}>Trang chủ</option>
+                            <option value="Settings" {% if module == 'Settings' %}selected{% endif %}>Cài đặt</option>
+                            <option value="System" {% if module == 'System' %}selected{% endif %}>Hệ thống</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. Filter Action -->
+                    <div class="filter-item action-box">
+                        <label class="form-label small mb-1" for="action-select">Action</label>
+                        <select id="action-select" name="action" class="app-form-select form-select form-select-sm">
+                            <option value="" {% if not action or action == 'Tất cả' %}selected{% endif %}>Tất cả</option>
+                            <option value="CREATE" {% if action == 'CREATE' %}selected{% endif %}>Tạo mới</option>
+                            <option value="UPDATE" {% if action == 'UPDATE' %}selected{% endif %}>Cập nhật</option>
+                            <option value="DELETE" {% if action == 'DELETE' %}selected{% endif %}>Xóa</option>
+                            <option value="BACKUP" {% if action == 'BACKUP' %}selected{% endif %}>Sao lưu</option>
+                            <option value="RESTORE" {% if action == 'RESTORE' %}selected{% endif %}>Phục hồi</option>
+                            <option value="IMPORT" {% if action == 'IMPORT' %}selected{% endif %}>Nhập Excel</option>
+                            <option value="EXPORT" {% if action == 'EXPORT' %}selected{% endif %}>Xuất Excel</option>
+                            <option value="STATUS_CHANGE" {% if action == 'STATUS_CHANGE' %}selected{% endif %}>Đổi trạng thái</option>
+                            <option value="LOGIN" {% if action == 'LOGIN' %}selected{% endif %}>Đăng nhập</option>
+                            <option value="LOGOUT" {% if action == 'LOGOUT' %}selected{% endif %}>Đăng xuất</option>
+                            <option value="CUSTOM" {% if action == 'CUSTOM' %}selected{% endif %}>Khác</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. Filter Severity -->
+                    <div class="filter-item severity-box">
+                        <label class="form-label small mb-1" for="severity-select">Severity</label>
+                        <select id="severity-select" name="severity" class="app-form-select form-select form-select-sm">
+                            <option value="" {% if not severity or severity == 'Tất cả' %}selected{% endif %}>Tất cả</option>
+                            <option value="SUCCESS" {% if severity == 'SUCCESS' %}selected{% endif %}>Thành công</option>
+                            <option value="INFO" {% if severity == 'INFO' %}selected{% endif %}>Thông tin</option>
+                            <option value="WARNING" {% if severity == 'WARNING' %}selected{% endif %}>Cảnh báo</option>
+                            <option value="ERROR" {% if severity == 'ERROR' %}selected{% endif %}>Lỗi</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. Filter Thời gian -->
+                    <div class="filter-item time-box">
+                        <label class="form-label small mb-1" for="time-range-select">Thời gian</label>
+                        <select name="time_range" id="time-range-select" class="app-form-select form-select form-select-sm">
+                            <option value="" {% if not time_range %}selected{% endif %}>Tất cả</option>
+                            <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hôm nay</option>
+                            <option value="7_days" {% if time_range == '7_days' %}selected{% endif %}>7 ngày gần đây</option>
+                            <option value="30_days" {% if time_range == '30_days' %}selected{% endif %}>30 ngày gần đây</option>
+                            <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Tháng này</option>
+                            <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Tùy chọn</option>
+                        </select>
+                    </div>
+
+                    <!-- 6. Sắp xếp -->
+                    <div class="filter-item sort-box">
+                        <label class="form-label small mb-1" for="sort-select">Sắp xếp</label>
+                        <select id="sort-select" name="sort_by" class="app-form-select form-select form-select-sm">
+                            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Mới nhất</option>
+                            <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Cũ nhất</option>
+                        </select>
+                    </div>
+
+
+                    <!-- Buttons -->
+                    <div class="filter-item filter-buttons">
+                        <button type="submit" class="app-btn app-btn-primary btn btn-sm btn-primary" aria-label="Tìm kiếm nhật ký">
+                            <i class="bi bi-funnel-fill"></i> Lọc
+                        </button>
+                        {% if q or module or action or severity or time_range %}
+                        <a href="{{ url_for('activity_log.index') }}" class="app-btn app-btn-outline-danger btn btn-sm btn-outline-danger" id="btn-reset-filters" title="Xóa bộ lọc" aria-label="Reset bộ lọc về mặc định">
+                            <i class="bi bi-x-circle"></i> Xóa
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Custom Date Range Row -->
+                <div class="activity-log-custom-date-row mt-2 {% if time_range != 'custom' %}d-none{% endif %}" id="custom-date-container">
+                    <div class="custom-date-item">
+                        <label class="form-label small mb-1" for="from-date-input">Từ ngày</label>
+                        <input type="date" id="from-date-input" name="from_date" class="app-form-control form-control" value="{{ from_date or '' }}">
+                    </div>
+                    <div class="custom-date-item">
+                        <label class="form-label small mb-1" for="to-date-input">Đến ngày</label>
+                        <input type="date" id="to-date-input" name="to_date" class="app-form-control form-control" value="{{ to_date or '' }}">
+                    </div>
+                </div>
+            </form>
+
+            <!-- Record count statistics header -->
+            {% if logs.total > 0 %}
+            <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-2">
+                <span class="text-muted small">
+                    Hiển thị từ <strong>{{ (logs.page - 1) * logs.per_page + 1 }}</strong> đến <strong>{{ [logs.page * logs.per_page, logs.total]|min }}</strong> trong tổng số <strong>{{ logs.total }}</strong> nhật ký.
+                </span>
+            </div>
+            {% endif %}
+
+            <div class="table-responsive app-table-container activity-log-table-container">
+                <table class="app-table table table-hover align-middle activity-log-table">
+                    <thead class="app-table-header">
+                        <tr>
+                            <th class="col-time" scope="col">Thời gian</th>
+                            <th class="col-module" scope="col">Module</th>
+                            <th class="col-action text-center" scope="col">Action</th>
+                            <th class="col-severity text-center" scope="col">Severity</th>
+                            <th class="col-description" scope="col">Nội dung</th>
+                            <th class="col-reference text-center d-none d-md-table-cell" scope="col">ID tham chiếu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        {% set local_dt = log.created_at | vietnam_time if log.created_at else None %}
+                        {% set formatted_time = local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else 'N/A' %}
+                        
+                        {# Map Module translation to display on data attribute #}
+                        {% set translated_module = '-' %}
+                        {% if log.module == 'Customer' %}{% set translated_module = 'Khách hàng' %}
+                        {% elif log.module == 'Service' %}{% set translated_module = 'Dịch vụ' %}
+                        {% elif log.module == 'Appointment' %}{% set translated_module = 'Lịch hẹn' %}
+                        {% elif log.module == 'Invoice' %}{% set translated_module = 'Hóa đơn' %}
+                        {% elif log.module == 'Statistics' %}{% set translated_module = 'Thống kê' %}
+                        {% elif log.module == 'Dashboard' %}{% set translated_module = 'Trang chủ' %}
+                        {% elif log.module == 'Settings' %}{% set translated_module = 'Cài đặt' %}
+                        {% elif log.module == 'System' %}{% set translated_module = 'Hệ thống' %}
+                        {% else %}{% set translated_module = log.module %}
+                        {% endif %}
+
+                        <tr class="log-row" 
+                            data-time="{{ formatted_time }}"
+                            data-module="{{ translated_module }}"
+                            data-action="{{ log.action }}"
+                            data-severity="{{ log.severity }}"
+                            data-description="{{ log.description }}"
+                            data-reference="{{ log.reference_id if log.reference_id is not none else '-' }}"
+                            tabindex="0"
+                            aria-label="Xem chi tiết nhật ký ngày {{ formatted_time }}">
+                            <td class="col-time">
+                                {% if local_dt %}
+                                <div class="log-datetime">
+                                    <span class="log-date">{{ local_dt.strftime('%d/%m/%Y') }}</span>
+                                    <span class="log-time">{{ local_dt.strftime('%H:%M') }}</span>
+                                </div>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td class="col-module">
+                                <strong>{{ translated_module }}</strong>
+                            </td>
+                            <td class="col-action text-center">
+                                {% if log.action == 'CREATE' %}
+                                    <span class="app-badge badge-action-create">TẠO MỚI</span>
+                                {% elif log.action == 'UPDATE' %}
+                                    <span class="app-badge badge-action-update">CẬP NHẬT</span>
+                                {% elif log.action == 'DELETE' %}
+                                    <span class="app-badge badge-action-delete">XÓA</span>
+                                {% elif log.action == 'PERMANENT_DELETE' %}
+                                    <span class="app-badge badge-action-delete">XÓA VĨNH VIỄN</span>
+                                {% elif log.action == 'BACKUP' %}
+                                    <span class="app-badge badge-action-neutral">SAO LƯU</span>
+                                {% elif log.action == 'RESTORE' %}
+                                    <span class="app-badge badge-action-neutral">PHỤC HỒI</span>
+                                {% elif log.action == 'IMPORT' %}
+                                    <span class="app-badge badge-action-neutral">NHẬP EXCEL</span>
+                                {% elif log.action == 'EXPORT' %}
+                                    <span class="app-badge badge-action-neutral">XUẤT EXCEL</span>
+                                {% elif log.action == 'STATUS_CHANGE' %}
+                                    <span class="app-badge badge-action-neutral">ĐỔI TRẠNG THÁI</span>
+                                {% elif log.action == 'LOGIN' %}
+                                    <span class="app-badge badge-action-neutral">ĐĂNG NHẬP</span>
+                                {% elif log.action == 'LOGOUT' %}
+                                    <span class="app-badge badge-action-neutral">ĐĂNG XUẤT</span>
+                                {% else %}
+                                    <span class="app-badge badge-action-neutral">{{ log.action }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-severity text-center">
+                                {% if log.severity == 'SUCCESS' %}
+                                    <span class="app-badge badge-severity-success">THÀNH CÔNG</span>
+                                {% elif log.severity == 'WARNING' %}
+                                    <span class="app-badge badge-severity-warning">CẢNH BÁO</span>
+                                {% elif log.severity == 'ERROR' %}
+                                    <span class="app-badge badge-severity-error">LỖI</span>
+                                {% else %}
+                                    <span class="app-badge badge-severity-info">THÔNG TIN</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-description text-truncate" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ log.description }}">
+                                {{ log.description | highlight(q) }}
+                            </td>
+                            <td class="col-reference text-center d-none d-md-table-cell">
+                                {{ log.reference_id if log.reference_id is not none else '-' }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="bi bi-clock-history text-muted d-block mb-3 empty-state-icon" style="font-size: 48px; opacity: 0.5;"></i>
+                                    <h4 class="empty-state-title fw-bold mb-2">Không tìm thấy nhật ký phù hợp</h4>
+                                    <p class="empty-state-description text-muted small mb-3">Hãy thử thay đổi bộ lọc hoặc từ khóa.</p>
+                                    <a href="{{ url_for('activity_log.index') }}" class="app-btn app-btn-secondary btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Xóa bộ lọc
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {%- from 'layout/table_macros.html' import pagination_widget %}
+            {{ pagination_widget(logs, 'activity_log.index', {
+                'q': q, 'module': module, 'action': action,
+                'severity': severity, 'time_range': time_range,
+                'from_date': from_date, 'to_date': to_date,
+                'sort_by': sort_by, 'per_page': per_page
+            }) }}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+            var u = new URL(window.location.href);
+            u.searchParams.set('per_page', sel.value);
+            u.searchParams.set('page', '1');
+            window.location.href = u.toString();
+        });
+    });
+});
+</script>
+{% endblock %}

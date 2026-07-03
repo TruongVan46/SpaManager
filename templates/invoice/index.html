@@ -1,0 +1,345 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Danh sách hóa đơn{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Quản lý hóa đơn</h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('invoice.export_excel', q=q, from_date=from_date, to_date=to_date, payment_method=payment_method, sort_by=sort_by, order=order, per_page=per_page) }}" class="app-btn app-btn-success btn btn-success">
+                <i class="bi bi-file-earmark-excel" style="margin-right: 8px;"></i>Xuất Excel
+            </a>
+            <a href="{{ url_for('invoice.export_pdf', q=q, from_date=from_date, to_date=to_date, payment_method=payment_method, sort_by=sort_by, order=order, per_page=per_page) }}" class="app-btn app-btn-danger btn btn-danger">
+                <i class="bi bi-file-earmark-pdf" style="margin-right: 8px;"></i>Xuất PDF
+            </a>
+            <a href="{{ url_for('invoice.create') }}" class="app-btn app-btn-primary btn btn-primary">
+                <i class="bi bi-plus-circle" style="margin-right: 8px;"></i>Tạo hóa đơn mới
+            </a>
+        </div>
+    </div>
+
+
+    {# Summary Cards #}
+    <div class="app-card-grid">
+        <!-- Tổng hóa đơn -->
+        <div class="app-kpi-card app-kpi-border-primary">
+            <div class="app-card-body text-primary">
+                <div class="app-small text-uppercase mb-1 fw-medium text-primary">Tổng hóa đơn</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.invoice_count }}</div>
+                <i class="bi bi-receipt app-kpi-icon text-primary"></i>
+            </div>
+        </div>
+
+        <!-- Tổng doanh thu -->
+        <div class="app-kpi-card app-kpi-border-success">
+            <div class="app-card-body text-success">
+                <div class="app-small text-uppercase mb-1 fw-medium text-success">Tổng doanh thu</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ "{:,.0f}".format(summary.total_revenue) }}đ</div>
+                <i class="bi bi-cash-stack app-kpi-icon text-success"></i>
+            </div>
+        </div>
+
+        <!-- Giảm giá -->
+        <div class="app-kpi-card app-kpi-border-warning">
+            <div class="app-card-body text-warning">
+                <div class="app-small text-uppercase mb-1 fw-medium text-warning">Giảm giá</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ "{:,.0f}".format(summary.total_discount) }}đ</div>
+                <i class="bi bi-tag app-kpi-icon text-warning"></i>
+            </div>
+        </div>
+
+        <!-- Giá trị trung bình / hóa đơn -->
+        <div class="app-kpi-card app-kpi-border-info">
+            <div class="app-card-body text-info">
+                <div class="app-small text-uppercase mb-1 fw-medium text-info">Giá trị TB/HĐ</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ "{:,.0f}".format(summary.average_invoice) }}đ</div>
+                <i class="bi bi-calculator app-kpi-icon text-info"></i>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-receipt" style="font-size: 18px; margin-right: 8px;"></i>Danh sách hóa đơn
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <div class="app-table-wrapper">
+                {%- from 'layout/table_macros.html' import pagination_widget, empty_state, col_vis_button %}
+                <form method="GET" action="{{ url_for('invoice.index') }}" class="app-filter-bar">
+                    <!-- Hàng 1: Ô tìm kiếm và Quick Range / Date Range -->
+                    <div class="app-filter-main">
+                        <div class="app-search-box">
+                            <label>Tìm kiếm</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" name="q" class="app-form-control form-control" placeholder="Tìm theo mã hóa đơn, tên khách hàng hoặc số điện thoại..." value="{{ q or '' }}" aria-label="Tìm theo mã hóa đơn, tên khách hàng hoặc số điện thoại...">
+                            </div>
+                        </div>
+                        
+                        <div class="app-date-group">
+                            <div class="date-item">
+                                <label>Từ ngày</label>
+                                <input type="date" name="from_date" class="app-form-control form-control" value="{{ from_date or '' }}">
+                            </div>
+                            <div class="date-item">
+                                <label>Đến ngày</label>
+                                <input type="date" name="to_date" class="app-form-control form-control" value="{{ to_date or '' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hàng 2: Các Select Filter & Sorting bên trái, nút action bên phải -->
+                    <div class="app-filter-actions">
+                        <div class="app-filter-group">
+                            <div class="app-select-group">
+                                <label>Thanh toán</label>
+                                <select name="payment_method" class="app-form-select form-select">
+                                    <option value="Tất cả" {% if not payment_method or payment_method == 'Tất cả' %}selected{% endif %}>Tất cả</option>
+                                    <option value="Tiền mặt" {% if payment_method == 'Tiền mặt' %}selected{% endif %}>Tiền mặt</option>
+                                    <option value="Chuyển khoản" {% if payment_method == 'Chuyển khoản' %}selected{% endif %}>Chuyển khoản</option>
+                                    <option value="Thẻ" {% if payment_method == 'Thẻ' %}selected{% endif %}>Thẻ</option>
+                                    <option value="Ví điện tử" {% if payment_method == 'Ví điện tử' %}selected{% endif %}>Ví điện tử</option>
+                                </select>
+                            </div>
+                            <div class="app-select-group">
+                                <label>Sắp xếp</label>
+                                <select name="sort_by" class="app-form-select form-select">
+                                    <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Ngày lập</option>
+                                    <option value="id" {% if sort_by == 'id' %}selected{% endif %}>Mã hóa đơn</option>
+                                    <option value="total" {% if sort_by == 'total' %}selected{% endif %}>Tổng tiền</option>
+                                    <option value="customer" {% if sort_by == 'customer' %}selected{% endif %}>Khách hàng</option>
+                                </select>
+                            </div>
+                            <div class="app-select-group">
+                                <label>Thứ tự</label>
+                                <select name="order" class="app-form-select form-select">
+                                    <option value="desc" {% if order == 'desc' %}selected{% endif %}>Giảm dần</option>
+                                    <option value="asc" {% if order == 'asc' %}selected{% endif %}>Tăng dần</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="app-toolbar">
+                            <button class="app-btn app-btn-primary btn btn-primary" type="submit">
+                                <i class="bi bi-funnel-fill" style="margin-right: 8px;"></i>Lọc
+                            </button>
+                            <a href="{{ url_for('invoice.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary" title="Đặt lại bộ lọc">
+                                <i class="bi bi-arrow-counterclockwise" style="margin-right: 8px;"></i>Đặt lại
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                {# Result Badge & Display Info #}
+                <div class="mb-2 mt-2 pt-2 border-top">
+                    {% if q and (from_date or to_date) %}
+                        <span class="app-badge app-badge-confirmed badge bg-primary text-white fs-6 py-2 px-3 shadow-sm rounded-pill">
+                            <i class="bi bi-search"></i> Tìm thấy và phù hợp: {{ summary.invoice_count }} hóa đơn
+                        </span>
+                    {% elif q %}
+                        <span class="app-badge app-badge-confirmed badge bg-primary text-white fs-6 py-2 px-3 shadow-sm rounded-pill">
+                            <i class="bi bi-search"></i> Tìm thấy: {{ summary.invoice_count }} hóa đơn
+                        </span>
+                    {% elif from_date or to_date or (payment_method and payment_method != 'Tất cả') %}
+                        <span class="app-badge app-badge-completed badge bg-success text-white fs-6 py-2 px-3 shadow-sm rounded-pill">
+                            <i class="bi bi-funnel"></i> {{ summary.invoice_count }} hóa đơn phù hợp
+                        </span>
+                    {% else %}
+                        <span class="app-badge badge bg-secondary text-white fs-6 py-2 px-3 shadow-sm rounded-pill">
+                            <i class="bi bi-receipt"></i> Đang hiển thị: {{ summary.invoice_count }} hóa đơn
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% if invoices.items %}
+                <div class="stf-table-wrap">
+                    <table class="app-table table table-hover align-middle stf-table" id="invoice-table">
+                        <thead class="app-table-header">
+                            <tr>
+                                <th class="text-center" style="width:50px;" data-col-key="stt" scope="col">STT</th>
+                                <th class="stf-sortable" data-sort-field="id" data-col-key="invoice_id" scope="col">Mã hóa đơn</th>
+                                <th class="stf-sortable" data-sort-field="customer_name" data-col-key="customer" scope="col">Khách hàng</th>
+                                <th class="stf-sortable" data-sort-field="date" data-col-key="date" scope="col">Ngày lập</th>
+                                <th class="text-end stf-sortable" data-sort-field="total_amount" data-col-key="total" scope="col">Tổng tiền</th>
+                                <th data-col-key="payment" scope="col">Phương thức</th>
+                                <th class="text-center" style="width:110px;" data-col-key="actions" scope="col">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices.items %}
+                            <tr>
+                                <td class="text-center">{{ (invoices.page - 1) * invoices.per_page + loop.index }}</td>
+                                <td class="fw-bold">HD{{ invoice.id }}</td>
+                                <td>{{ invoice.customer.name | highlight(q) if invoice.customer else 'N/A' }}</td>
+                                <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</td>
+                                <td class="text-end fw-bold">{{ "{:,.0f}".format(invoice.total_amount) }}đ</td>
+                                <td>
+                                    <span class="app-badge badge bg-info text-dark">{{ invoice.payment_method or 'N/A' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id) }}" class="app-btn app-btn-primary btn btn-outline-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="Xem chi tiết">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id) }}" class="app-btn app-btn-secondary btn btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="In hóa đơn">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                        <button type="button" class="app-btn app-btn-outline-danger btn btn-outline-danger" 
+                                                onclick="confirmDelete('{{ invoice.id }}')" data-bs-toggle="tooltip" data-bs-placement="top" title="Xóa hóa đơn">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+                {% endif %}
+
+            {%- from 'layout/table_macros.html' import pagination_widget %}
+            {{ pagination_widget(invoices, 'invoice.index', {
+                'q': q, 'from_date': from_date, 'to_date': to_date,
+                'payment_method': payment_method,
+                'sort_by': sort_by, 'order': order, 'per_page': per_page
+            }) }}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Xác Nhận Xóa Hóa Đơn -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="deleteInvoiceForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger fw-bold" id="deleteConfirmModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa hóa đơn
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-question-circle text-danger" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+                    <p class="mb-2 fs-5">Bạn có chắc chắn muốn xóa hóa đơn này?</p>
+                    <p class="fw-bold mb-3 text-primary" id="deleteInvoiceCode" style="font-size: 1.25rem;"></p>
+                    <p class="text-danger mb-0"><small>Hành động này không thể hoàn tác.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteSubmitBtn">Xóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(invoiceId) {
+    const deleteForm = document.getElementById('deleteInvoiceForm');
+    const deleteCodeSpan = document.getElementById('deleteInvoiceCode');
+    deleteForm.action = "/invoices/delete/" + invoiceId;
+    deleteCodeSpan.textContent = 'HD' + invoiceId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Per-page change handler
+    document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+            var u = new URL(window.location.href);
+            u.searchParams.set('per_page', sel.value);
+            u.searchParams.set('page', '1');
+            window.location.href = u.toString();
+        });
+    });
+
+    // SharedTable init
+    if (document.getElementById('invoice-table')) {
+        new SharedTable(document.getElementById('invoice-table'), {
+            moduleName:   'invoice',
+            sortParam:    'sort_by',
+            dirParam:     'order',
+            perPageParam: 'per_page',
+            colDefs: [
+                { key: 'stt',        label: 'STT',         hideable: true },
+                { key: 'invoice_id', label: 'Mã hóa đơn',  hideable: false },
+                { key: 'customer',   label: 'Khách hàng',  hideable: false },
+                { key: 'date',       label: 'Ngày lập',    hideable: true },
+                { key: 'total',      label: 'Tổng tiền',   hideable: false },
+                { key: 'payment',    label: 'Phương thức', hideable: true },
+                { key: 'actions',    label: 'Thao tác',    hideable: false },
+            ]
+        });
+    }
+
+    // AJAX delete handler
+    const deleteForm = document.getElementById('deleteInvoiceForm');
+    const confirmSubmitBtn = document.getElementById('confirmDeleteSubmitBtn');
+    let rowToDelete = null;
+
+    document.querySelectorAll('button[onclick^="confirmDelete"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            rowToDelete = this.closest('tr');
+        });
+    });
+
+    if (deleteForm && confirmSubmitBtn) {
+        deleteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const bsModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+            const originalHtml = confirmSubmitBtn.innerHTML;
+            confirmSubmitBtn.disabled = true;
+            confirmSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+            fetch(deleteForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (bsModal) bsModal.hide();
+                confirmSubmitBtn.disabled = false;
+                confirmSubmitBtn.innerHTML = originalHtml;
+
+                if (data.success) {
+                    Notification.success(data.message || 'Đã xóa hóa đơn thành công.');
+                    if (rowToDelete) {
+                        rowToDelete.style.transition = 'opacity 0.4s ease';
+                        rowToDelete.style.opacity = '0';
+                        setTimeout(() => {
+                            rowToDelete.remove();
+                            const remainingRows = document.querySelectorAll('#invoice-table tbody tr');
+                            if (remainingRows.length === 0) window.location.reload();
+                        }, 400);
+                    }
+                } else {
+                    Notification.error(data.message || 'Không thể xóa hóa đơn.');
+                }
+            })
+            .catch(error => {
+                if (bsModal) bsModal.hide();
+                confirmSubmitBtn.disabled = false;
+                confirmSubmitBtn.innerHTML = originalHtml;
+                console.error('Error:', error);
+                Notification.error('Không thể kết nối đến máy chủ.');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

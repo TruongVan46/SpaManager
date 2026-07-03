@@ -1,0 +1,60 @@
+{% extends "layout/base.html" %}
+
+{% block title %}Chỉnh sửa Dịch vụ{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Chỉnh sửa Dịch vụ</h1>
+        <a href="{{ url_for('service.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Thông tin dịch vụ
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form action="{{ url_for('service.edit', id=service.id) }}" method="POST">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="name" class="form-label">Tên Dịch vụ <span class="text-danger">*</span></label>
+                        <input type="text" class="app-form-control form-control" id="name" name="name" value="{{ service.name }}" required placeholder="Ví dụ: Massage Thụy Điển">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="category" class="form-label">Nhóm dịch vụ <span class="text-danger">*</span></label>
+                        <select class="app-form-select form-select" id="category" name="category" required>
+                            <option value="massage" {% if service.category == 'massage' %}selected{% endif %}>Massage</option>
+                            <option value="nail" {% if service.category == 'nail' %}selected{% endif %}>Nail</option>
+                            <option value="spa" {% if service.category == 'spa' %}selected{% endif %}>Spa</option>
+                            <option value="makeup" {% if service.category == 'makeup' %}selected{% endif %}>Makeup</option>
+                            <option value="hair" {% if service.category == 'hair' %}selected{% endif %}>Làm tóc</option>
+                            <option value="other" {% if not service.category or service.category == 'other' %}selected{% endif %}>Khác</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="price" class="form-label">Giá (VNĐ) <span class="text-danger">*</span></label>
+                        <input type="number" class="app-form-control form-control" id="price" name="price" value="{{ service.price }}" required placeholder="0">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="duration" class="form-label">Thời lượng (phút)</label>
+                        <input type="number" class="app-form-control form-control" id="duration" name="duration" value="{{ service.duration or '' }}" placeholder="60">
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="description" class="form-label">Mô tả</label>
+                        <textarea class="app-form-control form-control" id="description" name="description" rows="4" placeholder="Nhập mô tả chi tiết về dịch vụ...">{{ service.description or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="app-btn app-btn-primary btn btn-primary">
+                        <i class="bi bi-check-circle" style="margin-right: 8px;"></i>Cập nhật Dịch vụ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

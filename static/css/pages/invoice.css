@@ -1,0 +1,36 @@
+/* Invoice Page Styles */
+
+.invoice-container {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Custom layout helpers for Invoice Filters */
+@media (min-width: 992px) {
+    .col-lg-2-5 {
+        flex: 0 0 auto;
+        width: 20%;
+    }
+}
+
+.filter-select-field {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+@media (max-width: 991.98px) {
+    .filter-select-field {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

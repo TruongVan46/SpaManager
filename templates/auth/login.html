@@ -1,0 +1,184 @@
+{% extends 'layout/auth_base.html' %}
+
+{% block title %}Đăng nhập - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="auth-card-container">
+    <div class="auth-card">
+        <!-- Logo Header -->
+        <div class="auth-logo-section text-center">
+            <div class="auth-logo-icon">
+                <i class="bi bi-flower1"></i>
+            </div>
+            <h3 class="auth-title">TIỆM NHÀ NHÍM</h3>
+            <p class="auth-subtitle">Spa • Nail • Makeup</p>
+        </div>
+
+        <!-- Form -->
+        <form id="login-form" novalidate>
+            <div class="mb-3">
+                <label for="username" class="form-label fw-semibold">Tên đăng nhập</label>
+                <div class="input-group">
+                    <span class="input-group-text app-bg-card border-end-0"><i class="bi bi-person text-muted"></i></span>
+                    <input type="text" id="username" class="form-control app-form-control border-start-0 ps-0" placeholder="Nhập tên đăng nhập" autocomplete="username">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="password" class="form-label fw-semibold">Mật khẩu</label>
+                <div class="input-group">
+                    <span class="input-group-text app-bg-card border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                    <input type="password" id="password" class="form-control app-form-control border-start-0 ps-0" placeholder="Nhập mật khẩu" autocomplete="current-password">
+                </div>
+            </div>
+
+            <div class="mb-4 d-flex justify-content-between align-items-center">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="remember_me">
+                    <label class="form-check-label fw-medium text-muted" for="remember_me" style="font-size: 0.9rem;">Ghi nhớ đăng nhập</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary app-btn-primary w-100 py-2 fw-semibold">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .auth-card-container {
+        width: 100%;
+        max-width: 420px;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(166, 124, 82, 0.15);
+        border-radius: 16px;
+        padding: 40px 30px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 0 5px 15px rgba(166, 124, 82, 0.03);
+    }
+
+    .auth-logo-icon {
+        width: 70px;
+        height: 70px;
+        margin: 0 auto 15px;
+        border-radius: 18px;
+        background: rgba(166, 124, 82, 0.15);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 32px;
+        color: var(--spa-primary, #a67c52);
+        animation: pulse 2s infinite;
+    }
+
+    .auth-title {
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #333;
+        margin-bottom: 2px;
+        font-size: 1.5rem;
+    }
+
+    .auth-subtitle {
+        color: #888;
+        font-size: 0.9rem;
+        margin-bottom: 30px;
+    }
+
+    .input-group-text {
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+    }
+
+    .app-form-control {
+        border-radius: 8px;
+    }
+
+    .app-form-control:focus {
+        border-color: var(--spa-primary, #a67c52);
+        box-shadow: 0 0 0 0.25rem rgba(166, 124, 82, 0.15);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show info notification if redirected with logout parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === '1') {
+            Notification.info("Bạn đã đăng xuất.");
+        }
+
+        const loginForm = document.getElementById('login-form');
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const rememberInput = document.getElementById('remember_me');
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const remember = rememberInput.checked;
+
+            if (!username || !password) {
+                Notification.error("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
+                return;
+            }
+
+            // AJAX login submission
+            fetch("{{ url_for('auth.login') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    remember: remember
+                })
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("Lỗi mạng hoặc máy chủ phản hồi không tốt.");
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    Notification.success(data.message || "Đăng nhập thành công!");
+                    // Delay slightly to show notification success state
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 800);
+                } else {
+                    Notification.error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Notification.error("Sai tên đăng nhập hoặc mật khẩu.");
+            });
+        });
+    });
+</script>
+{% endblock %}

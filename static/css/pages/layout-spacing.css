@@ -1,0 +1,197 @@
+/* spacing-scale & global layout utility stylesheet */
+:root {
+    --app-space-4: 4px;
+    --app-space-8: 8px;
+    --app-space-12: 12px;
+    --app-space-16: 16px;
+    --app-space-20: 20px;
+    --app-space-24: 24px;
+    --app-space-32: 32px;
+    --app-space-48: 48px;
+}
+
+/* ==========================================================================
+   UNIFIED LAYOUT ENFORCEMENT
+   Ensures all modules use the same full-width layout as Dashboard.
+   ========================================================================== */
+
+/* Override Bootstrap container-fluid to prevent any max-width restriction */
+.main-content .container-fluid {
+    max-width: none !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+/* Page Spacing Layout Rules */
+.app-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-24);
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0;
+}
+
+.app-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--app-space-12);
+}
+
+.app-page-toolbar {
+    margin: 0 !important;
+}
+
+.app-page-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-24);
+    width: 100%;
+}
+
+.app-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-32);
+    width: 100%;
+}
+
+/* Stack Layouts */
+.app-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-16);
+}
+
+.app-stack-sm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-8);
+}
+
+.app-gap-sm {
+    gap: var(--app-space-8) !important;
+}
+
+.app-gap-md {
+    gap: var(--app-space-16) !important;
+}
+
+.app-gap-lg {
+    gap: var(--app-space-24) !important;
+}
+
+/* Card layout spacing classes */
+.app-card {
+    border: none !important;
+    border-radius: var(--spa-radius-lg, 16px) !important;
+    box-shadow: var(--spa-shadow-sm) !important;
+    background-color: var(--spa-white, #ffffff) !important;
+    overflow: hidden !important;
+    width: 100%;
+    max-width: none !important;
+}
+
+.app-card-header {
+    padding: var(--app-space-16) var(--app-space-20) !important;
+    background-color: var(--spa-white, #ffffff) !important;
+    border-bottom: 1px solid var(--spa-border-color, #edf2f9) !important;
+}
+
+.app-card-body {
+    padding: var(--app-space-20) !important;
+}
+
+/* Dashboard or modules Card grid */
+.app-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--app-space-24);
+    width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .app-card-grid {
+        gap: var(--app-space-20);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .app-card-grid {
+        gap: var(--app-space-16);
+    }
+}
+
+/* Table layout spacing rules */
+.app-table-container {
+    margin: 0 !important;
+    width: 100%;
+    max-width: none !important;
+}
+
+.app-table-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-16);
+    width: 100%;
+}
+
+/* Filter bar layout spacing rules */
+.app-filter-bar {
+    margin-bottom: 0 !important;
+}
+
+/* Form structure spacing rules */
+.app-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-8);
+}
+
+.app-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-16);
+}
+
+.app-form-row > * {
+    flex: 1 1 200px;
+}
+
+.app-form-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-16);
+}
+
+/* Popover, modal padding rules */
+.modal-body {
+    padding: var(--app-space-20) !important;
+}
+
+.modal-header {
+    padding: var(--app-space-16) var(--app-space-20) !important;
+}
+
+.modal-footer {
+    padding: var(--app-space-16) var(--app-space-20) !important;
+}
+
+.offcanvas-header {
+    padding: var(--app-space-16) var(--app-space-20) !important;
+}
+
+.offcanvas-body {
+    padding: var(--app-space-20) !important;
+}
+
+.dropdown-menu {
+    padding: var(--app-space-8) 0 !important;
+}
+
+.dropdown-item {
+    padding: var(--app-space-8) var(--app-space-16) !important;
+}

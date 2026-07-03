@@ -1,0 +1,270 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Quản lý Khách hàng - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Quản lý Khách hàng</h1>
+        <a href="{{ url_for('customer.create') }}" class="app-btn app-btn-primary btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Thêm khách hàng
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Danh sách khách hàng
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <div class="app-table-wrapper">
+                {%- from 'layout/table_macros.html' import pagination_widget, empty_state, col_vis_button %}
+                {# ── Toolbar ── #}
+                <form method="GET" action="{{ url_for('customer.index') }}" id="customer-filter-form">
+                    <input type="hidden" name="sort_by"  value="{{ sort_by }}">
+                    <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+                    <input type="hidden" name="per_page" value="{{ per_page }}">
+                    <div class="stf-toolbar">
+                        <div class="stf-toolbar-left">
+                            <div class="input-group" style="min-width:260px; max-width:380px;">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" name="q" class="form-control app-form-control"
+                                       placeholder="Tìm theo tên, SĐT"
+                                       value="{{ q }}" data-stf-search aria-label="Tìm theo tên, SĐT, dịch vụ...">
+                                {% if q %}
+                                <a href="{{ url_for('customer.index') }}" class="btn btn-outline-secondary" title="Đặt lại">
+                                    <i class="bi bi-x-lg"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="stf-toolbar-right">
+                            {{ col_vis_button('customer') }}
+                        </div>
+                    </div>
+                </form>
+
+                {# ── Table ── #}
+                <div class="stf-table-wrap">
+                    <table class="app-table table table-hover align-middle stf-table" id="customer-table">
+                        <thead class="app-table-header">
+                            <tr>
+                                <th class="stf-sortable" data-sort-field="name" data-col-key="name" scope="col">Họ và Tên</th>
+                                <th class="stf-sortable" data-sort-field="phone" data-col-key="phone" scope="col">SĐT</th>
+                                <th class="stf-sortable" data-sort-field="email" data-col-key="email" scope="col">Email</th>
+                                <th data-col-key="address" scope="col">Địa chỉ</th>
+                                <th class="text-center" style="width:120px;" data-col-key="actions" scope="col">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in customers.items %}
+                            <tr>
+                                <td><strong>{{ customer.name | highlight(q) }}</strong></td>
+                                <td>{{ customer.phone | highlight(q) if customer.phone else 'N/A' }}</td>
+                                <td>{{ customer.email | highlight(q) if customer.email else 'N/A' }}</td>
+                                <td>{{ customer.address | highlight(q) if customer.address else 'N/A' }}</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('customer.detail', id=customer.id) }}" class="btn btn-outline-secondary" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                                        <a href="{{ url_for('customer.edit', id=customer.id) }}" class="btn btn-outline-primary" title="Chỉnh sửa"><i class="bi bi-pencil-square"></i></a>
+                                        <button type="button" class="btn btn-outline-danger btn-delete-customer" data-id="{{ customer.id }}" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            {{ empty_state('bi-people', 'Chưa có khách hàng nào', 'Thêm mới hoặc thử lại bộ lọc tìm kiếm.') }}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {# ── Footer: info + per-page + pagination ── #}
+                {{ pagination_widget(customers, 'customer.index', {'q': q, 'sort_by': sort_by, 'sort_dir': sort_dir, 'per_page': per_page}, module_name='customer') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Xác Nhận Xóa (Cho phép xóa) -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="deleteCustomerForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa khách hàng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-question-circle text-primary" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+                    <p class="mb-2 fs-5">Bạn có chắc chắn muốn xóa khách hàng này?</p>
+                    <p class="fw-bold mb-3" id="deleteCustomerName" style="font-size: 1.25rem;"></p>
+                    <p class="text-danger mb-0"><small>Hành động này không thể hoàn tác.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cảnh Báo Không Được Xóa -->
+<div class="modal fade" id="deleteWarningModal" tabindex="-1" aria-labelledby="deleteWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning border-2">
+            <div class="modal-header bg-warning-subtle text-warning-emphasis">
+                <h5 class="modal-title fw-bold" id="deleteWarningModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Không thể xóa khách hàng
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="text-center mb-3">
+                    <i class="bi bi-exclamation-octagon-fill text-warning" style="font-size: 3.5rem;"></i>
+                </div>
+                <p class="fs-5 fw-semibold text-center mb-3">
+                    Không thể xóa khách hàng: <span id="warningCustomerName" class="app-text-primary fw-bold"></span>
+                </p>
+                <div class="alert alert-warning border-0 bg-warning-subtle text-warning-emphasis py-3 px-4 mb-3">
+                    <p class="mb-2 fw-semibold">Khách hàng đã phát sinh dữ liệu trong hệ thống:</p>
+                    <ul class="mb-0 list-unstyled ps-2">
+                        <li class="mb-2"><i class="bi bi-calendar-event me-2"></i>Số lượng lịch hẹn: <strong class="badge bg-warning-emphasis text-white fs-6" id="warningAppointmentCount">0</strong></li>
+                        <li><i class="bi bi-file-earmark-ruled me-2"></i>Số lượng hóa đơn: <strong class="badge bg-warning-emphasis text-white fs-6" id="warningInvoiceCount">0</strong></li>
+                    </ul>
+                </div>
+                <p class="text-muted text-center mb-0 small">
+                    Để đảm bảo tính toàn vẹn dữ liệu và lịch sử giao dịch, hệ thống không cho phép xóa khách hàng này.
+                </p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-warning px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.btn-delete-customer');
+    const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    const deleteWarningModal = new bootstrap.Modal(document.getElementById('deleteWarningModal'));
+    
+    const deleteForm = document.getElementById('deleteCustomerForm');
+    const deleteNameSpan = document.getElementById('deleteCustomerName');
+    const warningNameSpan = document.getElementById('warningCustomerName');
+    const warningApptCount = document.getElementById('warningAppointmentCount');
+    const warningInvoiceCount = document.getElementById('warningInvoiceCount');
+
+    let rowToDelete = null;
+
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const customerId = this.getAttribute('data-id');
+            rowToDelete = this.closest('tr');
+            
+            // Gọi AJAX check xem có được xóa không
+            fetch(`/customers/${customerId}/can-delete`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.can_delete) {
+                            // Cho phép xóa -> Hiện modal confirm
+                            deleteForm.action = `/customers/${customerId}/delete`;
+                            deleteNameSpan.textContent = data.customer_name;
+                            deleteConfirmModal.show();
+                        } else {
+                            // Không cho phép xóa -> Hiện modal warning kèm số lượng lịch hẹn + hóa đơn
+                            warningNameSpan.textContent = data.customer_name;
+                            warningApptCount.textContent = data.appointment_count;
+                            warningInvoiceCount.textContent = data.invoice_count;
+                            deleteWarningModal.show();
+                        }
+                    } else {
+                        Notification.error(data.message || 'Có lỗi xảy ra.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Notification.error('Không thể kết nối đến máy chủ.');
+                });
+        });
+    });
+
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = deleteForm.querySelector('button[type="submit"]');
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            
+            fetch(deleteForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                deleteConfirmModal.hide();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+                
+                if (data.success) {
+                    Notification.success(data.message || 'Đã xóa khách hàng thành công.');
+                    if (rowToDelete) {
+                        rowToDelete.style.transition = 'opacity 0.4s ease';
+                        rowToDelete.style.opacity = '0';
+                        setTimeout(() => {
+                            rowToDelete.remove();
+                            // If table becomes empty, reload to show empty state
+                            const remainingRows = document.querySelectorAll('#customer-table tbody tr');
+                            if (remainingRows.length === 0) {
+                                window.location.reload();
+                            }
+                        }, 400);
+                    }
+                } else {
+                    Notification.error(data.message || 'Không thể xóa khách hàng.');
+                }
+            })
+            .catch(error => {
+                deleteConfirmModal.hide();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+                console.error('Error:', error);
+                Notification.error('Không thể kết nối đến máy chủ.');
+            });
+        });
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    new SharedTable(document.getElementById('customer-table'), {
+        moduleName:  'customer',
+        sortParam:   'sort_by',
+        dirParam:    'sort_dir',
+        perPageParam: 'per_page',
+        colDefs: [
+            { key: 'name',    label: 'Họ và Tên',  hideable: false },
+            { key: 'phone',   label: 'SĐT',        hideable: true },
+            { key: 'email',   label: 'Email',       hideable: true },
+            { key: 'address', label: 'Địa chỉ',    hideable: true },
+            { key: 'actions', label: 'Thao tác',   hideable: false },
+        ]
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Chi tiết hóa đơn HD{{ invoice.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Chi tiết hóa đơn HD{{ invoice.id }}</h1>
+        <div class="d-flex gap-2">
+            <a href="{{ return_url if return_url else url_for('invoice.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+                <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+            </a>
+            <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id) }}" class="app-btn app-btn-primary btn btn-primary">
+                <i class="bi bi-printer" style="margin-right: 8px;"></i>In hóa đơn
+            </a>
+            <button type="button" class="app-btn app-btn-danger btn btn-danger" onclick="confirmDelete('{{ invoice.id }}')">
+                <i class="bi bi-trash" style="margin-right: 8px;"></i>Xóa hóa đơn
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Thông tin chung -->
+        <div class="col-lg-4">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-receipt" style="font-size: 18px; margin-right: 8px;"></i>Thông tin chung
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    <div class="mb-3">
+                        <label class="text-muted d-block">Khách hàng</label>
+                        <span class="fw-bold fs-5">{{ invoice.customer.name }}</span>
+                        <div class="text-muted small">{{ invoice.customer.phone }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted d-block">Ngày lập</label>
+                        <span class="fw-bold">{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted d-block">Phương thức thanh toán</label>
+                        <span class="app-badge badge bg-info text-dark">{{ invoice.payment_method or 'N/A' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted d-block">Ghi chú</label>
+                        <p class="text-muted">{{ invoice.notes or 'Không có ghi chú' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chi tiết dịch vụ -->
+        <div class="col-lg-8">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Danh sách dịch vụ
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    <div class="table-responsive app-table-container">
+                        <table class="app-table table table-hover align-middle">
+                            <thead class="app-table-header">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;" scope="col">STT</th>
+                                    <th scope="col">Dịch vụ</th>
+                                    <th class="text-center" style="width: 100px;" scope="col">Số lượng</th>
+                                    <th class="text-end" style="width: 150px;" scope="col">Đơn giá</th>
+                                    <th class="text-end" style="width: 150px;" scope="col">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for detail in invoice.details %}
+                                <tr>
+                                    <td class="text-center">{{ loop.index }}</td>
+                                    <td class="fw-bold">{{ detail.service.name }}</td>
+                                    <td class="text-center">{{ detail.quantity }}</td>
+                                    <td class="text-end">{{ "{:,.0f}".format(detail.price) }}đ</td>
+                                    <td class="text-end fw-bold">{{ "{:,.0f}".format(detail.price * detail.quantity) }}đ</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">Không có dịch vụ nào.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Tạm tính:</td>
+                                    <td class="text-end fw-bold">{{ "{:,.0f}".format(invoice.subtotal) }}đ</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end text-danger">Giảm giá:</td>
+                                    <td class="text-end text-danger">-{{ "{:,.0f}".format(invoice.discount) }}đ</td>
+                                </tr>
+                                <tr class="table-active">
+                                    <td colspan="4" class="text-end h5 fw-bold">Tổng cộng:</td>
+                                    <td class="text-end h5 fw-bold text-danger">{{ "{:,.0f}".format(invoice.total_amount) }}đ</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Xác Nhận Xóa Hóa Đơn -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="deleteInvoiceForm" method="POST">
+                {% if config.get('CSRF_ENABLED') %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                {% if return_url %}
+                    <input type="hidden" name="return_url" value="{{ return_url }}">
+                {% endif %}
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger fw-bold" id="deleteConfirmModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa hóa đơn
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-question-circle text-danger" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+                    <p class="mb-2 fs-5">Bạn có chắc chắn muốn xóa hóa đơn này?</p>
+                    <p class="fw-bold mb-3 text-primary" id="deleteInvoiceCode" style="font-size: 1.25rem;"></p>
+                    <p class="text-danger mb-0"><small>Hành động này không thể hoàn tác.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(invoiceId) {
+    const deleteForm = document.getElementById('deleteInvoiceForm');
+    const deleteCodeSpan = document.getElementById('deleteInvoiceCode');
+    
+    deleteForm.action = "{{ url_for('invoice.delete', invoice_id=0) }}".replace('0', invoiceId);
+    deleteCodeSpan.textContent = 'HD' + invoiceId;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

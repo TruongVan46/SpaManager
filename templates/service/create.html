@@ -1,0 +1,60 @@
+{% extends "layout/base.html" %}
+
+{% block title %}Thêm Dịch vụ Mới{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Thêm Dịch vụ Mới</h1>
+        <a href="{{ url_for('service.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Thông tin dịch vụ
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form action="{{ url_for('service.create') }}" method="POST">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="name" class="form-label">Tên Dịch vụ <span class="text-danger">*</span></label>
+                        <input type="text" class="app-form-control form-control" id="name" name="name" required placeholder="Ví dụ: Massage Thụy Điển">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="category" class="form-label">Nhóm dịch vụ <span class="text-danger">*</span></label>
+                        <select class="app-form-select form-select" id="category" name="category" required>
+                            <option value="massage">Massage</option>
+                            <option value="nail">Nail</option>
+                            <option value="spa">Spa</option>
+                            <option value="makeup">Makeup</option>
+                            <option value="hair">Làm tóc</option>
+                            <option value="other" selected>Khác</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="price" class="form-label">Giá (VNĐ) <span class="text-danger">*</span></label>
+                        <input type="number" class="app-form-control form-control" id="price" name="price" required placeholder="0">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="duration" class="form-label">Thời lượng (phút)</label>
+                        <input type="number" class="app-form-control form-control" id="duration" name="duration" placeholder="60">
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="description" class="form-label">Mô tả</label>
+                        <textarea class="app-form-control form-control" id="description" name="description" rows="4" placeholder="Nhập mô tả chi tiết về dịch vụ..."></textarea>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="app-btn app-btn-primary btn btn-primary">
+                        <i class="bi bi-check-circle" style="margin-right: 8px;"></i>Lưu Dịch vụ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

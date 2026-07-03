@@ -1,0 +1,16 @@
+{% extends "layout/base.html" %}
+
+{% block title %}404 - Không tìm thấy trang{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page text-center py-5">
+    <div class="fs-1 text-danger mb-3"><i class="bi bi-x-octagon-fill"></i> 404</div>
+    <h2 class="app-title mb-4">Không tìm thấy trang!</h2>
+    <p class="app-text lead text-muted">Rất tiếc, trang bạn đang tìm kiếm không tồn tại hoặc đã bị di chuyển.</p>
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard.index') }}" class="app-btn app-btn-primary btn btn-primary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại Trang chủ
+        </a>
+    </div>
+</div>
+{% endblock %}

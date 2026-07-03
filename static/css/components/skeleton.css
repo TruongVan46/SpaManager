@@ -1,0 +1,65 @@
+/* static/css/components/skeleton.css - Unified Skeleton UI for SpaManager */
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Base skeleton class */
+.stf-skeleton {
+    background: linear-gradient(90deg, 
+        var(--spa-border-color, #edf2f9) 25%, 
+        var(--spa-bg, #f8f9fc) 50%, 
+        var(--spa-border-color, #edf2f9) 75%
+    ) !important;
+    background-size: 200% 100% !important;
+    animation: skeleton-shimmer 1.6s infinite linear !important;
+    color: transparent !important;
+    border-color: transparent !important;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Skeleton content types */
+.stf-skeleton-text {
+    display: inline-block;
+    height: 14px;
+    border-radius: var(--spa-radius-sm, 4px);
+    margin-bottom: 0;
+    width: 100%;
+}
+.stf-w-40 { width: 40% !important; }
+.stf-w-60 { width: 60% !important; }
+.stf-w-80 { width: 80% !important; }
+.stf-w-95 { width: 95% !important; }
+
+.stf-skeleton-circle {
+    display: inline-block;
+    border-radius: 50% !important;
+}
+
+.stf-skeleton-badge {
+    display: inline-block;
+    height: 24px;
+    width: 80px;
+    border-radius: 12px !important;
+}
+
+/* Table loading transition row wrapper */
+.stf-table-skeleton-row td {
+    padding: 1rem 0.75rem !important;
+}
+
+/* Custom Chart skeleton layout */
+#chart-skeleton {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: var(--spa-white, #ffffff);
+    border-radius: var(--spa-radius-md, 8px);
+    transition: opacity 0.3s ease;
+}

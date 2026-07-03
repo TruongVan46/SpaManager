@@ -1,0 +1,107 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Chi tiết dịch vụ - Thống kê{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page statistics-page">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('statistics.index', from_date=from_date, to_date=to_date) }}">Thống kê</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Chi tiết dịch vụ</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="app-page-header">
+        <div>
+            <h1 class="app-title mb-0">Chi tiết dịch vụ</h1>
+            <h2 class="h5 text-muted mt-2">{{ service.name }}</h2>
+        </div>
+        <a href="{{ url_for('statistics.index', from_date=from_date, to_date=to_date) }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
+        </a>
+    </div>
+
+    <!-- Interface Card Framework -->
+    <div class="row g-4">
+        <div class="col-md-12">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Thông tin dịch vụ
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    <p><strong>Mã dịch vụ:</strong> SV{{ service.id }}</p>
+                    <p><strong>Tên dịch vụ:</strong> {{ service.name }}</p>
+                    <p><strong>Đơn giá:</strong> {{ service.price | format_currency }}</p>
+                    {% if service.duration %}
+                        <p><strong>Thời lượng:</strong> {{ service.duration }} phút</p>
+                    {% endif %}
+                    {% if service.description %}
+                        <p><strong>Mô tả:</strong> {{ service.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-12">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-receipt" style="font-size: 18px; margin-right: 8px;"></i>Danh sách hóa đơn sử dụng dịch vụ
+                    </h5>
+                </div>
+                <div class="app-card-body">
+                    {% if service_invoices %}
+                    <div class="table-responsive app-table-container">
+                        <table class="app-table table table-hover align-middle">
+                            <thead class="app-table-header">
+                                <tr>
+                                    <th scope="col">STT</th>
+                                    <th scope="col">Mã hóa đơn</th>
+                                    <th scope="col">Ngày lập</th>
+                                    <th scope="col">Khách hàng</th>
+                                    <th scope="col">Số lượng</th>
+                                    <th scope="col">Đơn giá</th>
+                                    <th scope="col">Thành tiền</th>
+                                    <th scope="col">Tổng hóa đơn</th>
+                                    <th scope="col">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inv in service_invoices %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td class="fw-bold">{{ inv.invoice_code }}</td>
+                                    <td>{{ inv.invoice_date.strftime('%d/%m/%Y') if inv.invoice_date else 'N/A' }}</td>
+                                    <td>{{ inv.customer_name }}</td>
+                                    <td>{{ inv.quantity }}</td>
+                                    <td>{{ inv.price | format_currency }}</td>
+                                    <td>{{ inv.line_total | format_currency }}</td>
+                                    <td>{{ inv.invoice_total | format_currency }}</td>
+                                    <td>
+                                        <a href="{{ url_for('invoice.detail', invoice_id=inv.invoice_id, return_url=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary">
+                                            <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Empty State -->
+                    <div class="text-center py-5 text-muted">
+                        <div class="fs-1 mb-2"><i class="bi bi-receipt"></i></div>
+                        <div>Không có hóa đơn nào sử dụng dịch vụ này trong khoảng thời gian đã chọn.</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

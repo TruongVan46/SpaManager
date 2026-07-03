@@ -1,0 +1,395 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Danh sách lịch hẹn - Spa Manager{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/appointment.css') }}">
+<!-- FullCalendar CSS and Custom styling -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/appointment-calendar.css') }}">
+
+<!-- Offcanvas: Calendar Appointment Detail Panel -->
+<div class="offcanvas offcanvas-end cal-offcanvas" tabindex="-1" id="calOffcanvas" aria-labelledby="calOffcanvasLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="calOffcanvasLabel">📋 Chi tiết lịch hẹn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <!-- Dynamic content injected by appointment-calendar.js -->
+    </div>
+</div>
+
+<div class="container-fluid app-page appointment-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Quản lý lịch hẹn</h1>
+        <div class="d-flex gap-3 align-items-center flex-wrap">
+            <!-- View Mode Switcher Button Group (Extensible Design) -->
+            <div class="d-flex gap-3" role="group" aria-label="Chế độ xem">
+                <a href="#" class="app-btn app-btn-primary btn btn-outline-primary d-flex align-items-center gap-2 active" data-view-mode="list" title="Xem danh sách">
+                    <i class="bi bi-list-ul" style="margin-right: 8px;"></i>
+                    <span>Danh sách</span>
+                </a>
+                <a href="#" class="app-btn app-btn-primary btn btn-outline-primary d-flex align-items-center gap-2" data-view-mode="calendar" title="Xem lịch">
+                    <i class="bi bi-calendar3" style="margin-right: 8px;"></i>
+                    <span>Lịch</span>
+                </a>
+            </div>
+            
+            <a href="{{ url_for('appointment.create') }}" class="app-btn app-btn-primary btn btn-primary">
+                <i class="bi bi-plus-circle" style="margin-right: 8px;"></i>Thêm lịch hẹn
+            </a>
+        </div>
+    </div>
+
+    {# Summary Cards #}
+    <div class="app-card-grid">
+        <!-- Tổng lịch hẹn -->
+        <div class="app-kpi-card app-kpi-border-primary">
+            <div class="app-card-body text-primary">
+                <div class="app-small text-uppercase mb-1 fw-medium text-primary">Tổng lịch hẹn</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.total }}</div>
+                <i class="bi bi-calendar-event app-kpi-icon text-primary"></i>
+            </div>
+        </div>
+
+        <!-- Chờ xác nhận -->
+        <div class="app-kpi-card app-kpi-border-warning">
+            <div class="app-card-body text-warning">
+                <div class="app-small text-uppercase mb-1 fw-medium text-warning">Chờ xác nhận</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.pending }}</div>
+                <i class="bi bi-clock-history app-kpi-icon text-warning"></i>
+            </div>
+        </div>
+
+        <!-- Đã xác nhận -->
+        <div class="app-kpi-card app-kpi-border-info">
+            <div class="app-card-body text-info">
+                <div class="app-small text-uppercase mb-1 fw-medium text-info">Đã xác nhận</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.confirmed }}</div>
+                <i class="bi bi-check-circle app-kpi-icon text-info"></i>
+            </div>
+        </div>
+
+        <!-- Đã hoàn thành -->
+        <div class="app-kpi-card app-kpi-border-success">
+            <div class="app-card-body text-success">
+                <div class="app-small text-uppercase mb-1 fw-medium text-success">Đã hoàn thành</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.completed }}</div>
+                <i class="bi bi-check-all app-kpi-icon text-success"></i>
+            </div>
+        </div>
+
+        <!-- Đã hủy -->
+        <div class="app-kpi-card app-kpi-border-danger">
+            <div class="app-card-body text-danger">
+                <div class="app-small text-uppercase mb-1 fw-medium text-danger">Đã hủy</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.cancelled }}</div>
+                <i class="bi bi-x-circle app-kpi-icon text-danger"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-calendar-check" style="font-size: 18px; margin-right: 8px;"></i>Danh sách lịch hẹn
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <div class="app-table-wrapper">
+                {%- from 'layout/table_macros.html' import pagination_widget, empty_state, col_vis_button %}
+                <!-- Filter Section -->
+                <form method="GET" action="{{ url_for('appointment.index') }}" class="app-filter-bar">
+                    <!-- Hàng 1: Ô tìm kiếm và Quick Range / Date Range -->
+                    <div class="app-filter-main">
+                        <div class="app-search-box" style="flex: 0 0 calc(80% - 12.8px); min-width: 280px;">
+                            <label>Tìm kiếm</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" name="search" class="app-form-control form-control" placeholder="Tìm theo tên khách hàng, số điện thoại hoặc dịch vụ..." value="{{ request.args.get('search', '') }}" aria-label="Tìm theo tên khách hàng, số điện thoại hoặc dịch vụ...">
+                            </div>
+                        </div>
+                        
+                        <div class="app-select-group" style="flex: 0 0 calc(20% - 3.2px); min-width: 120px;">
+                            <label class="d-flex align-items-center gap-1">
+                                Khoảng thời gian 
+                                <i class="bi bi-info-circle text-primary cursor-pointer" data-bs-toggle="tooltip" data-bs-placement="top" title="Hai ô ngày chỉ xuất hiện khi chọn 'Tùy chọn'."></i>
+                            </label>
+                            <select name="period" id="periodSelect" class="app-form-select form-select" style="width: 100%;" onchange="toggleCustomDates(true)">
+                                <option value="" {% if not request.args.get('period') or request.args.get('period') == '' or request.args.get('period') == 'all' %}selected{% endif %}>Tất cả</option>
+                                <option value="today" {% if request.args.get('period') == 'today' %}selected{% endif %}>Hôm nay</option>
+                                <option value="this_week" {% if request.args.get('period') == 'this_week' %}selected{% endif %}>Tuần này</option>
+                                <option value="this_month" {% if request.args.get('period') == 'this_month' %}selected{% endif %}>Tháng này</option>
+                                <option value="custom" {% if request.args.get('period') == 'custom' %}selected{% endif %}>Tùy chọn</option>
+                            </select>
+                        </div>
+
+                        <!-- Date inputs inside main row if period is custom, otherwise toggled by JS -->
+                        <div class="app-date-group transition-collapse" id="customDatesRow" style="display: none; flex: 1 1 30%; min-width: 280px;">
+                            <div class="date-item">
+                                <label>Từ ngày</label>
+                                <input type="date" name="from_date" id="from_date" class="app-form-control form-control" value="{{ request.args.get('from_date', '') }}">
+                            </div>
+                            <div class="date-item">
+                                <label>Đến ngày</label>
+                                <input type="date" name="to_date" id="to_date" class="app-form-control form-control" value="{{ request.args.get('to_date', '') }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hàng 2: Các Select Filter & Sorting bên trái, nút action bên phải -->
+                    <div class="app-filter-actions">
+                        <div class="app-filter-group">
+                            <div class="app-select-group">
+                                <label>Trạng thái</label>
+                                <select name="status" class="app-form-select form-select">
+                                    <option value="" {% if not request.args.get('status') %}selected{% endif %}>Tất cả trạng thái</option>
+                                    <option value="Pending" {% if request.args.get('status') == 'Pending' %}selected{% endif %}>Chờ xác nhận</option>
+                                    <option value="Confirmed" {% if request.args.get('status') == 'Confirmed' %}selected{% endif %}>Đã xác nhận</option>
+                                    <option value="Completed" {% if request.args.get('status') == 'Completed' %}selected{% endif %}>Hoàn thành</option>
+                                    <option value="Cancelled" {% if request.args.get('status') == 'Cancelled' %}selected{% endif %}>Đã hủy</option>
+                                </select>
+                            </div>
+                            <div class="app-select-group">
+                                <label>Sắp xếp theo</label>
+                                <select name="sort_by" class="app-form-select form-select">
+                                    <option value="date" {% if request.args.get('sort_by', 'date') == 'date' %}selected{% endif %}>Ngày hẹn</option>
+                                    <option value="customer" {% if request.args.get('sort_by') == 'customer' %}selected{% endif %}>Tên khách hàng</option>
+                                    <option value="status" {% if request.args.get('sort_by') == 'status' %}selected{% endif %}>Trạng thái</option>
+                                </select>
+                            </div>
+                            <div class="app-select-group">
+                                <label>Thứ tự</label>
+                                <select name="order" class="app-form-select form-select">
+                                    <option value="desc" {% if request.args.get('order', 'desc') == 'desc' %}selected{% endif %}>Giảm dần</option>
+                                    <option value="asc" {% if request.args.get('order') == 'asc' %}selected{% endif %}>Tăng dần</option>
+                                </select>
+                            </div>
+                            
+                        </div>
+                        
+                        <div class="app-toolbar">
+                            <button class="app-btn app-btn-primary btn btn-primary" type="submit">
+                                <i class="bi bi-funnel-fill"></i> Lọc
+                            </button>
+                            <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary" title="Đặt lại bộ lọc">
+                                <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Containers for views -->
+                <div id="list-view-container">
+                    <!-- Table Section -->
+                    <div class="stf-table-wrap">
+                        <table class="app-table table table-hover align-middle stf-table" id="appointment-table">
+                            <thead class="app-table-header">
+                                <tr>
+                                    <th class="text-center" style="width:50px;" data-col-key="stt" scope="col">STT</th>
+                                    <th class="stf-sortable" data-sort-field="appointment_time" data-col-key="datetime" scope="col">Thời gian</th>
+                                    <th class="stf-sortable" data-sort-field="customer_name" data-col-key="customer" scope="col">Khách hàng</th>
+                                    <th data-col-key="service" scope="col">Dịch vụ</th>
+                                    <th data-col-key="status" scope="col">Trạng thái</th>
+                                    <th class="text-center" style="width:110px;" data-col-key="actions" scope="col">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in appointments.items %}
+                                <tr class="{% if appointment.is_today %}table-warning{% endif %}">
+                                    <td class="text-center fw-medium text-secondary">{{ (appointments.page - 1) * appointments.per_page + loop.index }}</td>
+                                    <td>
+                                        <div class="datetime-cell">
+                                            <div class="date-part fw-semibold">{{ appointment.appointment_time.strftime('%d/%m/%Y') if appointment.appointment_time else 'N/A' }}</div>
+                                            <div class="time-part text-muted">{{ appointment.appointment_time.strftime('%H:%M') if appointment.appointment_time else '' }}</div>
+                                            {% if appointment.is_today or appointment.is_upcoming or appointment.is_overdue %}
+                                            <div class="badge-part mt-1 d-flex flex-wrap gap-1">
+                                                {% if appointment.is_today %}
+                                                <span class="app-badge app-badge-pending badge bg-warning text-dark rounded-pill">Hôm nay</span>
+                                                {% endif %}
+                                                {% if appointment.is_upcoming %}
+                                                <span class="app-badge badge bg-info text-dark rounded-pill">Sắp đến giờ</span>
+                                                {% endif %}
+                                                {% if appointment.is_overdue %}
+                                                <span class="app-badge app-badge-cancelled badge bg-danger text-white rounded-pill">Quá giờ</span>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="customer-cell">
+                                            <div class="d-flex align-items-center gap-1">
+                                                {% if appointment.is_today and appointment.status == 'Pending' %}
+                                                <i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xác nhận"></i>
+                                                {% endif %}
+                                                <div class="customer-name fw-bold">{{ appointment.customer.name | highlight(q) if appointment.customer else 'N/A' }}</div>
+                                            </div>
+                                            <div class="customer-phone text-muted small mt-1">{{ appointment.customer.phone | highlight(q) if (appointment.customer and appointment.customer.phone) else '' }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="fw-medium app-text-primary">{{ appointment.service.name | highlight(q) if appointment.service else 'N/A' }}</td>
+                                    <td>
+                                        <div class="dropdown status-dropdown" data-id="{{ appointment.id }}">
+                                            {% if appointment.status == 'Pending' %}
+                                                <button class="app-btn-sm app-badge app-badge-pending btn btn-sm dropdown-toggle status-badge-btn badge status-pending d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Pending">
+                                                    <span><i class="bi bi-clock me-1"></i>Chờ xác nhận</span>
+                                                </button>
+                                            {% elif appointment.status == 'Confirmed' %}
+                                                <button class="app-btn-sm app-badge app-badge-confirmed btn btn-sm dropdown-toggle status-badge-btn badge status-confirmed d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Confirmed">
+                                                    <span><i class="bi bi-check-circle me-1"></i>Đã xác nhận</span>
+                                                </button>
+                                            {% elif appointment.status == 'Completed' %}
+                                                <button class="app-btn-sm app-badge app-badge-completed btn btn-sm dropdown-toggle status-badge-btn badge status-completed d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Completed">
+                                                    <span><i class="bi bi-check2-all me-1"></i>Hoàn thành</span>
+                                                </button>
+                                            {% elif appointment.status == 'Cancelled' %}
+                                                <button class="app-btn-sm app-badge app-badge-cancelled btn btn-sm dropdown-toggle status-badge-btn badge status-cancelled d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Cancelled">
+                                                    <span><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
+                                                </button>
+                                            {% endif %}
+                                            <ul class="dropdown-menu shadow border-0 py-1">
+                                                <li>
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Pending' %}active fw-bold disabled{% endif %}" type="button" data-value="Pending">
+                                                        <span><i class="bi bi-clock me-2"></i>Chờ xác nhận</span>
+                                                        {% if appointment.status == 'Pending' %}<i class="bi bi-check"></i>{% endif %}
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Confirmed' %}active fw-bold disabled{% endif %}" type="button" data-value="Confirmed">
+                                                        <span><i class="bi bi-check-circle me-2"></i>Đã xác nhận</span>
+                                                        {% if appointment.status == 'Confirmed' %}<i class="bi bi-check"></i>{% endif %}
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Completed' %}active fw-bold disabled{% endif %}" type="button" data-value="Completed">
+                                                        <span><i class="bi bi-check2-all me-2"></i>Hoàn thành</span>
+                                                        {% if appointment.status == 'Completed' %}<i class="bi bi-check"></i>{% endif %}
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Cancelled' %}active fw-bold disabled{% endif %}" type="button" data-value="Cancelled">
+                                                        <span><i class="bi bi-x-circle me-2"></i>Đã hủy</span>
+                                                        {% if appointment.status == 'Cancelled' %}<i class="bi bi-check"></i>{% endif %}
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                         <div class="btn-group btn-group-sm">
+                                             <a href="{{ url_for('appointment.detail', id=appointment.id) }}" class="btn btn-outline-secondary" title="Chi tiết">
+                                                 <i class="bi bi-eye"></i>
+                                             </a>
+                                             <a href="{{ url_for('appointment.edit', id=appointment.id) }}" class="btn btn-outline-primary" title="Sửa">
+                                                 <i class="bi bi-pencil-square"></i>
+                                             </a>
+                                             <form action="{{ url_for('appointment.delete', id=appointment.id) }}" method="POST" class="d-inline">
+                                                 <button type="submit" class="btn btn-outline-danger btn-delete rounded-start-0" title="Xóa" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0;">
+                                                     <i class="bi bi-trash"></i>
+                                                 </button>
+                                             </form>
+                                         </div>
+                                    </td>
+                                </tr>
+                                 {% else %}
+                                 <tr>
+                                     <td colspan="6" class="text-center py-5">
+                                         <div class="empty-state">
+                                             <i class="bi bi-calendar-check text-muted d-block mb-3 empty-state-icon" style="font-size: 32px;"></i>
+                                             <p class="text-muted mb-0">Không tìm thấy lịch hẹn nào phù hợp.</p>
+                                             <small class="text-muted">Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc.</small>
+                                         </div>
+                                     </td>
+                                 </tr>
+                                 {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {%- from 'layout/table_macros.html' import pagination_widget %}
+                    {{ pagination_widget(appointments, 'appointment.index', {
+                        'search': request.args.get('search',''),
+                        'status': request.args.get('status',''),
+                        'from_date': request.args.get('from_date',''),
+                        'to_date': request.args.get('to_date',''),
+                        'sort_by': sort_by, 'order': order,
+                        'per_page': per_page,
+                        'period': request.args.get('period','')
+                    }) }}
+                </div>
+
+                <!-- Calendar View Container -->
+                <div id="calendar-view-container" style="display: none; margin-top: 16px;">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmationModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa lịch hẹn này?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="app-btn app-btn-secondary btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="app-btn app-btn-danger btn btn-danger" id="confirmDeleteBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/appointment.js') }}"></script>
+<script>
+// STF per-page handler
+document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var u = new URL(window.location.href);
+        u.searchParams.set('per_page', sel.value);
+        u.searchParams.set('page', '1');
+        window.location.href = u.toString();
+    });
+});
+
+</script>
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales-all.global.min.js"></script>
+<!-- Calendar View custom controller script -->
+<script src="{{ url_for('static', filename='js/appointment-calendar.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (document.getElementById('appointment-table')) {
+        new SharedTable(document.getElementById('appointment-table'), {
+            moduleName:   'appointment',
+            sortParam:    'sort_by',
+            dirParam:     'order',
+            perPageParam: 'per_page',
+            colDefs: [
+                { key: 'stt',      label: 'STT',         hideable: true },
+                { key: 'datetime', label: 'Thời gian',   hideable: false },
+                { key: 'customer', label: 'Khách hàng',  hideable: false },
+                { key: 'service',  label: 'Dịch vụ',     hideable: true },
+                { key: 'status',   label: 'Trạng thái',  hideable: false },
+                { key: 'actions',  label: 'Thao tác',    hideable: false },
+            ]
+        });
+    }
+});
+</script>
+{% endblock %}

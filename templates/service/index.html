@@ -1,0 +1,200 @@
+{% extends "layout/base.html" %}
+
+{% block title %}Quản lý Dịch vụ{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Danh sách Dịch vụ</h1>
+        <a href="{{ url_for('service.create') }}" class="app-btn app-btn-primary btn btn-primary">
+            <i class="bi bi-plus-circle" style="margin-right: 8px;"></i>Thêm Dịch vụ Mới
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Danh sách dịch vụ
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <div class="app-table-wrapper">
+                {%- from 'layout/table_macros.html' import pagination_widget, empty_state, col_vis_button %}
+                <form method="GET" action="{{ url_for('service.index') }}" id="service-filter-form">
+                    <input type="hidden" name="sort_by"  value="{{ sort_by }}">
+                    <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+                    <input type="hidden" name="per_page" value="{{ per_page }}">
+                    <div class="stf-toolbar">
+                        <div class="stf-toolbar-left">
+                            <div class="input-group" style="min-width:240px; max-width:340px;">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" name="q" class="form-control app-form-control"
+                                       placeholder="Tìm theo tên, mô tả..." value="{{ q or '' }}" data-stf-search aria-label="Tìm theo tên, mô tả...">
+                                {% if q %}
+                                <a href="{{ url_for('service.index', service_type=service_type) }}" class="btn btn-outline-secondary" title="Xóa tìm kiếm">
+                                    <i class="bi bi-x-lg"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <select name="service_type" class="form-select app-form-select" data-stf-filter style="min-width:160px;">
+                                    <option value="" {% if not service_type %}selected{% endif %}>Tất cả nhóm</option>
+                                    <option value="nail"    {% if service_type=='nail'    %}selected{% endif %}>Nail</option>
+                                    <option value="massage" {% if service_type=='massage' %}selected{% endif %}>Massage</option>
+                                    <option value="spa"     {% if service_type=='spa'     %}selected{% endif %}>Spa</option>
+                                    <option value="makeup"  {% if service_type=='makeup'  %}selected{% endif %}>Makeup</option>
+                                    <option value="hair"    {% if service_type=='hair'    %}selected{% endif %}>Làm tóc</option>
+                                    <option value="other"   {% if service_type=='other'   %}selected{% endif %}>Khác</option>
+                                </select>
+                            </div>
+                            {% if q or service_type %}
+                            <a href="{{ url_for('service.index') }}" class="btn btn-outline-secondary" title="Đặt lại bộ lọc">
+                                <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="stf-toolbar-right">
+                            {{ col_vis_button('service') }}
+                        </div>
+                    </div>
+                </form>
+
+                <div class="stf-table-wrap">
+                    <table class="app-table table table-hover align-middle stf-table" id="service-table">
+                        <thead class="app-table-header">
+                            <tr>
+                                <th style="width:60px;" data-col-key="id" scope="col">ID</th>
+                                <th class="stf-sortable" data-sort-field="name" data-col-key="name" scope="col">Tên Dịch vụ</th>
+                                <th data-col-key="category" scope="col">Nhóm</th>
+                                <th class="stf-sortable" data-sort-field="price" data-col-key="price" scope="col">Giá</th>
+                                <th class="stf-sortable" data-sort-field="duration" data-col-key="duration" scope="col">Thời lượng (phút)</th>
+                                <th data-col-key="description" scope="col">Mô tả</th>
+                                <th class="text-center" style="width:90px;" data-col-key="actions" scope="col">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in services.items %}
+                            <tr>
+                                <td>{{ service.id }}</td>
+                                <td><strong>{{ service.name | highlight(q) }}</strong></td>
+                                <td>
+                                    {% if service.category == 'massage' %}
+                                    <span class="badge bg-info text-dark">Massage</span>
+                                    {% elif service.category == 'nail' %}
+                                    <span class="badge bg-warning text-dark">Nail</span>
+                                    {% elif service.category == 'spa' %}
+                                    <span class="badge bg-success text-white">Spa</span>
+                                    {% elif service.category == 'makeup' %}
+                                    <span class="badge bg-danger text-white">Makeup</span>
+                                    {% elif service.category == 'hair' %}
+                                    <span class="badge bg-primary text-white">Làm tóc</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary text-white">Khác</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "{:,.0f}".format(service.price) }} đ</td>
+                                <td>{{ service.duration }}</td>
+                                <td class="text-truncate" style="max-width: 250px;" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ service.description or '' }}">
+                                    {{ service.description | highlight(q) if service.description else '' }}
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        <a href="{{ url_for('service.edit', id=service.id) }}" class="btn btn-outline-primary btn-sm" title="Chỉnh sửa">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                        <form action="{{ url_for('service.delete', id=service.id) }}" method="POST" style="display: inline-block;">
+                                            <button type="button" class="btn btn-outline-danger btn-sm btn-delete-service" title="Xóa" data-id="{{ service.id }}" data-name="{{ service.name }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            {{ empty_state('bi-scissors', 'Không tìm thấy dịch vụ nào', 'Thêm mới hoặc thử lại bộ lọc tìm kiếm.') }}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {{ pagination_widget(services, 'service.index', {'q': q, 'service_type': service_type, 'sort_by': sort_by, 'sort_dir': sort_dir, 'per_page': per_page}, module_name='service') }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    new SharedTable(document.getElementById('service-table'), {
+        moduleName: 'service',
+        sortParam:  'sort_by',
+        dirParam:   'sort_dir',
+        perPageParam: 'per_page',
+        colDefs: [
+            { key: 'id',          label: 'ID',             hideable: true },
+            { key: 'name',        label: 'Tên dịch vụ',    hideable: false },
+            { key: 'category',    label: 'Nhóm',           hideable: true },
+            { key: 'price',       label: 'Giá',            hideable: true },
+            { key: 'duration',    label: 'Thời lượng',     hideable: true },
+            { key: 'description', label: 'Mô tả',          hideable: true },
+            { key: 'actions',     label: 'Hành động',      hideable: false },
+        ]
+    });
+
+    // AJAX delete handler
+    document.querySelectorAll('.btn-delete-service').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const serviceId = this.getAttribute('data-id');
+            const serviceName = this.getAttribute('data-name');
+            
+            if (confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}" này không?`)) {
+                const row = this.closest('tr');
+                
+                // Add loading indicator on the delete button
+                const originalHtml = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                fetch(`/services/delete/${serviceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Notification.success(data.message || 'Đã xóa dịch vụ.');
+                        // Fade out the row smoothly
+                        row.style.transition = 'opacity 0.4s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                            // If table becomes empty, reload to show empty state
+                            const remainingRows = document.querySelectorAll('#service-table tbody tr');
+                            if (remainingRows.length === 0) {
+                                window.location.reload();
+                            }
+                        }, 400);
+                    } else {
+                        this.disabled = false;
+                        this.innerHTML = originalHtml;
+                        Notification.error(data.message || 'Không thể xóa dịch vụ.');
+                    }
+                })
+                .catch(error => {
+                    this.disabled = false;
+                    this.innerHTML = originalHtml;
+                    console.error('Error:', error);
+                    Notification.error('Không thể kết nối đến máy chủ.');
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

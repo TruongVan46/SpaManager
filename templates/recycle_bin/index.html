@@ -1,0 +1,492 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Thùng rác - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page recycle-bin-page">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Thùng rác</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Thùng rác</h1>
+        <a href="{{ url_for('recycle_bin.index') }}" class="app-btn app-btn-secondary btn btn-secondary" id="btn-refresh" aria-label="Làm mới trang">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+        </a>
+    </div>
+
+    <!-- Data Card -->
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0 d-flex align-items-center">
+                <i class="bi bi-trash3" style="font-size: 18px; margin-right: 8px;"></i>Dữ liệu đã xóa tạm thời
+                <div class="spinner-border spinner-border-sm text-primary ms-3 d-none" id="loading-spinner" role="status" style="width: 1rem; height: 1rem;">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <!-- Thanh công cụ (Toolbar) -->
+            <form method="GET" action="{{ url_for('recycle_bin.index') }}" class="app-filter-bar mb-3" id="recycle-bin-filter-form">
+                <input type="hidden" name="per_page" value="{{ per_page }}">
+                <div class="recycle-bin-toolbar-row">
+                    <!-- 1. Search Box -->
+                    <div class="filter-item flex-grow-1 search-box">
+                        <label class="form-label small mb-1" for="search-input">Tìm kiếm</label>
+                        <div class="input-group" style="min-width: 260px;">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="search-input" name="q" class="app-form-control form-control form-control-sm" placeholder="Tìm theo tên, loại dữ liệu..." value="{{ q or '' }}" data-stf-search aria-label="Tìm theo tên, loại dữ liệu">
+                        </div>
+                    </div>
+                    
+                    <!-- 2. Filter Type -->
+                    <div class="filter-item type-box">
+                        <label class="form-label small mb-1" for="type-select">Loại dữ liệu</label>
+                        <select id="type-select" name="item_type" class="app-form-select form-select form-select-sm">
+                            <option value="" {% if not item_type or item_type == 'Tất cả' %}selected{% endif %}>Tất cả</option>
+                            <option value="Customer" {% if item_type == 'Customer' %}selected{% endif %}>Khách hàng</option>
+                            <option value="Service" {% if item_type == 'Service' %}selected{% endif %}>Dịch vụ</option>
+                            <option value="Appointment" {% if item_type == 'Appointment' %}selected{% endif %}>Lịch hẹn</option>
+                            <option value="Invoice" {% if item_type == 'Invoice' %}selected{% endif %}>Hóa đơn</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. Sort -->
+                    <div class="filter-item sort-box">
+                        <label class="form-label small mb-1" for="sort-select">Sắp xếp</label>
+                        <select id="sort-select" name="sort_by" class="app-form-select form-select form-select-sm">
+                            <option value="newest_deleted" {% if sort_by == 'newest_deleted' %}selected{% endif %}>Mới xóa nhất</option>
+                            <option value="oldest_deleted" {% if sort_by == 'oldest_deleted' %}selected{% endif %}>Cũ nhất</option>
+                        </select>
+                    </div>
+
+
+                    <!-- Buttons -->
+                    <div class="filter-item filter-buttons">
+                        <button type="submit" class="app-btn app-btn-primary btn btn-sm btn-primary" aria-label="Tìm kiếm thùng rác">
+                            <i class="bi bi-funnel-fill"></i> Lọc
+                        </button>
+                        {% if q or item_type or sort_by != 'newest_deleted' or per_page != 10 %}
+                        <a href="{{ url_for('recycle_bin.index') }}" class="app-btn app-btn-outline-danger btn btn-sm btn-outline-danger" id="btn-reset-filters" title="Xóa bộ lọc" aria-label="Reset bộ lọc về mặc định">
+                            <i class="bi bi-x-circle"></i> Xóa
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+
+            <!-- Statistics header count -->
+            <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-2">
+                <span class="recycle-bin-stats-bar">
+                    Tổng: <strong>{{ stats.total }}</strong> | Khách hàng: <strong>{{ stats.customer }}</strong> | Dịch vụ: <strong>{{ stats.service }}</strong> | Lịch hẹn: <strong>{{ stats.appointment }}</strong> | Hóa đơn: <strong>{{ stats.invoice }}</strong>
+                </span>
+                {% if items.total > 0 %}
+                <span class="text-muted small">
+                    Hiển thị từ <strong>{{ (items.page - 1) * items.per_page + 1 }}</strong> đến <strong>{{ [items.page * items.per_page, items.total]|min }}</strong> trong tổng số <strong>{{ items.total }}</strong> bản ghi.
+                </span>
+                {% endif %}
+            </div>
+
+            {% if items.total == 0 %}
+            <!-- Empty State -->
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-trash3"></i>
+                </div>
+                <h4 class="empty-state-title">Thùng rác đang trống</h4>
+                <p class="empty-state-description">Các dữ liệu đã xóa sẽ xuất hiện tại đây.</p>
+            </div>
+            {% else %}
+            <!-- Data Table -->
+            <div class="table-responsive app-table-container recycle-bin-table-container">
+                <table class="app-table table table-hover align-middle recycle-bin-table">
+                    <thead class="app-table-header">
+                        <tr>
+                            <th style="width: 15%;" scope="col">Loại dữ liệu</th>
+                            <th style="width: 35%;" scope="col">Thông tin chi tiết</th>
+                            <th style="width: 18%;" scope="col">Thời điểm xóa</th>
+                            <th style="width: 12%;" scope="col">Người xóa</th>
+                            <th style="width: 10%;" class="text-center" scope="col">Trạng thái</th>
+                            <th style="width: 10%;" class="text-center" scope="col">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items.items %}
+                        {% set local_dt = item.deleted_at | vietnam_time if item.deleted_at else None %}
+                        {% set formatted_time = local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else 'N/A' %}
+                        <tr>
+                            <td>
+                                <span class="app-badge {{ item.badge_class }}">{{ item.vn_name | upper }}</span>
+                            </td>
+                            <td>
+                                <strong>{{ item.name | highlight(q) }}</strong>
+                            </td>
+                            <td>
+                                <span>{{ formatted_time }}</span>
+                            </td>
+                            <td>
+                                <span>{{ item.deleted_by | highlight(q) if item.deleted_by else '-' }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="app-badge badge-status-deleted">ĐÃ XÓA</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-success me-1 d-inline-flex align-items-center btn-restore-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" title="Khôi phục" aria-label="Khôi phục dữ liệu">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Khôi phục
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center btn-delete-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn dữ liệu">
+                                        <i class="bi bi-trash me-1"></i> Xóa vĩnh viễn
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {%- from 'layout/table_macros.html' import pagination_widget %}
+            {{ pagination_widget(items, 'recycle_bin.index', {
+                'q': q, 'item_type': item_type,
+                'sort_by': sort_by, 'per_page': per_page
+            }) }}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Xác nhận Khôi phục -->
+<div class="modal fade" id="restoreConfirmModal" tabindex="-1" aria-labelledby="restoreConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="restoreConfirmModalLabel">Xác nhận khôi phục</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-arrow-counterclockwise text-success" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+                <p class="mb-2 fs-5">Bạn có chắc chắn muốn khôi phục bản ghi này?</p>
+                <p class="text-muted mb-0"><small>Dữ liệu sẽ được khôi phục về trạng thái hoạt động bình thường.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success" id="btn-confirm-restore">Khôi phục</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xác nhận Xóa Vĩnh Viễn -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa vĩnh viễn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="text-center mb-3">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+                    <p class="mb-2 fs-5">Bạn có chắc chắn muốn xóa vĩnh viễn bản ghi này?</p>
+                    <p class="text-danger mb-0"><small>Hành động này không thể hoàn tác và sẽ xóa sạch dữ liệu liên quan.</small></p>
+                </div>
+                <!-- Container cho bản ghi liên quan (nếu có) -->
+                <div id="related-records-container" class="alert alert-warning d-none mt-3 mb-0">
+                    <h6 class="alert-heading fw-bold mb-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Lưu ý các liên kết dữ liệu:</h6>
+                    <div id="related-records-list" style="font-size: 0.85rem;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete">Xóa vĩnh viễn</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Form submit and navigation loading spinner
+        const form = document.getElementById('recycle-bin-filter-form');
+        const spinner = document.getElementById('loading-spinner');
+        
+        if (form && spinner) {
+            form.addEventListener('submit', function() {
+                spinner.classList.remove('d-none');
+            });
+        }
+        
+        document.querySelectorAll('.pagination .page-link, #btn-reset-filters, #btn-refresh').forEach(link => {
+            link.addEventListener('click', function() {
+                if (spinner && link.getAttribute('href') && link.getAttribute('href') !== '#') {
+                    spinner.classList.remove('d-none');
+                }
+            });
+        });
+
+        // STF per-page handler
+        document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                var u = new URL(window.location.href);
+                u.searchParams.set('per_page', sel.value);
+                u.searchParams.set('page', '1');
+                window.location.href = u.toString();
+            });
+        });
+
+        // Restore Action Logic
+        const restoreButtons = document.querySelectorAll('.btn-restore-item');
+        const restoreModalEl = document.getElementById('restoreConfirmModal');
+        const confirmRestoreBtn = document.getElementById('btn-confirm-restore');
+        
+        let itemToRestore = null;
+        let rowToRestore = null;
+
+        if (restoreButtons.length > 0 && restoreModalEl && confirmRestoreBtn && typeof bootstrap !== 'undefined') {
+            const restoreModal = new bootstrap.Modal(restoreModalEl);
+            
+            restoreButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    itemToRestore = {
+                        id: btn.getAttribute('data-id'),
+                        type: btn.getAttribute('data-type'),
+                        name: btn.getAttribute('data-name')
+                    };
+                    rowToRestore = btn.closest('tr');
+                    restoreModal.show();
+                });
+            });
+            
+            confirmRestoreBtn.addEventListener('click', function() {
+                if (!itemToRestore) return;
+                
+                // Disable button and show spinner
+                confirmRestoreBtn.disabled = true;
+                confirmRestoreBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Đang khôi phục...';
+                
+                const restoreUrl = `/recycle-bin/restore/${itemToRestore.type}/${itemToRestore.id}`;
+                
+                fetch(restoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    restoreModal.hide();
+                    
+                    // Reset confirm button
+                    confirmRestoreBtn.disabled = false;
+                    confirmRestoreBtn.innerHTML = 'Khôi phục';
+                    
+                    if (data.success) {
+                        showToast(data.message || 'Khôi phục thành công.', true);
+                        
+                        // Remove row from table with smooth fade transition
+                        if (rowToRestore) {
+                            rowToRestore.style.transition = 'opacity 0.4s ease';
+                            rowToRestore.style.opacity = '0';
+                            setTimeout(() => {
+                                rowToRestore.remove();
+                                
+                                // Check if page has become empty
+                                const remainingRows = document.querySelectorAll('.recycle-bin-table tbody tr');
+                                if (remainingRows.length === 0) {
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    let currentPage = parseInt(urlParams.get('page')) || 1;
+                                    if (currentPage > 1) {
+                                        // Go to previous page
+                                        urlParams.set('page', currentPage - 1);
+                                        window.location.href = window.location.pathname + '?' + urlParams.toString();
+                                    } else {
+                                        // Reload to trigger Empty State view
+                                        window.location.reload();
+                                    }
+                                } else {
+                                    // Update statistics counters dynamically
+                                    updateStatsBar(itemToRestore.type);
+                                }
+                            }, 400);
+                        }
+                    } else {
+                        showToast(data.message || 'Không thể khôi phục dữ liệu.', false);
+                    }
+                })
+                .catch(error => {
+                    restoreModal.hide();
+                    confirmRestoreBtn.disabled = false;
+                    confirmRestoreBtn.innerHTML = 'Khôi phục';
+                    showToast('Không thể khôi phục dữ liệu.', false);
+                });
+            });
+        }
+
+        // Permanent Delete Action Logic
+        const deleteButtons = document.querySelectorAll('.btn-delete-item');
+        const deleteModalEl = document.getElementById('deleteConfirmModal');
+        const confirmDeleteBtn = document.getElementById('btn-confirm-delete');
+        const relatedRecordsContainer = document.getElementById('related-records-container');
+        const relatedRecordsList = document.getElementById('related-records-list');
+        
+        let itemToDelete = null;
+        let rowToDelete = null;
+
+        if (deleteButtons.length > 0 && deleteModalEl && confirmDeleteBtn && typeof bootstrap !== 'undefined') {
+            const deleteModal = new bootstrap.Modal(deleteModalEl);
+            
+            deleteButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    itemToDelete = {
+                        id: btn.getAttribute('data-id'),
+                        type: btn.getAttribute('data-type'),
+                        name: btn.getAttribute('data-name')
+                    };
+                    rowToDelete = btn.closest('tr');
+                    
+                    // Show loading state on click
+                    btn.disabled = true;
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                    
+                    // Reset container
+                    relatedRecordsContainer.classList.add('d-none');
+                    relatedRecordsList.innerHTML = '';
+                    
+                    // Fetch related records count info
+                    fetch(`/recycle-bin/info/${itemToDelete.type}/${itemToDelete.id}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        
+                        if (data.success && data.info) {
+                            const details = data.info.details || [];
+                            const hasRelated = details.some(d => d.count > 0);
+                            
+                            if (hasRelated) {
+                                relatedRecordsContainer.classList.remove('d-none');
+                                let listHTML = `<ul class="mb-0 ps-3">`;
+                                details.forEach(d => {
+                                    if (d.count > 0) {
+                                        listHTML += `<li>Có <strong>${d.count}</strong> ${d.label} liên quan.</li>`;
+                                    }
+                                });
+                                listHTML += `</ul>`;
+                                relatedRecordsList.innerHTML = listHTML;
+                            }
+                        }
+                        deleteModal.show();
+                    })
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        deleteModal.show();
+                    });
+                });
+            });
+            
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (!itemToDelete) return;
+                
+                confirmDeleteBtn.disabled = true;
+                confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Đang xóa...';
+                
+                fetch(`/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    deleteModal.hide();
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.innerHTML = 'Xóa vĩnh viễn';
+                    
+                    if (data.success) {
+                        showToast(data.message || 'Đã xóa vĩnh viễn.', true);
+                        
+                        if (rowToDelete) {
+                            rowToDelete.style.transition = 'opacity 0.4s ease';
+                            rowToDelete.style.opacity = '0';
+                            setTimeout(() => {
+                                rowToDelete.remove();
+                                
+                                const remainingRows = document.querySelectorAll('.recycle-bin-table tbody tr');
+                                if (remainingRows.length === 0) {
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    let currentPage = parseInt(urlParams.get('page')) || 1;
+                                    if (currentPage > 1) {
+                                        urlParams.set('page', currentPage - 1);
+                                        window.location.href = window.location.pathname + '?' + urlParams.toString();
+                                    } else {
+                                        window.location.reload();
+                                    }
+                                } else {
+                                    updateStatsBar(itemToDelete.type);
+                                }
+                            }, 400);
+                        }
+                    } else {
+                        showToast(data.message || 'Không thể xóa vĩnh viễn.', false);
+                    }
+                })
+                .catch(() => {
+                    deleteModal.hide();
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.innerHTML = 'Xóa vĩnh viễn';
+                    showToast('Không thể xóa vĩnh viễn.', false);
+                });
+            });
+        }
+
+        // Helper to show unified notification toast
+        function showToast(message, isSuccess) {
+            if (isSuccess) {
+                Notification.success(message);
+            } else {
+                Notification.error(message);
+            }
+        }
+
+        // Helper to update stats bar counters dynamically
+        function updateStatsBar(itemType) {
+            const statsBar = document.querySelector('.recycle-bin-stats-bar');
+            if (!statsBar) return;
+            
+            const strongs = statsBar.querySelectorAll('strong');
+            if (strongs.length >= 5) {
+                let total = parseInt(strongs[0].textContent) || 0;
+                let customer = parseInt(strongs[1].textContent) || 0;
+                let service = parseInt(strongs[2].textContent) || 0;
+                let appointment = parseInt(strongs[3].textContent) || 0;
+                let invoice = parseInt(strongs[4].textContent) || 0;
+                
+                if (total > 0) total--;
+                if (itemType === 'Customer' && customer > 0) customer--;
+                if (itemType === 'Service' && service > 0) service--;
+                if (itemType === 'Appointment' && appointment > 0) appointment--;
+                if (itemType === 'Invoice' && invoice > 0) invoice--;
+                
+                strongs[0].textContent = total;
+                strongs[1].textContent = customer;
+                strongs[2].textContent = service;
+                strongs[3].textContent = appointment;
+                strongs[4].textContent = invoice;
+            }
+        }
+    });
+</script>
+{% endblock %}

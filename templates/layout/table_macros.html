@@ -1,0 +1,95 @@
+{%- macro pagination_widget(pagination, url_name, extra_params={}, page_param_name='page', per_page_param_name='per_page', module_name='table') %}
+{%- if pagination and pagination.total > 0 %}
+<div class="stf-footer">
+    <span class="stf-info-text">
+        Hiển thị
+        <strong>{{ (pagination.page - 1) * pagination.per_page + 1 }}</strong>–<strong>{{ [pagination.page * pagination.per_page, pagination.total] | min }}</strong>
+        trong tổng số <strong>{{ pagination.total }}</strong> bản ghi
+    </span>
+    <span class="stf-per-page">
+        Mỗi trang:
+        <select class="form-select form-select-sm" data-stf-per-page data-stf-per-page-module="{{ module_name }}" style="width:auto;">
+            {%- for n in [10, 25, 50, 100] %}
+            <option value="{{ n }}"{% if pagination.per_page == n %} selected{% endif %}>{{ n }}</option>
+            {%- endfor %}
+        </select>
+    </span>
+    {%- if pagination.pages > 1 %}
+    <nav aria-label="Phân trang" class="stf-pagination-wrap">
+        <ul class="pagination pagination-sm mb-0">
+            {%- if pagination.has_prev %}
+            <li class="page-item"><a class="page-link" href="{{ url_for(url_name, **dict(extra_params, **{page_param_name: 1})) }}">&laquo;&laquo;</a></li>
+            <li class="page-item"><a class="page-link" href="{{ url_for(url_name, **dict(extra_params, **{page_param_name: pagination.prev_num})) }}">&laquo; Trước</a></li>
+            {%- else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;&laquo;</span></li>
+            <li class="page-item disabled"><span class="page-link">&laquo; Trước</span></li>
+            {%- endif %}
+            {%- for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {%- if page_num %}
+                    {%- if page_num == pagination.page %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                    {%- else %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for(url_name, **dict(extra_params, **{page_param_name: page_num})) }}">{{ page_num }}</a></li>
+                    {%- endif %}
+                {%- else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+                {%- endif %}
+            {%- endfor %}
+            {%- if pagination.has_next %}
+            <li class="page-item"><a class="page-link" href="{{ url_for(url_name, **dict(extra_params, **{page_param_name: pagination.next_num})) }}">Sau &raquo;</a></li>
+            <li class="page-item"><a class="page-link" href="{{ url_for(url_name, **dict(extra_params, **{page_param_name: pagination.pages})) }}">&raquo;&raquo;</a></li>
+            {%- else %}
+            <li class="page-item disabled"><span class="page-link">Sau &raquo;</span></li>
+            <li class="page-item disabled"><span class="page-link">&raquo;&raquo;</span></li>
+            {%- endif %}
+        </ul>
+    </nav>
+    {%- endif %}
+</div>
+{%- endif %}
+{%- endmacro %}
+
+{%- macro empty_state(icon, title, desc, clear_url=none) %}
+<tr>
+    <td colspan="99">
+        <div class="stf-empty-state">
+            <i class="bi {{ icon }} stf-empty-state-icon"></i>
+            <p class="stf-empty-state-title">{{ title }}</p>
+            <p class="stf-empty-state-desc">{{ desc }}</p>
+            {%- if clear_url or request.args %}
+            <a href="{{ clear_url or request.path }}" class="btn btn-outline-primary btn-sm mt-2">
+                <i class="bi bi-x-circle"></i> Xóa bộ lọc
+            </a>
+            {%- endif %}
+        </div>
+    </td>
+</tr>
+{%- endmacro %}
+
+{%- macro col_vis_button(module) %}
+<div class="dropdown">
+    <button class="btn btn-outline-secondary stf-col-vis-btn" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false" title="Ẩn/hiện cột">
+        <i class="bi bi-layout-three-columns"></i>
+        <span class="d-none d-md-inline">Ẩn/Hiện cột</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end stf-col-vis-menu"
+        data-stf-col-vis-menu="{{ module }}">
+        <li><h6 class="dropdown-header">Chọn cột hiển thị</h6></li>
+        <li><hr class="dropdown-divider"></li>
+    </ul>
+</div>
+{%- endmacro %}
+
+{%- macro table_skeleton(rows=5, cols=5) %}
+{%- for r in range(rows) %}
+<tr class="stf-table-skeleton-row">
+    {%- for c in range(cols) %}
+    {%- set rnd_cls = ['stf-w-40', 'stf-w-60', 'stf-w-80', 'stf-w-95'] | random %}
+    <td>
+        <div class="stf-skeleton stf-skeleton-text {{ rnd_cls }}"></div>
+    </td>
+    {%- endfor %}
+</tr>
+{%- endfor %}
+{%- endmacro %}

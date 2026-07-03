@@ -1,0 +1,925 @@
+{% extends 'layout/base.html' %}
+{% from 'layout/table_macros.html' import pagination_widget, empty_state %}
+
+{% block title %}Cài đặt - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Cài đặt</h1>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         CARD 1: THÔNG TIN SPA
+         ═══════════════════════════════════════════════ -->
+    <div class="app-card setting-card" id="card-spa-info">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-building" style="font-size: 18px; margin-right: 8px;"></i>Thông tin Spa
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpaInfo" aria-expanded="true">
+                <i class="bi bi-chevron-up"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="collapseSpaInfo">
+            <div class="app-card-body">
+                <form action="{{ url_for('setting.save_spa_info') }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <div class="row g-3">
+                        <!-- Logo preview -->
+                        <div class="col-12 text-center mb-2">
+                            <div class="spa-logo-preview">
+                                <div class="logo-placeholder {% if spa_info.spa_logo %}d-none{% endif %}" id="logoPlaceholder">
+                                    <i class="bi bi-image"></i>
+                                    <span>Logo Spa</span>
+                                </div>
+                                <img src="{% if spa_info.spa_logo %}{{ url_for('static', filename=spa_info.spa_logo) }}{% endif %}" alt="Logo Spa" class="logo-img {% if not spa_info.spa_logo %}d-none{% endif %}" id="logoPreview" loading="lazy">
+                            </div>
+                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                <label class="btn btn-sm btn-outline-secondary mb-0">
+                                    <i class="bi bi-upload"></i> Chọn logo
+                                    <input type="file" name="spa_logo" accept="image/*" class="d-none" id="logoInput">
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="btnDeleteLogo" {% if not spa_info.spa_logo %}style="display: none;"{% endif %}>
+                                    <i class="bi bi-trash"></i> Xóa logo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Row 1: Tên Spa + Chủ sở hữu -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tên Spa <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control app-form-control" name="spa_name" 
+                                   value="{{ spa_info.spa_name }}" required placeholder="Nhập tên Spa" aria-label="Nhập tên Spa">
+                            <div class="invalid-feedback">
+                                Vui lòng nhập tên Spa!
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Chủ sở hữu</label>
+                            <input type="text" class="form-control app-form-control" name="spa_owner" 
+                                   value="{{ spa_info.spa_owner }}" placeholder="Nhập tên chủ sở hữu" aria-label="Nhập tên chủ sở hữu">
+                        </div>
+
+                        <!-- Row 2: SĐT + Email -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control app-form-control" name="spa_phone" 
+                                   value="{{ spa_info.spa_phone }}" required
+                                   pattern="0\d{9}" 
+                                   maxlength="10" 
+                                   minlength="10"
+                                   placeholder="Nhập số điện thoại" aria-label="Nhập số điện thoại">
+                            <div class="invalid-feedback">
+                                Vui lòng nhập đúng 10 chữ số và bắt đầu bằng số 0!
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control app-form-control" name="spa_email" 
+                                   value="{{ spa_info.spa_email }}" placeholder="Nhập email" aria-label="Nhập email">
+                            <div class="invalid-feedback">
+                                Vui lòng nhập email hợp lệ!
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Địa chỉ -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Địa chỉ</label>
+                            <input type="text" class="form-control app-form-control" name="spa_address" 
+                                   value="{{ spa_info.spa_address }}" placeholder="Nhập địa chỉ" aria-label="Nhập địa chỉ">
+                        </div>
+
+                        <!-- Row 4: Giờ mở cửa + đóng cửa -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Giờ mở cửa</label>
+                            <input type="time" class="form-control app-form-control" name="spa_open_time" 
+                                   value="{{ spa_info.spa_open_time }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Giờ đóng cửa</label>
+                            <input type="time" class="form-control app-form-control" name="spa_close_time" 
+                                   value="{{ spa_info.spa_close_time }}">
+                        </div>
+
+                        <!-- Save button -->
+                        <div class="col-12 text-end mt-3">
+                            <button type="submit" class="app-btn app-btn-primary btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Lưu thông tin
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         CARD 2: QUẢN LÝ DỮ LIỆU
+         ═══════════════════════════════════════════════ -->
+    <div class="app-card setting-card" id="card-data-management">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-database" style="font-size: 18px; margin-right: 8px;"></i>Quản lý dữ liệu
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDataMgmt" aria-expanded="true">
+                <i class="bi bi-chevron-up"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="collapseDataMgmt">
+            <div class="app-card-body">
+
+                <!-- Thống kê nhanh -->
+                <div class="data-stats-grid mb-4">
+                    <div class="data-stat-item">
+                        <div class="data-stat-icon" style="background: rgba(54, 185, 204, 0.1); color: #36b9cc;">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="data-stat-info">
+                            <span class="data-stat-count">{{ stats.customers }}</span>
+                            <span class="data-stat-label">Khách hàng</span>
+                        </div>
+                    </div>
+                    <div class="data-stat-item">
+                        <div class="data-stat-icon" style="background: rgba(166, 124, 82, 0.1); color: #a67c52;">
+                            <i class="bi bi-scissors"></i>
+                        </div>
+                        <div class="data-stat-info">
+                            <span class="data-stat-count">{{ stats.services }}</span>
+                            <span class="data-stat-label">Dịch vụ</span>
+                        </div>
+                    </div>
+                    <div class="data-stat-item">
+                        <div class="data-stat-icon" style="background: rgba(246, 194, 62, 0.1); color: #f6c23e;">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                        <div class="data-stat-info">
+                            <span class="data-stat-count">{{ stats.appointments }}</span>
+                            <span class="data-stat-label">Lịch hẹn</span>
+                        </div>
+                    </div>
+                    <div class="data-stat-item">
+                        <div class="data-stat-icon" style="background: rgba(28, 200, 138, 0.1); color: #1cc88a;">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <div class="data-stat-info">
+                            <span class="data-stat-count">{{ stats.invoices }}</span>
+                            <span class="data-stat-label">Hóa đơn</span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Import Section -->
+                <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-arrow-up me-2"></i>Import dữ liệu</h6>
+
+                <div class="row g-4">
+                    <!-- Import Khách hàng Card -->
+                    <div class="col-md-6">
+                        <div class="data-action-card import-card d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="data-action-header">
+                                    <i class="bi bi-people text-info"></i>
+                                    <h6>Import Khách hàng</h6>
+                                </div>
+                                <p class="text-muted small mb-3">Nhập danh sách khách hàng hàng loạt từ file Excel. Hệ thống sẽ tự động phát hiện số điện thoại/email bị trùng lặp và xác thực thông tin.</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-info btn-sm w-100 py-2 btn-open-import-wizard" data-import-type="customers" data-template-url="{{ url_for('setting.download_customer_template') }}">
+                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Mở Import Wizard (Khách hàng)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Import Dịch vụ Card -->
+                    <div class="col-md-6">
+                        <div class="data-action-card import-card d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="data-action-header">
+                                    <i class="bi bi-scissors text-success"></i>
+                                    <h6>Import Dịch vụ</h6>
+                                </div>
+                                <p class="text-muted small mb-3">Nhập danh mục dịch vụ spa hàng loạt. Xác thực giá tiền, thời lượng thực hiện và tự động phân loại nhóm dịch vụ tương ứng.</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-success btn-sm w-100 py-2 btn-open-import-wizard" data-import-type="services" data-template-url="{{ url_for('setting.download_service_template') }}">
+                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Mở Import Wizard (Dịch vụ)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         CARD 3: TRUNG TÂM SAO LƯU (BACKUP CENTER)
+         ═══════════════════════════════════════════════ -->
+    <div class="app-card setting-card backup-center-card" id="card-backup-center">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-shield-check" style="font-size: 18px; margin-right: 8px;"></i>Trung tâm sao lưu (Backup Center)
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBackupCenter" aria-expanded="true">
+                <i class="bi bi-chevron-up"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="collapseBackupCenter">
+            <div class="app-card-body">
+                
+                <!-- Toolbar -->
+                <div class="backup-toolbar">
+                    <div class="backup-toolbar-left d-flex gap-2">
+                        <button type="button" class="btn btn-create-backup" data-bs-toggle="modal" data-bs-target="#createBackupModal">
+                            <i class="bi bi-cloud-arrow-up-fill"></i> Tạo Backup
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;">
+                            <i class="bi bi-upload"></i> Nhập Backup
+                        </button>
+                    </div>
+                    <div class="backup-toolbar-right">
+                        <!-- Search Box -->
+                        <div class="search-box-container">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="backup-search" placeholder="Tìm theo tên, ghi chú..." aria-label="Tìm kiếm bản sao lưu">
+                        </div>
+                        
+                        <!-- Sort select -->
+                        <div class="sort-container">
+                            <select id="backup-sort" class="form-select form-select-sm" aria-label="Sắp xếp bản sao lưu">
+                                <option value="newest" selected>Mới nhất</option>
+                                <option value="oldest">Cũ nhất</option>
+                                <option value="largest">Dung lượng lớn nhất</option>
+                                <option value="smallest">Dung lượng nhỏ nhất</option>
+                                <option value="name_asc">Tên A-Z</option>
+                                <option value="name_desc">Tên Z-A</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {% if not backups %}
+                <!-- Empty State -->
+                <div class="backup-empty-state">
+                    <div class="backup-empty-state-icon">
+                        <i class="bi bi-cloud-slash"></i>
+                    </div>
+                    <h5 class="backup-empty-state-title">Chưa có bản sao lưu</h5>
+                    <p class="backup-empty-state-description">Hãy tạo bản sao lưu đầu tiên để bảo vệ dữ liệu của bạn.</p>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createBackupModal">
+                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> Tạo Backup
+                    </button>
+                </div>
+                {% else %}
+                <!-- Backup Table -->
+                <div class="table-responsive backup-table-container">
+                    <table class="app-table table table-hover align-middle stf-table backup-table" id="backup-table">
+                        <thead class="app-table-header">
+                            <tr>
+                                <th style="width: 18%;" scope="col">Tên Backup</th>
+                                <th style="width: 12%;" scope="col">Ngày tạo</th>
+                                <th style="width: 8%;" scope="col">Dung lượng</th>
+                                <th style="width: 12%;" scope="col">Phiên bản (DB/App)</th>
+                                <th style="width: 10%;" class="text-center" scope="col">Nguồn</th>
+                                <th style="width: 10%;" class="text-center" scope="col">Loại</th>
+                                <th style="width: 10%;" class="text-center" scope="col">Trạng thái</th>
+                                <th style="width: 12%;" scope="col">Ghi chú</th>
+                                <th style="width: 8%;" class="text-center" scope="col">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backup-list-tbody">
+                            {% for b in backups %}
+                            <tr data-name="{{ b.display_name | lower }}" data-filename="{{ b.filename | lower }}" data-notes="{{ b.notes | lower }}" data-size="{{ b.size }}" data-time="{{ b.created_at.timestamp() }}" data-version-db="{{ b.version_db }}" data-version-app="{{ b.version_app }}" data-source="{{ b.source | default('Local') | lower }}">
+                                <td>
+                                    <span class="fw-bold app-text-primary">{{ b.display_name }}</span>
+                                </td>
+                                <td>
+                                    <span>{{ b.created_at_friendly }}</span>
+                                </td>
+                                <td>
+                                    <span>{{ b.size_friendly }}</span>
+                                </td>
+                                <td>
+                                    <span class="small text-secondary">{{ b.version_db }} / {{ b.version_app }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if b.source == 'Imported' %}
+                                        <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 11px; border-radius: 4px;"><i class="bi bi-box-arrow-in-down me-1"></i>IMPORTED</span>
+                                    {% else %}
+                                        <span class="badge bg-info text-white px-2 py-1" style="font-size: 11px; border-radius: 4px;"><i class="bi bi-pc-display me-1"></i>LOCAL</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if b.type == 'Manual' %}
+                                        <span class="badge-backup-type badge-backup-manual">Manual</span>
+                                    {% elif b.type == 'Before Import' %}
+                                        <span class="badge-backup-type badge-backup-auto">Import</span>
+                                    {% elif b.type == 'Before Restore' %}
+                                        <span class="badge-backup-type badge-backup-db">Restore</span>
+                                    {% elif b.type == 'Before Update' %}
+                                        <span class="badge-backup-type bg-dark text-white px-2 py-1" style="font-size: 11px; border-radius: 4px;">Update</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ b.type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if b.status == 'Valid' %}
+                                        <span class="badge bg-success">Hợp lệ</span>
+                                    {% elif b.status == 'File Missing' %}
+                                        <span class="badge bg-danger">Mất file Backup</span>
+                                    {% elif b.status == 'Invalid' %}
+                                        <span class="badge bg-warning text-dark">Backup lỗi</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ b.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="text-muted small text-truncate d-inline-block" style="max-width: 120px;" title="{{ b.notes }}">{{ b.notes }}</span>
+                                        <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-primary btn-edit-backup-note" data-id="{{ b.id }}" data-notes="{{ b.notes }}" title="Sửa ghi chú" aria-label="Sửa ghi chú">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-success me-1 btn-restore-backup" data-id="{{ b.id }}" data-name="{{ b.display_name }}" title="Khôi phục" {% if b.status != 'Valid' %}disabled{% endif %} aria-label="Khôi phục từ bản sao lưu này">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                        <a href="{{ url_for('setting.download_backup', backup_id=b.id) }}" class="btn btn-sm btn-outline-primary me-1 {% if b.status == 'File Missing' %}disabled{% endif %}" title="Tải xuống" aria-label="Tải xuống bản sao lưu này">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-backup" data-id="{{ b.id }}" data-name="{{ b.display_name }}" title="Xóa" aria-label="Xóa bản sao lưu này">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {{ pagination_widget(backups_pagination, 'setting.index', {'_anchor': 'card-backup-center'}, module_name='backup') }}
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         CARD 4: THÔNG TIN PHẦN MỀM
+         ═══════════════════════════════════════════════ -->
+    <div class="app-card setting-card" id="card-about">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-info-circle" style="font-size: 18px; margin-right: 8px;"></i>Thông tin phần mềm
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAbout" aria-expanded="true">
+                <i class="bi bi-chevron-up"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="collapseAbout">
+            <div class="app-card-body">
+                <div class="about-info">
+                    <div class="about-logo text-center mb-4">
+                        <div class="about-app-icon">
+                            <i class="bi bi-flower1"></i>
+                        </div>
+                        <h4 class="fw-bold mt-2 mb-0">Spa Manager</h4>
+                        <span class="badge bg-primary mt-1">v4.0 Stable</span>
+                    </div>
+                    
+                    <div class="about-details">
+                        <div class="about-row">
+                            <span class="about-label"><i class="bi bi-tag me-2"></i>Phiên bản</span>
+                            <span class="about-value">4.0.0</span>
+                        </div>
+                        <div class="about-row">
+                            <span class="about-label"><i class="bi bi-code-slash me-2"></i>Framework</span>
+                            <span class="about-value">Flask (Python)</span>
+                        </div>
+                        <div class="about-row">
+                            <span class="about-label"><i class="bi bi-palette me-2"></i>Giao diện</span>
+                            <span class="about-value">Bootstrap 5</span>
+                        </div>
+                        <div class="about-row">
+                            <span class="about-label"><i class="bi bi-database me-2"></i>Cơ sở dữ liệu</span>
+                            <span class="about-value">SQLite</span>
+                        </div>
+                        <div class="about-row">
+                            <span class="about-label"><i class="bi bi-calendar-event me-2"></i>Ngày build</span>
+                            <span class="about-value">29/06/2026</span>
+                        </div>
+                        <div class="about-row">
+                            <span class="about-label"><i class="bi bi-people me-2"></i>Nhóm thực hiện</span>
+                            <span class="about-value">Trường Văn</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Restore Wizard Modal -->
+<div class="modal fade" id="restoreWizardModal" tabindex="-1" aria-labelledby="restoreWizardModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content position-relative">
+      <!-- Loading Overlay -->
+      <div id="restore-loading-overlay" class="position-absolute w-100 h-100 d-flex flex-column align-items-center justify-content-center app-bg-card bg-opacity-75" style="top:0; left:0; z-index: 1060; border-radius: inherit; display: none !important;">
+          <div class="spinner-border text-warning mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+          <h5 class="fw-bold text-warning">Đang khôi phục dữ liệu...</h5>
+          <p class="text-muted small">Vui lòng chờ trong giây lát, không tắt trình duyệt hoặc tải lại trang.</p>
+      </div>
+      <div class="modal-header">
+        <h5 class="modal-title" id="restoreWizardModalLabel">Khôi phục dữ liệu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Backup details -->
+        <div id="wizard-step-1" class="wizard-step">
+          <h6>Chi tiết bản sao lưu</h6>
+          <ul class="list-group mb-3">
+            <li class="list-group-item"><strong>Tên:</strong> <span id="wizard-backup-name"></span></li>
+            <li class="list-group-item"><strong>Ngày tạo:</strong> <span id="wizard-backup-date"></span></li>
+            <li class="list-group-item"><strong>Dung lượng:</strong> <span id="wizard-backup-size"></span></li>
+            <li class="list-group-item"><strong>Phiên bản DB:</strong> <span id="wizard-backup-db-version"></span></li>
+            <li class="list-group-item"><strong>Phiên bản App:</strong> <span id="wizard-backup-app-version"></span></li>
+            <li class="list-group-item"><strong>Ghi chú:</strong> <span id="wizard-backup-notes"></span></li>
+          </ul>
+          <button type="button" class="btn btn-primary" id="wizard-btn-continue-1">Tiếp tục</button>
+        </div>
+        <!-- Step 2: Validation -->
+        <div id="wizard-step-2" class="wizard-step d-none">
+          <h6>Kết quả kiểm tra</h6>
+          <p id="wizard-validation-result"></p>
+          <button type="button" class="btn btn-primary" id="wizard-btn-continue-2">Tiếp tục</button>
+        </div>
+        <!-- Step 3: Warning -->
+        <div id="wizard-step-3" class="wizard-step d-none">
+          <h6 class="text-danger">Cảnh báo</h6>
+          <p id="wizard-warning-msg"></p>
+          <button type="button" class="btn btn-danger" id="wizard-btn-confirm">Xác nhận khôi phục</button>
+        </div>
+        <!-- Step 4: Result -->
+        <div id="wizard-step-4" class="wizard-step d-none text-center">
+          <h5 class="fw-bold text-success mb-3" id="wizard-result-icon-success" style="display: none;"><i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i></h5>
+          <h5 class="fw-bold text-danger mb-3" id="wizard-result-icon-error" style="display: none;"><i class="bi bi-x-circle-fill text-danger" style="font-size: 3rem;"></i></h5>
+          <h6 class="fw-bold">Kết quả khôi phục</h6>
+          <p id="wizard-result-msg" class="mb-4"></p>
+          <div id="wizard-reload-container" class="d-none mb-3">
+              <p class="text-danger small fw-semibold">Cần tải lại ứng dụng để sử dụng dữ liệu vừa khôi phục.</p>
+              <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+                  <i class="bi bi-arrow-clockwise me-1"></i> Tải lại ngay
+              </button>
+          </div>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="wizard-btn-close-step4">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Restore Confirmation Modal (For Upload) -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-labelledby="restoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-warning fw-bold" id="restoreModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Xác nhận khôi phục
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 3rem;"></i>
+                </div>
+                <p class="text-center fw-bold">Toàn bộ dữ liệu hiện tại sẽ bị ghi đè.</p>
+                <p class="text-center text-muted">Bạn có chắc chắn muốn khôi phục dữ liệu từ file backup đã chọn?</p>
+                <p class="text-center text-danger small">
+                    <i class="bi bi-info-circle me-1"></i>Hành động này không thể hoàn tác. Hãy đảm bảo bạn đã sao lưu dữ liệu hiện tại trước khi tiếp tục.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg"></i> Hủy
+                </button>
+                <button type="button" class="btn btn-warning text-white" id="confirmRestore">
+                    <i class="bi bi-arrow-repeat"></i> Xác nhận khôi phục
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Backup Modal -->
+<div class="modal fade" id="createBackupModal" tabindex="-1" aria-labelledby="createBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary fw-bold" id="createBackupModalLabel">
+                    <i class="bi bi-cloud-arrow-up-fill me-2"></i>Tạo bản sao lưu mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createBackupForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="backupNotes" class="form-label fw-bold">Ghi chú</label>
+                        <textarea class="form-control" id="backupNotes" name="notes" rows="3" placeholder="Nhập ghi chú sao lưu (tùy chọn)..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="backupType" class="form-label fw-bold">Loại sao lưu</label>
+                        <select class="form-select" id="backupType" name="backup_type">
+                            <option value="Manual" selected>Manual (Sao lưu thủ công)</option>
+                            <option value="Before Import">Before Import (Trước khi import)</option>
+                            <option value="Before Restore">Before Restore (Trước khi khôi phục)</option>
+                            <option value="Before Update">Before Update (Trước khi cập nhật)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="btnConfirmCreateBackup">
+                        <i class="bi bi-check-lg"></i> Tạo & Tải xuống
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Backup Note Modal -->
+<div class="modal fade" id="editBackupNoteModal" tabindex="-1" aria-labelledby="editBackupNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary fw-bold" id="editBackupNoteModalLabel">
+                    <i class="bi bi-pencil-square me-2"></i>Sửa ghi chú sao lưu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editBackupNoteForm">
+                <input type="hidden" id="editBackupId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editBackupNotes" class="form-label fw-bold">Ghi chú</label>
+                        <textarea class="form-control" id="editBackupNotes" rows="3" required placeholder="Nhập ghi chú sao lưu..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Backup Modal -->
+<div class="modal fade" id="restoreBackupModal" tabindex="-1" aria-labelledby="restoreBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-warning fw-bold" id="restoreBackupModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Xác nhận khôi phục
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 3rem;"></i>
+                </div>
+                <p class="text-center fw-bold fs-5">Toàn bộ dữ liệu hiện tại sẽ bị ghi đè!</p>
+                <p class="text-center">Bạn có chắc chắn muốn khôi phục dữ liệu từ bản sao lưu <strong id="restoreBackupName"></strong>?</p>
+                <div class="alert alert-danger py-2 px-3 small mb-0 mt-2">
+                    <i class="bi bi-info-circle me-1"></i>Hành động này không thể hoàn tác. Hãy đảm bảo bạn đã tạo bản sao lưu trước khi khôi phục.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg"></i> Hủy
+                </button>
+                <button type="button" class="btn btn-warning text-white" id="confirmRestoreBackupBtn">
+                    <i class="bi bi-arrow-repeat"></i> Xác nhận khôi phục
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Backup Modal -->
+<div class="modal fade" id="deleteBackupModal" tabindex="-1" aria-labelledby="deleteBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger fw-bold" id="deleteBackupModalLabel">
+                    <i class="bi bi-trash3 me-2"></i>Xác nhận xóa bản sao lưu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="bi bi-trash-fill text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <p class="text-center fw-bold fs-5">Hành động này không thể hoàn tác!</p>
+                <p class="text-center">Bạn có chắc chắn muốn xóa bản sao lưu <strong id="deleteBackupName"></strong>?</p>
+                <p class="text-center text-muted small mb-0">Cả file trên đĩa cứng và metadata sẽ bị xóa vĩnh viễn.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg"></i> Hủy
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBackupBtn">
+                    <i class="bi bi-trash"></i> Xác nhận xóa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Backup Modal -->
+<div class="modal fade" id="uploadBackupModal" tabindex="-1" aria-labelledby="uploadBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary fw-bold" id="uploadBackupModalLabel">
+                    <i class="bi bi-upload me-2"></i>Nhập bản sao lưu bên ngoài
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="uploadBackupForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div id="backup-drag-drop-zone" class="border border-2 border-dashed border-primary rounded-3 p-4 text-center app-bg-main cursor-pointer mb-3 position-relative" style="transition: all 0.3s ease;">
+                        <input type="file" id="backupFile" name="backup_file" accept=".db,.sqlite,.sqlite3" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" style="z-index: 10;">
+                        <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 2.5rem;"></i>
+                        <h6 class="fw-bold mt-2 mb-1">Kéo thả file sao lưu vào đây</h6>
+                        <p class="text-muted small mb-0">Hỗ trợ định dạng .db, .sqlite, .sqlite3 (Tối đa 100MB)</p>
+                        <div id="selected-file-info" class="mt-2 d-none">
+                            <span class="badge bg-secondary p-2"><i class="bi bi-file-earmark-binary me-1"></i> <span id="selected-filename"></span></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="uploadNotes" class="form-label fw-bold">Ghi chú (Tùy chọn)</label>
+                        <textarea class="form-control" id="uploadNotes" name="notes" rows="2" placeholder="Nhập ghi chú cho bản sao lưu này..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="btnConfirmUploadBackup" disabled>
+                        <i class="bi bi-cloud-upload me-1"></i> Tải lên & Tiếp tục
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Smart Import Wizard Modal -->
+<div class="modal fade" id="importWizardModal" tabindex="-1" aria-labelledby="importWizardModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary fw-bold" id="importWizardModalLabel">
+                    <i class="bi bi-file-earmark-arrow-up me-2"></i>Smart Import Wizard - <span id="importWizardTypeName">Khách hàng</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="btn-close-import-wizard"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <!-- Progress Header -->
+                <div class="import-progress-header d-flex justify-content-between mb-4 border-bottom pb-3">
+                    <div class="progress-step-item text-center active" id="p-step-1" style="flex: 1;">
+                        <span class="step-num bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 32px; height: 32px; font-weight: 600; font-size: 0.85rem;">1</span>
+                        <div class="small fw-semibold text-primary">Tải file & Phân tích</div>
+                    </div>
+                    <div class="progress-step-item text-center text-muted" id="p-step-2" style="flex: 1;">
+                        <span class="step-num bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 32px; height: 32px; font-weight: 600; font-size: 0.85rem;">2</span>
+                        <div class="small fw-semibold">Xem trước & Kiểm tra</div>
+                    </div>
+                    <div class="progress-step-item text-center text-muted" id="p-step-3" style="flex: 1;">
+                        <span class="step-num bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 32px; height: 32px; font-weight: 600; font-size: 0.85rem;">3</span>
+                        <div class="small fw-semibold">Xử lý trùng</div>
+                    </div>
+                    <div class="progress-step-item text-center text-muted" id="p-step-4" style="flex: 1;">
+                        <span class="step-num bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 32px; height: 32px; font-weight: 600; font-size: 0.85rem;">4</span>
+                        <div class="small fw-semibold">Kết quả</div>
+                    </div>
+                </div>
+
+                <!-- Step 1: Upload File & Templates -->
+                <div class="import-wizard-content-step" id="w-step-1-content">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 border-end pr-md-4">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-excel text-success me-2"></i>1. Tải file mẫu định dạng chuẩn</h6>
+                            <p class="text-muted small">Hãy tải và sử dụng file Excel mẫu của SpaManager để đảm bảo cấu trúc cột chính xác tuyệt đối trước khi import.</p>
+                            <a href="#" id="importTemplateDownloadBtn" class="btn btn-outline-primary w-100 py-2">
+                                <i class="bi bi-download me-2"></i>Tải file Excel mẫu (.xlsx)
+                            </a>
+                        </div>
+                        <div class="col-md-6 pl-md-4 mt-4 mt-md-0">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-upload text-primary me-2"></i>2. Chọn file dữ liệu của bạn</h6>
+                            <p class="text-muted small">Chấp nhận file định dạng `.xlsx` hoặc `.xls`. File sẽ được phân tích tự động.</p>
+                            <div class="mb-3">
+                                <input type="file" class="form-control" id="wizardImportFile" accept=".xlsx,.xls">
+                            </div>
+                            <div class="alert alert-warning small py-2 d-none" id="import-upload-alert"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Preview & Validation Results -->
+                <div class="import-wizard-content-step d-none" id="w-step-2-content">
+                    <h6 class="fw-bold mb-3 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-eye text-info me-2"></i>Xem trước 20 dòng đầu & Kiểm tra lỗi dữ liệu</span>
+                        <span class="badge bg-secondary" id="preview-row-count-badge">0 dòng</span>
+                    </h6>
+                    <p class="text-muted small">Dòng có màu <span class="badge bg-danger">Đỏ</span> là dòng chứa lỗi cú pháp. Dòng màu <span class="badge bg-warning text-dark">Cam</span> chứa thông tin bị trùng trong hệ thống.</p>
+                    
+                    <div class="table-responsive border rounded mb-3" style="max-height: 350px;">
+                        <table class="table table-hover table-sm align-middle m-0" style="font-size: 0.85rem;" id="previewTable">
+                            <thead class="app-table-header sticky-top">
+                                <tr id="previewTableHeader">
+                                    <!-- Header rows filled by JS -->
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody">
+                                <!-- Data rows filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary Stats Alert -->
+                    <div class="row g-3">
+                        <div class="col-sm-4">
+                            <div class="p-3 app-bg-main rounded text-center border">
+                                <div class="text-muted small uppercase font-weight-bold">Tổng số dòng đọc được</div>
+                                <h4 class="m-0 fw-bold app-text-primary" id="summary-total-rows">0</h4>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="p-3 app-bg-main rounded text-center border">
+                                <div class="text-muted small uppercase font-weight-bold">Số dòng có lỗi</div>
+                                <h4 class="m-0 fw-bold text-danger" id="summary-error-rows">0</h4>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="p-3 app-bg-main rounded text-center border">
+                                <div class="text-muted small uppercase font-weight-bold">Số dòng bị trùng dữ liệu</div>
+                                <h4 class="m-0 fw-bold text-warning" id="summary-duplicate-rows">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Conflict Action & Mode Options -->
+                <div class="import-wizard-content-step d-none" id="w-step-3-content">
+                    <div class="row">
+                        <div class="col-md-6 border-end pr-md-4">
+                            <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-arrow-repeat me-2"></i>1. Phương thức xử lý dữ liệu trùng</h6>
+                            <p class="text-muted small">Hệ thống phát hiện một số dòng dữ liệu trùng lặp (trùng SĐT/Email đối với Khách hàng, hoặc trùng Tên đối với Dịch vụ). Bạn muốn xử lý như thế nào?</p>
+                            
+                            <div class="form-check p-3 app-bg-main rounded border mb-2 cursor-pointer">
+                                <input class="form-check-input ms-0 me-2" type="radio" name="duplicateAction" id="dupActionSkip" value="skip" checked>
+                                <label class="form-check-label fw-semibold" for="dupActionSkip">
+                                    Bỏ qua (Skip)
+                                    <span class="d-block text-muted small fw-normal">Giữ nguyên bản ghi trong hệ thống, bỏ qua không thêm bản ghi trùng từ file Excel.</span>
+                                </label>
+                            </div>
+
+                            <div class="form-check p-3 app-bg-main rounded border mb-2 cursor-pointer">
+                                <input class="form-check-input ms-0 me-2" type="radio" name="duplicateAction" id="dupActionOverwrite" value="overwrite">
+                                <label class="form-check-label fw-semibold" for="dupActionOverwrite">
+                                    Ghi đè (Overwrite)
+                                    <span class="d-block text-muted small fw-normal">Cập nhật toàn bộ các trường thông tin trong hệ thống bằng dữ liệu mới từ file Excel.</span>
+                                </label>
+                            </div>
+
+                            <div class="form-check p-3 app-bg-main rounded border mb-2 cursor-pointer">
+                                <input class="form-check-input ms-0 me-2" type="radio" name="duplicateAction" id="dupActionInsertOnly" value="insert_only">
+                                <label class="form-check-label fw-semibold" for="dupActionInsertOnly">
+                                    Chỉ thêm dữ liệu mới
+                                    <span class="d-block text-muted small fw-normal">Không cập nhật bản ghi cũ, chỉ thêm các bản ghi hoàn toàn mới.</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 pl-md-4 mt-4 mt-md-0">
+                            <h6 class="fw-bold mb-3 text-danger"><i class="bi bi-shield-lock me-2"></i>2. Cơ chế an toàn giao dịch (Transaction Mode)</h6>
+                            <p class="text-muted small">Chọn cơ chế đảm bảo an toàn dữ liệu khi xảy ra lỗi validation trong tệp import.</p>
+                            
+                            <div class="form-check p-3 app-bg-main rounded border mb-3 cursor-pointer">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" id="importAllOrNothing" checked>
+                                <label class="form-check-label fw-semibold" for="importAllOrNothing">
+                                    Chế độ "Tất cả hoặc không có gì" (All-or-Nothing)
+                                    <span class="d-block text-danger small fw-normal">Nếu tệp Excel có bất kỳ dòng nào bị lỗi validation, toàn bộ quá trình import sẽ lập tức bị hủy bỏ (Rollback) để tránh ghi rác vào DB.</span>
+                                </label>
+                            </div>
+                            
+                            <div class="alert alert-info small py-2">
+                                <i class="bi bi-info-circle me-1"></i> <strong>Lưu ý:</strong> Trước khi quá trình import diễn ra, SpaManager sẽ <strong>tự động tạo một bản sao lưu dữ liệu (Before Import)</strong> để đảm bảo bạn có thể khôi phục lại dữ liệu bất kỳ lúc nào nếu xảy ra sự cố.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Import Report Results -->
+                <div class="import-wizard-content-step d-none" id="w-step-4-content">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;" id="w-report-icon"></i>
+                        <h5 class="fw-bold mt-2" id="w-report-title">Import dữ liệu hoàn tất!</h5>
+                        <p class="text-muted small" id="w-report-desc">Dưới đây là báo cáo thống kê kết quả thực thi.</p>
+                    </div>
+
+                    <div class="row g-3 justify-content-center mb-4">
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <div class="p-2 border rounded text-center app-bg-main">
+                                <div class="text-muted small" style="font-size: 0.75rem;">Tổng số dòng</div>
+                                <h4 class="fw-bold app-text-primary m-0" id="report-total">0</h4>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <div class="p-2 border rounded text-center bg-success-subtle">
+                                <div class="text-success small" style="font-size: 0.75rem;">Thêm mới</div>
+                                <h4 class="fw-bold text-success m-0" id="report-success">0</h4>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <div class="p-2 border rounded text-center bg-info-subtle">
+                                <div class="text-info small" style="font-size: 0.75rem;">Ghi đè</div>
+                                <h4 class="fw-bold text-info m-0" id="report-overwritten">0</h4>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <div class="p-2 border rounded text-center bg-warning-subtle">
+                                <div class="text-warning-emphasis small" style="font-size: 0.75rem;">Bỏ qua</div>
+                                <h4 class="fw-bold text-warning m-0" id="report-skipped">0</h4>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <div class="p-2 border rounded text-center bg-danger-subtle">
+                                <div class="text-danger small" style="font-size: 0.75rem;">Thất bại</div>
+                                <h4 class="fw-bold text-danger m-0" id="report-failed">0</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center d-none" id="w-report-download-btn-container">
+                        <p class="text-muted small">Phát hiện dòng dữ liệu bị lỗi hoặc bỏ qua. Bạn có thể tải báo cáo chi tiết để xem nguyên nhân.</p>
+                        <a href="#" id="downloadErrorReportBtn" class="btn btn-outline-danger btn-sm" target="_blank">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Tải báo cáo chi tiết (.txt)
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer app-bg-main border-top">
+                <!-- Left aligned buttons -->
+                <button type="button" class="btn btn-outline-danger me-auto" id="w-btn-cancel" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-outline-primary me-auto d-none" id="w-btn-import-another">Import file khác</button>
+                <button type="button" class="btn btn-outline-warning me-auto d-none" id="w-btn-retry">Thử lại</button>
+
+                <!-- Right aligned buttons -->
+                <button type="button" class="btn btn-secondary" id="w-btn-back" disabled>Quay lại</button>
+                <button type="button" class="btn btn-primary" id="w-btn-next" disabled>Tiếp tục <i class="bi bi-arrow-right ms-1"></i></button>
+                <button type="button" class="btn btn-success d-none" id="w-btn-execute"><i class="bi bi-check-lg me-1"></i> Thực hiện Import</button>
+                <button type="button" class="btn btn-primary d-none" id="w-btn-close-finish" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/setting.js') }}"></script>
+<script>
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        Notification.error('Vui lòng kiểm tra lại thông tin và điền đầy đủ các trường bắt buộc.');
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+{% endblock %}

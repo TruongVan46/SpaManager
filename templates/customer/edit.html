@@ -1,0 +1,106 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Chỉnh sửa Khách hàng - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Chỉnh sửa Khách hàng</h1>
+        <a href="{{ url_for('customer.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Thông tin khách hàng
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form action="{{ url_for('customer.edit', id=customer.id) }}" method="POST" class="needs-validation {% if errors %}was-validated{% endif %}" novalidate>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="name" class="form-label">Họ và Tên <span class="text-danger">*</span></label>
+                            <input type="text" class="app-form-control form-control {% if errors and errors.name %}is-invalid{% endif %}" id="name" name="name" value="{{ form_data.name if form_data is not none else customer.name }}" required placeholder="Nhập họ và tên khách hàng">
+                            {% if errors and errors.name %}
+                            <div class="invalid-feedback d-block">
+                                {{ errors.name }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="phone" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="tel" class="app-form-control form-control {% if errors and errors.phone %}is-invalid{% endif %}" id="phone" name="phone" value="{{ form_data.phone if form_data is not none else (customer.phone or '') }}" required
+                                pattern="0\d{9}" 
+                                maxlength="10" 
+                                minlength="10"
+                                placeholder="Nhập số điện thoại">
+                            {% if errors and errors.phone %}
+                            <div class="invalid-feedback d-block">
+                                {{ errors.phone }}
+                            </div>
+                            {% else %}
+                            <div class="invalid-feedback">
+                                Vui lòng nhập đúng 10 chữ số và bắt đầu bằng số 0!
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="app-form-control form-control {% if errors and errors.email %}is-invalid{% endif %}" id="email" name="email" value="{{ form_data.email if form_data is not none else (customer.email or '') }}" placeholder="Nhập email">
+                            {% if errors and errors.email %}
+                            <div class="invalid-feedback d-block">
+                                {{ errors.email }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="address" class="form-label">Địa chỉ</label>
+                            <input type="text" class="app-form-control form-control" id="address" name="address" value="{{ form_data.address if form_data is not none else (customer.address or '') }}" placeholder="Nhập địa chỉ">
+                        </div>
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button type="submit" class="app-btn app-btn-primary btn btn-primary px-4">
+                            <i class="bi bi-check-circle"></i> Cập nhật khách hàng
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Đoạn script kích hoạt validation của Bootstrap
+    (function () {
+        'use strict'
+
+        // Lấy tất cả các form có class "needs-validation"
+        var forms = document.querySelectorAll('.needs-validation')
+
+        // Lặp qua chúng và chặn submit nếu nhập sai
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    // Nếu form bị lỗi (không đúng pattern, bỏ trống...)
+                    if (!form.checkValidity()) {
+                        event.preventDefault() // Chặn không cho gửi form đi
+                        event.stopPropagation() // Ngừng các sự kiện khác
+                        Notification.error('Vui lòng kiểm tra lại thông tin và điền đầy đủ các trường bắt buộc.');
+                    }
+
+                    // Thêm class 'was-validated' để Bootstrap hiện màu đỏ/xanh
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+/* dashboard.css - SpaManager Specific Stylesheet */
+
+/* Special custom classes only. Root variables and layout are in base-page.css */
+
+/* Stat Cards override to allow hover transformations scale */
+.stat-card.revenue .icon { background: var(--spa-primary-light); color: var(--spa-primary); }
+.stat-card.customers .icon { background: var(--spa-info-light); color: var(--spa-info); }
+.stat-card.appointments .icon { background: var(--spa-success-light); color: var(--spa-success); }
+.stat-card.invoices .icon { background: var(--spa-danger-light); color: var(--spa-danger); }
+
+.stat-card .icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: var(--spa-transition);
+}
+
+.stat-card:hover .icon {
+    transform: scale(1.1);
+    background: var(--spa-primary);
+    color: var(--spa-white);
+}
+
+.stat-card .info span {
+    display: block;
+    font-size: 14px;
+    color: var(--spa-text-muted);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.stat-card .info h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--spa-text-main);
+}
+
+/* Chart Card */
+.chart-card {
+    min-height: 450px;
+}
+
+#revenueChart {
+    width: 100% !important;
+    height: 420px !important;
+}
+
+/* Schedule List */
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Custom Scrollbar for schedule-list */
+.schedule-list::-webkit-scrollbar {
+    width: 6px;
+}
+.schedule-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.schedule-list::-webkit-scrollbar-thumb {
+    background: var(--spa-accent);
+    border-radius: 10px;
+}
+
+.schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    border-radius: var(--spa-radius-md);
+    transition: var(--spa-transition);
+    border: 1px solid transparent;
+}
+
+.schedule-item:hover {
+    background: var(--spa-secondary);
+    border-color: var(--spa-accent);
+    transform: translateX(5px);
+}
+
+.schedule-time {
+    font-weight: 600;
+    color: var(--spa-primary);
+    min-width: 60px;
+    font-size: 14px;
+}
+
+.schedule-details {
+    flex: 1;
+}
+
+.schedule-customer {
+    font-weight: 600;
+    color: var(--spa-text-main);
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.schedule-service {
+    font-size: 13px;
+    color: var(--spa-text-muted);
+}
+
+.schedule-status {
+    min-width: 80px;
+    text-align: right;
+}
+
+/* Empty State */
+.dashboard-page .empty-state {
+    text-align: center;
+    padding: 30px 15px;
+    color: var(--spa-text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-page .empty-state i {
+    font-size: 32px;
+    display: block;
+    margin-bottom: 12px;
+    color: var(--spa-accent);
+    opacity: 0.7;
+}
+
+.dashboard-page .empty-state p {
+    font-size: 13px;
+    margin: 0;
+    font-style: italic;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .schedule-item {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .schedule-status {
+        width: 100%;
+        text-align: right;
+        margin-top: 4px;
+    }
+
+    #revenueChart {
+        height: 300px !important;
+    }
+}

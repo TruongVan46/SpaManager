@@ -1,0 +1,176 @@
+# app.py - SpaManager Project
+import os
+import time
+from flask import Flask, request, redirect, url_for, send_from_directory
+from extensions import db
+from config import Config
+from routes import (
+    dashboard_bp, 
+    customer_bp, 
+    service_bp, 
+    appointment_bp, 
+    invoice_bp, 
+    statistics_bp,
+    setting_bp,
+    activity_log_bp,
+    recycle_bin_bp,
+    auth_bp
+)
+from services.auth_service import AuthService
+
+# Tạo ứng dụng Flask
+app = Flask(__name__)
+
+# Đọc cấu hình từ config.py
+app.config.from_object(Config)
+
+# Kết nối SQLAlchemy với Flask
+db.init_app(app)
+
+# Đăng ký Blueprints
+app.register_blueprint(dashboard_bp)
+app.register_blueprint(customer_bp)
+app.register_blueprint(service_bp)
+app.register_blueprint(appointment_bp)
+app.register_blueprint(invoice_bp)
+app.register_blueprint(statistics_bp)
+app.register_blueprint(activity_log_bp)
+app.register_blueprint(setting_bp)
+app.register_blueprint(recycle_bin_bp)
+app.register_blueprint(auth_bp)
+
+# Favicon handler
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static', 'img'),
+                               'logo.png', mimetype='image/png')
+
+# Global Authentication filter and context injector
+@app.before_request
+def require_login():
+    # Skip check for static assets, login route, and favicon
+    if request.endpoint in ['static', 'auth.login', 'favicon']:
+        return
+
+    # Redirect to login if user is not authenticated
+    if not AuthService.is_authenticated():
+        next_url = request.full_path
+        return redirect(url_for('auth.login', next=next_url))
+
+@app.context_processor
+def inject_user():
+    return dict(current_user=AuthService.get_current_user())
+
+@app.context_processor
+def inject_asset_helpers():
+    def asset_version(relative_path):
+        try:
+            absolute_path = os.path.join(app.root_path, relative_path)
+            return str(int(os.path.getmtime(absolute_path)))
+        except OSError:
+            return str(int(time.time()))
+
+    return dict(asset_version=asset_version)
+
+# Ensure the database directory exists before creating the SQLite file
+database_dir = os.path.join(app.root_path, 'database')
+os.makedirs(database_dir, exist_ok=True)
+
+# Ensure the avatar uploads directory exists
+avatars_dir = os.path.join(app.root_path, 'static', 'uploads', 'avatars')
+os.makedirs(avatars_dir, exist_ok=True)
+
+# Initialize Logging Framework
+from core.logger import app_logger
+app_logger.init_app(app)
+app_logger.info("SpaManager application initialized successfully", module="SYSTEM")
+
+# Tạo database nếu chưa tồn tại
+with app.app_context():
+    import models  # noqa: F401, needed for db.create_all()
+    db.create_all()
+
+    # ── Auto-migration: thêm cột mới vào bảng đã tồn tại ──
+    # db.create_all() chỉ tạo bảng mới, không ALTER TABLE.
+    # Logic dưới đây kiểm tra và bổ sung các cột còn thiếu.
+    import sqlite3
+    db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Danh sách các cột cần đảm bảo tồn tại: (table, column, type)
+        required_columns = [
+            ('customers', 'deleted_at', 'DATETIME'),
+            ('customers', 'deleted_by', 'VARCHAR(100)'),
+            ('services', 'deleted_at', 'DATETIME'),
+            ('services', 'deleted_by', 'VARCHAR(100)'),
+            ('appointments', 'deleted_at', 'DATETIME'),
+            ('appointments', 'deleted_by', 'VARCHAR(100)'),
+            ('invoices', 'deleted_at', 'DATETIME'),
+            ('invoices', 'deleted_by', 'VARCHAR(100)'),
+            ('activity_logs', 'user_id', 'INTEGER'),
+        ]
+
+        for table, column, col_type in required_columns:
+            cursor.execute(f"PRAGMA table_info({table})")
+            existing_columns = [row[1] for row in cursor.fetchall()]
+            if column not in existing_columns:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                app_logger.info(f"Added column {column} to table {table}", module="MIGRATION")
+
+        conn.commit()
+        conn.close()
+
+        # Seed the default owner if User table is empty
+        AuthService.seed_owner_if_empty()
+    except Exception as e:
+        app_logger.critical(f"Migration/Seed failed: {e}", module="MIGRATION", exc_info=True)
+
+@app.template_filter('format_currency')
+def format_currency(value):
+    if value is None:
+        return "0 VND"
+    try:
+        # Format number with dot as thousand separator
+        formatted = "{:,.0f}".format(float(value)).replace(",", ".")
+        return f"{formatted} VND"
+    except (ValueError, TypeError):
+        return "0 VND"
+
+@app.template_filter('vietnam_time')
+def vietnam_time(dt):
+    if dt is None:
+        return None
+    from datetime import datetime, timedelta
+    if isinstance(dt, datetime):
+        return dt + timedelta(hours=7)
+    return dt
+
+@app.template_filter('highlight')
+def highlight_filter(text, keyword):
+    if not keyword:
+        return text
+    import re
+    from markupsafe import Markup, escape
+    escaped_text = str(escape(text))
+    escaped_keyword = str(escape(keyword))
+    
+    pattern = re.compile(re.escape(escaped_keyword), re.IGNORECASE)
+    highlighted = pattern.sub(lambda m: f'<mark class="search-highlight">{m.group(0)}</mark>', escaped_text)
+    return Markup(highlighted)
+
+@app.context_processor
+def inject_active_page():
+    from flask import request
+
+    endpoint = request.endpoint or ""
+
+    return dict(active_page=endpoint)
+
+# Global Exception Handler registration
+from core.error_handler import ErrorHandler
+
+@app.errorhandler(Exception)
+def handle_global_exception(e):
+    return ErrorHandler.handle_exception(e)

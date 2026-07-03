@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Settings Page Styles
+   ========================================================================== */
+
+/* Setting Cards spacing */
+.setting-card {
+    margin-bottom: 24px;
+}
+
+.setting-card .app-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ──────────────────────────────────────────────
+   Spa Logo Preview
+   ────────────────────────────────────────────── */
+.spa-logo-preview {
+    display: inline-block;
+    width: 120px;
+    height: 120px;
+    border-radius: var(--spa-radius-lg);
+    overflow: hidden;
+    border: 2px dashed var(--spa-border-color);
+    background: var(--spa-secondary);
+    position: relative;
+}
+
+.spa-logo-preview .logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.spa-logo-preview .logo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--spa-text-muted);
+    gap: 4px;
+}
+
+.spa-logo-preview .logo-placeholder i {
+    font-size: 2rem;
+}
+
+.spa-logo-preview .logo-placeholder span {
+    font-size: 0.75rem;
+}
+
+/* ──────────────────────────────────────────────
+   Data Stats Grid
+   ────────────────────────────────────────────── */
+.data-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.data-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--spa-secondary);
+    border-radius: var(--spa-radius-md);
+    border: 1px solid var(--spa-border-color);
+    transition: var(--spa-transition);
+}
+
+.data-stat-item:hover {
+    box-shadow: var(--spa-shadow-normal);
+    transform: translateY(-1px);
+}
+
+.data-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--spa-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.data-stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.data-stat-count {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--spa-text-main);
+    line-height: 1.2;
+}
+
+.data-stat-label {
+    font-size: 0.8rem;
+    color: var(--spa-text-muted);
+    font-weight: 500;
+}
+
+/* ──────────────────────────────────────────────
+   Data Action Cards (Backup, Restore, Import)
+   ────────────────────────────────────────────── */
+.data-action-card {
+    padding: 20px;
+    background: var(--spa-secondary);
+    border-radius: var(--spa-radius-md);
+    border: 1px solid var(--spa-border-color);
+    height: 100%;
+}
+
+.data-action-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.data-action-header i {
+    font-size: 1.5rem;
+}
+
+.data-action-header h6 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* ──────────────────────────────────────────────
+   Import Wizard
+   ────────────────────────────────────────────── */
+.import-wizard {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.import-step {
+    padding: 12px;
+    border-radius: var(--spa-radius-sm);
+    background: var(--spa-white);
+    border: 1px solid var(--spa-border-color);
+    transition: var(--spa-transition);
+}
+
+.import-step.active {
+    border-color: var(--spa-primary);
+    background: var(--spa-primary-light);
+}
+
+.import-step.completed {
+    border-color: var(--spa-success);
+    background: var(--spa-success-light);
+}
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--spa-primary);
+    color: var(--spa-white);
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.import-step.completed .step-badge {
+    background: var(--spa-success);
+}
+
+.step-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--spa-text-main);
+}
+
+/* ──────────────────────────────────────────────
+   Import Result
+   ────────────────────────────────────────────── */
+.import-result {
+    font-size: 0.85rem;
+}
+
+.import-result-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.import-result-item {
+    text-align: center;
+    padding: 8px;
+    border-radius: var(--spa-radius-sm);
+    background: var(--spa-white);
+    border: 1px solid var(--spa-border-color);
+}
+
+.import-result-item .result-number {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.import-result-item .result-label {
+    font-size: 0.7rem;
+    color: var(--spa-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.import-result-item.success .result-number {
+    color: var(--spa-success);
+}
+
+.import-result-item.failed .result-number {
+    color: var(--spa-danger);
+}
+
+.import-result-item.total .result-number {
+    color: var(--spa-info);
+}
+
+.import-error-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+.import-error-item {
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    background: var(--spa-danger-light);
+    border-left: 3px solid var(--spa-danger);
+    border-radius: var(--spa-radius-sm);
+    font-size: 0.8rem;
+}
+
+.import-error-item .error-row {
+    font-weight: 600;
+    color: var(--spa-danger);
+}
+
+/* ──────────────────────────────────────────────
+   About Section
+   ────────────────────────────────────────────── */
+.about-info {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.about-app-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--spa-primary), var(--spa-primary-hover));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--spa-white);
+    font-size: 2rem;
+}
+
+.about-details {
+    border-top: 1px solid var(--spa-border-color);
+    padding-top: 16px;
+}
+
+.about-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--spa-border-color);
+}
+
+.about-row:last-child {
+    border-bottom: none;
+}
+
+.about-label {
+    font-weight: 500;
+    color: var(--spa-text-muted);
+    font-size: 0.9rem;
+}
+
+.about-value {
+    font-weight: 600;
+    color: var(--spa-text-main);
+    font-size: 0.9rem;
+}
+
+/* ──────────────────────────────────────────────
+   Responsive
+   ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .data-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .import-result-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .data-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Optimize wizard steps text and badge size on mobile screen */
+    .step-num {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.75rem !important;
+    }
+    .row.text-center.mb-4 p {
+        font-size: 0.65rem !important;
+    }
+}
+
+/* Drag and Drop Zone styling */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+#backup-drag-drop-zone {
+    transition: all 0.25s ease-in-out;
+}
+
+#backup-drag-drop-zone.dragover {
+    background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
+    border-color: var(--bs-warning) !important;
+    border-style: solid !important;
+    box-shadow: 0 0 12px rgba(var(--bs-primary-rgb), 0.15);
+}

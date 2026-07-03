@@ -1,0 +1,370 @@
+/* ==========================================
+   APP LAYOUT
+========================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", sans-serif;
+    background: var(--spa-bg);
+    color: var(--spa-text-primary);
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+@media (min-width: 992px) {
+    .app-container {
+        height: 100vh;
+        overflow: hidden;
+    }
+}
+
+
+/* ==========================================
+   SIDEBAR
+========================================== */
+
+.sidebar {
+    width: 280px;
+    background: var(--spa-card-bg);
+    border-right: 1px solid var(--spa-border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px;
+    flex-shrink: 0;
+}
+
+@media (min-width: 992px) {
+    .sidebar {
+        height: 100%;
+        overflow-y: auto;
+    }
+}
+
+.logo {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.logo-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 15px;
+    border-radius: 20px;
+    background: var(--spa-danger-light);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 36px;
+    color: var(--spa-danger);
+}
+
+.logo h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.logo p {
+    margin-top: 6px;
+    color: var(--spa-text-secondary);
+    font-size: 14px;
+}
+
+
+/* ==========================================
+   MENU
+========================================== */
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Khoảng cách Icon và Text giống nhau: 8px */
+
+    padding: 12px 16px;
+
+    border-radius: 12px;
+
+    color: var(--spa-text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+
+    transition: all .25s ease;
+}
+
+.menu-item i {
+    font-size: 18px; /* Kích thước Icon Sidebar: 18-20px */
+    width: 20px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-item:hover {
+    background: var(--spa-secondary-hover, #eaecf4); /* Active/hover style unified with Spa system colors */
+    color: var(--spa-primary, #a67c52);
+    transform: translateX(5px);
+}
+
+.menu-item.active {
+    background: var(--spa-primary, #a67c52);
+    color: var(--spa-white);
+}
+
+
+/* ==========================================
+   SIDEBAR FOOTER
+========================================== */
+
+.sidebar-footer {
+    margin-top: auto;
+
+    padding-top: 20px;
+
+    border-top: 1px solid var(--spa-border-color);
+
+    text-align: center;
+
+    color: var(--spa-text-muted);
+
+    font-size: 13px;
+}
+
+
+/* ==========================================
+   MAIN
+========================================== */
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 28px;
+    overflow-x: auto;
+    width: 100%;
+}
+
+@media (min-width: 992px) {
+    .main-content {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+}
+
+
+/* ==========================================
+   TOPBAR
+========================================== */
+
+.topbar {
+
+    background: var(--spa-card-bg);
+
+    border-radius: 18px;
+
+    height: 114px !important;
+    min-height: 114px !important;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 0 36px;
+
+    box-shadow: var(--spa-shadow-sm);
+
+    margin-bottom: 25px;
+}
+
+.topbar-left h2{
+
+    margin:0;
+
+    font-size:26px;
+
+}
+
+.topbar-left span{
+
+    color: var(--spa-text-secondary);
+
+    font-size:14px;
+
+}
+
+.topbar-right{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+.btn-topbar{
+
+    border:none;
+
+    background: var(--spa-card-bg);
+
+    padding:10px 18px;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+    box-shadow: var(--spa-shadow-sm);
+
+}
+
+.btn-topbar:hover{
+
+    background:#f8d7da;
+
+}
+
+.profile{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    font-weight:600;
+
+}
+
+.profile i{
+
+    font-size:30px;
+
+    color: var(--spa-primary);
+
+}
+
+
+
+/* ==========================================
+   RESPONSIVE MEDIA QUERIES
+========================================== */
+
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: -280px !important;
+        width: 280px !important;
+        height: 100vh !important;
+        z-index: 1050 !important;
+        background: var(--spa-card-bg) !important;
+        transition: transform 250ms ease-in-out !important;
+        box-shadow: var(--spa-shadow-lg) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 24px 20px !important;
+        border-right: 1px solid var(--spa-border-color) !important;
+        border-bottom: none !important;
+    }
+    .sidebar.active {
+        transform: translateX(280px) !important;
+    }
+    .logo {
+        margin-bottom: 24px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        justify-content: flex-start !important;
+    }
+    .logo p {
+        display: block !important;
+    }
+    .menu {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    .menu-item {
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+    }
+    .sidebar-footer {
+        display: flex !important;
+    }
+    .main-content {
+        padding: 16px !important;
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .sidebar {
+        left: -100vw !important;
+        width: 100vw !important;
+    }
+    .sidebar.active {
+        transform: translateX(100vw) !important;
+    }
+    .topbar {
+        padding: 12px 16px !important;
+        height: auto !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
+    }
+    .topbar-left h2 {
+        font-size: 20px !important;
+    }
+    .topbar-left span {
+        font-size: 12px !important;
+    }
+    .topbar-right {
+        width: 100% !important;
+        justify-content: flex-end !important;
+    }
+    .profile i {
+        font-size: 24px !important;
+    }
+}
+
+/* Sidebar Overlay & Scroll Lock styles */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1040;
+    display: none;
+    opacity: 0;
+    transition: opacity 250ms ease;
+}
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+body.sidebar-open {
+    overflow: hidden !important;
+}
+
