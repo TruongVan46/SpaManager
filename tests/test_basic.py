@@ -1038,6 +1038,20 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("window.SpaCsrf.getToken()", source)
         self.assertIn('name="csrf_token"', source)
 
+    def test_appointment_calendar_detail_panel_has_scrollable_body_and_mobile_drawer_rules(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        css = Path("static/css/pages/appointment-calendar.css").read_text(encoding="utf-8")
+        html = self.client.get("/appointments").get_data(as_text=True)
+
+        self.assertIn('id="calOffcanvas"', html)
+        self.assertIn('btn-close', html)
+        self.assertIn('.cal-offcanvas .offcanvas-body', css)
+        self.assertIn('overflow-y: auto', css)
+        self.assertIn('height: 100dvh', css)
+        self.assertIn('width: 100vw', css)
+        self.assertIn('@media (max-width: 768px)', css)
+
     def test_permanent_delete_logs_current_actor_before_removal(self):
         owner = AuthService.seed_owner_if_empty()
         customer = self.create_customer_record("Permanent Customer")
