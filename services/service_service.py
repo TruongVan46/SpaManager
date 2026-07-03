@@ -4,6 +4,7 @@ from models.appointment import Appointment
 from models.invoice_detail import InvoiceDetail
 from core.exceptions import NotFoundException, ConflictException
 from core.cache import dashboard_cache
+from services.auth_service import AuthService
 from validators.service_validator import ServiceValidator
 from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import utc_now
@@ -117,7 +118,7 @@ class ServiceService:
         }
 
     @staticmethod
-    def delete_service(service_id):
+    def delete_service(service_id, actor=None):
         """Xóa mềm dịch vụ và chuyển vào thùng rác"""
         service = Service.query.get(service_id)
         if not service or service.deleted_at is not None:
@@ -126,43 +127,65 @@ class ServiceService:
         status = ServiceService.can_delete(service_id)
         if not status["can_delete"]:
             raise ConflictException("Không thể xóa dịch vụ này vì đã phát sinh lịch hẹn hoặc chi tiết hóa đơn liên quan.")
-            
-        name = service.name
-        service.deleted_at = utc_now()
-        service.deleted_by = None
-        db.session.commit()
-        
-        ActivityLogService.log_delete(
-            module=ActivityLogService.MODULE_SERVICE,
-            description=f'Chuyển dịch vụ "{name}" vào Thùng rác',
-            reference_id=service_id
-        )
+        try:
+            actor_name = actor
+            if actor_name is None or not str(actor_name).strip():
+                actor_name = AuthService.require_current_username()
+            current_user = AuthService.get_current_user()
+            name = service.name
+            service.deleted_at = utc_now()
+            service.deleted_by = actor_name
+            ActivityLogService.write_log(
+                module=ActivityLogService.MODULE_SERVICE,
+                action=ActivityLogService.ACTION_DELETE,
+                description=f'{actor_name} chuyển dịch vụ "{name}" vào Thùng rác',
+                reference_id=service_id,
+                session_override=db.session,
+                commit=False,
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            db.session.remove()
+            raise
 
         dashboard_cache.invalidate('dashboard_data')
         return True
 
     @staticmethod
-    def restore_service(service_id):
+    def restore_service(service_id, actor=None):
         """Khôi phục dịch vụ từ thùng rác"""
         service = Service.query.get(service_id)
         if not service or service.deleted_at is None:
             raise NotFoundException("Không tìm thấy dịch vụ trong Thùng rác.")
 
-        service.deleted_at = None
-        service.deleted_by = None
-        db.session.commit()
-        
-        ActivityLogService.log_action(
-            module=ActivityLogService.MODULE_SERVICE,
-            action=ActivityLogService.ACTION_UPDATE,
-            description=f'Khôi phục dịch vụ "{service.name}" từ Thùng rác',
-            reference_id=service_id
-        )
+        try:
+            actor_name = actor
+            if actor_name is None or not str(actor_name).strip():
+                actor_name = AuthService.require_current_username()
+            current_user = AuthService.get_current_user()
+            service.deleted_at = None
+            service.deleted_by = None
+            ActivityLogService.write_log(
+                module=ActivityLogService.MODULE_SERVICE,
+                action=ActivityLogService.ACTION_UPDATE,
+                description=f'{actor_name} khôi phục dịch vụ "{service.name}" từ Thùng rác',
+                reference_id=service_id,
+                session_override=db.session,
+                commit=False,
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            db.session.remove()
+            raise
         dashboard_cache.invalidate('dashboard_data')
         return True
 
     @staticmethod
-    def permanent_delete_service(service_id):
+    def permanent_delete_service(service_id, actor=None):
         """Xóa vĩnh viễn dịch vụ khỏi cơ sở dữ liệu"""
         service = Service.query.get(service_id)
         if service:
@@ -171,16 +194,27 @@ class ServiceService:
                 raise ValueError("Không thể xóa vĩnh viễn dịch vụ này vì đã phát sinh lịch hẹn hoặc chi tiết hóa đơn liên quan.")
             
             name = service.name
-            db.session.delete(service)
-            db.session.commit()
-            
-            ActivityLogService.log_action(
-                module=ActivityLogService.MODULE_SERVICE,
-                action='PERMANENT_DELETE',
-                description=f'Xóa vĩnh viễn dịch vụ "{name}" khỏi cơ sở dữ liệu',
-                reference_id=service_id,
-                severity=ActivityLogService.SEVERITY_WARNING
-            )
+            try:
+                actor_name = actor
+                if actor_name is None or not str(actor_name).strip():
+                    actor_name = AuthService.require_current_username()
+                current_user = AuthService.get_current_user()
+                ActivityLogService.write_log(
+                    module=ActivityLogService.MODULE_SERVICE,
+                    action='PERMANENT_DELETE',
+                    description=f'{actor_name} xóa vĩnh viễn dịch vụ "{name}" khỏi cơ sở dữ liệu',
+                    reference_id=service_id,
+                    severity=ActivityLogService.SEVERITY_WARNING,
+                    session_override=db.session,
+                    commit=False,
+                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                )
+                db.session.delete(service)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                db.session.remove()
+                raise
             dashboard_cache.invalidate('dashboard_data')
             return True
         return False

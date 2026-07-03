@@ -5,6 +5,7 @@ from models.service import Service
 from models.invoice import Invoice
 from core.exceptions import NotFoundException, ConflictException
 from core.cache import dashboard_cache
+from services.auth_service import AuthService
 from validators.customer_validator import CustomerValidator
 from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import utc_now
@@ -194,7 +195,7 @@ class CustomerService:
         }
 
     @staticmethod
-    def delete(customer_id):
+    def delete(customer_id, actor=None):
         """Xóa mềm khách hàng và chuyển vào thùng rác"""
         customer = Customer.query.get(customer_id)
         if not customer or customer.deleted_at is not None:
@@ -203,60 +204,93 @@ class CustomerService:
         status = CustomerService.can_delete(customer_id)
         if not status["can_delete"]:
             raise ConflictException("Không thể xóa khách hàng này vì đã phát sinh lịch hẹn hoặc hóa đơn liên quan.")
-        
-        name = customer.name
-        customer.deleted_at = utc_now()
-        customer.deleted_by = None
-        db.session.commit()
-        
-        ActivityLogService.log_delete(
-            module=ActivityLogService.MODULE_CUSTOMER,
-            description=f'Chuyển khách hàng "{name}" vào Thùng rác',
-            reference_id=customer_id
-        )
+        try:
+            actor_name = actor
+            if actor_name is None or not str(actor_name).strip():
+                actor_name = AuthService.require_current_username()
+            current_user = AuthService.get_current_user()
+            name = customer.name
+            customer.deleted_at = utc_now()
+            customer.deleted_by = actor_name
+            ActivityLogService.write_log(
+                module=ActivityLogService.MODULE_CUSTOMER,
+                action=ActivityLogService.ACTION_DELETE,
+                description=f'{actor_name} chuyển khách hàng "{name}" vào Thùng rác',
+                reference_id=customer_id,
+                session_override=db.session,
+                commit=False,
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            db.session.remove()
+            raise
 
         dashboard_cache.invalidate('dashboard_data')
         return True
 
     @staticmethod
-    def restore(customer_id):
+    def restore(customer_id, actor=None):
         """Khôi phục khách hàng từ thùng rác"""
         customer = Customer.query.get(customer_id)
         if not customer or customer.deleted_at is None:
             raise NotFoundException("Không tìm thấy khách hàng trong Thùng rác.")
 
-        customer.deleted_at = None
-        customer.deleted_by = None
-        db.session.commit()
-        
-        ActivityLogService.log_action(
-            module=ActivityLogService.MODULE_CUSTOMER,
-            action=ActivityLogService.ACTION_UPDATE,
-            description=f'Khôi phục khách hàng "{customer.name}" từ Thùng rác',
-            reference_id=customer_id
-        )
+        try:
+            actor_name = actor
+            if actor_name is None or not str(actor_name).strip():
+                actor_name = AuthService.require_current_username()
+            current_user = AuthService.get_current_user()
+            customer.deleted_at = None
+            customer.deleted_by = None
+            ActivityLogService.write_log(
+                module=ActivityLogService.MODULE_CUSTOMER,
+                action=ActivityLogService.ACTION_UPDATE,
+                description=f'{actor_name} khôi phục khách hàng "{customer.name}" từ Thùng rác',
+                reference_id=customer_id,
+                session_override=db.session,
+                commit=False,
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            db.session.remove()
+            raise
         dashboard_cache.invalidate('dashboard_data')
         return True
 
     @staticmethod
-    def permanent_delete(customer_id):
+    def permanent_delete(customer_id, actor=None):
         """Xóa vĩnh viễn khách hàng khỏi cơ sở dữ liệu"""
         customer = Customer.query.get(customer_id)
         if customer:
-            status = CustomerService.can_delete(customer_id)
-            if not status["can_delete"]:
-                raise ValueError("Không thể xóa vĩnh viễn khách hàng này vì vẫn còn lịch hẹn hoặc hóa đơn liên quan.")
-            name = customer.name
-            db.session.delete(customer)
-            db.session.commit()
-            
-            ActivityLogService.log_action(
-                module=ActivityLogService.MODULE_CUSTOMER,
-                action='PERMANENT_DELETE',
-                description=f'Xóa vĩnh viễn khách hàng "{name}" khỏi cơ sở dữ liệu',
-                reference_id=customer_id,
-                severity=ActivityLogService.SEVERITY_WARNING
-            )
+            try:
+                status = CustomerService.can_delete(customer_id)
+                if not status["can_delete"]:
+                    raise ValueError("Không thể xóa vĩnh viễn khách hàng này vì vẫn còn lịch hẹn hoặc hóa đơn liên quan.")
+                name = customer.name
+                actor_name = actor
+                if actor_name is None or not str(actor_name).strip():
+                    actor_name = AuthService.require_current_username()
+                current_user = AuthService.get_current_user()
+                ActivityLogService.write_log(
+                    module=ActivityLogService.MODULE_CUSTOMER,
+                    action='PERMANENT_DELETE',
+                    description=f'{actor_name} xóa vĩnh viễn khách hàng "{name}" khỏi cơ sở dữ liệu',
+                    reference_id=customer_id,
+                    severity=ActivityLogService.SEVERITY_WARNING,
+                    session_override=db.session,
+                    commit=False,
+                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                )
+                db.session.delete(customer)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                db.session.remove()
+                raise
             dashboard_cache.invalidate('dashboard_data')
             return True
         return False

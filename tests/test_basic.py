@@ -25,7 +25,20 @@ os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").a
 from app import app
 from config import DevelopmentConfig, ProductionConfig
 from extensions import db
+from core.auth.constants import AUTH_SESSION_KEY
+from core.exceptions import AuthenticationException
+from models.activity_log import ActivityLog
+from models.appointment import Appointment
+from models.customer import Customer
+from models.invoice import Invoice
+from models.invoice_detail import InvoiceDetail
+from models.service import Service
 from models.user import User
+from services.appointment_service import AppointmentService
+from services.activity_log_service import ActivityLogService
+from services.customer_service import CustomerService
+from services.invoice_service import InvoiceService
+from services.service_service import ServiceService
 from services.auth_service import AuthService
 
 
@@ -67,6 +80,59 @@ class BasicTestCase(unittest.TestCase):
         db.session.add(user)
         db.session.commit()
         return user
+
+    def login_as(self, user):
+        with self.client.session_transaction() as sess:
+            sess[AUTH_SESSION_KEY] = user.id
+
+    def create_customer_record(self, name="Test Customer"):
+        customer = Customer(name=name, phone="0900000000", email=f"{name.lower().replace(' ', '')}@example.com")
+        db.session.add(customer)
+        db.session.commit()
+        return customer
+
+    def create_service_record(self, name="Test Service"):
+        service = Service(name=name, price=100000, duration=30, description="Test", category="other")
+        db.session.add(service)
+        db.session.commit()
+        return service
+
+    def create_appointment_record(self, customer=None, service=None):
+        customer = customer or self.create_customer_record("Appointment Customer")
+        service = service or self.create_service_record("Appointment Service")
+        appointment = Appointment(
+            customer_id=customer.id,
+            service_id=service.id,
+            appointment_time=datetime(2026, 7, 4, 10, 0),
+            status="Pending"
+        )
+        db.session.add(appointment)
+        db.session.commit()
+        return appointment
+
+    def create_invoice_record(self, customer=None, service=None):
+        customer = customer or self.create_customer_record("Invoice Customer")
+        service = service or self.create_service_record("Invoice Service")
+        invoice = Invoice(
+            customer_id=customer.id,
+            invoice_date=datetime(2026, 7, 4).date(),
+            subtotal=100000,
+            discount=0,
+            total_amount=100000,
+            payment_method="Cash",
+            notes="Test invoice"
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        detail = InvoiceDetail(
+            invoice_id=invoice.id,
+            service_id=service.id,
+            price=100000,
+            quantity=1
+        )
+        db.session.add(detail)
+        db.session.commit()
+        return invoice
 
     def create_media_file(self, relative_path, content=b"media-bytes"):
         absolute_path = TEST_MEDIA_ROOT / relative_path
@@ -312,6 +378,197 @@ class BasicTestCase(unittest.TestCase):
 
         self.assertEqual(User.query.filter_by(username="owner").count(), 1)
         self.assertEqual(User.query.count(), 1)
+
+    def test_customer_delete_records_deleted_by(self):
+        owner = AuthService.seed_owner_if_empty()
+        customer = self.create_customer_record("Audit Customer")
+        self.login_as(owner)
+
+        response = self.client.post(f"/customers/{customer.id}/delete")
+
+        self.assertEqual(response.status_code, 302)
+        deleted_customer = Customer.query.get(customer.id)
+        self.assertIsNotNone(deleted_customer)
+        self.assertEqual(deleted_customer.deleted_by, "owner")
+
+    def test_customer_restore_clears_deleted_by(self):
+        owner = AuthService.seed_owner_if_empty()
+        customer = self.create_customer_record("Restore Customer")
+        self.login_as(owner)
+        self.client.post(f"/customers/{customer.id}/delete")
+
+        response = self.client.post(f"/recycle-bin/restore/Customer/{customer.id}")
+
+        self.assertEqual(response.status_code, 200)
+        restored_customer = Customer.query.get(customer.id)
+        self.assertIsNotNone(restored_customer)
+        self.assertIsNone(restored_customer.deleted_at)
+        self.assertIsNone(restored_customer.deleted_by)
+
+    def test_soft_delete_records_deleted_by_for_service_appointment_and_invoice(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        service = self.create_service_record("Audit Service")
+        service_result = self.client.post(
+            f"/services/delete/{service.id}",
+            headers={"X-Requested-With": "XMLHttpRequest"}
+        )
+        self.assertEqual(service_result.status_code, 200)
+        self.assertEqual(Service.query.get(service.id).deleted_by, "owner")
+
+        appointment = self.create_appointment_record()
+        appointment_result = self.client.post(
+            f"/appointments/delete/{appointment.id}",
+            headers={"X-Requested-With": "XMLHttpRequest"}
+        )
+        self.assertEqual(appointment_result.status_code, 200)
+        self.assertEqual(Appointment.query.get(appointment.id).deleted_by, "owner")
+
+        invoice = self.create_invoice_record()
+        invoice_result = self.client.post(
+            f"/invoices/delete/{invoice.id}",
+            headers={"X-Requested-With": "XMLHttpRequest"}
+        )
+        self.assertEqual(invoice_result.status_code, 200)
+        self.assertEqual(Invoice.query.get(invoice.id).deleted_by, "owner")
+
+    def test_permanent_delete_logs_current_actor_before_removal(self):
+        owner = AuthService.seed_owner_if_empty()
+        customer = self.create_customer_record("Permanent Customer")
+        self.login_as(owner)
+        self.client.post(f"/customers/{customer.id}/delete")
+
+        response = self.client.post(f"/recycle-bin/delete/Customer/{customer.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(Customer.query.get(customer.id))
+        log_entry = ActivityLog.query.filter_by(
+            module=ActivityLogService.MODULE_CUSTOMER,
+            action="PERMANENT_DELETE",
+            reference_id=customer.id
+        ).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.user_id, owner.id)
+        self.assertIn("owner", log_entry.description)
+
+    def test_delete_without_login_does_not_change_data(self):
+        customer = self.create_customer_record("Anonymous Customer")
+
+        response = self.client.post(f"/customers/{customer.id}/delete")
+
+        self.assertEqual(response.status_code, 302)
+        untouched_customer = Customer.query.get(customer.id)
+        self.assertIsNotNone(untouched_customer)
+        self.assertIsNone(untouched_customer.deleted_at)
+        self.assertIsNone(untouched_customer.deleted_by)
+        self.assertEqual(ActivityLog.query.filter_by(reference_id=customer.id).count(), 0)
+
+    def test_stale_session_user_is_rejected(self):
+        customer = self.create_customer_record("Stale Session Customer")
+        with self.client.session_transaction() as sess:
+            sess[AUTH_SESSION_KEY] = 999999
+
+        response = self.client.post(f"/customers/{customer.id}/delete")
+
+        self.assertEqual(response.status_code, 302)
+        untouched_customer = Customer.query.get(customer.id)
+        self.assertIsNone(untouched_customer.deleted_at)
+        self.assertIsNone(untouched_customer.deleted_by)
+        self.assertEqual(ActivityLog.query.filter_by(reference_id=customer.id).count(), 0)
+
+    def test_service_delete_outside_request_requires_actor(self):
+        service = self.create_service_record("No Actor Service")
+        service_id = service.id
+
+        with self.assertRaises(AuthenticationException):
+            ServiceService.delete_service(service_id)
+
+        untouched_service = Service.query.get(service_id)
+        self.assertIsNone(untouched_service.deleted_at)
+        self.assertIsNone(untouched_service.deleted_by)
+
+    def test_background_actor_system_is_only_explicit(self):
+        service = self.create_service_record("System Actor Service")
+
+        result = ServiceService.delete_service(service.id, actor="Hệ thống")
+
+        self.assertTrue(result)
+        deleted_service = Service.query.get(service.id)
+        self.assertEqual(deleted_service.deleted_by, "Hệ thống")
+        self.assertEqual(ActivityLog.query.filter_by(reference_id=service.id).count(), 1)
+
+    def test_two_users_write_two_different_deleted_by_values(self):
+        user_a = self.create_user("user-a", password="pass-a", full_name="User A", role="STAFF")
+        user_b = self.create_user("user-b", password="pass-b", full_name="User B", role="STAFF")
+
+        customer_a = self.create_customer_record("Customer A")
+        customer_b = self.create_customer_record("Customer B")
+
+        self.login_as(user_a)
+        self.client.post(f"/customers/{customer_a.id}/delete")
+
+        self.login_as(user_b)
+        self.client.post(f"/customers/{customer_b.id}/delete")
+
+        self.assertEqual(Customer.query.get(customer_a.id).deleted_by, "user-a")
+        self.assertEqual(Customer.query.get(customer_b.id).deleted_by, "user-b")
+        self.assertEqual(
+            ActivityLog.query.filter(ActivityLog.module == ActivityLogService.MODULE_CUSTOMER)
+            .filter(ActivityLog.reference_id.in_([customer_a.id, customer_b.id]))
+            .count(),
+            2
+        )
+
+    def test_commit_failure_rolls_back_record_and_log(self):
+        owner = AuthService.seed_owner_if_empty()
+        customer = self.create_customer_record("Rollback Customer")
+        customer_id = customer.id
+        self.login_as(owner)
+        before_logs = ActivityLog.query.filter_by(reference_id=customer_id).count()
+
+        def fail_commit():
+            raise SQLAlchemyError("commit failed")
+
+        with patch("services.customer_service.db.session.commit", side_effect=fail_commit):
+            with self.assertRaises(SQLAlchemyError):
+                CustomerService.delete(customer_id, actor="owner")
+
+        rolled_back_customer = Customer.query.get(customer_id)
+        self.assertIsNone(rolled_back_customer.deleted_at)
+        self.assertIsNone(rolled_back_customer.deleted_by)
+        after_logs = ActivityLog.query.filter_by(reference_id=customer_id).count()
+        self.assertEqual(after_logs, before_logs)
+
+    def test_explicit_system_restore_is_allowed(self):
+        customer = self.create_customer_record("System Restore Customer")
+        customer.deleted_at = datetime.utcnow()
+        customer.deleted_by = "legacy"
+        db.session.commit()
+
+        result = CustomerService.restore(customer.id, actor="Hệ thống")
+
+        self.assertTrue(result)
+        restored_customer = Customer.query.get(customer.id)
+        self.assertIsNone(restored_customer.deleted_at)
+        self.assertIsNone(restored_customer.deleted_by)
+        log_entry = ActivityLog.query.filter_by(reference_id=customer.id).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(log_entry)
+        self.assertIn("Hệ thống", log_entry.description)
+        self.assertIsNone(log_entry.user_id)
+
+    def test_recycle_bin_shows_fallback_for_missing_deleted_by(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Unknown Customer")
+        customer.deleted_at = datetime.utcnow()
+        customer.deleted_by = None
+        db.session.commit()
+
+        response = self.client.get("/recycle-bin")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Không xác định", response.get_data(as_text=True))
 
     def test_production_requires_owner_password(self):
         with patch.dict(

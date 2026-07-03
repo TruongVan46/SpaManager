@@ -9,6 +9,7 @@ from utils.pagination import get_pagination_params
 from core.exceptions import BusinessException
 from services.notification_service import NotificationService
 from utils.timezone_utils import local_now
+from services.auth_service import AuthService
 
 @appointment_bp.route('/appointments')
 def index():
@@ -176,19 +177,22 @@ def update_status():
 
 @appointment_bp.route('/appointments/delete/<int:id>', methods=['POST'])
 def delete(id):
-    success, error = AppointmentService.delete(id)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-        if success:
-            return jsonify({'success': True, 'message': 'Đã xóa lịch hẹn thành công.'})
-        else:
+    try:
+        success, error = AppointmentService.delete(id, actor=AuthService.require_current_username())
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            if success:
+                return jsonify({'success': True, 'message': 'Đã xóa lịch hẹn thành công.'})
             return jsonify({'success': False, 'message': error or 'Không thể xóa lịch hẹn.'})
-            
-    if success:
-        flash('Đã xóa lịch hẹn thành công.', 'success')
-    else:
-        flash(error or 'Không thể xóa lịch hẹn.', 'danger')
-    return redirect(url_for('appointment.index'))
+        if success:
+            flash('Đã xóa lịch hẹn thành công.', 'success')
+        else:
+            flash(error or 'Không thể xóa lịch hẹn.', 'danger')
+        return redirect(url_for('appointment.index'))
+    except BusinessException as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        flash(e.message, 'danger')
+        return redirect(url_for('appointment.index'))
 
 @appointment_bp.route('/appointments/search')
 def search():

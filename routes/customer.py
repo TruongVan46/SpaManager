@@ -1,6 +1,7 @@
 from flask import render_template, redirect, url_for, request, jsonify
 from routes import customer_bp
 from services.customer_service import CustomerService
+from services.auth_service import AuthService
 from utils.pagination import get_pagination_params
 from core.exceptions import BusinessException, NotFoundException
 from services.notification_service import NotificationService
@@ -141,7 +142,7 @@ def check_can_delete(id):
 @customer_bp.route('/customers/<int:id>/delete', methods=['POST'])
 def delete(id):
     try:
-        CustomerService.delete(id)
+        CustomerService.delete(id, actor=AuthService.require_current_username())
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
             return jsonify({'success': True, 'message': 'Đã xóa khách hàng thành công.'})
         NotificationService.flash_success('Đã xóa khách hàng thành công.')

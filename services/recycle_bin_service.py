@@ -129,7 +129,7 @@ class RecycleBinService:
             for item in old_items:
                 try:
                     # Execute permanent delete safely
-                    success = config['permanent_delete_func'](item.id)
+                    success = config['permanent_delete_func'](item.id, actor="Hệ thống")
                     if success:
                         results["deleted_count"] += 1
                 except Exception as e:
@@ -146,8 +146,8 @@ RecycleBinRegistry.register('Customer', {
     'vn_name': 'Khách hàng',
     'badge_class': 'badge-type-customer',
     'get_name_func': lambda item: item.name,
-    'restore_func': lambda item_id: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.restore(item_id),
-    'permanent_delete_func': lambda item_id: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.permanent_delete(item_id),
+    'restore_func': lambda item_id, actor=None: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.restore(item_id, actor=actor),
+    'permanent_delete_func': lambda item_id, actor=None: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': Customer.query.get(item_id).name if Customer.query.get(item_id) else 'Khách hàng',
         'details': [
@@ -162,8 +162,8 @@ RecycleBinRegistry.register('Service', {
     'vn_name': 'Dịch vụ',
     'badge_class': 'badge-type-service',
     'get_name_func': lambda item: item.name,
-    'restore_func': lambda item_id: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.restore_service(item_id),
-    'permanent_delete_func': lambda item_id: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.permanent_delete_service(item_id),
+    'restore_func': lambda item_id, actor=None: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.restore_service(item_id, actor=actor),
+    'permanent_delete_func': lambda item_id, actor=None: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.permanent_delete_service(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': Service.query.get(item_id).name if Service.query.get(item_id) else 'Dịch vụ',
         'details': [
@@ -178,8 +178,8 @@ RecycleBinRegistry.register('Appointment', {
     'vn_name': 'Lịch hẹn',
     'badge_class': 'badge-type-appointment',
     'get_name_func': lambda item: f"Lịch hẹn #{item.id} - {item.customer.name if item.customer else 'Khách hàng'} ({item.appointment_time.strftime('%d/%m/%Y %H:%M') if item.appointment_time else ''})",
-    'restore_func': lambda item_id: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.restore(item_id),
-    'permanent_delete_func': lambda item_id: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.permanent_delete(item_id),
+    'restore_func': lambda item_id, actor=None: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.restore(item_id, actor=actor),
+    'permanent_delete_func': lambda item_id, actor=None: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': f"Lịch hẹn #{item_id}",
         'details': []
@@ -191,8 +191,8 @@ RecycleBinRegistry.register('Invoice', {
     'vn_name': 'Hóa đơn',
     'badge_class': 'badge-type-invoice',
     'get_name_func': lambda item: f"Hóa đơn HD{item.id:06d} - {item.customer.name if item.customer else 'Khách hàng'} ({item.invoice_date.strftime('%d/%m/%Y') if item.invoice_date else ''})",
-    'restore_func': lambda item_id: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.restore(item_id),
-    'permanent_delete_func': lambda item_id: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.permanent_delete(item_id),
+    'restore_func': lambda item_id, actor=None: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.restore(item_id, actor=actor),
+    'permanent_delete_func': lambda item_id, actor=None: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': f"Hóa đơn HD{item_id:06d}",
         'details': [

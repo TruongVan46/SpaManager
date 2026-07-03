@@ -4,6 +4,7 @@ from core.logger import app_logger
 
 from extensions import db
 from models.activity_log import ActivityLog
+from services.auth_service import AuthService
 from utils.timezone_utils import local_day_bounds_utc, local_today, parse_datetime_value, utc_now
 
 
@@ -40,7 +41,7 @@ class ActivityLogService:
     MODULE_SYSTEM = 'System'
 
     @staticmethod
-    def write_log(module, action, description, reference_id=None, severity=SEVERITY_INFO):
+    def write_log(module, action, description, reference_id=None, severity=SEVERITY_INFO, session_override=None, commit=True, user_id_override=None):
         """
         Write a new activity log entry.
         This writes to the database using an independent session to ensure that
@@ -48,16 +49,24 @@ class ActivityLogService:
         unintentionally commit the main transaction.
         """
         try:
+            current_user = AuthService.get_current_user()
+            log_entry = ActivityLog(
+                module=module,
+                action=action,
+                description=description,
+                reference_id=reference_id,
+                severity=severity,
+                created_at=utc_now(),
+                user_id=user_id_override if user_id_override is not None else (current_user.id if current_user else None)
+            )
+            if session_override is not None:
+                session_override.add(log_entry)
+                if commit:
+                    session_override.commit()
+                return True
+
             # Use an independent session to ensure log safety
             with Session(db.engine) as session:
-                log_entry = ActivityLog(
-                    module=module,
-                    action=action,
-                    description=description,
-                    reference_id=reference_id,
-                    severity=severity,
-                    created_at=utc_now()
-                )
                 session.add(log_entry)
                 session.commit()
                 return True

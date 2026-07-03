@@ -1,6 +1,8 @@
 from flask import render_template, request, jsonify
 from routes import recycle_bin_bp
 from services.recycle_bin_service import RecycleBinService, RecycleBinRegistry
+from services.auth_service import AuthService
+from core.exceptions import BusinessException
 from utils.pagination import get_pagination_params
 
 @recycle_bin_bp.route('/recycle-bin')
@@ -40,11 +42,13 @@ def restore(item_type, item_id):
         if not config:
             return jsonify({'success': False, 'message': 'Loại dữ liệu không hợp lệ.'}), 400
             
-        success = config['restore_func'](item_id)
+        success = config['restore_func'](item_id, actor=AuthService.require_current_username())
         if success:
             return jsonify({'success': True, 'message': 'Khôi phục thành công.'})
         else:
             return jsonify({'success': False, 'message': 'Không thể khôi phục dữ liệu.'}), 400
+    except BusinessException as be:
+        return jsonify({'success': False, 'message': be.message}), be.status_code
     except ValueError as ve:
         # ValueError contains the validation error message from service
         return jsonify({'success': False, 'message': str(ve)}), 400
@@ -72,11 +76,13 @@ def delete_permanent(item_type, item_id):
         if not config:
             return jsonify({'success': False, 'message': 'Loại dữ liệu không hợp lệ.'}), 400
             
-        success = config['permanent_delete_func'](item_id)
+        success = config['permanent_delete_func'](item_id, actor=AuthService.require_current_username())
         if success:
             return jsonify({'success': True, 'message': 'Đã xóa vĩnh viễn.'})
         else:
             return jsonify({'success': False, 'message': 'Không thể xóa vĩnh viễn dữ liệu.'}), 400
+    except BusinessException as be:
+        return jsonify({'success': False, 'message': be.message}), be.status_code
     except ValueError as ve:
         return jsonify({'success': False, 'message': str(ve)}), 400
     except Exception:

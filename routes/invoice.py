@@ -10,6 +10,8 @@ from utils.export_excel import generate_invoice_excel
 from utils.export_pdf import generate_invoice_pdf
 from utils.pagination import get_pagination_params
 from utils.timezone_utils import local_now
+from services.auth_service import AuthService
+from core.exceptions import BusinessException
 
 @invoice_bp.route('/invoices')
 def index():
@@ -160,23 +162,29 @@ def print_invoice(invoice_id):
 
 @invoice_bp.route('/invoices/delete/<int:invoice_id>', methods=['POST'])
 def delete(invoice_id):
-    success = InvoiceService.delete_invoice(invoice_id)
+    try:
+        success = InvoiceService.delete_invoice(invoice_id, actor=AuthService.require_current_username())
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-        if success:
-            return jsonify({'success': True, 'message': 'Đã xóa hóa đơn thành công.'})
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            if success:
+                return jsonify({'success': True, 'message': 'Đã xóa hóa đơn thành công.'})
+            else:
+                return jsonify({'success': False, 'message': 'Không tìm thấy hóa đơn để xóa.'})
+
+        if not success:
+            flash('Không tìm thấy hóa đơn để xóa.', 'danger')
         else:
-            return jsonify({'success': False, 'message': 'Không tìm thấy hóa đơn để xóa.'})
+            flash('Xóa hóa đơn thành công', 'success')
 
-    if not success:
-        flash('Không tìm thấy hóa đơn để xóa.', 'danger')
-    else:
-        flash('Xóa hóa đơn thành công', 'success')
-
-    return_url = request.args.get('return_url') or request.form.get('return_url')
-    if return_url:
-        return redirect(return_url)
-    return redirect(url_for('invoice.index'))
+        return_url = request.args.get('return_url') or request.form.get('return_url')
+        if return_url:
+            return redirect(return_url)
+        return redirect(url_for('invoice.index'))
+    except BusinessException as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        flash(e.message, 'danger')
+        return redirect(url_for('invoice.index'))
 
 @invoice_bp.route('/invoices/export/excel')
 def export_excel():

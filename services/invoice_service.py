@@ -8,7 +8,9 @@ from models.invoice_detail import InvoiceDetail
 from models.service import Service
 from models.customer import Customer
 from core.exceptions import ValidationException
+from core.exceptions import AuthenticationException
 from core.cache import dashboard_cache
+from services.auth_service import AuthService
 from validators.invoice_validator import InvoiceValidator
 from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import local_today, utc_now
@@ -325,81 +327,115 @@ class InvoiceService:
             raise e
 
     @staticmethod
-    def delete_invoice(invoice_id):
+    def delete_invoice(invoice_id, actor=None):
         """Xóa mềm hóa đơn và chuyển vào thùng rác"""
-        try:
-            invoice = Invoice.query.get(invoice_id)
-            if not invoice or invoice.deleted_at is not None:
-                return False
-
-            invoice.deleted_at = utc_now()
-            invoice.deleted_by = None
-            db.session.commit()
-            
-            ActivityLogService.log_delete(
-                module=ActivityLogService.MODULE_INVOICE,
-                description=f'Chuyển hóa đơn HD{invoice.id:06d} vào Thùng rác',
-                reference_id=invoice_id
-            )
-            dashboard_cache.invalidate('dashboard_data')
-            return True
-        except Exception:
-            db.session.rollback()
+        invoice = Invoice.query.get(invoice_id)
+        if not invoice or invoice.deleted_at is not None:
             return False
 
+        try:
+            actor_name = actor
+            if actor_name is None or not str(actor_name).strip():
+                actor_name = AuthService.require_current_username()
+            current_user = AuthService.get_current_user()
+            invoice.deleted_at = utc_now()
+            invoice.deleted_by = actor_name
+            ActivityLogService.write_log(
+                module=ActivityLogService.MODULE_INVOICE,
+                action=ActivityLogService.ACTION_DELETE,
+                description=f'{actor_name} chuyển hóa đơn HD{invoice.id:06d} vào Thùng rác',
+                reference_id=invoice_id,
+                session_override=db.session,
+                commit=False,
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+            )
+            db.session.commit()
+            dashboard_cache.invalidate('dashboard_data')
+            return True
+        except AuthenticationException:
+            raise
+        except Exception:
+            db.session.rollback()
+            db.session.remove()
+            raise
+
     @staticmethod
-    def restore(invoice_id):
+    def restore(invoice_id, actor=None):
         """Khôi phục hóa đơn từ Thùng rác"""
         invoice = Invoice.query.get(invoice_id)
         if invoice and invoice.deleted_at is not None:
-            # Kiểm tra quan hệ dữ liệu: Khách hàng liên quan phải tồn tại
-            customer = Customer.query.get(invoice.customer_id)
-            if not customer:
-                raise ValueError(f"Không thể khôi phục hóa đơn vì khách hàng liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
-                
-            # Kiểm tra quan hệ dữ liệu: Tất cả dịch vụ trong chi tiết hóa đơn phải tồn tại
-            for detail in invoice.details:
-                service = Service.query.get(detail.service_id)
-                if not service:
-                    raise ValueError(f"Không thể khôi phục hóa đơn vì một hoặc nhiều dịch vụ liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
+            try:
+                actor_name = actor
+                if actor_name is None or not str(actor_name).strip():
+                    actor_name = AuthService.require_current_username()
+                current_user = AuthService.get_current_user()
+                # Kiểm tra quan hệ dữ liệu: Khách hàng liên quan phải tồn tại
+                customer = Customer.query.get(invoice.customer_id)
+                if not customer:
+                    raise ValueError(f"Không thể khôi phục hóa đơn vì khách hàng liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
                     
-            invoice.deleted_at = None
-            invoice.deleted_by = None
-            db.session.commit()
-            
-            ActivityLogService.log_action(
-                module=ActivityLogService.MODULE_INVOICE,
-                action=ActivityLogService.ACTION_RESTORE,
-                description=f'Khôi phục hóa đơn HD{invoice.id:06d} từ Thùng rác',
-                reference_id=invoice_id,
-                severity=ActivityLogService.SEVERITY_SUCCESS
-            )
+                # Kiểm tra quan hệ dữ liệu: Tất cả dịch vụ trong chi tiết hóa đơn phải tồn tại
+                for detail in invoice.details:
+                    service = Service.query.get(detail.service_id)
+                    if not service:
+                        raise ValueError(f"Không thể khôi phục hóa đơn vì một hoặc nhiều dịch vụ liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
+                        
+                invoice.deleted_at = None
+                invoice.deleted_by = None
+                ActivityLogService.write_log(
+                    module=ActivityLogService.MODULE_INVOICE,
+                    action=ActivityLogService.ACTION_RESTORE,
+                    description=f'{actor_name} khôi phục hóa đơn HD{invoice.id:06d} từ Thùng rác',
+                    reference_id=invoice_id,
+                    severity=ActivityLogService.SEVERITY_SUCCESS,
+                    session_override=db.session,
+                    commit=False,
+                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                )
+                db.session.commit()
+            except AuthenticationException:
+                raise
+            except Exception:
+                db.session.rollback()
+                db.session.remove()
+                raise
             dashboard_cache.invalidate('dashboard_data')
             return True
         return False
 
     @staticmethod
-    def permanent_delete(invoice_id):
+    def permanent_delete(invoice_id, actor=None):
         """Xóa vĩnh viễn hóa đơn khỏi cơ sở dữ liệu"""
+        invoice = Invoice.query.get(invoice_id)
+        if not invoice:
+            return False
+
         try:
-            invoice = Invoice.query.get(invoice_id)
-            if not invoice:
-                return False
-                
             # Xóa các chi tiết hóa đơn liên quan trước
+            actor_name = actor
+            if actor_name is None or not str(actor_name).strip():
+                actor_name = AuthService.require_current_username()
+            current_user = AuthService.get_current_user()
+            ActivityLogService.write_log(
+                module=ActivityLogService.MODULE_INVOICE,
+                action='PERMANENT_DELETE',
+                description=f'{actor_name} xóa vĩnh viễn hóa đơn HD{invoice_id:06d} khỏi cơ sở dữ liệu',
+                reference_id=invoice_id,
+                severity=ActivityLogService.SEVERITY_WARNING,
+                session_override=db.session,
+                commit=False,
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+            )
             for detail in invoice.details:
                 db.session.delete(detail)
                 
             db.session.delete(invoice)
             db.session.commit()
-            
-            ActivityLogService.log_delete(
-                module=ActivityLogService.MODULE_INVOICE,
-                description=f'Xóa vĩnh viễn hóa đơn HD{invoice_id:06d} khỏi cơ sở dữ liệu',
-                reference_id=invoice_id
-            )
             dashboard_cache.invalidate('dashboard_data')
             return True
+        except AuthenticationException:
+            raise
         except Exception:
             db.session.rollback()
-            return False
+            db.session.remove()
+            raise

@@ -9,6 +9,7 @@ from models.customer import Customer
 from models.service import Service
 from core.exceptions import ConflictException, ValidationException, NotFoundException
 from core.cache import dashboard_cache
+from services.auth_service import AuthService
 from validators.appointment_validator import AppointmentValidator
 from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import local_now_naive, local_today, utc_now
@@ -374,28 +375,40 @@ class AppointmentService:
         return AppointmentService.update(appointment_id, status=new_status)
 
     @staticmethod
-    def delete(appointment_id):
+    def delete(appointment_id, actor=None):
         """Xóa mềm lịch hẹn và chuyển vào thùng rác"""
         appointment = Appointment.query.get(appointment_id)
         if appointment and appointment.deleted_at is None:
             customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
+            try:
+                actor_name = actor
+                if actor_name is None or not str(actor_name).strip():
+                    actor_name = AuthService.require_current_username()
+                current_user = AuthService.get_current_user()
 
-            appointment.deleted_at = utc_now()
-            appointment.deleted_by = None
-            db.session.commit()
-            
-            ActivityLogService.log_delete(
-                module=ActivityLogService.MODULE_APPOINTMENT,
-                description=f'Chuyển lịch hẹn #{appointment_id} của "{customer_name}" vào Thùng rác',
-                reference_id=appointment_id
-            )
+                appointment.deleted_at = utc_now()
+                appointment.deleted_by = actor_name
+                ActivityLogService.write_log(
+                    module=ActivityLogService.MODULE_APPOINTMENT,
+                    action=ActivityLogService.ACTION_DELETE,
+                    description=f'{actor_name} chuyển lịch hẹn #{appointment_id} của "{customer_name}" vào Thùng rác',
+                    reference_id=appointment_id,
+                    session_override=db.session,
+                    commit=False,
+                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                db.session.remove()
+                raise
 
             dashboard_cache.invalidate('dashboard_data')
             return True, None
         return False, "Appointment not found"
 
     @staticmethod
-    def restore(appointment_id):
+    def restore(appointment_id, actor=None):
         """Khôi phục lịch hẹn từ Thùng rác"""
         appointment = Appointment.query.get(appointment_id)
         if appointment and appointment.deleted_at is not None:
@@ -407,38 +420,60 @@ class AppointmentService:
             if not service:
                 raise ValueError("Không thể khôi phục lịch hẹn vì dịch vụ liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
                 
-            appointment.deleted_at = None
-            appointment.deleted_by = None
-            db.session.commit()
-            
-            customer_name = customer.name
-            ActivityLogService.log_action(
-                module=ActivityLogService.MODULE_APPOINTMENT,
-                action=ActivityLogService.ACTION_RESTORE,
-                description=f'Khôi phục lịch hẹn #{appointment_id} của "{customer_name}" từ Thùng rác',
-                reference_id=appointment_id,
-                severity=ActivityLogService.SEVERITY_SUCCESS
-            )
+            try:
+                actor_name = actor
+                if actor_name is None or not str(actor_name).strip():
+                    actor_name = AuthService.require_current_username()
+                current_user = AuthService.get_current_user()
+                appointment.deleted_at = None
+                appointment.deleted_by = None
+                customer_name = customer.name
+                ActivityLogService.write_log(
+                    module=ActivityLogService.MODULE_APPOINTMENT,
+                    action=ActivityLogService.ACTION_RESTORE,
+                    description=f'{actor_name} khôi phục lịch hẹn #{appointment_id} của "{customer_name}" từ Thùng rác',
+                    reference_id=appointment_id,
+                    severity=ActivityLogService.SEVERITY_SUCCESS,
+                    session_override=db.session,
+                    commit=False,
+                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                db.session.remove()
+                raise
             dashboard_cache.invalidate('dashboard_data')
             return True
         return False
 
     @staticmethod
-    def permanent_delete(appointment_id):
+    def permanent_delete(appointment_id, actor=None):
         """Xóa vĩnh viễn lịch hẹn khỏi cơ sở dữ liệu"""
         appointment = Appointment.query.get(appointment_id)
         if appointment:
             customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
-            db.session.delete(appointment)
-            db.session.commit()
-            
-            ActivityLogService.log_action(
-                module=ActivityLogService.MODULE_APPOINTMENT,
-                action='PERMANENT_DELETE',
-                description=f'Xóa vĩnh viễn lịch hẹn #{appointment_id} của "{customer_name}" khỏi cơ sở dữ liệu',
-                reference_id=appointment_id,
-                severity=ActivityLogService.SEVERITY_WARNING
-            )
+            try:
+                actor_name = actor
+                if actor_name is None or not str(actor_name).strip():
+                    actor_name = AuthService.require_current_username()
+                current_user = AuthService.get_current_user()
+                ActivityLogService.write_log(
+                    module=ActivityLogService.MODULE_APPOINTMENT,
+                    action='PERMANENT_DELETE',
+                    description=f'{actor_name} xóa vĩnh viễn lịch hẹn #{appointment_id} của "{customer_name}" khỏi cơ sở dữ liệu',
+                    reference_id=appointment_id,
+                    severity=ActivityLogService.SEVERITY_WARNING,
+                    session_override=db.session,
+                    commit=False,
+                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                )
+                db.session.delete(appointment)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                db.session.remove()
+                raise
             dashboard_cache.invalidate('dashboard_data')
             return True
         return False

@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, jsonify
 from routes import service_bp
 from services.service_service import ServiceService
+from services.auth_service import AuthService
 from utils.pagination import get_pagination_params
 from core.exceptions import BusinessException, NotFoundException
 from services.notification_service import NotificationService
@@ -61,8 +62,14 @@ def edit(id):
 
 @service_bp.route('/services/delete/<int:id>', methods=['POST'])
 def delete(id):
-    ServiceService.delete_service(id)
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-        return jsonify({'success': True, 'message': 'Đã chuyển dịch vụ vào Thùng rác.'})
-    NotificationService.flash_success('Đã chuyển dịch vụ vào Thùng rác.')
-    return redirect(url_for('service.index'))
+    try:
+        ServiceService.delete_service(id, actor=AuthService.require_current_username())
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': True, 'message': 'Đã chuyển dịch vụ vào Thùng rác.'})
+        NotificationService.flash_success('Đã chuyển dịch vụ vào Thùng rác.')
+        return redirect(url_for('service.index'))
+    except BusinessException as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+        return redirect(url_for('service.index'))

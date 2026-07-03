@@ -2,7 +2,7 @@ import os
 import uuid
 from datetime import datetime
 
-from flask import current_app, has_app_context, session
+from flask import current_app, has_app_context, has_request_context, session
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
@@ -12,7 +12,7 @@ from models.activity_log import ActivityLog
 from core.auth.enums import UserRole
 from core.auth.constants import AUTH_SESSION_KEY
 from core.logger import app_logger
-from core.exceptions import ValidationException
+from core.exceptions import AuthenticationException, ValidationException
 from validators.auth_validator import AuthValidator
 from validators.profile_validator import ProfileValidator
 from utils.timezone_utils import utc_now
@@ -102,11 +102,33 @@ class AuthService:
         Get the currently logged-in user object from session.
         Returns: User or None
         """
+        if not has_request_context():
+            return None
         user_id = session.get(AUTH_SESSION_KEY)
         if user_id:
             # Querying the database to fetch the latest state
             return User.query.get(user_id)
         return None
+
+    @staticmethod
+    def get_current_username():
+        """
+        Get the username of the currently logged-in user.
+        Returns: str or None
+        """
+        current_user = AuthService.get_current_user()
+        return current_user.username if current_user else None
+
+    @staticmethod
+    def require_current_username():
+        """
+        Require a valid authenticated username for user-triggered operations.
+        Raises AuthenticationException when the current actor is missing.
+        """
+        username = AuthService.get_current_username()
+        if not username:
+            raise AuthenticationException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.")
+        return username
 
     @staticmethod
     def is_authenticated():

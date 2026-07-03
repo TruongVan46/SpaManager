@@ -130,7 +130,7 @@
                                 <span>{{ formatted_time }}</span>
                             </td>
                             <td>
-                                <span>{{ item.deleted_by | highlight(q) if item.deleted_by else '-' }}</span>
+                                <span>{{ item.deleted_by | highlight(q) if item.deleted_by else 'Không xác định' }}</span>
                             </td>
                             <td class="text-center">
                                 <span class="app-badge badge-status-deleted">ĐÃ XÓA</span>
