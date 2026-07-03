@@ -40,10 +40,40 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 copy .env.example .env
+.\venv\Scripts\python.exe -m flask --app app db upgrade
 python run.py
 ```
 
-The first run seeds the default owner account from `.env`.
+The first run should apply the baseline schema with `flask db upgrade` before starting the app.
+
+## Database migrations
+
+SpaManager ships a lightweight SQLite-safe `flask db` workflow for the current production baseline.
+
+Useful commands:
+
+```bash
+.\venv\Scripts\python.exe -m flask --app app db current
+.\venv\Scripts\python.exe -m flask --app app db history
+.\venv\Scripts\python.exe -m flask --app app db upgrade
+.\venv\Scripts\python.exe -m flask --app app db stamp head
+```
+
+If you already activated the virtual environment, the shorter form also works:
+
+```bash
+flask db current
+flask db history
+flask db upgrade
+flask db stamp head
+```
+
+- `current` shows the active stamped revision.
+- `history` lists the available schema revisions.
+- `upgrade` applies the baseline schema to a fresh database.
+- `stamp head` marks an existing production database as already aligned with the baseline.
+
+Always back up the SQLite file before stamping or upgrading a live environment.
 
 ## Environment variables
 

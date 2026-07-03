@@ -7,7 +7,7 @@ from extensions import db
 from config import get_active_config
 from utils.timezone_utils import to_local_datetime
 from utils.media_storage import normalize_media_reference, resolve_media_file_path
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from routes import (
     dashboard_bp, 
@@ -23,6 +23,7 @@ from routes import (
 )
 from services.auth_service import AuthService
 from core.csrf import validate_csrf_request, csrf_token, CSRFError
+from core.migration_cli import register_migration_commands
 
 # Tạo ứng dụng Flask
 app = Flask(__name__)
@@ -44,6 +45,18 @@ app.register_blueprint(activity_log_bp)
 app.register_blueprint(setting_bp)
 app.register_blueprint(recycle_bin_bp)
 app.register_blueprint(auth_bp)
+register_migration_commands(app)
+
+BASELINE_TABLES = [
+    "users",
+    "customers",
+    "services",
+    "appointments",
+    "invoices",
+    "invoice_details",
+    "activity_logs",
+    "settings",
+]
 
 # Favicon handler
 @app.route('/favicon.ico')
@@ -166,52 +179,21 @@ from core.logger import app_logger
 app_logger.init_app(app)
 app_logger.info("SpaManager application initialized successfully", module="SYSTEM")
 
-# Tạo database nếu chưa tồn tại
+
+def _baseline_schema_is_ready():
+    inspector = inspect(db.engine)
+    existing_tables = set(inspector.get_table_names())
+    return all(table in existing_tables for table in BASELINE_TABLES)
+
+
 with app.app_context():
-    import models  # noqa: F401, needed for db.create_all()
-    db.create_all()
-
-    # ── Auto-migration: thêm cột mới vào bảng đã tồn tại ──
-    # db.create_all() chỉ tạo bảng mới, không ALTER TABLE.
-    # Logic dưới đây kiểm tra và bổ sung các cột còn thiếu.
-    try:
-        if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
-            import sqlite3
-            db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-
-            # Danh sách các cột cần đảm bảo tồn tại: (table, column, type)
-            required_columns = [
-                ('customers', 'deleted_at', 'DATETIME'),
-                ('customers', 'deleted_by', 'VARCHAR(100)'),
-                ('services', 'deleted_at', 'DATETIME'),
-                ('services', 'deleted_by', 'VARCHAR(100)'),
-                ('appointments', 'deleted_at', 'DATETIME'),
-                ('appointments', 'deleted_by', 'VARCHAR(100)'),
-                ('invoices', 'deleted_at', 'DATETIME'),
-                ('invoices', 'deleted_by', 'VARCHAR(100)'),
-                ('activity_logs', 'user_id', 'INTEGER'),
-                ('users', 'email', 'VARCHAR(255)'),
-                ('users', 'email_verified', 'BOOLEAN NOT NULL DEFAULT 0'),
-                ('users', 'auth_provider', "VARCHAR(50) NOT NULL DEFAULT 'local'"),
-                ('users', 'oauth_id', 'VARCHAR(255)'),
-            ]
-
-            for table, column, col_type in required_columns:
-                cursor.execute(f"PRAGMA table_info({table})")
-                existing_columns = [row[1] for row in cursor.fetchall()]
-                if column not in existing_columns:
-                    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-                    app_logger.info(f"Added column {column} to table {table}", module="MIGRATION")
-
-            conn.commit()
-            conn.close()
-
-        # Seed the default owner if User table is empty (works across database types)
+    if _baseline_schema_is_ready():
         AuthService.seed_owner_if_empty()
-    except Exception as e:
-        app_logger.critical(f"Migration/Seed failed: {e}", module="MIGRATION", exc_info=True)
+    else:
+        app_logger.warning(
+            "Database schema is not initialized. Run 'flask db upgrade' before using the app.",
+            module="MIGRATION"
+        )
 
 @app.template_filter('format_currency')
 def format_currency(value):

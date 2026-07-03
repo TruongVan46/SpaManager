@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from sqlalchemy import event, text
+from sqlalchemy import event, text, inspect as sa_inspect
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 TEST_DB_FILE = Path(tempfile.gettempdir()) / "spamanager_owner_seed_test.sqlite"
@@ -64,15 +64,26 @@ class BasicTestCase(unittest.TestCase):
         self.app_context = app.app_context()
         self.app_context.push()
         self.client = app.test_client()
-        db.session.rollback()
-        User.query.delete(synchronize_session=False)
-        db.session.commit()
+        self.reset_database_schema()
 
     def tearDown(self):
         db.session.rollback()
-        User.query.delete(synchronize_session=False)
-        db.session.commit()
         self.app_context.pop()
+
+    def reset_database_schema(self):
+        db.session.rollback()
+        db.drop_all()
+        db.session.commit()
+        with db.engine.begin() as connection:
+            connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        db.create_all()
+
+    def clear_database_schema(self):
+        db.session.rollback()
+        db.drop_all()
+        db.session.commit()
+        with db.engine.begin() as connection:
+            connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
     def create_user(self, username, password="secret123", full_name="Test User", role="STAFF"):
         user = User(
@@ -1274,6 +1285,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("SpaManager is a Flask-based web app", readme)
         self.assertIn("Command Palette with `Ctrl+K`", readme)
         self.assertIn("badge.svg?branch=main", readme)
+        self.assertIn("flask db upgrade", readme)
+        self.assertIn("flask db stamp head", readme)
         self.assertIn("compileall .", readme)
         self.assertIn("DATABASE_URL=sqlite:///database/spa.db", env_example)
         self.assertIn("# DATABASE_URL=sqlite:////app/database/spa.db", env_example)
@@ -1283,6 +1296,51 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("master", workflow)
         self.assertNotIn("owner123", readme)
         self.assertNotIn("owner123", env_example)
+
+    def test_migration_commands_expose_baseline_revision(self):
+        runner = app.test_cli_runner()
+
+        current_before = runner.invoke(args=["db", "current"])
+        self.assertEqual(current_before.exit_code, 0, current_before.output)
+        self.assertIn("No revision stamp found", current_before.output)
+
+        history = runner.invoke(args=["db", "history"])
+        self.assertEqual(history.exit_code, 0, history.output)
+        self.assertIn("0001_baseline", history.output)
+
+    def test_db_upgrade_creates_schema_and_stamps_head(self):
+        self.clear_database_schema()
+        self.assertEqual(sa_inspect(db.engine).get_table_names(), [])
+
+        runner = app.test_cli_runner()
+        result = runner.invoke(args=["db", "upgrade"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Applied 0001_baseline", result.output)
+
+        tables = sa_inspect(db.engine).get_table_names()
+        self.assertIn("users", tables)
+        self.assertIn("customers", tables)
+        self.assertIn("alembic_version", tables)
+
+        current_after = runner.invoke(args=["db", "current"])
+        self.assertEqual(current_after.exit_code, 0, current_after.output)
+        self.assertIn("0001_baseline", current_after.output)
+
+    def test_db_stamp_head_marks_existing_schema_without_rebuilding(self):
+        tables_before = sorted(sa_inspect(db.engine).get_table_names())
+        runner = app.test_cli_runner()
+
+        result = runner.invoke(args=["db", "stamp", "head"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Stamped 0001_baseline", result.output)
+
+        tables_after = sorted(sa_inspect(db.engine).get_table_names())
+        self.assertIn("alembic_version", tables_after)
+        self.assertEqual(tables_before, [table for table in tables_after if table != "alembic_version"])
+
+        current_after = runner.invoke(args=["db", "current"])
+        self.assertEqual(current_after.exit_code, 0, current_after.output)
+        self.assertIn("0001_baseline", current_after.output)
 
 
 if __name__ == "__main__":
