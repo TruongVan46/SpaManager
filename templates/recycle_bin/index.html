@@ -277,7 +277,7 @@
                 
                 const restoreUrl = `/recycle-bin/restore/${itemToRestore.type}/${itemToRestore.id}`;
                 
-                fetch(restoreUrl, {
+                csrfFetch(restoreUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -403,7 +403,7 @@
                 confirmDeleteBtn.disabled = true;
                 confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Đang xóa...';
                 
-                fetch(`/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}`, {
+                csrfFetch(`/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
