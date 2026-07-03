@@ -731,13 +731,19 @@ class BasicTestCase(unittest.TestCase):
 
         html = self.client.get("/").get_data(as_text=True)
         source = Path("static/js/command-palette.js").read_text(encoding="utf-8")
+        palette_html = Path("templates/layout/command_palette.html").read_text(encoding="utf-8")
 
         self.assertIn('data-command-palette-open', html)
         self.assertIn('type="button"', html)
         self.assertIn('Tìm nhanh', html)
         self.assertIn('Ctrl K', html)
-        self.assertIn('window.openCommandPalette = function ()', source)
+        self.assertIn('data-command-palette-close', palette_html)
+        self.assertIn('aria-label="Đóng tìm nhanh"', palette_html)
+        self.assertIn('command-palette-close', palette_html)
+        self.assertIn('window.openCommandPalette = function (triggerEl)', source)
+        self.assertIn('window.closeCommandPalette = function ()', source)
         self.assertIn('[data-command-palette-open]', source)
+        self.assertIn('[data-command-palette-close]', source)
 
     def test_page_size_handler_is_scoped_to_explicit_controls(self):
         source = Path("static/js/shared-table.js").read_text(encoding="utf-8")

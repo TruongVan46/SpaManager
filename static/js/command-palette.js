@@ -126,6 +126,7 @@
             this.resultsContainer = null;
             this.selectedIndex = -1;
             this.filteredActions = [];
+            this.lastOpener = null;
         }
 
         init() {
@@ -141,6 +142,11 @@
 
             // Close when overlay backdrop is clicked
             this.overlay.addEventListener('click', () => this.close());
+
+            const closeButton = this.overlay.querySelector('[data-command-palette-close]');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => this.close());
+            }
 
             // Handle typing inside search input
             this.input.addEventListener('input', () => {
@@ -173,10 +179,11 @@
             }
         }
 
-        open() {
+        open(triggerEl = null) {
             if (!this.overlay) this.init();
             if (!this.overlay) return;
 
+            this.lastOpener = triggerEl || document.activeElement;
             this.overlay.style.display = 'flex';
             this.isOpen = true;
             this.selectedIndex = 0;
@@ -194,7 +201,18 @@
             this.overlay.style.display = 'none';
             this.isOpen = false;
             this.selectedIndex = -1;
-            this.input.blur();
+            if (this.input) {
+                this.input.blur();
+            }
+            if (this.lastOpener && typeof this.lastOpener.focus === 'function') {
+                setTimeout(() => {
+                    try {
+                        this.lastOpener.focus();
+                    } catch (error) {
+                        // Ignore focus restore failures.
+                    }
+                }, 0);
+            }
         }
 
         navigateSelection(direction) {
@@ -583,8 +601,8 @@
 
         // Initialize elements
         palette.init();
-        window.openCommandPalette = function () {
-            palette.open();
+        window.openCommandPalette = function (triggerEl) {
+            palette.open(triggerEl || null);
         };
         window.toggleCommandPalette = function () {
             palette.toggle();
@@ -595,7 +613,7 @@
 
         document.querySelectorAll('[data-command-palette-open]').forEach(button => {
             button.addEventListener('click', function () {
-                window.openCommandPalette();
+                window.openCommandPalette(this);
             });
         });
 
