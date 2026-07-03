@@ -2,6 +2,7 @@
 import os
 import time
 from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory
+from werkzeug.exceptions import HTTPException
 from extensions import db
 from config import get_active_config
 from utils.timezone_utils import to_local_datetime
@@ -88,11 +89,21 @@ def health_check():
 @app.before_request
 def require_login():
     # Skip check for static assets, login route, and favicon
+    if request.endpoint is None:
+        return
+
     if request.endpoint in ['static', 'auth.login', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
         return
 
     # Redirect to login if user is not authenticated
     if not AuthService.is_authenticated():
+        from core.error_handler import ErrorHandler
+        if ErrorHandler.is_json_request():
+            return jsonify({
+                "status": "error",
+                "error": "unauthorized",
+                "message": "Phiên đăng nhập không hợp lệ."
+            }), 401
         next_url = request.full_path
         return redirect(url_for('auth.login', next=next_url))
 
@@ -234,6 +245,10 @@ def inject_active_page():
 
 # Global Exception Handler registration
 from core.error_handler import ErrorHandler
+
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    return ErrorHandler.handle_http_exception(e)
 
 @app.errorhandler(Exception)
 def handle_global_exception(e):

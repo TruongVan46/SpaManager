@@ -217,6 +217,7 @@ class BasicTestCase(unittest.TestCase):
         response = self.client.post("/health")
 
         self.assertEqual(response.status_code, 405)
+        self.assertNotIn("Location", response.headers)
 
     def test_health_check_session_remains_usable_after_rollback(self):
         self.create_user("session-safe", password="session-pass", full_name="Session Safe", role="STAFF")
@@ -269,6 +270,100 @@ class BasicTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertNotIn("Location", response.headers)
+
+    def test_missing_route_returns_html_404_without_redirect_when_not_logged_in(self):
+        response = self.client.get("/khong-ton-tai", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.content_type.split(";")[0], "text/html")
+        self.assertNotIn("Location", response.headers)
+        self.assertIn("404", response.get_data(as_text=True))
+
+    def test_missing_route_returns_json_404_when_requested(self):
+        response = self.client.get(
+            "/khong-ton-tai-json",
+            headers={"Accept": "application/json"},
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error"], "not_found")
+        self.assertNotIn("Location", response.headers)
+
+    def test_static_missing_returns_404_without_redirect(self):
+        response = self.client.get("/static/missing.css", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
+
+    def test_protected_html_route_redirects_login_when_not_authenticated(self):
+        response = self.client.get("/customers", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+
+    def test_json_auth_error_returns_401_without_redirect(self):
+        response = self.client.post(
+            "/change-password",
+            json={
+                "current_password": "x",
+                "new_password": "y",
+                "confirm_password": "y",
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error"], "unauthorized")
+        self.assertNotIn("Location", response.headers)
+
+    def test_html_500_renders_template_and_rolls_back(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        def explode_dashboard():
+            raise RuntimeError("boom")
+
+        original_view = app.view_functions["dashboard.index"]
+        app.view_functions["dashboard.index"] = explode_dashboard
+        try:
+            response = self.client.get("/", follow_redirects=False)
+        finally:
+            app.view_functions["dashboard.index"] = original_view
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.content_type.split(";")[0], "text/html")
+        self.assertIn("500", response.get_data(as_text=True))
+        self.assertNotIn("boom", response.get_data(as_text=True))
+        self.assertNotIn("Traceback", response.get_data(as_text=True))
+
+    def test_json_500_returns_json_and_rolls_back(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        def explode_dashboard():
+            raise RuntimeError("boom-json")
+
+        original_view = app.view_functions["dashboard.index"]
+        app.view_functions["dashboard.index"] = explode_dashboard
+        try:
+            response = self.client.get("/", headers={"Accept": "application/json"}, follow_redirects=False)
+        finally:
+            app.view_functions["dashboard.index"] = original_view
+
+        self.assertEqual(response.status_code, 500)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error"], "internal_server_error")
+        self.assertNotIn("boom-json", response.get_data(as_text=True))
+        self.assertNotIn("Traceback", response.get_data(as_text=True))
 
     def test_seed_owner_creates_owner_when_database_is_empty(self):
         owner = AuthService.seed_owner_if_empty()
