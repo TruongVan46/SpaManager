@@ -99,6 +99,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnRestore = document.getElementById('btnRestore');
     const restoreForm = document.getElementById('restoreForm');
     const confirmRestoreBtn = document.getElementById('confirmRestore');
+    const confirmRestoreBackupBtn = document.getElementById('confirmRestoreBackupBtn');
+    const restoreConfirmCheck = document.getElementById('restoreConfirmCheck');
 
     if (restoreFileInput && btnRestore) {
         restoreFileInput.addEventListener('change', function () {
@@ -122,6 +124,12 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 restoreForm.submit();
             }
+        });
+    }
+
+    if (restoreConfirmCheck && confirmRestoreBackupBtn) {
+        restoreConfirmCheck.addEventListener('change', function () {
+            confirmRestoreBackupBtn.disabled = !this.checked;
         });
     }
 
@@ -786,6 +794,7 @@ const wizardBackupNotes = document.getElementById('wizard-backup-notes');
 const wizardBtnContinue1 = document.getElementById('wizard-btn-continue-1');
 const wizardBtnContinue2 = document.getElementById('wizard-btn-continue-2');
 const wizardBtnConfirm = document.getElementById('wizard-btn-confirm');
+const wizardRestoreConfirmCheck = document.getElementById('wizardRestoreConfirmCheck');
 const wizardValidationResult = document.getElementById('wizard-validation-result');
 const wizardWarningMsg = document.getElementById('wizard-warning-msg');
 const wizardResultMsg = document.getElementById('wizard-result-msg');
@@ -830,6 +839,12 @@ function triggerRestoreWizard(info) {
         wizardBtnConfirm.disabled = false;
         wizardBtnConfirm.innerHTML = 'Xác nhận khôi phục';
     }
+    if (wizardRestoreConfirmCheck) {
+        wizardRestoreConfirmCheck.checked = false;
+    }
+    if (wizardBtnConfirm) {
+        wizardBtnConfirm.disabled = true;
+    }
     
     // Disable all dismiss attributes on cancel buttons during active restore
     document.querySelectorAll('#restoreWizardModal .btn-close, #restoreWizardModal [data-bs-dismiss="modal"]').forEach(btn => {
@@ -838,6 +853,12 @@ function triggerRestoreWizard(info) {
 
     const modal = new bootstrap.Modal(restoreWizardModalEl);
     modal.show();
+}
+
+if (wizardRestoreConfirmCheck && wizardBtnConfirm) {
+    wizardRestoreConfirmCheck.addEventListener('change', function () {
+        wizardBtnConfirm.disabled = !this.checked || isExecutingRestore;
+    });
 }
 
 // Open wizard on restore button click
@@ -1033,6 +1054,7 @@ wizardBtnContinue2.addEventListener('click', function () {
 // Confirm restore
 wizardBtnConfirm.addEventListener('click', function () {
     if (!wizardBackupId) return;
+    if (wizardRestoreConfirmCheck && !wizardRestoreConfirmCheck.checked) return;
     
     isExecutingRestore = true;
     wizardBtnConfirm.disabled = true;
@@ -1129,6 +1151,7 @@ restoreWizardModalEl.addEventListener('hide.bs.modal', function (e) {
     const deleteBackupModalEl = document.getElementById('deleteBackupModal');
     const deleteBackupNameSpan = document.getElementById('deleteBackupName');
     const confirmDeleteBackupBtn = document.getElementById('confirmDeleteBackupBtn');
+    const deleteBackupConfirmCheck = document.getElementById('deleteBackupConfirmCheck');
     
     document.querySelectorAll('.btn-delete-backup').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -1138,16 +1161,29 @@ restoreWizardModalEl.addEventListener('hide.bs.modal', function (e) {
             if (deleteBackupNameSpan) {
                 deleteBackupNameSpan.textContent = name;
             }
+            if (deleteBackupConfirmCheck) {
+                deleteBackupConfirmCheck.checked = false;
+            }
+            if (confirmDeleteBackupBtn) {
+                confirmDeleteBackupBtn.disabled = true;
+            }
             
             const modal = new bootstrap.Modal(deleteBackupModalEl);
             modal.show();
         });
     });
+
+    if (deleteBackupConfirmCheck && confirmDeleteBackupBtn) {
+        deleteBackupConfirmCheck.addEventListener('change', function () {
+            confirmDeleteBackupBtn.disabled = !this.checked;
+        });
+    }
     
     // Confirm Delete Button Click
     if (confirmDeleteBackupBtn) {
         confirmDeleteBackupBtn.addEventListener('click', function() {
             if (!activeBackupId) return;
+            if (deleteBackupConfirmCheck && !deleteBackupConfirmCheck.checked) return;
             
             confirmDeleteBackupBtn.disabled = true;
             

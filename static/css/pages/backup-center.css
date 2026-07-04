@@ -43,6 +43,12 @@
     margin-bottom: 1.25rem;
 }
 
+.backup-center-card .backup-ux-hint {
+    border: 1px solid rgba(var(--bs-info-rgb), 0.15);
+    background: rgba(var(--bs-info-rgb), 0.06);
+    color: var(--spa-text-main);
+}
+
 .backup-center-card .backup-toolbar-left {
     display: flex;
     align-items: center;
@@ -142,6 +148,14 @@
     border-bottom: 1px solid var(--spa-border-color, var(--spa-border-color));
 }
 
+.backup-center-card .backup-note-preview {
+    display: inline-block;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* 4. Badges */
 .backup-center-card .badge-backup-type {
     font-size: 11px;
@@ -198,6 +212,10 @@
     color: var(--spa-text-muted, var(--spa-text-secondary));
     max-width: 400px;
     margin: 0 auto 20px auto;
+}
+
+.backup-center-card .backup-action-group .btn {
+    min-width: 38px;
 }
 
 /* 6. Responsive Breakpoints */

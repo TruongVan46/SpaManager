@@ -2042,6 +2042,35 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('id="uploadBackupForm"', template)
         self.assertIn('action="{{ url_for(\'setting.save_spa_info\') }}" method="POST"', template)
         self.assertGreaterEqual(template.count('name="csrf_token"'), 4)
+        self.assertIn('Backup lưu lại trạng thái hiện tại của hệ thống.', template)
+        self.assertIn('id="restoreConfirmCheck"', template)
+        self.assertIn('id="deleteBackupConfirmCheck"', template)
+        self.assertIn('id="wizardRestoreConfirmCheck"', template)
+        self.assertIn('id="confirmRestoreBackupBtn" disabled', template)
+        self.assertIn('id="confirmDeleteBackupBtn" disabled', template)
+        self.assertIn('id="wizard-btn-confirm" disabled', template)
+        self.assertIn('btn-restore-backup', template)
+        self.assertIn('btn-delete-backup', template)
+        self.assertNotIn('href="{{ url_for(\'setting.restore_from_backup\'', template)
+        self.assertNotIn('href="{{ url_for(\'setting.delete_backup\'', template)
+
+    def test_settings_backup_restore_ux_copy_and_js_guardrails_are_present(self):
+        template = Path("templates/setting/index.html").read_text(encoding="utf-8")
+        script = Path("static/js/setting.js").read_text(encoding="utf-8")
+
+        self.assertIn('Bản sao lưu sẽ lưu lại toàn bộ dữ liệu hiện tại của hệ thống', template)
+        self.assertIn('Hành động này không thể hoàn tác!', template)
+        self.assertIn('Nên tạo một bản sao lưu hiện tại trước khi tiếp tục', template)
+        self.assertIn('Tôi hiểu thao tác này sẽ thay thế dữ liệu hiện tại.', template)
+        self.assertIn('Tôi hiểu thao tác xóa này là vĩnh viễn.', template)
+        self.assertNotRegex(template, r'[A-Z]:\\\\')
+
+        self.assertIn('deleteBackupConfirmCheck', script)
+        self.assertIn('confirmRestoreBackupBtn.disabled = !this.checked', script)
+        self.assertIn('wizardRestoreConfirmCheck', script)
+        self.assertIn('confirmDeleteBackupBtn.disabled = !this.checked', script)
+        self.assertIn('wizardBtnConfirm.disabled = !this.checked || isExecutingRestore', script)
+        self.assertIn('requestSubmit', script)
 
     def test_backup_file_path_helper_blocks_traversal_and_stays_inside_backup_dir(self):
         backup_dir = Path(BackupService.get_backup_dir(app)).resolve()

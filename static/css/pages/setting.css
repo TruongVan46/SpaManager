@@ -308,6 +308,41 @@
     font-size: 0.9rem;
 }
 
+/* Backup / Restore confirmation helpers */
+.backup-ux-hint {
+    border-radius: var(--spa-radius-md);
+}
+
+.restore-warning-box,
+.delete-warning-box {
+    border: 1px solid var(--spa-border-color);
+    border-radius: var(--spa-radius-md);
+    background: var(--spa-secondary);
+    padding: 12px 14px;
+}
+
+.restore-confirm-check,
+.delete-confirm-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--spa-radius-md);
+    border: 1px dashed var(--spa-border-color);
+    background: var(--spa-bg);
+}
+
+.restore-confirm-check .form-check-input,
+.delete-confirm-check .form-check-input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+}
+
+.restore-confirm-check .form-check-label,
+.delete-confirm-check .form-check-label {
+    line-height: 1.4;
+}
+
 /* ──────────────────────────────────────────────
    Responsive
    ────────────────────────────────────────────── */
@@ -334,6 +369,11 @@
     }
     .row.text-center.mb-4 p {
         font-size: 0.65rem !important;
+    }
+
+    .restore-confirm-check,
+    .delete-confirm-check {
+        padding: 10px 12px;
     }
 }
 
