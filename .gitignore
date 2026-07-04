@@ -90,3 +90,6 @@ exports/*
 
 instance/*
 !instance/.gitkeep
+
+# Local backup files
+database/backup/
