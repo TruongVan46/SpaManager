@@ -203,29 +203,29 @@
                             </td>
                             <td class="col-action text-center">
                                 {% if log.action == 'CREATE' %}
-                                    <span class="app-badge badge-action-create">TẠO MỚI</span>
+                                    <span class="app-badge badge-action-create activity-action-badge">TẠO MỚI</span>
                                 {% elif log.action == 'UPDATE' %}
-                                    <span class="app-badge badge-action-update">CẬP NHẬT</span>
+                                    <span class="app-badge badge-action-update activity-action-badge">CẬP NHẬT</span>
                                 {% elif log.action == 'DELETE' %}
-                                    <span class="app-badge badge-action-delete">XÓA</span>
+                                    <span class="app-badge badge-action-delete activity-action-badge">XÓA</span>
                                 {% elif log.action == 'PERMANENT_DELETE' %}
-                                    <span class="app-badge badge-action-delete">XÓA VĨNH VIỄN</span>
+                                    <span class="app-badge badge-action-delete activity-action-badge">XÓA VĨNH VIỄN</span>
                                 {% elif log.action == 'BACKUP' %}
-                                    <span class="app-badge badge-action-neutral">SAO LƯU</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">SAO LƯU</span>
                                 {% elif log.action == 'RESTORE' %}
-                                    <span class="app-badge badge-action-neutral">PHỤC HỒI</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">PHỤC HỒI</span>
                                 {% elif log.action == 'IMPORT' %}
-                                    <span class="app-badge badge-action-neutral">NHẬP EXCEL</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">NHẬP EXCEL</span>
                                 {% elif log.action == 'EXPORT' %}
-                                    <span class="app-badge badge-action-neutral">XUẤT EXCEL</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">XUẤT EXCEL</span>
                                 {% elif log.action == 'STATUS_CHANGE' %}
-                                    <span class="app-badge badge-action-neutral">ĐỔI TRẠNG THÁI</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">ĐỔI TRẠNG THÁI</span>
                                 {% elif log.action == 'LOGIN' %}
-                                    <span class="app-badge badge-action-neutral">ĐĂNG NHẬP</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">ĐĂNG NHẬP</span>
                                 {% elif log.action == 'LOGOUT' %}
-                                    <span class="app-badge badge-action-neutral">ĐĂNG XUẤT</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">ĐĂNG XUẤT</span>
                                 {% else %}
-                                    <span class="app-badge badge-action-neutral">{{ log.action }}</span>
+                                    <span class="app-badge badge-action-neutral activity-action-badge">{{ log.action }}</span>
                                 {% endif %}
                             </td>
                             <td class="col-severity text-center">
@@ -277,16 +277,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
-        sel.addEventListener('change', function() {
-            var u = new URL(window.location.href);
-            u.searchParams.set('per_page', sel.value);
-            u.searchParams.set('page', '1');
-            window.location.href = u.toString();
-        });
-    });
-});
-</script>
+
 {% endblock %}

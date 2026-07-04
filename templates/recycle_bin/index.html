@@ -235,39 +235,28 @@
             });
         });
 
-        // STF per-page handler
-        document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
-            sel.addEventListener('change', function() {
-                var u = new URL(window.location.href);
-                u.searchParams.set('per_page', sel.value);
-                u.searchParams.set('page', '1');
-                window.location.href = u.toString();
-            });
-        });
-
         // Restore Action Logic
-        const restoreButtons = document.querySelectorAll('.btn-restore-item');
         const restoreModalEl = document.getElementById('restoreConfirmModal');
         const confirmRestoreBtn = document.getElementById('btn-confirm-restore');
         
         let itemToRestore = null;
         let rowToRestore = null;
 
-        if (restoreButtons.length > 0 && restoreModalEl && confirmRestoreBtn && typeof bootstrap !== 'undefined') {
+        if (restoreModalEl && confirmRestoreBtn && typeof bootstrap !== 'undefined') {
             const restoreModal = new bootstrap.Modal(restoreModalEl);
-            
-            restoreButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    itemToRestore = {
-                        id: btn.getAttribute('data-id'),
-                        type: btn.getAttribute('data-type'),
-                        name: btn.getAttribute('data-name')
-                    };
-                    rowToRestore = btn.closest('tr');
-                    restoreModal.show();
-                });
+
+            document.addEventListener('click', function(e) {
+                const restoreBtn = e.target.closest('.btn-restore-item');
+                if (!restoreBtn) return;
+                itemToRestore = {
+                    id: restoreBtn.getAttribute('data-id'),
+                    type: restoreBtn.getAttribute('data-type'),
+                    name: restoreBtn.getAttribute('data-name')
+                };
+                rowToRestore = restoreBtn.closest('tr');
+                restoreModal.show();
             });
-            
+
             confirmRestoreBtn.addEventListener('click', function() {
                 if (!itemToRestore) return;
                 
@@ -334,7 +323,6 @@
         }
 
         // Permanent Delete Action Logic
-        const deleteButtons = document.querySelectorAll('.btn-delete-item');
         const deleteModalEl = document.getElementById('deleteConfirmModal');
         const confirmDeleteBtn = document.getElementById('btn-confirm-delete');
         const relatedRecordsContainer = document.getElementById('related-records-container');
@@ -343,22 +331,22 @@
         let itemToDelete = null;
         let rowToDelete = null;
 
-        if (deleteButtons.length > 0 && deleteModalEl && confirmDeleteBtn && typeof bootstrap !== 'undefined') {
+        if (deleteModalEl && confirmDeleteBtn && typeof bootstrap !== 'undefined') {
             const deleteModal = new bootstrap.Modal(deleteModalEl);
-            
-            deleteButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    itemToDelete = {
-                        id: btn.getAttribute('data-id'),
-                        type: btn.getAttribute('data-type'),
-                        name: btn.getAttribute('data-name')
-                    };
-                    rowToDelete = btn.closest('tr');
-                    
-                    // Show loading state on click
-                    btn.disabled = true;
-                    const originalHTML = btn.innerHTML;
-                    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+            document.addEventListener('click', function(e) {
+                const deleteBtn = e.target.closest('.btn-delete-item');
+                if (!deleteBtn) return;
+                itemToDelete = {
+                    id: deleteBtn.getAttribute('data-id'),
+                    type: deleteBtn.getAttribute('data-type'),
+                    name: deleteBtn.getAttribute('data-name')
+                };
+                rowToDelete = deleteBtn.closest('tr');
+
+                deleteBtn.disabled = true;
+                const originalHTML = deleteBtn.innerHTML;
+                deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                     
                     // Reset container
                     relatedRecordsContainer.classList.add('d-none');
@@ -368,8 +356,8 @@
                     fetch(`/recycle-bin/info/${itemToDelete.type}/${itemToDelete.id}`)
                     .then(res => res.json())
                     .then(data => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
+                        deleteBtn.disabled = false;
+                        deleteBtn.innerHTML = originalHTML;
                         
                         if (data.success && data.info) {
                             const details = data.info.details || [];
@@ -390,8 +378,8 @@
                         deleteModal.show();
                     })
                     .catch(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
+                        deleteBtn.disabled = false;
+                        deleteBtn.innerHTML = originalHTML;
                         deleteModal.show();
                     });
                 });

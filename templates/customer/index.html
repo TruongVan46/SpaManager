@@ -152,50 +152,35 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.btn-delete-customer');
-    const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-    const deleteWarningModal = new bootstrap.Modal(document.getElementById('deleteWarningModal'));
-    
-    const deleteForm = document.getElementById('deleteCustomerForm');
-    const deleteNameSpan = document.getElementById('deleteCustomerName');
-    const warningNameSpan = document.getElementById('warningCustomerName');
-    const warningApptCount = document.getElementById('warningAppointmentCount');
-    const warningInvoiceCount = document.getElementById('warningInvoiceCount');
+    document.addEventListener('click', function(e) {
+        const deleteBtn = e.target.closest('.btn-delete-customer');
+        if (!deleteBtn) return;
+        e.preventDefault();
+        const customerId = deleteBtn.getAttribute('data-id');
+        rowToDelete = deleteBtn.closest('tr');
 
-    let rowToDelete = null;
-
-    deleteButtons.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const customerId = this.getAttribute('data-id');
-            rowToDelete = this.closest('tr');
-            
-            // Gọi AJAX check xem có được xóa không
-            fetch(`/customers/${customerId}/can-delete`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        if (data.can_delete) {
-                            // Cho phép xóa -> Hiện modal confirm
-                            deleteForm.action = `/customers/${customerId}/delete`;
-                            deleteNameSpan.textContent = data.customer_name;
-                            deleteConfirmModal.show();
-                        } else {
-                            // Không cho phép xóa -> Hiện modal warning kèm số lượng lịch hẹn + hóa đơn
-                            warningNameSpan.textContent = data.customer_name;
-                            warningApptCount.textContent = data.appointment_count;
-                            warningInvoiceCount.textContent = data.invoice_count;
-                            deleteWarningModal.show();
-                        }
+        fetch(`/customers/${customerId}/can-delete`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.can_delete) {
+                        deleteForm.action = `/customers/${customerId}/delete`;
+                        deleteNameSpan.textContent = data.customer_name;
+                        deleteConfirmModal.show();
                     } else {
-                        Notification.error(data.message || 'Có lỗi xảy ra.');
+                        warningNameSpan.textContent = data.customer_name;
+                        warningApptCount.textContent = data.appointment_count;
+                        warningInvoiceCount.textContent = data.invoice_count;
+                        deleteWarningModal.show();
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Notification.error('Không thể kết nối đến máy chủ.');
-                });
-        });
+                } else {
+                    Notification.error(data.message || 'C? l?i x?y ra.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Notification.error('Kh?ng th? k?t n?i ??n m?y ch?.');
+            });
     });
 
     if (deleteForm) {

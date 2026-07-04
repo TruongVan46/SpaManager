@@ -144,56 +144,52 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // AJAX delete handler
-    document.querySelectorAll('.btn-delete-service').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const serviceId = this.getAttribute('data-id');
-            const serviceName = this.getAttribute('data-name');
-            
-            if (confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}" này không?`)) {
-                const row = this.closest('tr');
-                
-                // Add loading indicator on the delete button
-                const originalHtml = this.innerHTML;
-                this.disabled = true;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                
-                csrfFetch(`/services/delete/${serviceId}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Notification.success(data.message || 'Đã xóa dịch vụ.');
-                        // Fade out the row smoothly
-                        row.style.transition = 'opacity 0.4s ease';
-                        row.style.opacity = '0';
-                        setTimeout(() => {
-                            row.remove();
-                            // If table becomes empty, reload to show empty state
-                            const remainingRows = document.querySelectorAll('#service-table tbody tr');
-                            if (remainingRows.length === 0) {
-                                window.location.reload();
-                            }
-                        }, 400);
-                    } else {
-                        this.disabled = false;
-                        this.innerHTML = originalHtml;
-                        Notification.error(data.message || 'Không thể xóa dịch vụ.');
-                    }
-                })
-                .catch(error => {
-                    this.disabled = false;
-                    this.innerHTML = originalHtml;
-                    console.error('Error:', error);
-                    Notification.error('Không thể kết nối đến máy chủ.');
-                });
-            }
-        });
+    document.addEventListener('click', function(e) {
+        const deleteBtn = e.target.closest('.btn-delete-service');
+        if (!deleteBtn) return;
+        e.preventDefault();
+        const serviceId = deleteBtn.getAttribute('data-id');
+        const serviceName = deleteBtn.getAttribute('data-name');
+
+        if (confirm(`B?n c? ch?c ch?n mu?n x?a d?ch v? "${serviceName}" n?y kh?ng?`)) {
+            const row = deleteBtn.closest('tr');
+            const originalHtml = deleteBtn.innerHTML;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+            csrfFetch(`/services/delete/${serviceId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Notification.success(data.message || '?? x?a d?ch v?.');
+                    row.style.transition = 'opacity 0.4s ease';
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        row.remove();
+                        const remainingRows = document.querySelectorAll('#service-table tbody tr');
+                        if (remainingRows.length === 0) {
+                            window.location.reload();
+                        }
+                    }, 400);
+                } else {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = originalHtml;
+                    Notification.error(data.message || 'Kh?ng th? x?a d?ch v?.');
+                }
+            })
+            .catch(error => {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalHtml;
+                console.error('Error:', error);
+                Notification.error('Kh?ng th? k?t n?i ??n m?y ch?.');
+            });
+        }
     });
 });
 </script>

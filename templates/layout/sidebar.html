@@ -1,4 +1,4 @@
-﻿<aside class="sidebar">
+<aside class="sidebar">
 
     <!-- Logo -->
     <div class="logo">
@@ -7,113 +7,113 @@
             <i class="bi bi-flower1"></i>
         </div>
 
-        <h3>TIá»†M NHÃ€ NHÃM</h3>
+        <h3>TIỆM NHÀ NHÍM</h3>
 
-        <p>Spa â€¢ Nail â€¢ Makeup</p>
+        <p>Spa • Nail • Makeup</p>
 
     </div>
 
     <!-- Menu -->
     <nav class="menu">
 
-        <!-- Trang chá»§ -->
+        <!-- Trang chủ -->
         <a href="{{ url_for('dashboard.index') }}"
             class="menu-item {% if active_page == 'dashboard.index' %}active{% endif %}">
 
             <i class="bi bi-speedometer2"></i>
 
-            <span>Trang chá»§</span>
+            <span>Trang chủ</span>
 
         </a>
 
-        <!-- KhÃ¡ch hÃ ng -->
+        <!-- Khách hàng -->
         <a href="{{ url_for('customer.index') }}"
             class="menu-item {% if active_page == 'customer.index' %}active{% endif %}">
 
             <i class="bi bi-people"></i>
 
-            <span>KhÃ¡ch hÃ ng</span>
+            <span>Khách hàng</span>
 
         </a>
 
-        <!-- Dá»‹ch vá»¥ -->
+        <!-- Dịch vụ -->
         <a href="{{ url_for('service.index') }}"
             class="menu-item {% if active_page == 'service.index' %}active{% endif %}">
 
             <i class="bi bi-scissors"></i>
 
-            <span>Dá»‹ch vá»¥</span>
+            <span>Dịch vụ</span>
 
         </a>
 
-        <!-- Lá»‹ch háº¹n -->
+        <!-- Lịch hẹn -->
         <a href="{{ url_for('appointment.index') }}"
             class="menu-item {% if active_page == 'appointment.index' %}active{% endif %}">
 
             <i class="bi bi-calendar-check"></i>
 
-            <span>Lá»‹ch háº¹n</span>
+            <span>Lịch hẹn</span>
 
         </a>
 
-        <!-- HÃ³a Ä‘Æ¡n -->
+        <!-- Hóa đơn -->
         <a href="{{ url_for('invoice.index') }}"
             class="menu-item {% if active_page == 'invoice.index' %}active{% endif %}">
 
             <i class="bi bi-receipt"></i>
 
-            <span>HÃ³a Ä‘Æ¡n</span>
+            <span>Hóa đơn</span>
 
         </a>
 
-        <!-- Thá»‘ng kÃª -->
+        <!-- Thống kê -->
         <a href="{{ url_for('statistics.index') }}"
             class="menu-item {% if active_page == 'statistics.index' %}active{% endif %}">
 
             <i class="bi bi-graph-up-arrow"></i>
 
-            <span>Thá»‘ng kÃª</span>
+            <span>Thống kê</span>
 
         </a>
 
-        <!-- Nháº­t kÃ½ hoáº¡t Ä‘á»™ng -->
+        <!-- Nhật ký hoạt động -->
         <a href="{{ url_for('activity_log.index') }}"
             class="menu-item {% if active_page == 'activity_log.index' %}active{% endif %}">
 
             <i class="bi bi-clock-history"></i>
 
-            <span>Nháº­t kÃ½ hoáº¡t Ä‘á»™ng</span>
+            <span>Nhật ký hoạt động</span>
 
         </a>
 
-        <!-- ThÃ¹ng rÃ¡c -->
+        <!-- Thùng rác -->
         <a href="{{ url_for('recycle_bin.index') }}"
             class="menu-item {% if active_page == 'recycle_bin.index' %}active{% endif %}">
 
             <i class="bi bi-trash3"></i>
 
-            <span>ThÃ¹ng rÃ¡c</span>
+            <span>Thùng rác</span>
 
         </a>
 
-        <!-- CÃ i Ä‘áº·t -->
+        <!-- Cài đặt -->
         <a href="{{ url_for('setting.index') }}"
             class="menu-item {% if active_page == 'setting.index' %}active{% endif %}">
 
             <i class="bi bi-gear"></i>
 
-            <span>CÃ i Ä‘áº·t</span>
+            <span>Cài đặt</span>
 
         </a>
 
         {% if current_user and current_user.role|upper in ['OWNER', 'ADMIN'] %}
-        <!-- NgÆ°á»i dÃ¹ng -->
+        <!-- Người dùng -->
         <a href="{{ url_for('user.index') }}"
             class="menu-item {% if active_page and active_page.startswith('user.') %}active{% endif %}">
 
             <i class="bi bi-people-fill"></i>
 
-            <span>NgÆ°á»i dÃ¹ng</span>
+            <span>Người dùng</span>
 
         </a>
         {% endif %}
@@ -132,4 +132,3 @@
     </div>
 
 </aside>
-

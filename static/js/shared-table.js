@@ -8,6 +8,7 @@
 
     var STF_NS = 'stf_';
     var DEFAULT_PER_PAGE = 25;
+    var TABLE_REGISTRY = {};
 
     function storageKey(module, suffix) { return STF_NS + module + '_' + suffix; }
 
@@ -33,6 +34,146 @@
 
     function loadVisibility(module) {
         try { return JSON.parse(localStorage.getItem(storageKey(module, 'vis'))) || {}; } catch(e) { return {}; }
+    }
+
+    function registerSharedTable(module, table, instance) {
+        if (!module || !table) return;
+        TABLE_REGISTRY[module] = {
+            table: table,
+            instance: instance
+        };
+    }
+
+    function getSharedTableEntry(module) {
+        return TABLE_REGISTRY[module] || null;
+    }
+
+    function getUniqueTableClassList(table) {
+        var genericClasses = {
+            'app-table': true,
+            'table': true,
+            'table-hover': true,
+            'align-middle': true,
+            'text-center': true,
+            'text-start': true,
+            'text-end': true,
+            'table-responsive': true
+        };
+
+        return Array.from(table.classList || []).filter(function(className) {
+            return genericClasses[className] !== true && /table$/i.test(className);
+        });
+    }
+
+    function findMatchingTableInDocument(documentRoot, sourceTable) {
+        if (!documentRoot || !sourceTable) return null;
+        if (sourceTable.id) {
+            var byId = documentRoot.getElementById(sourceTable.id);
+            if (byId) return byId;
+        }
+
+        var classCandidates = getUniqueTableClassList(sourceTable);
+        for (var i = 0; i < classCandidates.length; i++) {
+            var candidate = classCandidates[i];
+            var byClass = documentRoot.querySelector('.' + candidate);
+            if (byClass) return byClass;
+        }
+
+        return null;
+    }
+
+    function findTableNearFooter(footer) {
+        if (!footer) return null;
+        var cardBody = footer.closest('.app-card-body');
+        if (cardBody) {
+            var tables = cardBody.querySelectorAll('table');
+            if (tables.length === 1) return tables[0];
+            if (tables.length > 1) {
+                for (var i = tables.length - 1; i >= 0; i--) {
+                    var candidate = tables[i];
+                    if (footer.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_PRECEDING) {
+                        return candidate;
+                    }
+                }
+                return tables[0];
+            }
+        }
+
+        var tableWrap = footer.closest('.app-table-wrapper, .app-table-container, .table-responsive');
+        if (tableWrap) {
+            var wrappedTables = tableWrap.querySelectorAll('table');
+            if (wrappedTables.length > 0) return wrappedTables[0];
+        }
+
+        return null;
+    }
+
+    function updatePerPageHiddenInputs(perPageParam, value) {
+        if (!perPageParam) return;
+        document.querySelectorAll('input[type="hidden"][name="' + perPageParam + '"]').forEach(function(hiddenInput) {
+            hiddenInput.value = value;
+        });
+    }
+
+    function replaceTableFromResponse(select, currentTable, currentFooter, responseHtml) {
+        if (!currentTable || !currentFooter || !responseHtml) return false;
+
+        var parser = new DOMParser();
+        var responseDoc = parser.parseFromString(responseHtml, 'text/html');
+        var replacementTable = findMatchingTableInDocument(responseDoc, currentTable);
+        var replacementSelect = responseDoc.querySelector('[data-stf-per-page-module="' + (select.dataset.stfPerPageModule || 'table') + '"]');
+        var replacementFooter = replacementSelect ? replacementSelect.closest('.stf-footer') : null;
+
+        if (!replacementTable || !replacementFooter) return false;
+
+        if (currentTable.tBodies && currentTable.tBodies[0] && replacementTable.tBodies && replacementTable.tBodies[0]) {
+            currentTable.tBodies[0].innerHTML = replacementTable.tBodies[0].innerHTML;
+        } else {
+            currentTable.innerHTML = replacementTable.innerHTML;
+        }
+
+        currentFooter.innerHTML = replacementFooter.innerHTML;
+        return true;
+    }
+
+    function fetchAndSwapPageSize(select) {
+        var perPageParam = select.dataset.stfPerPageParam || 'per_page';
+        var moduleName = select.dataset.stfPerPageModule || 'table';
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set(perPageParam, select.value);
+        currentUrl.searchParams.set('page', '1');
+
+        updatePerPageHiddenInputs(perPageParam, select.value);
+
+        var registryEntry = getSharedTableEntry(moduleName);
+        var sourceTable = registryEntry && registryEntry.table ? registryEntry.table : findTableNearFooter(select.closest('.stf-footer'));
+        var sourceFooter = select.closest('.stf-footer');
+        if (!sourceTable || !sourceFooter) return;
+
+        select.disabled = true;
+
+        fetch(currentUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            if (!response.ok) throw new Error('Failed to refresh table');
+            return response.text();
+        })
+        .then(function(html) {
+            var swapped = replaceTableFromResponse(select, sourceTable, sourceFooter, html);
+            if (swapped) {
+                window.history.replaceState({}, '', currentUrl.toString());
+            }
+        })
+        .catch(function(error) {
+            console.error('Page-size refresh failed:', error);
+        })
+        .finally(function() {
+            select.disabled = false;
+        });
     }
 
     var LIVE_SEARCH_CONFIG = {
@@ -350,6 +491,7 @@
         this._initColumnResize();
         this._initColumnVisibility();
         this._persistCurrentState();
+        registerSharedTable(this.module, this.table, this);
     }
 
     SharedTable.prototype._initStateRestore = function() {
@@ -410,19 +552,7 @@
     };
 
     SharedTable.prototype._initPerPage = function() {
-        var perPageParam = this.opts.perPageParam;
-        var pageParam = this.opts.pageParam;
-        var self = this;
-        document.querySelectorAll('.page-size-select[data-stf-per-page]').forEach(function(sel) {
-            var moduleAttr = sel.getAttribute('data-stf-per-page-module');
-            if (moduleAttr && moduleAttr !== 'table' && moduleAttr !== self.module) return;
-
-            sel.addEventListener('change', function() {
-                var p = {};
-                p[perPageParam] = sel.value;
-                reloadWithParams(p, pageParam);
-            });
-        });
+        return;
     };
 
     SharedTable.prototype._persistCurrentState = function() {
@@ -681,6 +811,17 @@
         });
     }
 
+    function initPageSizeDelegation() {
+        if (document.documentElement.dataset.stfPerPageBound === 'true') return;
+        document.documentElement.dataset.stfPerPageBound = 'true';
+
+        document.addEventListener('change', function(event) {
+            var select = event.target.closest('[data-stf-per-page]');
+            if (!select) return;
+            fetchAndSwapPageSize(select);
+        });
+    }
+
     /* ================================================================
        EXPORTS
        ================================================================ */
@@ -691,7 +832,9 @@
         initSearchClearButtons: initSearchClearButtons,
         highlightKeyword: highlightKeyword,
         bindLiveSearch: bindLiveSearch,
-        initLiveSearch: initLiveSearch
+        initLiveSearch: initLiveSearch,
+        initPageSizeDelegation: initPageSizeDelegation,
+        fetchAndSwapPageSize: fetchAndSwapPageSize
     };
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -699,6 +842,7 @@
         initLiveSearch();
         initSearchDebounce();
         initFilterAutoSubmit();
+        initPageSizeDelegation();
 
         // Highlight matching text on tables
         // Skip if server-side | highlight(q) filter already rendered <mark> tags

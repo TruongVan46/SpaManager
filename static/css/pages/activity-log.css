@@ -148,11 +148,13 @@
 .activity-log-page .activity-log-table .col-action {
     width: 120px;
     min-width: 120px;
+    overflow: hidden;
 }
 
 .activity-log-page .activity-log-table .col-severity {
     width: 110px;
     min-width: 110px;
+    overflow: hidden;
 }
 
 .activity-log-page .activity-log-table .col-reference {
@@ -270,6 +272,19 @@
     border: 1px solid rgba(133, 135, 150, 0.15) !important;
 }
 
+.activity-log-page .activity-action-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    vertical-align: middle !important;
+}
+
 /* --------------------------------------------------------------------------
    5. Modal
    -------------------------------------------------------------------------- */
@@ -368,10 +383,12 @@
     .activity-log-page .activity-log-table .col-action {
         width: 100px;
         min-width: 100px;
+        overflow: hidden;
     }
     .activity-log-page .activity-log-table .col-severity {
         width: 100px;
         min-width: 100px;
+        overflow: hidden;
     }
     .activity-log-page .activity-log-table .col-reference {
         width: 80px;
@@ -425,10 +442,12 @@
     .activity-log-page .activity-log-table .col-action {
         width: 90px;
         min-width: 90px;
+        overflow: hidden;
     }
     .activity-log-page .activity-log-table .col-severity {
         width: 90px;
         min-width: 90px;
+        overflow: hidden;
     }
     .activity-log-page .activity-log-table-container {
         border-radius: var(--spa-radius-md);

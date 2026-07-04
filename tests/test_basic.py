@@ -758,9 +758,22 @@ class BasicTestCase(unittest.TestCase):
 
     def test_page_size_handler_is_scoped_to_explicit_controls(self):
         source = Path("static/js/shared-table.js").read_text(encoding="utf-8")
+        macro = Path("templates/layout/table_macros.html").read_text(encoding="utf-8")
+        invoice_template = Path("templates/invoice/index.html").read_text(encoding="utf-8")
+        appointment_template = Path("templates/appointment/index.html").read_text(encoding="utf-8")
+        activity_log_template = Path("templates/activity_log/index.html").read_text(encoding="utf-8")
+        recycle_bin_template = Path("templates/recycle_bin/index.html").read_text(encoding="utf-8")
+
         self.assertIn("[data-stf-filter]", source)
-        self.assertNotIn(".app-filter-bar select", source)
-        self.assertNotIn(".app-filter-main select", source)
+        self.assertIn("[data-stf-per-page]", source)
+        self.assertIn("fetchAndSwapPageSize", source)
+        self.assertIn("window.history.replaceState", source)
+        self.assertIn("data-stf-per-page-param", macro)
+        self.assertNotIn("reloadWithParams(p, pageParam)", source)
+        self.assertNotIn("window.location.href = u.toString()", invoice_template)
+        self.assertNotIn("window.location.href = u.toString()", appointment_template)
+        self.assertNotIn("window.location.href = u.toString()", activity_log_template)
+        self.assertNotIn("window.location.href = u.toString()", recycle_bin_template)
 
     def test_seed_owner_creates_owner_when_database_is_empty(self):
         owner = AuthService.seed_owner_if_empty()
@@ -1738,6 +1751,25 @@ class BasicTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn("Spa Manager v5.1.0", html)
         self.assertNotIn("Spa Manager v4.0", html)
+
+    def test_sidebar_template_contains_clean_vietnamese_text(self):
+        sidebar = Path("templates/layout/sidebar.html").read_text(encoding="utf-8")
+        self.assertIn("TIỆM NHÀ NHÍM", sidebar)
+        self.assertIn("Trang chủ", sidebar)
+        self.assertIn("Người dùng", sidebar)
+        for marker in ["Ã", "á»", "áº", "Æ", "Ä‘", "â€¢", "Â"]:
+            self.assertNotIn(marker, sidebar)
+
+    def test_activity_log_action_badge_is_scoped_and_truncated(self):
+        template = Path("templates/activity_log/index.html").read_text(encoding="utf-8")
+        css = Path("static/css/pages/activity-log.css").read_text(encoding="utf-8")
+
+        self.assertIn("activity-action-badge", template)
+        self.assertIn(".activity-log-page .activity-action-badge", css)
+        self.assertIn("text-overflow: ellipsis", css)
+        self.assertIn("overflow: hidden", css)
+        self.assertIn(".activity-log-page .activity-log-table .col-action", css)
+        self.assertIn(".activity-log-page .activity-log-table .col-severity", css)
 
     def test_db_stamp_head_marks_existing_schema_without_rebuilding(self):
         tables_before = sorted(sa_inspect(db.engine).get_table_names())

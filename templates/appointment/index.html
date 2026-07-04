@@ -357,16 +357,6 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/appointment.js') }}"></script>
 <script>
-// STF per-page handler
-document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-        var u = new URL(window.location.href);
-        u.searchParams.set('per_page', sel.value);
-        u.searchParams.set('page', '1');
-        window.location.href = u.toString();
-    });
-});
-
 </script>
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>

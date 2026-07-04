@@ -226,9 +226,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // Handle Dropdown Status Update
-    const statusDropdowns = document.querySelectorAll('.status-dropdown');
-    
-    // Config for status colors, icons, and text labels
     const statusConfig = {
         'Pending': {
             badgeClass: 'bg-warning text-dark',
@@ -252,91 +249,84 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    statusDropdowns.forEach(dropdown => {
+    document.addEventListener('click', async function(e) {
+        const menuItem = e.target.closest('.status-dropdown .dropdown-item');
+        if (!menuItem) return;
+        e.preventDefault();
+
+        const dropdown = menuItem.closest('.status-dropdown');
+        const badgeBtn = dropdown ? dropdown.querySelector('.status-badge-btn') : null;
+        if (!dropdown || !badgeBtn) return;
+
         const appointmentId = dropdown.getAttribute('data-id');
-        const badgeBtn = dropdown.querySelector('.status-badge-btn');
         const menuItems = dropdown.querySelectorAll('.dropdown-item');
+        const newStatus = menuItem.getAttribute('data-value');
+        const oldStatus = badgeBtn.getAttribute('data-current-status');
 
-        menuItems.forEach(item => {
-            item.addEventListener('click', async function(e) {
-                e.preventDefault();
-                
-                const newStatus = this.getAttribute('data-value');
-                const oldStatus = badgeBtn.getAttribute('data-current-status');
-                
-                if (newStatus === oldStatus) return;
+        if (newStatus === oldStatus) return;
 
-                try {
-                    const response = await csrfFetch('/appointments/update_status', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            id: appointmentId,
-                            status: newStatus
-                        }),
-                    });
+        try {
+            const response = await csrfFetch('/appointments/update_status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: appointmentId,
+                    status: newStatus
+                }),
+            });
 
-                    const result = await response.json();
+            const result = await response.json();
 
-                    if (!response.ok) {
-                        throw new Error(result.error || 'Failed to update status');
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to update status');
+            }
+
+            const cfg = statusConfig[newStatus];
+            badgeBtn.className = `btn btn-sm dropdown-toggle status-badge-btn badge ${cfg.badgeClass} rounded-pill d-flex align-items-center justify-content-between`;
+            badgeBtn.setAttribute('data-current-status', newStatus);
+            badgeBtn.innerHTML = `<span><i class="bi ${cfg.iconClass} me-1"></i>${cfg.label}</span>`;
+
+            menuItems.forEach(mi => {
+                const miVal = mi.getAttribute('data-value');
+                const checkIcon = mi.querySelector('.bi-check');
+
+                if (miVal === newStatus) {
+                    mi.classList.add('active', 'fw-bold', 'disabled');
+                    if (!checkIcon) {
+                        mi.insertAdjacentHTML('beforeend', '<i class="bi bi-check"></i>');
                     }
-
-                    // 1. Update button styling & content
-                    const cfg = statusConfig[newStatus];
-                    
-                    badgeBtn.className = `btn btn-sm dropdown-toggle status-badge-btn badge ${cfg.badgeClass} rounded-pill d-flex align-items-center justify-content-between`;
-                    badgeBtn.setAttribute('data-current-status', newStatus);
-                    badgeBtn.innerHTML = `<span><i class="bi ${cfg.iconClass} me-1"></i>${cfg.label}</span>`;
-
-                    // 2. Update list items UI (active/disabled state and checkmarks)
-                    menuItems.forEach(mi => {
-                        const miVal = mi.getAttribute('data-value');
-                        const checkIcon = mi.querySelector('.bi-check');
-                        
-                        if (miVal === newStatus) {
-                            mi.classList.add('active', 'fw-bold', 'disabled');
-                            if (!checkIcon) {
-                                mi.insertAdjacentHTML('beforeend', '<i class="bi bi-check"></i>');
-                            }
-                        } else {
-                            mi.classList.remove('active', 'fw-bold', 'disabled');
-                            if (checkIcon) {
-                                checkIcon.remove();
-                            }
-                        }
-                    });
-
-                    // 3. Update warning icon for Customer column if today
-                    const row = dropdown.closest('tr');
-                    if (row && row.classList.contains('table-warning')) {
-                        const customerCell = row.cells[2]; // Customer name column
-                        if (customerCell) {
-                            const exclIcon = customerCell.querySelector('.bi-exclamation-circle-fill');
-                            if (newStatus === 'Pending') {
-                                if (!exclIcon) {
-                                    const dFlex = customerCell.querySelector('.d-flex');
-                                    if (dFlex) {
-                                        dFlex.insertAdjacentHTML('afterbegin', '<i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xác nhận"></i>');
-                                    }
-                                }
-                            } else {
-                                if (exclIcon) {
-                                    exclIcon.remove();
-                                }
-                            }
-                        }
+                } else {
+                    mi.classList.remove('active', 'fw-bold', 'disabled');
+                    if (checkIcon) {
+                        checkIcon.remove();
                     }
-
-                    Notification.success('Đã cập nhật trạng thái thành công');
-
-                } catch (error) {
-                    Notification.error('Không thể cập nhật trạng thái.');
-                    console.error('Error updating status:', error);
                 }
             });
-        });
+
+            const row = dropdown.closest('tr');
+            if (row && row.classList.contains('table-warning')) {
+                const customerCell = row.cells[2];
+                if (customerCell) {
+                    const exclIcon = customerCell.querySelector('.bi-exclamation-circle-fill');
+                    if (newStatus === 'Pending') {
+                        if (!exclIcon) {
+                            const dFlex = customerCell.querySelector('.d-flex');
+                            if (dFlex) {
+                                dFlex.insertAdjacentHTML('afterbegin', '<i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xác nhận"></i>');
+                            }
+                        }
+                    } else if (exclIcon) {
+                        exclIcon.remove();
+                    }
+                }
+            }
+
+            Notification.success('Đã cập nhật trạng thái thành công');
+        } catch (error) {
+            Notification.error('Không thể cập nhật trạng thái.');
+            console.error('Error updating status:', error);
+        }
     });
 });

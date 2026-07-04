@@ -191,7 +191,7 @@
                                             <i class="bi bi-printer"></i>
                                         </a>
                                         <button type="button" class="app-btn app-btn-outline-danger btn btn-outline-danger" 
-                                                onclick="confirmDelete('{{ invoice.id }}')" data-bs-toggle="tooltip" data-bs-placement="top" title="Xóa hóa đơn">
+                                                onclick="confirmDelete('{{ invoice.id }}', this)" data-bs-toggle="tooltip" data-bs-placement="top" title="Xóa hóa đơn">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
@@ -245,9 +245,10 @@
 
 {% block scripts %}
 <script>
-function confirmDelete(invoiceId) {
+function confirmDelete(invoiceId, triggerEl) {
     const deleteForm = document.getElementById('deleteInvoiceForm');
     const deleteCodeSpan = document.getElementById('deleteInvoiceCode');
+    window.__invoiceRowToDelete = triggerEl ? triggerEl.closest('tr') : null;
     deleteForm.action = "/invoices/delete/" + invoiceId;
     deleteCodeSpan.textContent = 'HD' + invoiceId;
     const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
@@ -255,45 +256,11 @@ function confirmDelete(invoiceId) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Per-page change handler
-    document.querySelectorAll('[data-stf-per-page]').forEach(function(sel) {
-        sel.addEventListener('change', function() {
-            var u = new URL(window.location.href);
-            u.searchParams.set('per_page', sel.value);
-            u.searchParams.set('page', '1');
-            window.location.href = u.toString();
-        });
-    });
-
     // SharedTable init
-    if (document.getElementById('invoice-table')) {
-        new SharedTable(document.getElementById('invoice-table'), {
-            moduleName:   'invoice',
-            sortParam:    'sort_by',
-            dirParam:     'order',
-            perPageParam: 'per_page',
-            colDefs: [
-                { key: 'stt',        label: 'STT',         hideable: true },
-                { key: 'invoice_id', label: 'Mã hóa đơn',  hideable: false },
-                { key: 'customer',   label: 'Khách hàng',  hideable: false },
-                { key: 'date',       label: 'Ngày lập',    hideable: true },
-                { key: 'total',      label: 'Tổng tiền',   hideable: false },
-                { key: 'payment',    label: 'Phương thức', hideable: true },
-                { key: 'actions',    label: 'Thao tác',    hideable: false },
-            ]
-        });
-    }
-
     // AJAX delete handler
     const deleteForm = document.getElementById('deleteInvoiceForm');
     const confirmSubmitBtn = document.getElementById('confirmDeleteSubmitBtn');
     let rowToDelete = null;
-
-    document.querySelectorAll('button[onclick^="confirmDelete"]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            rowToDelete = this.closest('tr');
-        });
-    });
 
     if (deleteForm && confirmSubmitBtn) {
         deleteForm.addEventListener('submit', function(e) {
@@ -318,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (data.success) {
                     Notification.success(data.message || 'Đã xóa hóa đơn thành công.');
+                    const rowToDelete = window.__invoiceRowToDelete;
                     if (rowToDelete) {
                         rowToDelete.style.transition = 'opacity 0.4s ease';
                         rowToDelete.style.opacity = '0';
