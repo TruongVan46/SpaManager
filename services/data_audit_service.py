@@ -182,6 +182,10 @@ def _is_blank(value):
     return value is None or (isinstance(value, str) and not value.strip())
 
 
+def _has_outer_whitespace(value):
+    return isinstance(value, str) and value != value.strip()
+
+
 def _is_missing_datetime_value(value):
     if value is None:
         return True
@@ -247,14 +251,44 @@ def run_data_consistency_audit(db_session=None):
                 field="name",
                 message="Tên khách hàng không được để trống.",
             )
+        elif _has_outer_whitespace(customer.name):
+            report.add_warning(
+                code="CUSTOMER_TRIM_NAME",
+                model="Customer",
+                record_id=customer.id,
+                field="name",
+                message="Tên khách hàng có khoảng trắng thừa ở đầu hoặc cuối.",
+                before=customer.name,
+                after=customer.name.strip(),
+            )
 
         normalized_phone = _normalize_phone(customer.phone)
         if normalized_phone:
             phone_groups.setdefault(normalized_phone, []).append(customer)
+        if _has_outer_whitespace(customer.phone):
+            report.add_warning(
+                code="CUSTOMER_TRIM_PHONE",
+                model="Customer",
+                record_id=customer.id,
+                field="phone",
+                message="Số điện thoại có khoảng trắng thừa ở đầu hoặc cuối.",
+                before=customer.phone,
+                after=customer.phone.strip(),
+            )
 
         normalized_email = _normalize_email(customer.email)
         if normalized_email:
             email_groups.setdefault(normalized_email, []).append(customer)
+        if _has_outer_whitespace(customer.email):
+            report.add_warning(
+                code="CUSTOMER_TRIM_EMAIL",
+                model="Customer",
+                record_id=customer.id,
+                field="email",
+                message="Email có khoảng trắng thừa ở đầu hoặc cuối.",
+                before=customer.email,
+                after=customer.email.strip(),
+            )
 
         if hasattr(customer, "deleted_at") and hasattr(customer, "deleted_by"):
             deleted_at = getattr(customer, "deleted_at", None)
@@ -304,6 +338,16 @@ def run_data_consistency_audit(db_session=None):
                 record_id=service.id,
                 field="name",
                 message="Tên dịch vụ không được để trống.",
+            )
+        elif _has_outer_whitespace(service.name):
+            report.add_warning(
+                code="SERVICE_TRIM_NAME",
+                model="Service",
+                record_id=service.id,
+                field="name",
+                message="Tên dịch vụ có khoảng trắng thừa ở đầu hoặc cuối.",
+                before=service.name,
+                after=service.name.strip(),
             )
 
         if getattr(service, "price", None) is not None and service.price < 0:

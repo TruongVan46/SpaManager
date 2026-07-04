@@ -56,6 +56,7 @@ from services.service_service import ServiceService
 from services.auth_service import AuthService
 from services.backup_service import BackupService
 from services.data_audit_service import run_data_consistency_audit
+from services.data_repair_service import run_controlled_repair
 from services.import_service import ImportService
 from repositories.backup_repository import BackupRepository
 from utils.timezone_utils import local_now
@@ -3351,10 +3352,12 @@ class BasicTestCase(unittest.TestCase):
     def test_data_consistency_audit_detects_real_database_issues_without_writing(self):
         customer_a = Customer(name=" ", phone="0901234567", email="duplicate@example.com")
         customer_b = Customer(name="Customer B", phone="0901234567", email="duplicate@example.com", deleted_by="owner")
+        customer_trim = Customer(name="  Trim Customer  ", phone=" 0905555555 ", email=" trimcase@example.com ")
         customer_c = Customer(name="Linked Customer", phone="0909999999", email="linked@example.com")
         service_a = Service(name=" ", price=-150000, duration=30, description="Bad service", category="other", deleted_at=datetime.utcnow())
+        service_trim = Service(name="  Trim Service  ", price=150000, duration=30, description="Trim me", category="other")
         service_b = Service(name="Linked Service", price=200000, duration=45, description="Good service", category="other")
-        db.session.add_all([customer_a, customer_b, customer_c, service_a, service_b])
+        db.session.add_all([customer_a, customer_b, customer_trim, customer_c, service_a, service_trim, service_b])
         db.session.commit()
 
         appointment = Appointment(
@@ -3448,8 +3451,12 @@ class BasicTestCase(unittest.TestCase):
             "CUSTOMER_EMPTY_NAME",
             "CUSTOMER_DUPLICATE_PHONE",
             "CUSTOMER_DUPLICATE_EMAIL",
+            "CUSTOMER_TRIM_NAME",
+            "CUSTOMER_TRIM_PHONE",
+            "CUSTOMER_TRIM_EMAIL",
             "CUSTOMER_SOFT_DELETE_MISMATCH",
             "SERVICE_EMPTY_NAME",
+            "SERVICE_TRIM_NAME",
             "SERVICE_NEGATIVE_PRICE",
             "SERVICE_SOFT_DELETE_MISMATCH",
             "APPOINTMENT_MISSING_CUSTOMER",
@@ -3552,6 +3559,137 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Status: PASS", result.output)
         self.assertIn("Errors: 0", result.output)
         self.assertEqual(before_snapshot, after_snapshot)
+
+    def test_data_repair_dry_run_reports_safe_actions_without_writing(self):
+        customer = Customer(name="  Repair Customer  ", phone=" 0901234567 ", email="  repair@example.com  ", deleted_at=datetime.utcnow())
+        service = Service(name="  Repair Service  ", price=100000, duration=30, description="Repair", category="other")
+        db.session.add_all([customer, service])
+        db.session.commit()
+
+        before_snapshot = (
+            Customer.query.get(customer.id).name,
+            Customer.query.get(customer.id).phone,
+            Customer.query.get(customer.id).email,
+            Customer.query.get(customer.id).deleted_by,
+            Service.query.get(service.id).name,
+        )
+
+        report = run_controlled_repair(dry_run=True)
+
+        after_snapshot = (
+            Customer.query.get(customer.id).name,
+            Customer.query.get(customer.id).phone,
+            Customer.query.get(customer.id).email,
+            Customer.query.get(customer.id).deleted_by,
+            Service.query.get(service.id).name,
+        )
+
+        self.assertTrue(report.dry_run)
+        self.assertEqual(report.mode, "DRY-RUN")
+        self.assertGreaterEqual(report.repairable_actions, 3)
+        self.assertEqual(report.applied_count, 0)
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertIn("CUSTOMER_TRIM_NAME", report.to_text())
+        self.assertIn("SERVICE_TRIM_NAME", report.to_text())
+
+    def test_data_repair_apply_requires_yes_on_cli(self):
+        customer = Customer(name="  Apply Customer  ", phone=" 0911222333 ", email="  apply@example.com  ", deleted_at=datetime.utcnow())
+        db.session.add(customer)
+        db.session.commit()
+
+        runner = app.test_cli_runner()
+        before_name = Customer.query.get(customer.id).name
+        before_phone = Customer.query.get(customer.id).phone
+        before_email = Customer.query.get(customer.id).email
+        before_deleted_by = Customer.query.get(customer.id).deleted_by
+
+        result = runner.invoke(args=["data", "repair", "--apply"])
+
+        after_customer = Customer.query.get(customer.id)
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("--yes", result.output)
+        self.assertEqual(after_customer.name, before_name)
+        self.assertEqual(after_customer.phone, before_phone)
+        self.assertEqual(after_customer.email, before_email)
+        self.assertEqual(after_customer.deleted_by, before_deleted_by)
+
+    def test_data_repair_apply_safely_trims_and_fills_deleted_by(self):
+        customer = Customer(name="  Trim Me  ", phone=" 0908888888 ", email="  trim@example.com  ", deleted_at=datetime.utcnow())
+        service = Service(name="  Trim Service  ", price=120000, duration=45, description="Repair", category="other")
+        db.session.add_all([customer, service])
+        db.session.commit()
+
+        report = run_controlled_repair(dry_run=False)
+
+        repaired_customer = Customer.query.get(customer.id)
+        repaired_service = Service.query.get(service.id)
+        self.assertFalse(report.dry_run)
+        self.assertEqual(report.mode, "APPLY")
+        self.assertGreaterEqual(report.applied_count, 4)
+        self.assertEqual(repaired_customer.name, "Trim Me")
+        self.assertEqual(repaired_customer.phone, "0908888888")
+        self.assertEqual(repaired_customer.email, "trim@example.com")
+        self.assertEqual(repaired_customer.deleted_by, "Hệ thống")
+        self.assertEqual(repaired_service.name, "Trim Service")
+
+    def test_data_repair_cli_defaults_to_dry_run_and_apply_yes_changes_data(self):
+        customer = Customer(name="  CLI Customer  ", phone=" 0906666666 ", email="  cli@example.com  ", deleted_at=datetime.utcnow())
+        db.session.add(customer)
+        db.session.commit()
+
+        runner = app.test_cli_runner()
+        dry_run_result = runner.invoke(args=["data", "repair"])
+        self.assertEqual(dry_run_result.exit_code, 0, dry_run_result.output)
+        self.assertIn("Mode: DRY-RUN", dry_run_result.output)
+        self.assertEqual(Customer.query.get(customer.id).name, "  CLI Customer  ")
+
+        apply_result = runner.invoke(args=["data", "repair", "--apply", "--yes"])
+        self.assertEqual(apply_result.exit_code, 0, apply_result.output)
+        self.assertIn("Mode: APPLY", apply_result.output)
+        self.assertEqual(Customer.query.get(customer.id).name, "CLI Customer")
+        self.assertEqual(Customer.query.get(customer.id).phone, "0906666666")
+        self.assertEqual(Customer.query.get(customer.id).email, "cli@example.com")
+        self.assertEqual(Customer.query.get(customer.id).deleted_by, "Hệ thống")
+
+    def test_data_repair_skips_manual_issues_and_leaves_database_unchanged(self):
+        customer = Customer(name="Manual Customer", phone="0907777777", email="manual@example.com")
+        service = Service(name="Manual Service", price=100000, duration=30, description="Repair", category="other")
+        db.session.add_all([customer, service])
+        db.session.commit()
+
+        self.execute_raw_sql(
+            """
+            INSERT INTO appointments (customer_id, service_id, appointment_time, status, notes, created_at, deleted_at, deleted_by)
+            VALUES (:customer_id, :service_id, :appointment_time, :status, NULL, :created_at, NULL, NULL)
+            """,
+            customer_id=999999,
+            service_id=service.id,
+            appointment_time=datetime(2026, 7, 5, 11, 30),
+            status="Pending",
+            created_at=datetime.utcnow(),
+        )
+
+        before_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+        )
+
+        report = run_controlled_repair(dry_run=False)
+
+        after_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+        )
+
+        self.assertFalse(report.dry_run)
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertTrue(all(item.code.startswith("APPOINTMENT_") or item.code.startswith("INVOICE_") or item.code.startswith("CUSTOMER_DUPLICATE") or item.code.endswith("MISMATCH") for item in report.skipped))
 
     def extract_pdf_text(self, pdf_bytes):
         font_cmaps = {}
