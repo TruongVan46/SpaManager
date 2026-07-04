@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import unittest
 import re
+import json
 import html as html_module
 import uuid
 import inspect
@@ -2471,6 +2472,161 @@ class BasicTestCase(unittest.TestCase):
             if backup_path.exists():
                 backup_path.unlink()
             BackupRepository.delete(app, backup_id)
+
+    def test_settings_backup_list_reads_legacy_folder_read_only(self):
+        owner = self.create_user("settings-backup-legacy-owner", password="owner-pass", full_name="Legacy Backup Owner", role="OWNER")
+        self.login_as(owner)
+
+        legacy_dir = Path(BackupService.get_legacy_backup_dir(app))
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        legacy_metadata_path = Path(BackupRepository.get_legacy_metadata_path(app))
+        original_metadata = legacy_metadata_path.read_text(encoding="utf-8") if legacy_metadata_path.exists() else None
+
+        legacy_backup_id = str(uuid.uuid4())
+        legacy_filename = f"SpaManager_Backup_legacy_{uuid.uuid4().hex}.sqlite"
+        legacy_file_path = legacy_dir / legacy_filename
+        conn = sqlite3.connect(legacy_file_path)
+        conn.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY)")
+        conn.commit()
+        conn.close()
+
+        legacy_metadata = {
+            legacy_backup_id: {
+                "id": legacy_backup_id,
+                "filename": legacy_filename,
+                "display_name": "Backup ngày 04/07/2026 15:24",
+                "created_at": datetime.utcnow().isoformat(),
+                "size": legacy_file_path.stat().st_size,
+                "database_version": "v5.1.0",
+                "app_version": "SpaManager v5.1.0",
+                "notes": "Legacy backup should stay visible",
+                "type": "Manual",
+                "created_by": None,
+                "status": "Valid",
+            }
+        }
+
+        try:
+            legacy_metadata_path.write_text(
+                json.dumps(legacy_metadata, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Legacy backup should stay visible", html)
+            self.assertIn("Backup ngày 04/07/2026 15:24", html)
+            self.assertIn("SpaManager v5.1.0", html)
+        finally:
+            if legacy_file_path.exists():
+                legacy_file_path.unlink()
+            if original_metadata is None:
+                if legacy_metadata_path.exists():
+                    legacy_metadata_path.unlink()
+            else:
+                legacy_metadata_path.write_text(original_metadata, encoding="utf-8")
+
+    def test_settings_backup_corrupt_metadata_json_does_not_500(self):
+        owner = self.create_user("settings-backup-corrupt-owner", password="owner-pass", full_name="Corrupt Backup Owner", role="OWNER")
+        self.login_as(owner)
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Corrupt metadata fallback")
+        metadata_path = Path(BackupRepository.get_metadata_path(app))
+        original_metadata = metadata_path.read_text(encoding="utf-8") if metadata_path.exists() else None
+
+        try:
+            metadata_path.write_text("{ this is not valid json", encoding="utf-8")
+
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Backup ngày", html)
+            self.assertIn("Tự động đồng bộ từ đĩa cứng", html)
+            self.assertNotIn("Không thể tải danh sách sao lưu", html)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            if original_metadata is None:
+                if metadata_path.exists():
+                    metadata_path.unlink()
+            else:
+                metadata_path.write_text(original_metadata, encoding="utf-8")
+            BackupRepository.delete(app, backup_id)
+
+    def test_backup_directory_uses_persistent_root_volume(self):
+        backup_dir = Path(BackupService.get_backup_dir(app)).resolve()
+        self.assertTrue(str(backup_dir).startswith(str(TEST_MEDIA_ROOT.resolve())))
+
+    def test_settings_backup_list_keeps_backup_versions_visible(self):
+        owner = self.create_user("settings-backup-legacy-owner", password="owner-pass", full_name="Backup Legacy Owner", role="OWNER")
+        self.login_as(owner)
+
+        first_backup_id, first_backup_meta, first_backup_path = self.create_settings_backup_via_route(
+            owner,
+            notes="Backup version 5.1 should stay visible",
+        )
+        second_backup_id, second_backup_meta, second_backup_path = self.create_settings_backup_via_route(
+            owner,
+            notes="Backup version 5.2 should stay visible",
+        )
+
+        first_backup_meta["database_version"] = "v5.1.0"
+        first_backup_meta["app_version"] = "SpaManager v5.1.0"
+        second_backup_meta["database_version"] = "v5.2.0"
+        second_backup_meta["app_version"] = "SpaManager v5.2.0"
+
+        try:
+            BackupRepository.save(app, first_backup_id, first_backup_meta)
+            BackupRepository.save(app, second_backup_id, second_backup_meta)
+
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Backup version 5.1 should stay visible", html)
+            self.assertIn("Backup version 5.2 should stay visible", html)
+            self.assertIn("SpaManager v5.1.0", html)
+            self.assertIn("SpaManager v5.2.0", html)
+            self.assertNotIn("/app/database", html)
+        finally:
+            if first_backup_path.exists():
+                first_backup_path.unlink()
+            if second_backup_path.exists():
+                second_backup_path.unlink()
+            BackupRepository.delete(app, first_backup_id)
+            BackupRepository.delete(app, second_backup_id)
+
+    def test_settings_backup_list_ignores_corrupted_metadata_entry(self):
+        owner = self.create_user("settings-backup-corrupt-owner", password="owner-pass", full_name="Backup Corrupt Owner", role="OWNER")
+        self.login_as(owner)
+        original_metadata = BackupRepository.load_all(app).copy()
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Healthy backup remains visible")
+
+        corrupted_id = str(uuid.uuid4())
+        corrupted_metadata = BackupRepository.load_all(app)
+        corrupted_metadata[corrupted_id] = {
+            "id": corrupted_id,
+            "notes": "Broken metadata entry without filename",
+            "status": "Valid",
+        }
+
+        try:
+            BackupRepository.save_all(app, corrupted_metadata)
+
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Healthy backup remains visible", html)
+            self.assertNotIn("Không thể tải danh sách sao lưu", html)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.save_all(app, original_metadata)
+            if BackupRepository.get_by_id(app, backup_id):
+                BackupRepository.delete(app, backup_id)
 
     def test_backup_file_path_helper_blocks_traversal_and_stays_inside_backup_dir(self):
         backup_dir = Path(BackupService.get_backup_dir(app)).resolve()

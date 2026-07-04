@@ -33,9 +33,27 @@ class BackupService:
     @staticmethod
     def get_backup_dir(app):
         """Get the backup directory path, creating it if needed."""
-        backup_dir = os.path.join(app.root_path, 'backup')
+        backup_dir = app.config.get('BACKUP_FOLDER') or os.path.join(app.root_path, 'backup')
         os.makedirs(backup_dir, exist_ok=True)
         return backup_dir
+
+    @staticmethod
+    def get_legacy_backup_dir(app):
+        """Get the historical backup directory path used before the persistent volume move."""
+        legacy_backup_dir = os.path.join(app.root_path, 'backup')
+        primary_backup_dir = BackupService.get_backup_dir(app)
+        if os.path.abspath(legacy_backup_dir) == os.path.abspath(primary_backup_dir):
+            return None
+        return legacy_backup_dir
+
+    @staticmethod
+    def get_backup_dirs(app):
+        """Return backup directories in read-only compatibility order."""
+        backup_dirs = [BackupService.get_backup_dir(app)]
+        legacy_backup_dir = BackupService.get_legacy_backup_dir(app)
+        if legacy_backup_dir:
+            backup_dirs.append(legacy_backup_dir)
+        return backup_dirs
 
     @staticmethod
     def sanitize_filename_component(value, default='v1.0'):
@@ -46,17 +64,26 @@ class BackupService:
     @staticmethod
     def get_backup_file_path(app, filename):
         """Resolve a backup file path safely within the backup directory."""
-        backup_dir = Path(BackupService.get_backup_dir(app)).resolve()
         candidate_name = os.path.basename(str(filename or ''))
         if not candidate_name:
             return None
 
-        candidate = (backup_dir / candidate_name).resolve()
+        for backup_dir in BackupService.get_backup_dirs(app):
+            resolved_dir = Path(backup_dir).resolve()
+            candidate = (resolved_dir / candidate_name).resolve()
+            try:
+                candidate.relative_to(resolved_dir)
+            except ValueError:
+                continue
+            if candidate.exists():
+                return str(candidate)
+        primary_dir = Path(BackupService.get_backup_dir(app)).resolve()
+        fallback_candidate = (primary_dir / candidate_name).resolve()
         try:
-            candidate.relative_to(backup_dir)
+            fallback_candidate.relative_to(primary_dir)
         except ValueError:
             return None
-        return str(candidate)
+        return str(fallback_candidate)
 
     @staticmethod
     def create_backup(app, notes=None, backup_type='Manual', created_by=None):
@@ -148,22 +175,29 @@ class BackupService:
         Synchronize backup directory files with metadata.json.
         Performs integrity checks and registers new files automatically.
         """
-        backup_dir = BackupService.get_backup_dir(app)
+        backup_dirs = BackupService.get_backup_dirs(app)
         metadata = BackupRepository.load_all(app)
         
         # 1. Get all backup files currently on disk
         disk_files = {}
-        for filename in os.listdir(backup_dir):
-            if filename == 'metadata.json' or not (filename.endswith('.sqlite') or filename.endswith('.db')):
+        for backup_dir in backup_dirs:
+            if not backup_dir or not os.path.isdir(backup_dir):
                 continue
-            filepath = os.path.join(backup_dir, filename)
-            if os.path.isfile(filepath):
-                disk_files[filename] = filepath
+            for filename in os.listdir(backup_dir):
+                if filename == 'metadata.json' or not (filename.endswith('.sqlite') or filename.endswith('.db')):
+                    continue
+                filepath = os.path.join(backup_dir, filename)
+                if os.path.isfile(filepath):
+                    disk_files.setdefault(filename, filepath)
                 
         # 2. Track filenames registered in metadata
         registered_files = {}
-        for bid, meta in metadata.items():
-            registered_files[meta['filename']] = bid
+        for bid, meta in list(metadata.items()):
+            if not isinstance(meta, dict):
+                continue
+            filename = meta.get('filename')
+            if filename:
+                registered_files[filename] = bid
             
         changes_detected = False
         
@@ -196,7 +230,11 @@ class BackupService:
                 
         # 4. Handle registered metadata entries
         for bid, meta in list(metadata.items()):
-            filename = meta['filename']
+            if not isinstance(meta, dict):
+                continue
+            filename = meta.get('filename')
+            if not filename:
+                continue
             filepath = BackupService.get_backup_file_path(app, filename)
             
             current_status = meta.get('status', 'Valid')
@@ -230,16 +268,35 @@ class BackupService:
         # 6. Format and return list of backups for UI rendering
         formatted_list = []
         for bid, meta in metadata.items():
-            dt = to_local_datetime(meta['created_at'], assume_utc=True)
+            if not isinstance(meta, dict):
+                continue
+            filename = meta.get('filename')
+            if not filename:
+                continue
+            created_at_value = meta.get('created_at')
+            dt = None
+            if created_at_value:
+                try:
+                    dt = to_local_datetime(created_at_value, assume_utc=True)
+                except Exception:
+                    dt = None
+            filepath = BackupService.get_backup_file_path(app, filename)
+            if not dt and filepath and os.path.exists(filepath):
+                dt = datetime.fromtimestamp(os.path.getmtime(filepath), tz=get_app_timezone())
+            if not dt:
+                dt = local_now()
+            size_value = meta.get('size')
+            if size_value is None and filepath and os.path.exists(filepath):
+                size_value = os.path.getsize(filepath)
             formatted_list.append({
                 'id': bid,
-                'filename': meta['filename'],
-                'display_name': meta['display_name'],
+                'filename': filename,
+                'display_name': meta.get('display_name') or f"Backup ngày {dt.strftime('%d/%m/%Y %H:%M')}",
                 'created_at': dt,
                 'created_at_timestamp': dt.timestamp() if dt else 0,
                 'created_at_friendly': BackupService.format_friendly_time(dt) if dt else 'N/A',
-                'size': meta['size'],
-                'size_friendly': BackupService.format_size(meta['size']),
+                'size': size_value or 0,
+                'size_friendly': BackupService.format_size(size_value or 0),
                 'version_db': meta.get('database_version', 'v1.0'),
                 'version_app': meta.get('app_version', 'SpaManager v1.0'),
                 'notes': meta.get('notes', '-'),

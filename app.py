@@ -197,6 +197,7 @@ if db_uri.startswith('sqlite:///'):
 
 # Ensure persistent upload directories exist at runtime
 os.makedirs(app.config['PERSISTENT_ROOT'], exist_ok=True)
+os.makedirs(app.config['BACKUP_FOLDER'], exist_ok=True)
 os.makedirs(app.config['UPLOAD_ROOT'], exist_ok=True)
 os.makedirs(app.config['LOGO_UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['AVATAR_UPLOAD_FOLDER'], exist_ok=True)

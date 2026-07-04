@@ -38,7 +38,6 @@ class BaseConfig:
     # Folders paths
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(basedir, 'static', 'uploads'))
     EXPORT_FOLDER = os.getenv("EXPORT_FOLDER", os.path.join(basedir, 'exports'))
-    BACKUP_FOLDER = os.getenv("BACKUP_FOLDER", os.path.join(basedir, 'backup'))
     LOG_DIR = os.getenv("LOG_DIR", os.path.join(basedir, 'logs'))
     LOG_FOLDER = LOG_DIR  # Alias for backward compatibility
 
@@ -61,6 +60,7 @@ class BaseConfig:
 
     # Persistent media storage
     PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or os.path.join(basedir, "database")
+    BACKUP_FOLDER = os.getenv("BACKUP_FOLDER") or os.path.join(PERSISTENT_ROOT, "backup")
     UPLOAD_ROOT = os.getenv("UPLOAD_ROOT") or os.path.join(PERSISTENT_ROOT, "uploads")
     LOGO_UPLOAD_FOLDER = os.getenv("LOGO_UPLOAD_FOLDER") or os.path.join(UPLOAD_ROOT, "logos")
     AVATAR_UPLOAD_FOLDER = os.getenv("AVATAR_UPLOAD_FOLDER") or os.path.join(UPLOAD_ROOT, "avatars")
@@ -136,6 +136,7 @@ class ProductionConfig(BaseConfig):
         self.APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
 
         self.PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or "/app/database"
+        self.BACKUP_FOLDER = os.getenv("BACKUP_FOLDER") or os.path.join(self.PERSISTENT_ROOT, "backup")
         self.UPLOAD_ROOT = os.getenv("UPLOAD_ROOT") or os.path.join(self.PERSISTENT_ROOT, "uploads")
         self.LOGO_UPLOAD_FOLDER = os.getenv("LOGO_UPLOAD_FOLDER") or os.path.join(self.UPLOAD_ROOT, "logos")
         self.AVATAR_UPLOAD_FOLDER = os.getenv("AVATAR_UPLOAD_FOLDER") or os.path.join(self.UPLOAD_ROOT, "avatars")

@@ -70,7 +70,13 @@ def index():
     }
 
     # Fetch and sync all backups on disk
-    backups = BackupService.sync_backups(current_app)
+    backup_error = None
+    try:
+        backups = BackupService.sync_backups(current_app)
+    except Exception:
+        app_logger.error("Failed to load backup list", module="BACKUP", exc_info=True)
+        backups = []
+        backup_error = "Không thể tải danh sách sao lưu."
 
     # Sort backups by created_at desc (newest first)
     backups.sort(key=lambda x: x['created_at'], reverse=True)
@@ -93,7 +99,8 @@ def index():
         backups=paginated_backups,
         backups_pagination=pagination_obj,
         page=page,
-        per_page=per_page
+        per_page=per_page,
+        backup_error=backup_error
     )
 
 

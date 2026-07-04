@@ -6,21 +6,41 @@ class BackupRepository:
     
     @staticmethod
     def get_metadata_path(app):
-        backup_dir = os.path.join(app.root_path, 'backup')
+        backup_dir = app.config.get('BACKUP_FOLDER') or os.path.join(app.root_path, 'backup')
         os.makedirs(backup_dir, exist_ok=True)
         return os.path.join(backup_dir, 'metadata.json')
+
+    @staticmethod
+    def get_legacy_metadata_path(app):
+        legacy_backup_dir = os.path.join(app.root_path, 'backup')
+        primary_backup_dir = app.config.get('BACKUP_FOLDER') or os.path.join(app.root_path, 'backup')
+        if os.path.abspath(legacy_backup_dir) == os.path.abspath(primary_backup_dir):
+            return None
+        return os.path.join(legacy_backup_dir, 'metadata.json')
+
+    @classmethod
+    def _metadata_paths(cls, app):
+        paths = [cls.get_metadata_path(app)]
+        legacy_path = cls.get_legacy_metadata_path(app)
+        if legacy_path:
+            paths.append(legacy_path)
+        return paths
 
     @classmethod
     def load_all(cls, app):
         """Load all backup metadata. Key is UUID, value is dictionary."""
-        path = cls.get_metadata_path(app)
-        if os.path.exists(path):
+        merged = {}
+        for path in cls._metadata_paths(app):
+            if not os.path.exists(path):
+                continue
             try:
                 with open(path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    merged.update(loaded)
             except Exception:
-                pass
-        return {}
+                continue
+        return merged
 
     @classmethod
     def save_all(cls, app, data):
