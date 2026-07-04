@@ -58,6 +58,7 @@ from services.backup_service import BackupService
 from services.data_audit_service import run_data_consistency_audit
 from services.data_repair_service import run_controlled_repair
 from services.performance_profile_service import profile_block, run_performance_profile
+from services.operational_diagnostics_service import run_operational_diagnostics
 from services.import_service import ImportService
 from repositories.backup_repository import BackupRepository
 from utils.timezone_utils import local_now
@@ -2159,6 +2160,91 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(metric_two.query_count, 1)
         self.assertEqual(metric_one.status, "OK")
         self.assertEqual(metric_two.status, "OK")
+
+    def test_operational_diagnostics_service_reports_sections_without_mutating_database(self):
+        customer = self.create_customer_record(name="Ops Customer")
+        service = self.create_service_record(name="Ops Service")
+        self.create_appointment_record(customer=customer, service=service)
+        self.create_invoice_record(customer=customer, service=service)
+
+        before_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
+            report = run_operational_diagnostics()
+
+        after_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        self.assertIn(report.status, {"OK", "WARN", "FAIL"})
+        self.assertIn("name", report.app)
+        self.assertIn("type", report.database)
+        self.assertEqual(report.backup["count"], 0)
+        self.assertEqual(report.repair["mode"], "DRY-RUN")
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertIn("Operational diagnostics", report.to_text())
+        self.assertIn("App", report.to_text())
+        self.assertIn("Database", report.to_text())
+        self.assertIn("Backup", report.to_text())
+        self.assertIn("Data audit", report.to_text())
+        self.assertIn("Repair dry-run", report.to_text())
+        self.assertIn("Performance", report.to_text())
+
+    def test_operational_diagnostics_cli_command_runs_and_skip_flags_work(self):
+        runner = app.test_cli_runner()
+        with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
+            result = runner.invoke(args=["ops", "diagnostics", "--skip-performance"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Operational diagnostics", result.output)
+        self.assertIn("App", result.output)
+        self.assertIn("Database", result.output)
+        self.assertIn("Backup", result.output)
+        self.assertIn("Data audit", result.output)
+        self.assertIn("Repair dry-run", result.output)
+        self.assertIn("Performance", result.output)
+        self.assertIn("SKIPPED", result.output)
+
+    def test_operational_diagnostics_repair_plan_stays_dry_run(self):
+        customer = Customer(name="  Ops Repair Customer  ", phone=" 0901234567 ", email=" ops-repair@example.com ")
+        service = Service(name="  Ops Repair Service  ", price=100000, duration=30, description="Repair", category="other")
+        db.session.add_all([customer, service])
+        db.session.commit()
+
+        before_snapshot = (
+            Customer.query.get(customer.id).name,
+            Customer.query.get(customer.id).phone,
+            Customer.query.get(customer.id).email,
+            Service.query.get(service.id).name,
+        )
+
+        with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
+            report = run_operational_diagnostics(verbose=True)
+
+        after_snapshot = (
+            Customer.query.get(customer.id).name,
+            Customer.query.get(customer.id).phone,
+            Customer.query.get(customer.id).email,
+            Service.query.get(service.id).name,
+        )
+
+        self.assertEqual(report.repair["mode"], "DRY-RUN")
+        self.assertGreater(report.repair["repairable_actions"], 0)
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertIn("CUSTOMER_TRIM_NAME", report.repair.get("top_action_codes", []))
+        self.assertIn("SERVICE_TRIM_NAME", report.repair.get("top_action_codes", []))
 
     def test_data_repair_dry_run_reports_safe_actions_without_writing(self):
         customer = Customer(name="  Repair Customer  ", phone=" 0901234567 ", email="  repair@example.com  ", deleted_at=datetime.utcnow())

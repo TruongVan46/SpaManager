@@ -39,6 +39,7 @@ from core.csrf import validate_csrf_request, csrf_token, CSRFError
 from core.migration_cli import register_migration_commands
 from core.data_audit_cli import register_data_audit_commands
 from core.performance_cli import register_performance_profile_commands
+from core.operational_cli import register_operational_diagnostics_commands
 
 # Tạo ứng dụng Flask
 app = Flask(__name__)
@@ -64,6 +65,7 @@ app.register_blueprint(user_bp)
 register_migration_commands(app)
 register_data_audit_commands(app)
 register_performance_profile_commands(app)
+register_operational_diagnostics_commands(app)
 
 BASELINE_TABLES = [
     "users",
@@ -77,9 +79,15 @@ BASELINE_TABLES = [
 ]
 
 
-def _is_perf_profile_cli():
+def _should_skip_owner_seed_for_cli():
     argv = [argument.lower() for argument in sys.argv]
-    return "perf" in argv and "profile" in argv
+    cli_pairs = [
+        ("data", "audit"),
+        ("perf", "profile"),
+        ("ops", "diagnostics"),
+        ("ops", "report"),
+    ]
+    return any(all(part in argv for part in pair) for pair in cli_pairs)
 
 # Favicon handler
 @app.route('/favicon.ico')
@@ -226,7 +234,7 @@ def _baseline_schema_is_ready():
 
 with app.app_context():
     if _baseline_schema_is_ready():
-        if not _is_perf_profile_cli():
+        if not _should_skip_owner_seed_for_cli():
             AuthService.seed_owner_if_empty()
     else:
         app_logger.warning(
