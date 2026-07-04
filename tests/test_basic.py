@@ -3,11 +3,12 @@ import shutil
 import tempfile
 import unittest
 import re
+import html as html_module
 import uuid
 import inspect
 import sqlite3
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -1097,6 +1098,64 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("Other History Customer", html)
         self.assertNotIn("Không nên xuất hiện", html)
 
+    def test_customer_detail_paginates_appointments_and_invoices_independently(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Paginate Customer")
+        service = self.create_service_record("Paginate Service")
+
+        appointment_ids = []
+        for index in range(11):
+            appointment = Appointment(
+                customer_id=customer.id,
+                service_id=service.id,
+                appointment_time=datetime(2026, 7, 4, 8, 0) + timedelta(days=index),
+                status="Confirmed" if index % 2 == 0 else "Pending",
+                notes=f"Appointment {index + 1}"
+            )
+            db.session.add(appointment)
+            db.session.flush()
+            appointment_ids.append(appointment.id)
+
+        invoice_ids = []
+        for index in range(11):
+            invoice = Invoice(
+                customer_id=customer.id,
+                invoice_date=datetime(2026, 7, 4).date(),
+                subtotal=100000 + index,
+                discount=0,
+                total_amount=100000 + index,
+                payment_method="Cash",
+                notes=f"Invoice {index + 1}"
+            )
+            db.session.add(invoice)
+            db.session.flush()
+            detail = InvoiceDetail(
+                invoice_id=invoice.id,
+                service_id=service.id,
+                price=100000 + index,
+                quantity=1
+            )
+            db.session.add(detail)
+            invoice_ids.append(invoice.id)
+        db.session.commit()
+
+        page1_html = self.client.get(f"/customers/{customer.id}").get_data(as_text=True)
+        page2_html = self.client.get(f"/customers/{customer.id}?appointment_page=2").get_data(as_text=True)
+        invoice_page2_html = self.client.get(f"/customers/{customer.id}?invoice_page=2").get_data(as_text=True)
+        mixed_html = self.client.get(f"/customers/{customer.id}?appointment_page=2&invoice_page=2").get_data(as_text=True)
+
+        self.assertIn("Appointment 11", page1_html)
+        self.assertIn("Appointment 1", page2_html)
+        self.assertNotIn("Appointment 11", page2_html)
+        self.assertIn("Invoice 1", invoice_page2_html)
+        self.assertNotIn("Invoice 11", invoice_page2_html)
+        self.assertIn("appointment_page=2", html_module.unescape(mixed_html))
+        self.assertIn("invoice_page=2", html_module.unescape(mixed_html))
+        self.assertIn("Tổng lịch hẹn", mixed_html)
+        self.assertIn("Tổng hóa đơn", mixed_html)
+        self.assertIn("Lịch sử lịch hẹn", mixed_html)
+
     def test_customer_detail_hides_soft_deleted_history(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
@@ -1133,6 +1192,79 @@ class BasicTestCase(unittest.TestCase):
 
         self.assertEqual(deleted_response.status_code, 404)
         self.assertEqual(missing_response.status_code, 404)
+
+    def test_customer_detail_back_url_round_trips_from_child_detail(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Back URL Customer")
+        service = self.create_service_record("Back URL Service")
+        customer_id = customer.id
+        service_id = service.id
+        appointment = self.create_appointment_record(customer=customer, service=service)
+        invoice = Invoice(
+            customer_id=customer_id,
+            invoice_date=datetime(2026, 7, 4).date(),
+            subtotal=100000,
+            discount=0,
+            total_amount=100000,
+            payment_method="Cash",
+            notes="Back URL invoice"
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        db.session.add(
+            InvoiceDetail(
+                invoice_id=invoice.id,
+                service_id=service_id,
+                price=100000,
+                quantity=1
+            )
+        )
+        db.session.commit()
+
+        customer_detail_url = f"/customers/{customer.id}?appointment_page=2&invoice_page=3"
+
+        appointment_response = self.client.get(
+            f"/appointments/detail/{appointment.id}",
+            query_string={"return_to": customer_detail_url},
+            follow_redirects=False
+        )
+        invoice_response = self.client.get(
+            f"/invoices/{invoice.id}",
+            query_string={"return_to": customer_detail_url},
+            follow_redirects=False
+        )
+
+        self.assertEqual(appointment_response.status_code, 200)
+        self.assertEqual(invoice_response.status_code, 200)
+        appointment_html = html_module.unescape(appointment_response.get_data(as_text=True))
+        invoice_html = html_module.unescape(invoice_response.get_data(as_text=True))
+        self.assertIn(customer_detail_url, appointment_html)
+        self.assertIn(customer_detail_url, invoice_html)
+
+    def test_customer_detail_rejects_external_return_to(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("External Back URL Customer")
+        service = self.create_service_record("External Back URL Service")
+        appointment = self.create_appointment_record(customer=customer, service=service)
+        invoice = self.create_invoice_record(customer, service)
+
+        appointment_response = self.client.get(
+            f"/appointments/detail/{appointment.id}",
+            query_string={"return_to": "https://evil.com"},
+            follow_redirects=False
+        )
+        invoice_response = self.client.get(
+            f"/invoices/{invoice.id}",
+            query_string={"return_to": "//evil.com"},
+            follow_redirects=False
+        )
+
+        self.assertEqual(appointment_response.status_code, 200)
+        self.assertEqual(invoice_response.status_code, 200)
+        self.assertIn('/appointments', appointment_response.get_data(as_text=True))
+        self.assertIn('/invoices', invoice_response.get_data(as_text=True))
 
     def test_customer_detail_template_is_scoped_and_utf8_safe(self):
         template = Path("templates/customer/detail.html").read_text(encoding="utf-8")

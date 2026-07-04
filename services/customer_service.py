@@ -1,3 +1,5 @@
+import math
+
 from sqlalchemy import func
 
 from extensions import db
@@ -59,24 +61,49 @@ class CustomerService:
         return Customer.query.filter(Customer.id == customer_id, Customer.deleted_at.is_(None)).first()
 
     @staticmethod
-    def get_customer_history(customer_id, history_limit=10):
+    def _coerce_page(value, default=1):
+        try:
+            page = int(value)
+        except (TypeError, ValueError):
+            return default
+        return page if page > 0 else default
+
+    @staticmethod
+    def _paginate_query(query, page, per_page):
+        total = query.count()
+        total_pages = max(1, math.ceil(total / per_page)) if total else 1
+        page = min(CustomerService._coerce_page(page), total_pages)
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        return pagination
+
+    @staticmethod
+    def get_customer_history(customer_id, appointment_page=1, invoice_page=1, per_page=10):
         customer = CustomerService.get_by_id(customer_id)
         if not customer:
             return None
+
+        appointments_base_query = Appointment.query.options(
+            db.joinedload(Appointment.service)
+        ).filter(
+            Appointment.customer_id == customer_id,
+            Appointment.deleted_at.is_(None)
+        ).order_by(
+            Appointment.appointment_time.desc(),
+            Appointment.id.desc()
+        )
+
+        invoices_base_query = Invoice.query.filter(
+            Invoice.customer_id == customer_id,
+            Invoice.deleted_at.is_(None)
+        ).order_by(
+            Invoice.invoice_date.desc(),
+            Invoice.id.desc()
+        )
 
         appointment_count = db.session.query(func.count(Appointment.id)).filter(
             Appointment.customer_id == customer_id,
             Appointment.deleted_at.is_(None)
         ).scalar() or 0
-        latest_appointment_at = db.session.query(func.max(Appointment.appointment_time)).filter(
-            Appointment.customer_id == customer_id,
-            Appointment.deleted_at.is_(None)
-        ).scalar()
-        latest_appointment_status = db.session.query(Appointment.status).filter(
-            Appointment.customer_id == customer_id,
-            Appointment.deleted_at.is_(None)
-        ).order_by(Appointment.appointment_time.desc(), Appointment.id.desc()).limit(1).scalar()
-
         invoice_count = db.session.query(func.count(Invoice.id)).filter(
             Invoice.customer_id == customer_id,
             Invoice.deleted_at.is_(None)
@@ -86,36 +113,27 @@ class CustomerService:
             Invoice.deleted_at.is_(None)
         ).scalar() or 0
 
-        recent_appointments = Appointment.query.options(
-            db.joinedload(Appointment.service)
-        ).filter(
-            Appointment.customer_id == customer_id,
-            Appointment.deleted_at.is_(None)
-        ).order_by(
-            Appointment.appointment_time.desc(),
-            Appointment.id.desc()
-        ).limit(history_limit).all()
-
-        recent_invoices = Invoice.query.filter(
-            Invoice.customer_id == customer_id,
-            Invoice.deleted_at.is_(None)
-        ).order_by(
-            Invoice.invoice_date.desc(),
-            Invoice.id.desc()
-        ).limit(history_limit).all()
+        latest_appointment = appointments_base_query.first()
+        appointment_history = CustomerService._paginate_query(appointments_base_query, appointment_page, per_page)
+        invoice_history = CustomerService._paginate_query(invoices_base_query, invoice_page, per_page)
 
         return {
             "customer": customer,
             "summary": {
-                "appointment_count": appointment_count,
-                "latest_appointment_at": latest_appointment_at,
-                "latest_appointment_status": latest_appointment_status,
-                "invoice_count": invoice_count,
+                "total_appointments": appointment_count,
+                "total_invoices": invoice_count,
                 "total_spent": total_spent,
+                "latest_appointment_at": latest_appointment.appointment_time if latest_appointment else None,
+                "latest_appointment_status": latest_appointment.status if latest_appointment else None,
+                "appointment_count": appointment_count,
+                "invoice_count": invoice_count,
             },
-            "appointments": recent_appointments,
-            "invoices": recent_invoices,
-            "history_limit": history_limit,
+            "appointment_history": appointment_history,
+            "invoice_history": invoice_history,
+            "appointment_page": appointment_history.page,
+            "invoice_page": invoice_history.page,
+            "appointment_per_page": appointment_history.per_page,
+            "invoice_per_page": invoice_history.per_page,
         }
 
     @staticmethod

@@ -13,6 +13,20 @@ from utils.timezone_utils import local_now
 from services.auth_service import AuthService
 from core.exceptions import BusinessException
 
+
+def _sanitize_return_to(return_to):
+    if not return_to:
+        return None
+
+    candidate = return_to.strip()
+    if not candidate.startswith('/') or candidate.startswith('//'):
+        return None
+    if '://' in candidate:
+        return None
+    if not candidate.startswith(('/customers/', '/appointments', '/invoices')):
+        return None
+    return candidate
+
 @invoice_bp.route('/invoices')
 def index():
     q = request.args.get('q', '').strip()
@@ -155,8 +169,9 @@ def detail(invoice_id):
     if not invoice:
         flash("Hóa đơn không tồn tại.", "danger")
         return redirect(url_for('invoice.index'))
-    return_url = request.args.get('return_url')
-    return render_template('invoice/detail.html', invoice=invoice, return_url=return_url)
+    return_to = _sanitize_return_to(request.args.get('return_to') or request.args.get('return_url'))
+    back_url = return_to or url_for('invoice.index')
+    return render_template('invoice/detail.html', invoice=invoice, back_url=back_url)
 
 @invoice_bp.route('/invoices/print/<int:invoice_id>')
 def print_invoice(invoice_id):

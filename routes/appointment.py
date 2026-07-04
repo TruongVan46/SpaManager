@@ -11,6 +11,20 @@ from services.notification_service import NotificationService
 from utils.timezone_utils import local_now
 from services.auth_service import AuthService
 
+
+def _sanitize_return_to(return_to):
+    if not return_to:
+        return None
+
+    candidate = return_to.strip()
+    if not candidate.startswith('/') or candidate.startswith('//'):
+        return None
+    if '://' in candidate:
+        return None
+    if not candidate.startswith(('/customers/', '/appointments', '/invoices')):
+        return None
+    return candidate
+
 @appointment_bp.route('/appointments')
 def index():
     search = request.args.get('search', '')
@@ -170,7 +184,8 @@ def detail(id):
         flash('Không tìm thấy lịch hẹn.', 'danger')
         return redirect(url_for('appointment.index'))
     
-    return render_template('appointment/detail.html', appointment=appointment)
+    back_url = _sanitize_return_to(request.args.get('return_to')) or url_for('appointment.index')
+    return render_template('appointment/detail.html', appointment=appointment, back_url=back_url)
 
 @appointment_bp.route('/appointments/update_status', methods=['POST'])
 def update_status():
