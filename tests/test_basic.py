@@ -2072,6 +2072,36 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('wizardBtnConfirm.disabled = !this.checked || isExecutingRestore', script)
         self.assertIn('requestSubmit', script)
 
+    def test_backup_service_metadata_uses_clean_vietnamese_text(self):
+        service_source = Path("services/backup_service.py").read_text(encoding="utf-8")
+        self.assertIn("Backup ngày", service_source)
+        self.assertIn("Backup tạo lúc", service_source)
+        self.assertIn("Hôm nay", service_source)
+        self.assertIn("Hôm qua", service_source)
+        for marker in ["Ã", "á»", "áº", "Æ", "Ä‘", "â€¢", "Â"]:
+            self.assertNotIn(marker, service_source)
+
+    def test_new_backup_metadata_and_list_render_clean_vietnamese_text(self):
+        owner = self.create_user("settings-backup-vn-owner", password="owner-pass", full_name="Backup VN Owner", role="OWNER")
+        self.login_as(owner)
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="")
+        try:
+            self.assertIn("Backup ngày", backup_meta["display_name"])
+            self.assertIn("Backup tạo lúc", backup_meta["notes"])
+
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Backup ngày", html)
+            self.assertIn("Hôm nay", html)
+            self.assertNotIn("Backup ngÃ", html)
+            self.assertNotIn("Backup táº", html)
+            self.assertNotIn("Backup lÃºc", html)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
     def test_backup_file_path_helper_blocks_traversal_and_stays_inside_backup_dir(self):
         backup_dir = Path(BackupService.get_backup_dir(app)).resolve()
         resolved = Path(BackupService.get_backup_file_path(app, "../../evil.sqlite"))
