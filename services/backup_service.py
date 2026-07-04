@@ -19,11 +19,12 @@ from utils.timezone_utils import get_app_timezone, local_now, to_local_datetime
 
 class BackupService:
     """Service for backing up the SQLite database and managing its metadata."""
+    APP_VERSION = "5.4.0"
 
     @staticmethod
     def get_app_version(app):
         """Get the application version used for backup metadata."""
-        return app.config.get('APP_VERSION', '5.3.0')
+        return app.config.get('APP_VERSION', BackupService.APP_VERSION)
 
     @staticmethod
     def get_db_path(app):

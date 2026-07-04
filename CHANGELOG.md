@@ -2,6 +2,21 @@
 
 SpaManager release notes.
 
+## [v5.4.0] - 2026-07-05
+
+### Added
+- Operational diagnostics report for app, database, backup, audit, repair dry-run, and performance summaries.
+- Release checkpoint for the 5.4 stabilization milestone.
+
+### Changed
+- Version labels and backup metadata now reflect the current `APP_VERSION` release checkpoint.
+
+### Fixed
+- Read-only operational reporting now avoids side effects during CLI diagnostics.
+
+### Tests
+- Expanded regression coverage for diagnostics and release metadata.
+
 ## [v5.3.0] - 2026-07-05
 
 ### Added
