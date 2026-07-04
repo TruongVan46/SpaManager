@@ -36,6 +36,7 @@ from core.auth.permissions import (
 )
 from core.csrf import validate_csrf_request, csrf_token, CSRFError
 from core.migration_cli import register_migration_commands
+from core.data_audit_cli import register_data_audit_commands
 
 # Tạo ứng dụng Flask
 app = Flask(__name__)
@@ -59,6 +60,7 @@ app.register_blueprint(recycle_bin_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(user_bp)
 register_migration_commands(app)
+register_data_audit_commands(app)
 
 BASELINE_TABLES = [
     "users",

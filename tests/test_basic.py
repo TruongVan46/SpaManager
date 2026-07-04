@@ -11,6 +11,8 @@ import uuid
 import inspect
 import sqlite3
 import subprocess
+from types import SimpleNamespace
+from contextlib import nullcontext
 from io import BytesIO
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -53,6 +55,7 @@ from services.invoice_service import InvoiceService
 from services.service_service import ServiceService
 from services.auth_service import AuthService
 from services.backup_service import BackupService
+from services.data_audit_service import run_data_consistency_audit
 from services.import_service import ImportService
 from repositories.backup_repository import BackupRepository
 from utils.timezone_utils import local_now
@@ -195,6 +198,11 @@ class BasicTestCase(unittest.TestCase):
         absolute_path.parent.mkdir(parents=True, exist_ok=True)
         absolute_path.write_bytes(content)
         return absolute_path
+
+    def execute_raw_sql(self, sql, **params):
+        with db.engine.begin() as connection:
+            connection.execute(text("PRAGMA foreign_keys=OFF"))
+            connection.execute(text(sql), params)
 
     def create_settings_backup_via_route(self, user, notes="Route backup"):
         self.login_as(user)
@@ -3330,6 +3338,220 @@ class BasicTestCase(unittest.TestCase):
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
         self.assertIn("0001_baseline", current_after.output)
+
+    def test_data_consistency_audit_passes_on_clean_database(self):
+        report = run_data_consistency_audit()
+
+        self.assertTrue(report.passed)
+        self.assertEqual(report.total_errors, 0)
+        self.assertEqual(report.total_warnings, 0)
+        self.assertIn("Data consistency audit", report.to_text())
+        self.assertIn("Status: PASS", report.to_text())
+
+    def test_data_consistency_audit_detects_real_database_issues_without_writing(self):
+        customer_a = Customer(name=" ", phone="0901234567", email="duplicate@example.com")
+        customer_b = Customer(name="Customer B", phone="0901234567", email="duplicate@example.com", deleted_by="owner")
+        customer_c = Customer(name="Linked Customer", phone="0909999999", email="linked@example.com")
+        service_a = Service(name=" ", price=-150000, duration=30, description="Bad service", category="other", deleted_at=datetime.utcnow())
+        service_b = Service(name="Linked Service", price=200000, duration=45, description="Good service", category="other")
+        db.session.add_all([customer_a, customer_b, customer_c, service_a, service_b])
+        db.session.commit()
+
+        appointment = Appointment(
+            customer_id=customer_c.id,
+            service_id=service_a.id,
+            appointment_time=datetime(2026, 7, 4, 10, 0),
+            status="Bogus",
+            deleted_at=datetime.utcnow(),
+        )
+        invoice = Invoice(
+            customer_id=customer_c.id,
+            invoice_date=None,
+            subtotal=0,
+            discount=0,
+            total_amount=-50000,
+            payment_method="UnknownMethod",
+            deleted_by="owner",
+        )
+        db.session.add_all([appointment, invoice])
+        db.session.commit()
+
+        detail = InvoiceDetail(
+            invoice_id=invoice.id,
+            service_id=service_a.id,
+            price=-1000,
+            quantity=0,
+        )
+        db.session.add(detail)
+        db.session.commit()
+
+        self.execute_raw_sql(
+            """
+            INSERT INTO appointments (customer_id, service_id, appointment_time, status, notes, created_at, deleted_at, deleted_by)
+            VALUES (:customer_id, :service_id, :appointment_time, :status, NULL, :created_at, NULL, NULL)
+            """,
+            customer_id=999999,
+            service_id=888888,
+            appointment_time=datetime(2026, 7, 5, 11, 30),
+            status="Pending",
+            created_at=datetime.utcnow(),
+        )
+        self.execute_raw_sql(
+            """
+            INSERT INTO invoices (customer_id, invoice_date, subtotal, discount, total_amount, payment_method, notes, created_at, deleted_at, deleted_by)
+            VALUES (:customer_id, :invoice_date, :subtotal, :discount, :total_amount, :payment_method, NULL, :created_at, NULL, NULL)
+            """,
+            customer_id=999998,
+            invoice_date=None,
+            subtotal=0,
+            discount=0,
+            total_amount=1000,
+            payment_method="Cash",
+            created_at=datetime.utcnow(),
+        )
+        self.execute_raw_sql(
+            """
+            INSERT INTO invoice_details (invoice_id, service_id, price, quantity)
+            VALUES (:invoice_id, :service_id, :price, :quantity)
+            """,
+            invoice_id=999997,
+            service_id=888887,
+            price=1000,
+            quantity=1,
+        )
+
+        before_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        report = run_data_consistency_audit()
+
+        after_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertFalse(report.passed)
+
+        issue_codes = {issue.code for issue in report.issues}
+        expected_codes = {
+            "CUSTOMER_EMPTY_NAME",
+            "CUSTOMER_DUPLICATE_PHONE",
+            "CUSTOMER_DUPLICATE_EMAIL",
+            "CUSTOMER_SOFT_DELETE_MISMATCH",
+            "SERVICE_EMPTY_NAME",
+            "SERVICE_NEGATIVE_PRICE",
+            "SERVICE_SOFT_DELETE_MISMATCH",
+            "APPOINTMENT_MISSING_CUSTOMER",
+            "APPOINTMENT_MISSING_SERVICE",
+            "APPOINTMENT_INVALID_STATUS",
+            "APPOINTMENT_SOFT_DELETE_MISMATCH",
+            "APPOINTMENT_SOFT_DELETED_SERVICE",
+            "INVOICE_MISSING_CUSTOMER",
+            "INVOICE_EMPTY_DATE",
+            "INVOICE_NEGATIVE_TOTAL",
+            "INVOICE_INVALID_PAYMENT_METHOD",
+            "INVOICE_SOFT_DELETE_MISMATCH",
+            "INVOICE_DETAIL_MISSING_INVOICE",
+            "INVOICE_DETAIL_MISSING_SERVICE",
+            "INVOICE_DETAIL_INVALID_QUANTITY",
+            "INVOICE_DETAIL_NEGATIVE_PRICE",
+            "INVOICE_DETAIL_SOFT_DELETED_SERVICE",
+        }
+        self.assertTrue(expected_codes.issubset(issue_codes), issue_codes)
+
+    def test_data_consistency_audit_detects_missing_appointment_time_from_fake_session(self):
+        soft_deleted_at = datetime.utcnow()
+        fake_customers = [
+            SimpleNamespace(id=1, name=" ", phone="0901111111", email="dup@example.com", deleted_at=None, deleted_by=None),
+            SimpleNamespace(id=2, name="Customer A", phone="0901111111", email="dup@example.com", deleted_at=None, deleted_by=None),
+            SimpleNamespace(id=3, name="Soft Deleted Customer", phone="0902222222", email="customer3@example.com", deleted_at=soft_deleted_at, deleted_by=None),
+        ]
+        fake_services = [
+            SimpleNamespace(id=1, name=" ", price=-10, duration=30, description=None, category="other", deleted_at=soft_deleted_at, deleted_by=None),
+            SimpleNamespace(id=2, name="Service A", price=100000, duration=30, description=None, category="other", deleted_at=None, deleted_by=None),
+        ]
+        fake_appointments = [
+            SimpleNamespace(id=1, customer_id=999, service_id=998, appointment_time=None, status="Bogus", deleted_at=soft_deleted_at, deleted_by=None),
+            SimpleNamespace(id=2, customer_id=3, service_id=1, appointment_time=datetime.utcnow(), status="Pending", deleted_at=None, deleted_by=None),
+        ]
+        fake_invoices = [
+            SimpleNamespace(id=1, customer_id=999, invoice_date=None, subtotal=0, discount=0, total_amount=-1, payment_method="Weird", deleted_at=soft_deleted_at, deleted_by=None),
+            SimpleNamespace(id=2, customer_id=3, invoice_date=datetime(2026, 7, 4).date(), subtotal=0, discount=0, total_amount=1000, payment_method="Cash", deleted_at=None, deleted_by=None),
+        ]
+        fake_details = [
+            SimpleNamespace(id=1, invoice_id=999, service_id=998, price=-100, quantity=0),
+            SimpleNamespace(id=2, invoice_id=1, service_id=1, price=100, quantity=1),
+        ]
+
+        class FakeQuery:
+            def __init__(self, rows):
+                self.rows = rows
+
+            def all(self):
+                return list(self.rows)
+
+        class FakeSession:
+            def __init__(self, mapping):
+                self.mapping = mapping
+                self.no_autoflush = nullcontext()
+
+            def query(self, model):
+                return FakeQuery(self.mapping.get(model, []))
+
+        fake_session = FakeSession({
+            Customer: fake_customers,
+            Service: fake_services,
+            Appointment: fake_appointments,
+            Invoice: fake_invoices,
+            InvoiceDetail: fake_details,
+        })
+
+        report = run_data_consistency_audit(fake_session)
+        issue_codes = {issue.code for issue in report.issues}
+
+        self.assertFalse(report.passed)
+        self.assertIn("APPOINTMENT_EMPTY_TIME", issue_codes)
+        self.assertIn("APPOINTMENT_INVALID_STATUS", issue_codes)
+        self.assertIn("CUSTOMER_DUPLICATE_PHONE", issue_codes)
+        self.assertIn("INVOICE_DETAIL_NEGATIVE_PRICE", issue_codes)
+        self.assertIn("Status: FAIL", report.to_text())
+
+    def test_data_consistency_audit_cli_command_runs(self):
+        runner = app.test_cli_runner()
+        before_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+        result = runner.invoke(args=["data", "audit"])
+        after_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Data consistency audit", result.output)
+        self.assertIn("Status: PASS", result.output)
+        self.assertIn("Errors: 0", result.output)
+        self.assertEqual(before_snapshot, after_snapshot)
 
     def extract_pdf_text(self, pdf_bytes):
         font_cmaps = {}
