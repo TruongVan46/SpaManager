@@ -28,7 +28,7 @@
                         </button>
                     </div>
                     <h4 class="fw-bold mb-1">{{ user.full_name }}</h4>
-                    <span class="badge bg-primary px-3 py-2 text-uppercase mb-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">{{ 'CHỦ SPA' if user.role == 'OWNER' else user.role }}</span>
+                    <span class="badge bg-primary px-3 py-2 text-uppercase mb-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">{{ 'CHỦ SPA' if is_owner(user) else user.role }}</span>
                     <p class="text-muted small mb-0">Định dạng hỗ trợ: JPG, JPEG, PNG (Tối đa 2MB)</p>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                             <!-- Role (Readonly) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Vai trò hệ thống</label>
-                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ 'Chủ Spa' if user.role == 'OWNER' else user.role }}" readonly>
+                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ 'Chủ Spa' if is_owner(user) else user.role }}" readonly>
                             </div>
 
                             <!-- Full Name (Editable) -->

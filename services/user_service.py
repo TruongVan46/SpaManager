@@ -210,7 +210,7 @@ class UserService:
         if errors:
             raise ValidationException("Dữ liệu người dùng không hợp lệ.", field_errors=errors)
 
-        if user.id == actor.id and user.role in UserService.MANAGER_ROLES and role not in UserService.MANAGER_ROLES:
+        if user.id == actor.id and UserService._is_manager_role(user.role) and role not in UserService.MANAGER_ROLES:
             raise ValidationException(
                 "Không thể tự hạ quyền quản trị của chính mình.",
                 field_errors={"role": "Không thể tự hạ quyền quản trị của chính mình."}

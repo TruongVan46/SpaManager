@@ -1,6 +1,8 @@
-from flask import render_template, request, jsonify, send_file
+from flask import render_template, request, jsonify, send_file, abort
 from routes import statistics_bp
 from services.statistics_service import StatisticsService
+from services.auth_service import AuthService
+from core.auth.permissions import can_manage_settings
 from datetime import datetime, date
 from utils.pagination import get_pagination_params
 from utils.timezone_utils import local_now
@@ -19,6 +21,15 @@ def parse_date(date_val):
         except ValueError:
             return None
     return None
+
+
+@statistics_bp.before_request
+def _require_statistics_permission():
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    if not can_manage_settings(current_user):
+        abort(403)
 
 @statistics_bp.route('/reports')
 @statistics_bp.route('/statistics')

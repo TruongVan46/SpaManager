@@ -1,7 +1,17 @@
-from flask import render_template, request
+from flask import render_template, request, abort
 from routes import activity_log_bp
 from services.activity_log_service import ActivityLogService
+from services.auth_service import AuthService
+from core.auth.permissions import can_view_activity_logs
 from utils.pagination import get_pagination_params
+
+@activity_log_bp.before_request
+def _require_activity_log_permission():
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    if not can_view_activity_logs(current_user):
+        abort(403)
 
 @activity_log_bp.route('/activity-logs')
 def index():

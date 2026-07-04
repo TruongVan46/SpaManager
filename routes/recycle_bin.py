@@ -1,9 +1,18 @@
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, abort
 from routes import recycle_bin_bp
 from services.recycle_bin_service import RecycleBinService, RecycleBinRegistry
 from services.auth_service import AuthService
+from core.auth.permissions import can_manage_backups
 from core.exceptions import BusinessException
 from utils.pagination import get_pagination_params
+
+@recycle_bin_bp.before_request
+def _require_recycle_bin_permission():
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    if not can_manage_backups(current_user):
+        abort(403)
 
 @recycle_bin_bp.route('/recycle-bin')
 def index():

@@ -2,7 +2,7 @@ import os
 import uuid
 import shutil
 from datetime import datetime
-from flask import render_template, request, flash, redirect, url_for, send_file, current_app, jsonify
+from flask import render_template, request, flash, redirect, url_for, send_file, current_app, jsonify, abort
 from werkzeug.utils import secure_filename
 from routes import setting_bp
 from models.setting import Setting
@@ -17,6 +17,7 @@ from repositories.backup_repository import BackupRepository
 from core.logger import app_logger
 from services.activity_log_service import ActivityLogService
 from services.auth_service import AuthService
+from core.auth.permissions import can_manage_settings
 from utils.media_storage import resolve_media_file_path
 from utils.timezone_utils import local_now, to_local_datetime
 
@@ -43,6 +44,15 @@ class SimplePagination:
                 if pages and pages[-1] is not None:
                     pages.append(None)
         return pages
+
+
+@setting_bp.before_request
+def _require_settings_permission():
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    if not can_manage_settings(current_user):
+        abort(403)
 
 
 @setting_bp.route('/settings')

@@ -23,6 +23,17 @@ from routes import (
     user_bp
 )
 from services.auth_service import AuthService
+from core.auth.permissions import (
+    can_manage_backups,
+    can_manage_business_data,
+    can_manage_settings,
+    can_manage_users,
+    can_view_activity_logs,
+    is_admin,
+    is_manager,
+    is_owner,
+    is_staff,
+)
 from core.csrf import validate_csrf_request, csrf_token, CSRFError
 from core.migration_cli import register_migration_commands
 
@@ -131,6 +142,20 @@ def validate_state_changing_request_csrf():
 @app.context_processor
 def inject_user():
     return dict(current_user=AuthService.get_current_user())
+
+@app.context_processor
+def inject_permission_helpers():
+    return dict(
+        is_owner=is_owner,
+        is_admin=is_admin,
+        is_staff=is_staff,
+        is_manager=is_manager,
+        can_manage_users=can_manage_users,
+        can_manage_settings=can_manage_settings,
+        can_view_activity_logs=can_view_activity_logs,
+        can_manage_backups=can_manage_backups,
+        can_manage_business_data=can_manage_business_data,
+    )
 
 @app.context_processor
 def inject_asset_helpers():

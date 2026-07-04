@@ -37,6 +37,7 @@ from models.customer import Customer
 from models.invoice import Invoice
 from models.invoice_detail import InvoiceDetail
 from models.service import Service
+from models.setting import Setting
 from models.user import User
 from services.appointment_service import AppointmentService
 from services.activity_log_service import ActivityLogService
@@ -44,6 +45,17 @@ from services.customer_service import CustomerService
 from services.invoice_service import InvoiceService
 from services.service_service import ServiceService
 from services.auth_service import AuthService
+from core.auth.permissions import (
+    can_manage_backups,
+    can_manage_business_data,
+    can_manage_settings,
+    can_manage_users,
+    can_view_activity_logs,
+    is_admin,
+    is_manager,
+    is_owner,
+    is_staff,
+)
 import core.csrf as csrf_module
 
 
@@ -1514,6 +1526,125 @@ class BasicTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("Quản lý Người dùng", response.get_data(as_text=True))
+
+    def test_permission_helpers_follow_role_and_activity_state(self):
+        owner = self.create_user("perm-owner", password="owner-pass", full_name="Perm Owner", role="OWNER")
+        admin = self.create_user("perm-admin", password="admin-pass", full_name="Perm Admin", role="ADMIN")
+        staff = self.create_user("perm-staff", password="staff-pass", full_name="Perm Staff", role="STAFF")
+        inactive_admin = self.create_user("perm-inactive", password="inactive-pass", full_name="Perm Inactive", role="ADMIN")
+        inactive_admin.is_active = False
+        db.session.commit()
+
+        self.assertTrue(is_owner(owner))
+        self.assertTrue(is_admin(admin))
+        self.assertTrue(is_staff(staff))
+        self.assertTrue(is_manager(owner))
+        self.assertTrue(is_manager(admin))
+        self.assertFalse(is_manager(staff))
+        self.assertFalse(is_manager(inactive_admin))
+        self.assertFalse(is_manager(None))
+        self.assertTrue(can_manage_users(owner))
+        self.assertTrue(can_manage_users(admin))
+        self.assertFalse(can_manage_users(staff))
+        self.assertTrue(can_manage_settings(owner))
+        self.assertTrue(can_view_activity_logs(admin))
+        self.assertTrue(can_manage_backups(owner))
+        self.assertTrue(can_manage_business_data(staff))
+        self.assertFalse(can_manage_business_data(inactive_admin))
+        self.assertFalse(can_manage_business_data(None))
+
+    def test_staff_cannot_see_admin_menus_in_sidebar(self):
+        staff = self.create_user("sidebar-staff", password="staff-pass", full_name="Sidebar Staff", role="STAFF")
+        owner = self.create_user("sidebar-owner", password="owner-pass", full_name="Sidebar Owner", role="OWNER")
+        admin = self.create_user("sidebar-admin", password="admin-pass", full_name="Sidebar Admin", role="ADMIN")
+
+        self.login_as(staff)
+        staff_sidebar = self.client.get("/customers", follow_redirects=False).get_data(as_text=True)
+
+        self.login_as(owner)
+        owner_sidebar = self.client.get("/customers", follow_redirects=False).get_data(as_text=True)
+
+        self.login_as(admin)
+        admin_sidebar = self.client.get("/customers", follow_redirects=False).get_data(as_text=True)
+
+        hidden_labels = ["Thống kê", "Nhật ký hoạt động", "Thùng rác", "Cài đặt", "Người dùng"]
+        visible_labels = ["Khách hàng", "Dịch vụ", "Lịch hẹn", "Hóa đơn"]
+
+        for label in hidden_labels:
+            self.assertNotIn(label, staff_sidebar)
+            self.assertIn(label, owner_sidebar)
+            self.assertIn(label, admin_sidebar)
+
+        for label in visible_labels:
+            self.assertIn(label, staff_sidebar)
+            self.assertIn(label, owner_sidebar)
+            self.assertIn(label, admin_sidebar)
+
+    def test_admin_routes_are_blocked_for_staff_but_available_to_owner_and_admin(self):
+        staff = self.create_user("route-staff", password="staff-pass", full_name="Route Staff", role="STAFF")
+        admin = self.create_user("route-admin", password="admin-pass", full_name="Route Admin", role="ADMIN")
+        owner = self.create_user("route-owner", password="owner-pass", full_name="Route Owner", role="OWNER")
+
+        protected_get_routes = [
+            "/settings",
+            "/activity-logs",
+            "/recycle-bin",
+            "/statistics",
+        ]
+
+        for user in (owner, admin):
+            self.login_as(user)
+            for route in protected_get_routes:
+                response = self.client.get(route, follow_redirects=False)
+                self.assertEqual(response.status_code, 200, route)
+
+        self.login_as(staff)
+        staff_token = self.get_csrf_token("/customers")
+
+        for route in protected_get_routes:
+            response = self.client.get(route, follow_redirects=False)
+            self.assertEqual(response.status_code, 403, route)
+
+        json_forbidden = self.client.get(
+            "/activity-logs",
+            headers={"Accept": "application/json"},
+            follow_redirects=False,
+        )
+        self.assertEqual(json_forbidden.status_code, 403)
+        self.assertTrue(json_forbidden.is_json)
+        self.assertEqual(json_forbidden.get_json()["error"], "forbidden")
+
+        before_spa_name = Setting.get("spa_name")
+        Setting.set("spa_name", "Before Permission Check")
+        blocked_post = self.client.post(
+            "/settings/save-spa-info",
+            data={
+                "spa_name": "Should Not Save",
+                "spa_owner": "Should Not Save",
+                "spa_phone": "0900000000",
+                "spa_email": "blocked@example.com",
+                "spa_address": "Nope",
+                "spa_open_time": "08:00",
+                "spa_close_time": "20:00",
+            },
+            headers={"X-CSRFToken": staff_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(blocked_post.status_code, 403)
+        self.assertEqual(Setting.get("spa_name"), "Before Permission Check")
+        if before_spa_name is None:
+            with db.engine.begin() as connection:
+                connection.execute(text("DELETE FROM settings WHERE key = 'spa_name'"))
+        else:
+            Setting.set("spa_name", before_spa_name)
+
+    def test_staff_still_has_access_to_business_modules(self):
+        staff = self.create_user("business-staff", password="staff-pass", full_name="Business Staff", role="STAFF")
+        self.login_as(staff)
+
+        for route in ("/customers", "/services", "/appointments", "/invoices"):
+            response = self.client.get(route, follow_redirects=False)
+            self.assertEqual(response.status_code, 200, route)
 
     def test_disabled_user_session_is_blocked_on_next_request(self):
         owner = AuthService.seed_owner_if_empty()

@@ -17,6 +17,7 @@ from validators.auth_validator import AuthValidator
 from validators.profile_validator import ProfileValidator
 from utils.timezone_utils import utc_now
 from utils.media_storage import resolve_media_file_path
+from core.auth.permissions import can_manage_users
 
 # services/auth_service.py
 
@@ -135,8 +136,7 @@ class AuthService:
     @staticmethod
     def is_manager_user(user=None):
         user = user or AuthService.get_current_active_user()
-        role_value = normalize_role_value(user.role) if user else None
-        return bool(user and role_value in AuthService.MANAGER_ROLES)
+        return can_manage_users(user)
 
     @staticmethod
     def require_current_username():
@@ -154,7 +154,7 @@ class AuthService:
         user = AuthService.get_current_active_user()
         if not user:
             raise AuthenticationException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.")
-        if normalize_role_value(user.role) not in AuthService.MANAGER_ROLES:
+        if not can_manage_users(user):
             raise PermissionDeniedException("Bạn không có quyền truy cập khu vực quản lý người dùng.")
         return user
 

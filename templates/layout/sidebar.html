@@ -2,133 +2,95 @@
 
     <!-- Logo -->
     <div class="logo">
-
         <div class="logo-icon">
             <i class="bi bi-flower1"></i>
         </div>
-
         <h3>TIỆM NHÀ NHÍM</h3>
-
         <p>Spa • Nail • Makeup</p>
-
     </div>
 
     <!-- Menu -->
     <nav class="menu">
-
         <!-- Trang chủ -->
         <a href="{{ url_for('dashboard.index') }}"
             class="menu-item {% if active_page == 'dashboard.index' %}active{% endif %}">
-
             <i class="bi bi-speedometer2"></i>
-
             <span>Trang chủ</span>
-
         </a>
 
         <!-- Khách hàng -->
         <a href="{{ url_for('customer.index') }}"
             class="menu-item {% if active_page == 'customer.index' %}active{% endif %}">
-
             <i class="bi bi-people"></i>
-
             <span>Khách hàng</span>
-
         </a>
 
         <!-- Dịch vụ -->
         <a href="{{ url_for('service.index') }}"
             class="menu-item {% if active_page == 'service.index' %}active{% endif %}">
-
             <i class="bi bi-scissors"></i>
-
             <span>Dịch vụ</span>
-
         </a>
 
         <!-- Lịch hẹn -->
         <a href="{{ url_for('appointment.index') }}"
             class="menu-item {% if active_page == 'appointment.index' %}active{% endif %}">
-
             <i class="bi bi-calendar-check"></i>
-
             <span>Lịch hẹn</span>
-
         </a>
 
         <!-- Hóa đơn -->
         <a href="{{ url_for('invoice.index') }}"
             class="menu-item {% if active_page == 'invoice.index' %}active{% endif %}">
-
             <i class="bi bi-receipt"></i>
-
             <span>Hóa đơn</span>
-
         </a>
 
+        {% if can_manage_settings(current_user) %}
         <!-- Thống kê -->
         <a href="{{ url_for('statistics.index') }}"
             class="menu-item {% if active_page == 'statistics.index' %}active{% endif %}">
-
             <i class="bi bi-graph-up-arrow"></i>
-
             <span>Thống kê</span>
-
         </a>
 
         <!-- Nhật ký hoạt động -->
         <a href="{{ url_for('activity_log.index') }}"
             class="menu-item {% if active_page == 'activity_log.index' %}active{% endif %}">
-
             <i class="bi bi-clock-history"></i>
-
             <span>Nhật ký hoạt động</span>
-
         </a>
 
         <!-- Thùng rác -->
         <a href="{{ url_for('recycle_bin.index') }}"
             class="menu-item {% if active_page == 'recycle_bin.index' %}active{% endif %}">
-
             <i class="bi bi-trash3"></i>
-
             <span>Thùng rác</span>
-
         </a>
 
         <!-- Cài đặt -->
         <a href="{{ url_for('setting.index') }}"
             class="menu-item {% if active_page == 'setting.index' %}active{% endif %}">
-
             <i class="bi bi-gear"></i>
-
             <span>Cài đặt</span>
-
-        </a>
-
-        {% if current_user and current_user.role|upper in ['OWNER', 'ADMIN'] %}
-        <!-- Người dùng -->
-        <a href="{{ url_for('user.index') }}"
-            class="menu-item {% if active_page and active_page.startswith('user.') %}active{% endif %}">
-
-            <i class="bi bi-people-fill"></i>
-
-            <span>Người dùng</span>
-
         </a>
         {% endif %}
 
+        {% if can_manage_users(current_user) %}
+        <!-- Người dùng -->
+        <a href="{{ url_for('user.index') }}"
+            class="menu-item {% if active_page and active_page.startswith('user.') %}active{% endif %}">
+            <i class="bi bi-people-fill"></i>
+            <span>Người dùng</span>
+        </a>
+        {% endif %}
     </nav>
 
     <!-- Footer -->
     <div class="sidebar-footer">
-
         <small>
-
             Spa Manager v{{ config.APP_VERSION }}
-
         </small>
-
     </div>
 
 </aside>

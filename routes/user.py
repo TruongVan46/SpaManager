@@ -1,5 +1,6 @@
-from flask import jsonify, redirect, render_template, request, url_for
+from flask import jsonify, redirect, render_template, request, url_for, abort
 
+from core.auth.permissions import can_manage_users
 from core.exceptions import BusinessException, ValidationException
 from routes import user_bp
 from services.auth_service import AuthService
@@ -17,6 +18,15 @@ def _extract_payload():
     if request.is_json:
         return request.get_json() or {}
     return request.form.to_dict()
+
+
+@user_bp.before_request
+def _require_user_management_permission():
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    if not can_manage_users(current_user):
+        abort(403)
 
 
 def _render_or_json_error(template_name, context, errors, status_code=400):
