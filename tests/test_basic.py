@@ -2321,6 +2321,8 @@ class BasicTestCase(unittest.TestCase):
             "/activity-logs",
             "/recycle-bin",
             "/statistics",
+            "/statistics/export/excel",
+            "/statistics/export/pdf",
         ]
 
         for user in (owner, admin):
@@ -3541,6 +3543,85 @@ class BasicTestCase(unittest.TestCase):
         pdf_timestamp = datetime.strptime(timestamp_match.group(1), "%d/%m/%Y %H:%M:%S")
         pdf_timestamp = pdf_timestamp.replace(tzinfo=local_now().tzinfo)
         self.assertLess(abs((local_now() - pdf_timestamp).total_seconds()), 60)
+
+    def test_statistics_page_renders_clean_vietnamese_labels_and_filter_links(self):
+        owner = self.create_user("stats-page-owner", password="owner-pass", full_name="Stats Page Owner", role="OWNER")
+        self.login_as(owner)
+        customer = self.create_customer_record(name="Khách hàng Báo cáo")
+        service = self.create_service_record(name="Dịch vụ Báo cáo")
+        self.create_invoice_record(customer=customer, service=service)
+
+        response = self.client.get(
+            "/statistics?from_date=2026-07-04&to_date=2026-07-04&cust_q=Báo&svc_q=Dịch",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("Thống kê báo cáo", html)
+        self.assertIn("Bộ lọc thời gian", html)
+        self.assertIn("Thống kê chi tiêu khách hàng", html)
+        self.assertIn("Doanh thu theo dịch vụ", html)
+        self.assertIn("Khách hàng Báo cáo", html)
+        self.assertIn("Dịch vụ Báo cáo", html)
+        self.assertNotIn("Ã", html)
+        self.assertNotIn("á»", html)
+        self.assertIn("/statistics/export/excel", html)
+        self.assertIn("/statistics/export/pdf", html)
+        self.assertIn("from_date=2026-07-04", html)
+        self.assertIn("to_date=2026-07-04", html)
+
+    def test_statistics_invalid_and_swapped_dates_do_not_break_report(self):
+        owner = self.create_user("stats-date-owner", password="owner-pass", full_name="Stats Date Owner", role="OWNER")
+        self.login_as(owner)
+        customer = self.create_customer_record(name="Khách hàng Lọc ngày")
+        service = self.create_service_record(name="Dịch vụ Lọc ngày")
+        self.create_invoice_record(customer=customer, service=service)
+
+        invalid_response = self.client.get("/statistics?from_date=bad-date&to_date=also-bad", follow_redirects=False)
+        self.assertEqual(invalid_response.status_code, 200)
+
+        swapped_response = self.client.get(
+            "/statistics?from_date=2026-07-05&to_date=2026-07-04",
+            follow_redirects=False,
+        )
+        self.assertEqual(swapped_response.status_code, 200)
+        swapped_html = swapped_response.get_data(as_text=True)
+        self.assertIn("Khách hàng Lọc ngày", swapped_html)
+        self.assertIn("Dịch vụ Lọc ngày", swapped_html)
+
+    def test_statistics_export_excel_keeps_filters_and_cache_headers(self):
+        owner = self.create_user("stats-excel-owner", password="owner-pass", full_name="Stats Excel Owner", role="OWNER")
+        self.login_as(owner)
+        customer = self.create_customer_record(name="Khách hàng Excel")
+        service = self.create_service_record(name="Dịch vụ Excel")
+        self.create_invoice_record(customer=customer, service=service)
+
+        response = self.client.get(
+            "/statistics/export/excel?from_date=2026-07-04&to_date=2026-07-04&cust_q=Excel&svc_q=Excel",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.mimetype,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("no-store", response.headers.get("Cache-Control", ""))
+        self.assertIn("no-cache", response.headers.get("Cache-Control", ""))
+        self.assertEqual(response.headers.get("Pragma"), "no-cache")
+        self.assertEqual(response.headers.get("Expires"), "0")
+        self.assertRegex(
+            response.headers.get("Content-Disposition", ""),
+            r'ThongKe_\d{8}_\d{6}_\d{6}\.xlsx',
+        )
+
+        from openpyxl import load_workbook
+        workbook = load_workbook(filename=BytesIO(response.data))
+        sheet = workbook["Tổng quan"]
+        self.assertEqual(sheet["A1"].value, "BÁO CÁO THỐNG KÊ SPA")
+        self.assertIn("Khoảng thời gian: 04/07/2026 - 04/07/2026", sheet["A2"].value)
+        self.assertIn("Ngày xuất báo cáo:", sheet["A3"].value)
 
 
 if __name__ == "__main__":

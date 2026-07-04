@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="container-fluid app-page statistics-page">
-    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Trang chủ</a></li>
@@ -13,7 +12,6 @@
         </ol>
     </nav>
 
-    <!-- Page Header -->
     <div class="app-page-header">
         <div>
             <h1 class="app-title mb-0">Chi tiết dịch vụ</h1>
@@ -24,7 +22,6 @@
         </a>
     </div>
 
-    <!-- Interface Card Framework -->
     <div class="row g-4">
         <div class="col-md-12">
             <div class="app-card">
@@ -93,7 +90,6 @@
                         </table>
                     </div>
                     {% else %}
-                    <!-- Empty State -->
                     <div class="text-center py-5 text-muted">
                         <div class="fs-1 mb-2"><i class="bi bi-receipt"></i></div>
                         <div>Không có hóa đơn nào sử dụng dịch vụ này trong khoảng thời gian đã chọn.</div>

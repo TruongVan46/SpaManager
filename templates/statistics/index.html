@@ -4,10 +4,14 @@
 
 {% block content %}
 <div class="container-fluid app-page statistics-page">
-    <!-- Page Header -->
-    <div class="app-page-header">
-        <h1 class="app-title mb-0">Thống kê báo cáo</h1>
-        <div class="d-flex gap-2">
+    <div class="app-page-header statistics-page-header">
+        <div>
+            <h1 class="app-title mb-1">Thống kê báo cáo</h1>
+            <div class="text-muted statistics-page-subtitle">
+                {{ date_range_label }}
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap statistics-export-actions">
             <a href="{{ url_for('statistics.export_excel', from_date=from_date, to_date=to_date, cust_q=cust_q, svc_q=svc_q) }}" class="app-btn app-btn-success btn btn-success">
                 <i class="bi bi-file-earmark-excel" style="margin-right: 8px;"></i>Xuất Excel
             </a>
@@ -17,10 +21,9 @@
         </div>
     </div>
 
-    <!-- Filter Form -->
-    <div class="app-card">
+    <div class="app-card statistics-filter-card">
         <div class="app-card-body">
-            <form method="GET" action="{{ url_for('statistics.index') }}" class="app-filter-bar">
+            <form method="GET" action="{{ url_for('statistics.index') }}" class="app-filter-bar statistics-filter-form">
                 <input type="hidden" name="cust_page" value="{{ customer_statistics.page }}">
                 <input type="hidden" name="cust_per_page" value="{{ customer_statistics.per_page }}">
                 <input type="hidden" name="cust_sort_by" value="{{ cust_sort_by }}">
@@ -29,18 +32,34 @@
                 <input type="hidden" name="svc_per_page" value="{{ service_statistics.per_page }}">
                 <input type="hidden" name="svc_sort_by" value="{{ svc_sort_by }}">
                 <input type="hidden" name="svc_order" value="{{ svc_order }}">
-                <div class="app-filter-main align-items-end">
-                    <div class="app-date-group" style="flex: 0 1 auto;">
+
+                <div class="statistics-filter-top">
+                    <div>
+                        <div class="statistics-filter-title">Bộ lọc thời gian</div>
+                        <div class="statistics-filter-help text-muted">
+                            Chọn khoảng ngày để cập nhật số liệu, biểu đồ và danh sách bên dưới.
+                        </div>
+                    </div>
+                    <div class="statistics-range-shortcuts" role="group" aria-label="Lọc nhanh khoảng thời gian">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="today">Hôm nay</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="7d">7 ngày</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="30d">30 ngày</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="all">Tất cả</button>
+                    </div>
+                </div>
+
+                <div class="app-filter-main align-items-end statistics-filter-main">
+                    <div class="app-date-group statistics-date-group">
                         <div class="date-item">
                             <label for="from_date">Từ ngày</label>
-                            <input type="date" class="app-form-control form-control" id="from_date" name="from_date" value="{{ from_date }}">
+                            <input type="date" class="app-form-control form-control" id="from_date" name="from_date" value="{{ from_date.strftime('%Y-%m-%d') if from_date else '' }}">
                         </div>
                         <div class="date-item">
                             <label for="to_date">Đến ngày</label>
-                            <input type="date" class="app-form-control form-control" id="to_date" name="to_date" value="{{ to_date }}">
+                            <input type="date" class="app-form-control form-control" id="to_date" name="to_date" value="{{ to_date.strftime('%Y-%m-%d') if to_date else '' }}">
                         </div>
                     </div>
-                    <div class="app-toolbar ms-auto">
+                    <div class="app-toolbar ms-auto statistics-filter-toolbar">
                         <button type="submit" class="app-btn app-btn-primary btn btn-primary">
                             <i class="bi bi-funnel-fill"></i> Lọc
                         </button>
@@ -53,52 +72,52 @@
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="app-card-grid">
-        <!-- Tổng doanh thu -->
+    <div class="statistics-kpi-grid">
         <div class="app-kpi-card app-kpi-border-primary">
             <div class="app-card-body text-primary">
                 <div class="app-small text-uppercase mb-1 fw-medium text-primary">Tổng doanh thu</div>
                 <div class="h5 mb-0 fw-semibold app-title">{{ summary.revenue | format_currency }}</div>
+                <div class="statistics-kpi-caption">Theo khoảng thời gian đã chọn</div>
                 <i class="bi bi-graph-up-arrow app-kpi-icon text-primary"></i>
             </div>
         </div>
 
-        <!-- Khách hàng -->
         <div class="app-kpi-card app-kpi-border-success">
             <div class="app-card-body text-success">
                 <div class="app-small text-uppercase mb-1 fw-medium text-success">Khách hàng</div>
                 <div class="h5 mb-0 fw-semibold app-title">{{ summary.customer_count }}</div>
+                <div class="statistics-kpi-caption">Khách hàng đang hoạt động</div>
                 <i class="bi bi-people app-kpi-icon text-success"></i>
             </div>
         </div>
 
-        <!-- Tổng lịch hẹn -->
         <div class="app-kpi-card app-kpi-border-info">
             <div class="app-card-body text-info">
                 <div class="app-small text-uppercase mb-1 fw-medium text-info">Tổng lịch hẹn</div>
                 <div class="h5 mb-0 fw-semibold app-title">{{ summary.appointment_count }}</div>
+                <div class="statistics-kpi-caption">Theo khoảng thời gian đã chọn</div>
                 <i class="bi bi-calendar-check app-kpi-icon text-info"></i>
             </div>
         </div>
 
-        <!-- Hóa đơn đã lập -->
         <div class="app-kpi-card app-kpi-border-warning">
             <div class="app-card-body text-warning">
                 <div class="app-small text-uppercase mb-1 fw-medium text-warning">Hóa đơn đã lập</div>
                 <div class="h5 mb-0 fw-semibold app-title">{{ summary.invoice_count }}</div>
+                <div class="statistics-kpi-caption">Theo khoảng thời gian đã chọn</div>
                 <i class="bi bi-receipt app-kpi-icon text-warning"></i>
             </div>
         </div>
     </div>
 
-    <div class="app-card">
-        <div class="app-card-header d-flex justify-content-between align-items-center">
+    <div class="app-card statistics-table-card">
+        <div class="app-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <h5 class="app-card-header-title card-title m-0">
                     <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Thống kê chi tiêu khách hàng
                 </h5>
-                <div class="app-search-box" style="min-width: 260px;">
+                <div class="statistics-card-note">Top theo khoảng thời gian đã chọn</div>
+                <div class="app-search-box statistics-inline-search">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" id="cust_q" name="cust_q" class="app-form-control form-control form-control-sm" value="{{ cust_q or '' }}" placeholder="Tìm theo tên hoặc SĐT..." data-stf-search aria-label="Tìm theo tên hoặc SĐT khách hàng">
@@ -160,9 +179,8 @@
         </div>
     </div>
 
-    <!-- Revenue Chart (Middle, 100% width) -->
-    <div class="app-card">
-        <div class="app-card-header d-flex justify-content-between align-items-center">
+    <div class="app-card statistics-chart-card">
+        <div class="app-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="app-card-header-title card-title m-0">
                 <i class="bi bi-graph-up-arrow" style="font-size: 18px; margin-right: 8px;"></i>Biểu đồ doanh thu
             </h5>
@@ -173,19 +191,20 @@
             </div>
         </div>
         <div class="app-card-body">
-            <div style="height: 350px;">
+            <div class="statistics-chart-wrap">
                 <canvas id="statisticsRevenueChart" data-revenue-chart='{{ revenue_chart | tojson }}'></canvas>
             </div>
         </div>
     </div>
 
-    <div class="app-card">
-        <div class="app-card-header d-flex justify-content-between align-items-center">
+    <div class="app-card statistics-table-card">
+        <div class="app-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <h5 class="app-card-header-title card-title m-0">
                     <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Doanh thu theo dịch vụ
                 </h5>
-                <div class="app-search-box" style="min-width: 260px;">
+                <div class="statistics-card-note">Top theo khoảng thời gian đã chọn</div>
+                <div class="app-search-box statistics-inline-search">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" id="svc_q" name="svc_q" class="app-form-control form-control form-control-sm" value="{{ svc_q or '' }}" placeholder="Tìm theo tên dịch vụ..." data-stf-search aria-label="Tìm theo tên dịch vụ">
@@ -246,6 +265,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const statsForm = document.querySelector('form[action="{{ url_for('statistics.index') }}"]');
+    const fromInput = document.getElementById('from_date');
+    const toInput = document.getElementById('to_date');
+    const todayStr = "{{ today_str }}";
+
+    function shiftDate(baseValue, offsetDays) {
+        const baseDate = new Date(baseValue + 'T00:00:00');
+        baseDate.setDate(baseDate.getDate() + offsetDays);
+        return baseDate.toISOString().slice(0, 10);
+    }
+
     if (statsForm) {
         statsForm.addEventListener('submit', function() {
             const custInput = document.getElementById('cust_q');
@@ -274,6 +303,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    document.querySelectorAll('[data-range]').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const range = this.getAttribute('data-range');
+            if (!fromInput || !toInput) return;
+
+            if (range === 'all') {
+                fromInput.value = '';
+                toInput.value = '';
+            } else if (range === 'today') {
+                fromInput.value = todayStr;
+                toInput.value = todayStr;
+            } else if (range === '7d') {
+                fromInput.value = shiftDate(todayStr, -6);
+                toInput.value = todayStr;
+            } else if (range === '30d') {
+                fromInput.value = shiftDate(todayStr, -29);
+                toInput.value = todayStr;
+            }
+
+            if (statsForm) {
+                statsForm.requestSubmit();
+            }
+        });
+    });
+
     const canvas = document.getElementById('statisticsRevenueChart');
     if (!canvas) return;
 
@@ -296,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: {
                 labels: data.labels,
                 datasets: [{
-                    label: 'Doanh thu (VNĐ)',
+                    label: 'Doanh thu (VND)',
                     data: data.values,
                     borderColor: '#a67c52',
                     backgroundColor: 'rgba(166, 124, 82, 0.1)',
@@ -334,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return new Intl.NumberFormat('vi-VN').format(value) + 'đ';
+                                return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
                             }
                         },
                         grid: {
@@ -352,7 +406,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle group_by change
     const buttons = document.querySelectorAll('#chart-groupby-group button');
     buttons.forEach(button => {
         button.addEventListener('click', function() {
@@ -363,7 +416,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const fromDate = document.getElementById('from_date').value;
             const toDate = document.getElementById('to_date').value;
 
-            // Fetch dynamic data
             let url = `{{ url_for('statistics.api_revenue_chart') }}?group_by=${groupBy}`;
             if (fromDate) url += `&from_date=${fromDate}`;
             if (toDate) url += `&to_date=${toDate}`;
@@ -378,39 +430,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Initialize SharedTable for Customer Statistics Table (no state redirection needed)
     if (document.getElementById('customer-statistics-table')) {
         new SharedTable(document.getElementById('customer-statistics-table'), {
-            moduleName:   'customer_stats',
-            sortParam:    'cust_sort_by',
-            dirParam:     'cust_order',
+            moduleName: 'customer_stats',
+            sortParam: 'cust_sort_by',
+            dirParam: 'cust_order',
             perPageParam: 'cust_per_page',
-            pageParam:    'cust_page',
+            pageParam: 'cust_page',
             restoreState: false,
             colDefs: [
-                { key: 'customer',      label: 'Khách hàng',   hideable: false },
-                { key: 'phone',         label: 'Số điện thoại',hideable: true },
-                { key: 'invoices_count',label: 'Số hóa đơn',   hideable: true },
-                { key: 'total_spent',   label: 'Tổng chi tiêu',hideable: false },
-                { key: 'actions',       label: 'Thao tác',     hideable: false },
+                { key: 'customer', label: 'Khách hàng', hideable: false },
+                { key: 'phone', label: 'Số điện thoại', hideable: true },
+                { key: 'invoices_count', label: 'Số hóa đơn', hideable: true },
+                { key: 'total_spent', label: 'Tổng chi tiêu', hideable: false },
+                { key: 'actions', label: 'Thao tác', hideable: false },
             ]
         });
     }
 
-    // Initialize SharedTable for Service Statistics Table
     if (document.getElementById('service-statistics-table')) {
         new SharedTable(document.getElementById('service-statistics-table'), {
-            moduleName:   'service_stats',
-            sortParam:    'svc_sort_by',
-            dirParam:     'svc_order',
+            moduleName: 'service_stats',
+            sortParam: 'svc_sort_by',
+            dirParam: 'svc_order',
             perPageParam: 'svc_per_page',
-            pageParam:    'svc_page',
+            pageParam: 'svc_page',
             restoreState: false,
             colDefs: [
-                { key: 'service',       label: 'Dịch vụ',      hideable: false },
+                { key: 'service', label: 'Dịch vụ', hideable: false },
                 { key: 'quantity_sold', label: 'Số lượng bán', hideable: true },
-                { key: 'revenue',       label: 'Doanh thu',    hideable: false },
-                { key: 'actions',       label: 'Thao tác',     hideable: false },
+                { key: 'revenue', label: 'Doanh thu', hideable: false },
+                { key: 'actions', label: 'Thao tác', hideable: false },
             ]
         });
     }

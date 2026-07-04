@@ -1,20 +1,18 @@
 {% extends 'layout/base.html' %}
 
-{% block title %}Chi tiết Khách hàng - Thống kê{% endblock %}
+{% block title %}Chi tiết khách hàng - Thống kê{% endblock %}
 
 {% block content %}
 {% if customer %}
 <div class="container-fluid app-page statistics-page">
-    <!-- Page Header -->
     <div class="app-page-header">
-        <h1 class="app-title mb-0">Chi tiết Khách hàng</h1>
+        <h1 class="app-title mb-0">Chi tiết khách hàng</h1>
         <a href="{{ url_for('statistics.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
             <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
         </a>
     </div>
 
     <div class="row g-4">
-        <!-- Card 1: Thông tin khách hàng -->
         <div class="col-md-4">
             <div class="app-card h-100">
                 <div class="app-card-header">
@@ -29,7 +27,6 @@
             </div>
         </div>
 
-        <!-- Card 2: Khoảng thời gian -->
         <div class="col-md-4">
             <div class="app-card h-100 text-center p-3">
                 <div class="app-card-body d-flex flex-column justify-content-center">
@@ -43,7 +40,6 @@
             </div>
         </div>
 
-        <!-- Card 3: Tổng kết -->
         <div class="col-md-4">
             <div class="app-card h-100">
                 <div class="app-card-header">
@@ -58,7 +54,6 @@
             </div>
         </div>
 
-        <!-- Card 4: Bảng hóa đơn -->
         <div class="col-12">
             <div class="app-card">
                 <div class="app-card-header">
@@ -101,7 +96,6 @@
                         </table>
                     </div>
                     {% else %}
-                    <!-- Empty State -->
                     <div class="text-center py-5 text-muted">
                         <div class="fs-1 mb-2"><i class="bi bi-receipt"></i></div>
                         <div>Không có hóa đơn nào trong khoảng thời gian này.</div>
