@@ -229,15 +229,15 @@ def download_backup(backup_id):
         flash('Không tìm thấy bản sao lưu.', 'danger')
         return redirect(url_for('setting.index'))
         
-    filepath = os.path.join(BackupService.get_backup_dir(current_app), meta['filename'])
-    if not os.path.exists(filepath):
+    filepath = BackupService.get_backup_file_path(current_app, meta.get('filename'))
+    if not filepath or not os.path.exists(filepath):
         flash('File sao lưu không còn tồn tại trên đĩa.', 'danger')
         return redirect(url_for('setting.index'))
         
     return send_file(
         filepath,
         as_attachment=True,
-        download_name=meta['filename'],
+        download_name=os.path.basename(meta.get('filename') or 'backup.sqlite'),
         mimetype='application/octet-stream'
     )
 
@@ -269,8 +269,8 @@ def restore_from_backup(backup_id):
     if not meta:
         return jsonify({'success': False, 'message': 'Không tìm thấy bản sao lưu.'}), 400
         
-    filepath = os.path.join(BackupService.get_backup_dir(current_app), meta['filename'])
-    if not os.path.exists(filepath):
+    filepath = BackupService.get_backup_file_path(current_app, meta.get('filename'))
+    if not filepath or not os.path.exists(filepath):
         return jsonify({'success': False, 'message': 'File sao lưu không tồn tại trên đĩa.'}), 400
         
     # Check integrity
@@ -293,8 +293,9 @@ def restore_from_backup(backup_id):
             flash(message, 'danger')
             return jsonify({'success': False, 'message': message}), 500
     except Exception as e:
-        flash(f'Lỗi khi khôi phục: {str(e)}', 'danger')
-        return jsonify({'success': False, 'message': f'Lỗi khi khôi phục: {str(e)}'}), 500
+        flash('Lỗi khi khôi phục dữ liệu.', 'danger')
+        app_logger.error("Restore from backup failed", module="BACKUP", exc_info=True)
+        return jsonify({'success': False, 'message': 'Lỗi khi khôi phục dữ liệu.'}), 500
 
 
 @setting_bp.route('/settings/backup/upload', methods=['POST'])
@@ -352,8 +353,8 @@ def upload_backup():
             meta_checksum = meta.get('checksum')
             if not meta_checksum:
                 # Calculate dynamically and save it in metadata to cache
-                meta_path = os.path.join(backup_dir, meta['filename'])
-                if os.path.exists(meta_path):
+                meta_path = BackupService.get_backup_file_path(current_app, meta.get('filename'))
+                if meta_path and os.path.exists(meta_path):
                     meta_checksum = BackupService.calculate_sha256(meta_path)
                     if meta_checksum:
                         meta['checksum'] = meta_checksum
@@ -368,7 +369,8 @@ def upload_backup():
         backup_id = str(uuid.uuid4())
         timestamp_str = local_now().strftime('%Y-%m-%d_%H-%M-%S')
         db_version = metadata_or_error['database_version']
-        final_filename = f"SpaManager_Imported_{timestamp_str}_v{db_version}{ext}"
+        safe_db_version = BackupService.sanitize_filename_component(db_version, 'v1.0')
+        final_filename = f"SpaManager_Imported_{timestamp_str}_v{safe_db_version}{ext}"
         final_filepath = os.path.join(backup_dir, final_filename)
         
         # Rename temporary file to final path
@@ -433,8 +435,8 @@ def upload_backup():
                 os.remove(temp_filepath)
             except Exception:
                 pass
-        app_logger.error(f"Error during backup upload: {str(e)}", module="BACKUP", exc_info=True)
-        return jsonify({'success': False, 'message': f'Lỗi khi xử lý tệp tải lên: {str(e)}'}), 500
+        app_logger.error("Error during backup upload", module="BACKUP", exc_info=True)
+        return jsonify({'success': False, 'message': 'Lỗi khi xử lý tệp tải lên.'}), 500
 
 
 # ──────────────────────────────────────────────
@@ -461,7 +463,9 @@ def restore_wizard_confirm():
     meta = BackupRepository.get_by_id(current_app, backup_id)
     if not meta:
         return jsonify({'success': False, 'message': 'Backup not found'}), 400
-    filepath = os.path.join(BackupService.get_backup_dir(current_app), meta['filename'])
+    filepath = BackupService.get_backup_file_path(current_app, meta.get('filename'))
+    if not filepath or not os.path.exists(filepath):
+        return jsonify({'success': False, 'message': 'File sao lưu không tồn tại trên đĩa.'}), 400
     success, message = RestoreService.restore_database(current_app, filepath)
     if success:
         flash(message, 'success')
@@ -490,7 +494,8 @@ def restore_database():
         else:
             flash(message, 'danger')
     except Exception as e:
-        flash(f'Lỗi khi khôi phục: {str(e)}', 'danger')
+        app_logger.error("Restore uploaded backup failed", module="BACKUP", exc_info=True)
+        flash('Lỗi khi khôi phục dữ liệu.', 'danger')
     finally:
         # Clean up temp file
         if os.path.exists(temp_path):
@@ -570,7 +575,8 @@ def import_analyze():
                 os.remove(temp_path)
             except Exception:
                 pass
-        return jsonify({'success': False, 'message': f'Lỗi phân tích file: {str(e)}'}), 500
+        app_logger.error("Import analysis failed", module="IMPORT", exc_info=True)
+        return jsonify({'success': False, 'message': 'Lỗi phân tích file.'}), 500
 
 
 @setting_bp.route('/settings/import/execute', methods=['POST'])
@@ -586,7 +592,7 @@ def import_execute():
         return jsonify({'success': False, 'message': 'Tham số yêu cầu không hợp lệ.'}), 400
 
     upload_dir = ImportService.get_upload_dir(current_app)
-    temp_path = os.path.join(upload_dir, temp_file_id)
+    temp_path = os.path.join(upload_dir, os.path.basename(temp_file_id))
 
     if not os.path.exists(temp_path):
         return jsonify({'success': False, 'message': 'File tạm đã hết hạn hoặc không tồn tại.'}), 400
@@ -597,7 +603,8 @@ def import_execute():
         )
         return jsonify({'success': True, 'report': report})
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Lỗi thực thi import: {str(e)}'}), 500
+        app_logger.error("Import execution failed", module="IMPORT", exc_info=True)
+        return jsonify({'success': False, 'message': 'Lỗi thực thi import.'}), 500
 
 
 @setting_bp.route('/settings/import/errors/download/<string:filename>')

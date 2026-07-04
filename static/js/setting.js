@@ -117,7 +117,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Close modal and submit form
             const modal = bootstrap.Modal.getInstance(document.getElementById('restoreModal'));
             if (modal) modal.hide();
-            restoreForm.submit();
+            if (typeof restoreForm.requestSubmit === 'function') {
+                restoreForm.requestSubmit();
+            } else {
+                restoreForm.submit();
+            }
         });
     }
 

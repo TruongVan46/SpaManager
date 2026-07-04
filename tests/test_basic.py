@@ -5,11 +5,13 @@ import unittest
 import re
 import uuid
 import inspect
+import sqlite3
 from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
+from openpyxl import Workbook
 from sqlalchemy import event, text, inspect as sa_inspect
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -45,6 +47,9 @@ from services.customer_service import CustomerService
 from services.invoice_service import InvoiceService
 from services.service_service import ServiceService
 from services.auth_service import AuthService
+from services.backup_service import BackupService
+from services.import_service import ImportService
+from repositories.backup_repository import BackupRepository
 from core.auth.permissions import (
     can_manage_backups,
     can_manage_business_data,
@@ -182,6 +187,42 @@ class BasicTestCase(unittest.TestCase):
         absolute_path.parent.mkdir(parents=True, exist_ok=True)
         absolute_path.write_bytes(content)
         return absolute_path
+
+    def create_settings_backup_via_route(self, user, notes="Route backup"):
+        self.login_as(user)
+        response = self.post_with_csrf(
+            "/settings/backup",
+            path="/settings",
+            data={
+                "notes": notes,
+                "backup_type": "Manual",
+                "format": "json",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        backup_id = payload["download_url"].rsplit("/", 1)[-1]
+        meta = BackupRepository.get_by_id(app, backup_id)
+        self.assertIsNotNone(meta)
+        backup_path = Path(BackupService.get_backup_file_path(app, meta["filename"]))
+        self.assertTrue(backup_path.exists())
+        return backup_id, meta, backup_path
+
+    def create_customer_import_xlsx(self, rows=None):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Khách hàng"
+        sheet.append(["Họ tên", "Số điện thoại", "Email", "Địa chỉ"])
+        sample_rows = rows or [[f"Import {uuid.uuid4().hex[:8]}", "0901234567", f"{uuid.uuid4().hex[:8]}@example.com", "123 Đường A"]]
+        for row in sample_rows:
+            sheet.append(row)
+
+        temp_path = Path(tempfile.gettempdir()) / f"settings-import-{uuid.uuid4().hex}.xlsx"
+        workbook.save(temp_path)
+        workbook.close()
+        return temp_path
 
     def insert_owner_row(self):
         now = datetime.utcnow()
@@ -1993,6 +2034,341 @@ class BasicTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn("Spa Manager v5.1.0", html)
         self.assertNotIn("Spa Manager v4.0", html)
+
+    def test_settings_template_includes_explicit_csrf_tokens_for_post_forms(self):
+        template = Path("templates/setting/index.html").read_text(encoding="utf-8")
+        self.assertIn('id="createBackupForm"', template)
+        self.assertIn('id="editBackupNoteForm"', template)
+        self.assertIn('id="uploadBackupForm"', template)
+        self.assertIn('action="{{ url_for(\'setting.save_spa_info\') }}" method="POST"', template)
+        self.assertGreaterEqual(template.count('name="csrf_token"'), 4)
+
+    def test_backup_file_path_helper_blocks_traversal_and_stays_inside_backup_dir(self):
+        backup_dir = Path(BackupService.get_backup_dir(app)).resolve()
+        resolved = Path(BackupService.get_backup_file_path(app, "../../evil.sqlite"))
+        self.assertEqual(resolved.parent, backup_dir)
+        self.assertEqual(resolved.name, "evil.sqlite")
+
+    def test_settings_backup_upload_error_response_is_generic(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        temp_db = Path(tempfile.gettempdir()) / f"settings-upload-{uuid.uuid4().hex}.sqlite"
+        conn = sqlite3.connect(temp_db)
+        conn.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY)")
+        conn.commit()
+        conn.close()
+
+        try:
+            with patch("routes.setting.BackupService.inspect_external_backup", side_effect=RuntimeError("secret-path-leak")):
+                with temp_db.open("rb") as file_handle:
+                    response = self.post_with_csrf(
+                        "/settings/backup/upload",
+                        path="/settings",
+                        data={
+                            "backup_file": (file_handle, temp_db.name),
+                            "notes": "Test upload",
+                        },
+                        content_type="multipart/form-data",
+                    )
+
+            self.assertEqual(response.status_code, 500)
+            payload = response.get_json()
+            self.assertFalse(payload["success"])
+            self.assertEqual(payload["message"], "Lỗi khi xử lý tệp tải lên.")
+            self.assertNotIn("secret-path-leak", response.get_data(as_text=True))
+        finally:
+            if temp_db.exists():
+                temp_db.unlink()
+
+    def test_settings_staff_is_forbidden_on_sensitive_routes(self):
+        owner = self.create_user("settings-owner", password="owner-pass", full_name="Settings Owner", role="OWNER")
+        admin = self.create_user("settings-admin", password="admin-pass", full_name="Settings Admin", role="ADMIN")
+        staff = self.create_user("settings-staff", password="staff-pass", full_name="Settings Staff", role="STAFF")
+
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Route access backup")
+        import_file = self.create_customer_import_xlsx()
+        logo_path = self.create_media_file(Path("uploads") / "logos" / "settings-route-logo.png", b"\x89PNG\r\n\x1a\n")
+        logo_relative = "logos/settings-route-logo.png"
+        Setting.set("spa_logo", logo_relative)
+
+        staff_token = self.get_csrf_token("/customers")
+        routes_to_block = [
+            ("GET", "/settings", None, None),
+            ("POST", "/settings/backup", {"notes": "x", "backup_type": "Manual", "format": "json"}, "form"),
+            ("POST", f"/settings/backup/delete/{backup_id}", None, None),
+            ("GET", f"/settings/backup/download/{backup_id}", None, None),
+            ("POST", f"/settings/backup/restore/{backup_id}", {"backup_id": backup_id}, "json"),
+            ("POST", "/settings/restore", {"restore_file": (logo_path.open("rb"), logo_path.name)}, "multipart"),
+            ("GET", f"/settings/restore-wizard/validate/{backup_id}", None, None),
+            ("POST", "/settings/restore-wizard/confirm", {"backup_id": backup_id}, "json"),
+            ("POST", "/settings/import/analyze", {"import_file": (import_file.open("rb"), import_file.name), "import_type": "customers"}, "multipart"),
+            ("POST", "/settings/import/execute", {"temp_file_id": "fake-temp", "import_type": "customers", "duplicate_action": "skip", "all_or_nothing": False}, "json"),
+            ("POST", "/settings/delete-logo", None, None),
+            ("POST", "/settings/save-spa-info", {
+                "spa_name": "Blocked",
+                "spa_owner": "Blocked",
+                "spa_phone": "0900000000",
+                "spa_email": "blocked@example.com",
+                "spa_address": "Blocked",
+                "spa_open_time": "08:00",
+                "spa_close_time": "20:00",
+            }, "form"),
+        ]
+
+        try:
+            self.login_as(staff)
+            for method, url, data, payload_type in routes_to_block:
+                with self.subTest(route=url):
+                    if method == "GET":
+                        response = self.client.get(url, follow_redirects=False)
+                    elif payload_type == "json":
+                        response = self.client.post(url, json=data, headers={"X-CSRFToken": staff_token}, follow_redirects=False)
+                    elif payload_type == "multipart":
+                        response = self.client.post(
+                            url,
+                            data=data,
+                            headers={"X-CSRFToken": staff_token},
+                            content_type="multipart/form-data",
+                            follow_redirects=False,
+                        )
+                        if url.endswith("/restore"):
+                            data["restore_file"][0].close()
+                        if url.endswith("/analyze"):
+                            data["import_file"][0].close()
+                    else:
+                        response = self.client.post(url, data=data or {}, headers={"X-CSRFToken": staff_token}, follow_redirects=False)
+
+                    self.assertIn(response.status_code, (403, 401), url)
+
+            self.assertTrue(backup_path.exists())
+            self.assertEqual(Setting.get("spa_logo"), logo_relative)
+        finally:
+            if import_file.exists():
+                import_file.unlink()
+            if logo_path.exists():
+                logo_path.unlink()
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
+        self.login_as(owner)
+        self.assertEqual(self.client.get("/settings", follow_redirects=False).status_code, 200)
+        self.login_as(admin)
+        self.assertEqual(self.client.get("/settings", follow_redirects=False).status_code, 200)
+
+    def test_settings_backup_create_missing_csrf_has_no_side_effect(self):
+        owner = self.create_user("settings-backup-owner", password="owner-pass", full_name="Backup Owner", role="OWNER")
+        self.login_as(owner)
+        backup_dir = Path(BackupService.get_backup_dir(app))
+        before_files = {path.name for path in backup_dir.glob("*.sqlite")}
+
+        response = self.client.post(
+            "/settings/backup",
+            data={"notes": "No CSRF", "backup_type": "Manual", "format": "json"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+
+        after_files = {path.name for path in backup_dir.glob("*.sqlite")}
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(before_files, after_files)
+
+    def test_settings_backup_delete_missing_csrf_keeps_backup_file(self):
+        owner = self.create_user("settings-delete-owner", password="owner-pass", full_name="Delete Owner", role="OWNER")
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Delete CSRF backup")
+        before_log_count = ActivityLog.query.count()
+
+        try:
+            response = self.client.post(f"/settings/backup/delete/{backup_id}", follow_redirects=False)
+            self.assertEqual(response.status_code, 400)
+            self.assertTrue(backup_path.exists())
+            self.assertIsNotNone(BackupRepository.get_by_id(app, backup_id))
+            self.assertEqual(ActivityLog.query.count(), before_log_count)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
+    def test_settings_restore_confirm_missing_csrf_keeps_database_unchanged(self):
+        owner = self.create_user("settings-restore-owner", password="owner-pass", full_name="Restore Owner", role="OWNER")
+        self.login_as(owner)
+        customer_before = self.create_customer_record("Before Restore")
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Restore CSRF backup")
+        customer_after = self.create_customer_record("After Backup")
+
+        try:
+            response = self.client.post(
+                "/settings/restore-wizard/confirm",
+                json={"backup_id": backup_id},
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertIsNotNone(Customer.query.get(customer_before.id))
+            self.assertIsNotNone(Customer.query.get(customer_after.id))
+            self.assertEqual(Customer.query.count(), 2)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
+    def test_settings_import_execute_missing_csrf_keeps_database_unchanged(self):
+        owner = self.create_user("settings-import-owner", password="owner-pass", full_name="Import Owner", role="OWNER")
+        self.login_as(owner)
+        before_count = Customer.query.count()
+        import_file = self.create_customer_import_xlsx()
+
+        try:
+            analyze_response = self.post_with_csrf(
+                "/settings/import/analyze",
+                path="/settings",
+                data={
+                    "import_file": (import_file.open("rb"), import_file.name),
+                    "import_type": "customers",
+                },
+                content_type="multipart/form-data",
+            )
+            self.assertEqual(analyze_response.status_code, 200)
+            temp_file_id = analyze_response.get_json()["temp_file_id"]
+
+            execute_response = self.client.post(
+                "/settings/import/execute",
+                json={
+                    "temp_file_id": temp_file_id,
+                    "import_type": "customers",
+                    "duplicate_action": "skip",
+                    "all_or_nothing": False,
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(execute_response.status_code, 400)
+            self.assertEqual(Customer.query.count(), before_count)
+        finally:
+            if import_file.exists():
+                import_file.unlink()
+            temp_path = Path(ImportService.get_upload_dir(app)) / temp_file_id if 'temp_file_id' in locals() else None
+            if temp_path and temp_path.exists():
+                temp_path.unlink()
+
+    def test_settings_logo_upload_and_delete_require_csrf(self):
+        owner = self.create_user("settings-logo-owner", password="owner-pass", full_name="Logo Owner", role="OWNER")
+        self.login_as(owner)
+        logo_before = Setting.get("spa_logo")
+        before_files = {path.name for path in (TEST_MEDIA_ROOT / "uploads" / "logos").glob("*") if path.is_file()}
+
+        logo_upload = BytesIO(b"\x89PNG\r\n\x1a\n")
+        logo_upload.name = "logo-no-csrf.png"
+        upload_response = self.client.post(
+            "/settings/save-spa-info",
+            data={
+                "spa_name": "Spa Test",
+                "spa_owner": "Owner",
+                "spa_phone": "0901234567",
+                "spa_email": "owner@example.com",
+                "spa_address": "Address",
+                "spa_open_time": "08:00",
+                "spa_close_time": "20:00",
+                "spa_logo": (logo_upload, logo_upload.name),
+            },
+            content_type="multipart/form-data",
+            follow_redirects=False,
+        )
+
+        after_upload_files = {path.name for path in (TEST_MEDIA_ROOT / "uploads" / "logos").glob("*") if path.is_file()}
+        self.assertEqual(upload_response.status_code, 400)
+        self.assertEqual(logo_before, Setting.get("spa_logo"))
+        self.assertEqual(before_files, after_upload_files)
+
+        created_logo = self.create_media_file(Path("uploads") / "logos" / "delete-logo-no-csrf.png", b"\x89PNG\r\n\x1a\n")
+        Setting.set("spa_logo", "logos/delete-logo-no-csrf.png")
+
+        delete_response = self.client.post("/settings/delete-logo", follow_redirects=False)
+        self.assertEqual(delete_response.status_code, 400)
+        self.assertTrue(created_logo.exists())
+        self.assertEqual(Setting.get("spa_logo"), "logos/delete-logo-no-csrf.png")
+
+        if created_logo.exists():
+            created_logo.unlink()
+        Setting.set("spa_logo", logo_before or "")
+
+    def test_settings_path_traversal_routes_reject_outside_paths(self):
+        owner = self.create_user("settings-traversal-owner", password="owner-pass", full_name="Traversal Owner", role="OWNER")
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Traversal backup")
+        self.login_as(owner)
+
+        try:
+            traversal_paths = [
+                f"/settings/backup/download/..%2F{backup_id}",
+                f"/settings/backup/delete/..%2F{backup_id}",
+                f"/settings/backup/restore/..%2F{backup_id}",
+            ]
+            for url in traversal_paths:
+                response = self.client.open(url, method="GET" if "download" in url else "POST", follow_redirects=False)
+                self.assertIn(response.status_code, (400, 404), url)
+                self.assertNotIn(str(TEST_MEDIA_ROOT).replace("\\", "/"), response.get_data(as_text=True))
+            self.assertTrue(backup_path.exists())
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
+    def test_settings_restore_validate_is_read_only_and_invalid_restore_file_is_blocked(self):
+        owner = self.create_user("settings-validate-owner", password="owner-pass", full_name="Validate Owner", role="OWNER")
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Validate backup")
+        before_customer_count = Customer.query.count()
+
+        invalid_restore = Path(tempfile.gettempdir()) / f"invalid-restore-{uuid.uuid4().hex}.sqlite"
+        invalid_restore.write_text("not a sqlite database", encoding="utf-8")
+
+        try:
+            self.login_as(owner)
+            validate_response = self.client.get(f"/settings/restore-wizard/validate/{backup_id}", follow_redirects=False)
+            self.assertEqual(validate_response.status_code, 200)
+            self.assertEqual(Customer.query.count(), before_customer_count)
+
+            with invalid_restore.open("rb") as file_handle:
+                restore_response = self.post_with_csrf(
+                    "/settings/restore",
+                    path="/settings",
+                    data={"restore_file": (file_handle, invalid_restore.name)},
+                    content_type="multipart/form-data",
+                )
+            self.assertEqual(restore_response.status_code, 302)
+            self.assertEqual(Customer.query.count(), before_customer_count)
+        finally:
+            if invalid_restore.exists():
+                invalid_restore.unlink()
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
+    def test_settings_backup_logs_are_attributed_and_sanitized(self):
+        owner = self.create_user("settings-log-owner", password="owner-pass", full_name="Log Owner", role="OWNER")
+        self.login_as(owner)
+        before_log_count = ActivityLog.query.count()
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Log backup")
+        created_log = ActivityLog.query.order_by(ActivityLog.id.desc()).first()
+        self.assertGreater(ActivityLog.query.count(), before_log_count)
+        self.assertIsNotNone(created_log)
+        self.assertEqual(created_log.user_id, owner.id)
+        self.assertNotIn("password", created_log.description.lower())
+        self.assertNotIn("token", created_log.description.lower())
+        self.assertNotIn("database_url", created_log.description.lower())
+        self.assertNotIn(str(TEST_MEDIA_ROOT).lower(), created_log.description.lower())
+
+        delete_response = self.post_with_csrf(f"/settings/backup/delete/{backup_id}", path="/settings")
+        self.assertEqual(delete_response.status_code, 200)
+        delete_log = ActivityLog.query.order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(delete_log)
+        self.assertEqual(delete_log.user_id, owner.id)
+        self.assertNotIn("password", delete_log.description.lower())
+        self.assertNotIn("token", delete_log.description.lower())
+        self.assertNotIn("database_url", delete_log.description.lower())
+        self.assertNotIn(str(TEST_MEDIA_ROOT).lower(), delete_log.description.lower())
+
+        if backup_path.exists():
+            backup_path.unlink()
+        BackupRepository.delete(app, backup_id)
 
     def test_sidebar_template_contains_clean_vietnamese_text(self):
         sidebar = Path("templates/layout/sidebar.html").read_text(encoding="utf-8")

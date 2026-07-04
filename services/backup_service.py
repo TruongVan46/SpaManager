@@ -3,7 +3,10 @@ import uuid
 import shutil
 import sqlite3
 import hashlib
+from pathlib import Path
 from datetime import datetime, timedelta
+
+from werkzeug.utils import secure_filename
 
 from core.logger import app_logger
 from repositories.backup_repository import BackupRepository
@@ -33,6 +36,27 @@ class BackupService:
         backup_dir = os.path.join(app.root_path, 'backup')
         os.makedirs(backup_dir, exist_ok=True)
         return backup_dir
+
+    @staticmethod
+    def sanitize_filename_component(value, default='v1.0'):
+        """Sanitize a value before using it inside a filename."""
+        cleaned = secure_filename(str(value or '')).strip('._')
+        return cleaned or default
+
+    @staticmethod
+    def get_backup_file_path(app, filename):
+        """Resolve a backup file path safely within the backup directory."""
+        backup_dir = Path(BackupService.get_backup_dir(app)).resolve()
+        candidate_name = os.path.basename(str(filename or ''))
+        if not candidate_name:
+            return None
+
+        candidate = (backup_dir / candidate_name).resolve()
+        try:
+            candidate.relative_to(backup_dir)
+        except ValueError:
+            return None
+        return str(candidate)
 
     @staticmethod
     def create_backup(app, notes=None, backup_type='Manual', created_by=None):
@@ -173,12 +197,12 @@ class BackupService:
         # 4. Handle registered metadata entries
         for bid, meta in list(metadata.items()):
             filename = meta['filename']
-            filepath = os.path.join(backup_dir, filename)
+            filepath = BackupService.get_backup_file_path(app, filename)
             
             current_status = meta.get('status', 'Valid')
             new_status = current_status
             
-            if filename not in disk_files:
+            if not filepath or filename not in disk_files:
                 # File is missing
                 if current_status != 'File Missing':
                     new_status = 'File Missing'
@@ -259,11 +283,10 @@ class BackupService:
         if not meta:
             return False
             
-        filename = meta['filename']
-        filepath = os.path.join(BackupService.get_backup_dir(app), filename)
+        filepath = BackupService.get_backup_file_path(app, meta.get('filename'))
         
         # Delete file from disk if exists
-        if os.path.exists(filepath):
+        if filepath and os.path.exists(filepath):
             try:
                 os.remove(filepath)
             except Exception:
@@ -327,8 +350,9 @@ class BackupService:
         meta = BackupRepository.get_by_id(app, backup_id)
         if not meta:
             return {'exists': False, 'integrity': 'File Missing', 'compatible': False, 'metadata': None}
-        filename = meta['filename']
-        filepath = os.path.join(BackupService.get_backup_dir(app), filename)
+        filepath = BackupService.get_backup_file_path(app, meta.get('filename'))
+        if not filepath or not os.path.exists(filepath):
+            return {'exists': True, 'integrity': 'File Missing', 'compatible': False, 'metadata': meta}
         integrity = BackupService.check_file_integrity(filepath)
         # Check version compatibility â€“ compare backup DB version with current DB version setting
         current_db_version = Setting.get('db_version', 'v1.0')
@@ -407,8 +431,8 @@ class BackupService:
                 'size': size,
                 'checksum': checksum
             }
-        except Exception as e:
-            return False, f"KhÃ´ng thá»ƒ Ä‘á»c thÃ´ng tin Metadata tá»« cÆ¡ sá»Ÿ dá»¯ liá»‡u: {str(e)}"
+        except Exception:
+            return False, "Không thể đọc thông tin Metadata từ cơ sở dữ liệu."
         finally:
             if conn:
                 conn.close()

@@ -128,7 +128,7 @@ class RestoreService:
 
             return True, 'Khôi phục dữ liệu thành công!'
         except Exception as e:
-            app_logger.error(f"Failed to restore database: {str(e)}", module="RESTORE", exc_info=True)
+            app_logger.error("Failed to restore database", module="RESTORE", exc_info=True)
             
             # Log failure to activity log
             try:
@@ -141,4 +141,4 @@ class RestoreService:
             except Exception:
                 pass
                 
-            return False, f'Lỗi khi khôi phục dữ liệu: {str(e)}'
+            return False, 'Lỗi khi khôi phục dữ liệu.'

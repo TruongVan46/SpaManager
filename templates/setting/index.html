@@ -24,6 +24,7 @@
         <div class="collapse show" id="collapseSpaInfo">
             <div class="app-card-body">
                 <form action="{{ url_for('setting.save_spa_info') }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row g-3">
                         <!-- Logo preview -->
                         <div class="col-12 text-center mb-2">
@@ -526,7 +527,8 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="createBackupForm">
+            <form id="createBackupForm" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="backupNotes" class="form-label fw-bold">Ghi chú</label>
@@ -565,7 +567,8 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editBackupNoteForm">
+            <form id="editBackupNoteForm" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="editBackupId">
                 <div class="modal-body">
                     <div class="mb-3">
@@ -658,7 +661,8 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="uploadBackupForm" enctype="multipart/form-data">
+            <form id="uploadBackupForm" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <div id="backup-drag-drop-zone" class="border border-2 border-dashed border-primary rounded-3 p-4 text-center app-bg-main cursor-pointer mb-3 position-relative" style="transition: all 0.3s ease;">
                         <input type="file" id="backupFile" name="backup_file" accept=".db,.sqlite,.sqlite3" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" style="z-index: 10;">
