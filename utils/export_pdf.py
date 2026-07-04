@@ -21,6 +21,7 @@ PDF_FALLBACK_REGULAR = "Helvetica"
 PDF_FALLBACK_BOLD = "Helvetica-Bold"
 
 _PDF_FONT_CONFIG = None
+_PDF_FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,12 @@ class PdfFontConfig:
 
 def _candidate_font_pairs():
     font_pairs = []
+
+    bundled_fonts = [
+        (_PDF_FONT_DIR / "NotoSans-Regular.ttf", _PDF_FONT_DIR / "NotoSans-Bold.ttf"),
+        (_PDF_FONT_DIR / "DejaVuSans.ttf", _PDF_FONT_DIR / "DejaVuSans-Bold.ttf"),
+    ]
+    font_pairs.extend(bundled_fonts)
 
     windows_root = os.environ.get("WINDIR") or os.environ.get("SystemRoot")
     if windows_root:

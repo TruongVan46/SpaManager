@@ -3443,6 +3443,16 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(font_config.bold, "Helvetica-Bold")
         export_pdf_utils.reset_pdf_font_config_cache()
 
+    def test_pdf_font_helper_prefers_bundled_unicode_fonts(self):
+        export_pdf_utils.reset_pdf_font_config_cache()
+        font_config = export_pdf_utils.get_pdf_font_config()
+        self.assertFalse(font_config.fallback)
+        self.assertIn("assets\\fonts", font_config.regular_path.replace("/", "\\"))
+        self.assertIn("assets\\fonts", font_config.bold_path.replace("/", "\\"))
+        self.assertEqual(font_config.regular, "SpaUnicode")
+        self.assertEqual(font_config.bold, "SpaUnicode-Bold")
+        export_pdf_utils.reset_pdf_font_config_cache()
+
     def test_pdf_export_source_has_no_hardcoded_windows_font_path(self):
         source = Path(export_pdf_utils.__file__).read_text(encoding="utf-8")
         self.assertNotIn("C:/Windows/Fonts", source)
