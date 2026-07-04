@@ -57,6 +57,7 @@ from services.auth_service import AuthService
 from services.backup_service import BackupService
 from services.data_audit_service import run_data_consistency_audit
 from services.data_repair_service import run_controlled_repair
+from services.performance_profile_service import profile_block, run_performance_profile
 from services.import_service import ImportService
 from repositories.backup_repository import BackupRepository
 from utils.timezone_utils import local_now
@@ -2108,6 +2109,56 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Status: PASS", result.output)
         self.assertIn("Errors: 0", result.output)
         self.assertEqual(before_snapshot, after_snapshot)
+
+    def test_performance_profile_service_reports_metrics_without_mutating_database(self):
+        customer = self.create_customer_record(name="Perf Customer")
+        service = self.create_service_record(name="Perf Service")
+        self.create_appointment_record(customer=customer, service=service)
+        self.create_invoice_record(customer=customer, service=service)
+
+        before_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        report = run_performance_profile()
+
+        after_snapshot = (
+            Customer.query.count(),
+            Service.query.count(),
+            Appointment.query.count(),
+            Invoice.query.count(),
+            InvoiceDetail.query.count(),
+            ActivityLog.query.count(),
+        )
+
+        self.assertGreaterEqual(report.total_duration_ms, 0)
+        self.assertGreaterEqual(report.total_query_count, 0)
+        self.assertGreater(len(report.metrics), 0)
+        self.assertIn("Customers", report.dataset)
+        self.assertIn("Invoices", report.dataset)
+        self.assertEqual(before_snapshot, after_snapshot)
+
+    def test_performance_profile_cli_command_runs_and_listener_cleanup_is_stable(self):
+        runner = app.test_cli_runner()
+        result = runner.invoke(args=["perf", "profile"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Performance profile", result.output)
+        self.assertIn("Total duration", result.output)
+        self.assertIn("Total queries", result.output)
+        self.assertIn("Dataset:", result.output)
+        self.assertIn("Metrics:", result.output)
+
+        metric_one = profile_block("listener.cleanup", lambda: Customer.query.count())
+        metric_two = profile_block("listener.cleanup", lambda: Customer.query.count())
+        self.assertEqual(metric_one.query_count, 1)
+        self.assertEqual(metric_two.query_count, 1)
+        self.assertEqual(metric_one.status, "OK")
+        self.assertEqual(metric_two.status, "OK")
 
     def test_data_repair_dry_run_reports_safe_actions_without_writing(self):
         customer = Customer(name="  Repair Customer  ", phone=" 0901234567 ", email="  repair@example.com  ", deleted_at=datetime.utcnow())

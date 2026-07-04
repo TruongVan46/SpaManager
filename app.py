@@ -1,5 +1,6 @@
 # app.py - SpaManager Project
 import os
+import sys
 import time
 from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -37,6 +38,7 @@ from core.auth.permissions import (
 from core.csrf import validate_csrf_request, csrf_token, CSRFError
 from core.migration_cli import register_migration_commands
 from core.data_audit_cli import register_data_audit_commands
+from core.performance_cli import register_performance_profile_commands
 
 # Tạo ứng dụng Flask
 app = Flask(__name__)
@@ -61,6 +63,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(user_bp)
 register_migration_commands(app)
 register_data_audit_commands(app)
+register_performance_profile_commands(app)
 
 BASELINE_TABLES = [
     "users",
@@ -72,6 +75,11 @@ BASELINE_TABLES = [
     "activity_logs",
     "settings",
 ]
+
+
+def _is_perf_profile_cli():
+    argv = [argument.lower() for argument in sys.argv]
+    return "perf" in argv and "profile" in argv
 
 # Favicon handler
 @app.route('/favicon.ico')
@@ -218,7 +226,8 @@ def _baseline_schema_is_ready():
 
 with app.app_context():
     if _baseline_schema_is_ready():
-        AuthService.seed_owner_if_empty()
+        if not _is_perf_profile_cli():
+            AuthService.seed_owner_if_empty()
     else:
         app_logger.warning(
             "Database schema is not initialized. Run 'flask db upgrade' before using the app.",
