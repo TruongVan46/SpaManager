@@ -21,7 +21,7 @@ PDF_FALLBACK_REGULAR = "Helvetica"
 PDF_FALLBACK_BOLD = "Helvetica-Bold"
 
 _PDF_FONT_CONFIG = None
-_PDF_FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+_PDF_FONT_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
 
 
 @dataclass(frozen=True)

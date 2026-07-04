@@ -23,6 +23,13 @@ def parse_date(date_val):
     return None
 
 
+def _apply_pdf_download_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+
 @statistics_bp.before_request
 def _require_statistics_permission():
     current_user = AuthService.get_current_active_user()
@@ -179,9 +186,10 @@ def export_pdf():
     
     filename = f"ThongKe_{local_now().strftime('%Y%m%d_%H%M%S')}.pdf"
     
-    return send_file(
+    response = send_file(
         pdf_stream,
         mimetype="application/pdf",
         as_attachment=True,
         download_name=filename
     )
+    return _apply_pdf_download_headers(response)

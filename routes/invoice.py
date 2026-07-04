@@ -36,6 +36,13 @@ def _build_invoice_create_url(customer_id=None, return_to=None):
         params['return_to'] = return_to
     return url_for('invoice.create', **params)
 
+
+def _apply_pdf_download_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 @invoice_bp.route('/invoices')
 def index():
     q = request.args.get('q', '').strip()
@@ -295,9 +302,10 @@ def export_pdf():
     )
     
     filename = f"Danh_sach_hoa_don_{local_now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    return send_file(
+    response = send_file(
         pdf_stream,
         mimetype="application/pdf",
         as_attachment=True,
         download_name=filename
     )
+    return _apply_pdf_download_headers(response)

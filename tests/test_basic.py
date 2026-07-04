@@ -10,6 +10,7 @@ import html as html_module
 import uuid
 import inspect
 import sqlite3
+import subprocess
 from io import BytesIO
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -3455,8 +3456,24 @@ class BasicTestCase(unittest.TestCase):
 
     def test_pdf_export_source_has_no_hardcoded_windows_font_path(self):
         source = Path(export_pdf_utils.__file__).read_text(encoding="utf-8")
+        self.assertIn('Path(__file__).resolve().parents[1] / "assets" / "fonts"', source)
         self.assertNotIn("C:/Windows/Fonts", source)
         self.assertNotIn("C:\\Windows\\Fonts", source)
+
+    def test_pdf_bundled_fonts_exist_and_have_content(self):
+        regular_font = Path("assets/fonts/NotoSans-Regular.ttf")
+        bold_font = Path("assets/fonts/NotoSans-Bold.ttf")
+        self.assertTrue(regular_font.exists())
+        self.assertTrue(bold_font.exists())
+        self.assertGreater(regular_font.stat().st_size, 0)
+        self.assertGreater(bold_font.stat().st_size, 0)
+        git_tracked = subprocess.check_output(['git', 'ls-files', 'assets/fonts'], text=True)
+        self.assertIn('assets/fonts/NotoSans-Regular.ttf', git_tracked)
+        self.assertIn('assets/fonts/NotoSans-Bold.ttf', git_tracked)
+        gitignore = Path('.gitignore').read_text(encoding='utf-8')
+        self.assertNotIn('assets/', gitignore)
+        self.assertNotIn('assets/fonts/', gitignore)
+        self.assertNotIn('*.ttf', gitignore)
 
     def test_invoice_pdf_export_contains_vietnamese_text(self):
         owner = self.create_user("pdf-invoice-owner", password="owner-pass", full_name="PDF Invoice Owner", role="OWNER")
@@ -3469,6 +3486,11 @@ class BasicTestCase(unittest.TestCase):
         response = self.client.get("/invoices/export/pdf", follow_redirects=False)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
+        self.assertIn("no-store", response.headers.get("Cache-Control", ""))
+        self.assertIn("no-cache", response.headers.get("Cache-Control", ""))
+        self.assertEqual(response.headers.get("Pragma"), "no-cache")
+        self.assertEqual(response.headers.get("Expires"), "0")
+        self.assertIn(b"NotoSans", response.data)
 
         pdf_text = self.extract_pdf_text(response.data)
         self.assertIn("DANH SÁCH HÓA ĐƠN", pdf_text)
@@ -3489,6 +3511,11 @@ class BasicTestCase(unittest.TestCase):
         response = self.client.get("/statistics/export/pdf", follow_redirects=False)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
+        self.assertIn("no-store", response.headers.get("Cache-Control", ""))
+        self.assertIn("no-cache", response.headers.get("Cache-Control", ""))
+        self.assertEqual(response.headers.get("Pragma"), "no-cache")
+        self.assertEqual(response.headers.get("Expires"), "0")
+        self.assertIn(b"NotoSans", response.data)
 
         pdf_text = self.extract_pdf_text(response.data)
         self.assertIn("BÁO CÁO THỐNG KÊ SPA", pdf_text)
