@@ -3,8 +3,8 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from core.auth.enums import UserRole, normalize_role_value
+from core.activity_log_utils import build_activity_log_entry
 from core.exceptions import ConflictException, NotFoundException, ValidationException
-from models.activity_log import ActivityLog
 from models.user import User
 from utils.timezone_utils import utc_now
 
@@ -105,17 +105,16 @@ class UserService:
 
     @staticmethod
     def _log_user_action(actor, action, description, target_user, severity="SUCCESS"):
-        db.session.add(
-            ActivityLog(
-                module="Users",
-                action=action,
-                severity=severity,
-                description=description,
-                reference_id=target_user.id if target_user else None,
-                user_id=actor.id if actor else None,
-                created_at=utc_now(),
-            )
+        log_entry = build_activity_log_entry(
+            module="Users",
+            action=action,
+            severity=severity,
+            description=description,
+            reference_id=target_user.id if target_user else None,
+            user_id=actor.id if actor else None,
         )
+        log_entry.created_at = utc_now()
+        db.session.add(log_entry)
 
     @staticmethod
     def search_paginated(query_text="", page=1, per_page=25, sort_by="created_at", sort_dir="desc"):

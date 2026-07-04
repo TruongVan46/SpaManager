@@ -38,6 +38,11 @@
     min-width: 200px;
 }
 
+.activity-log-page .filter-item.actor-box {
+    flex: 1 1 16%;
+    min-width: 170px;
+}
+
 .activity-log-page .filter-item label {
     font-weight: 600;
     color: var(--spa-text-main);
@@ -143,6 +148,11 @@
 .activity-log-page .activity-log-table .col-module {
     width: 110px;
     min-width: 110px;
+}
+
+.activity-log-page .activity-log-table .col-actor {
+    width: 140px;
+    min-width: 140px;
 }
 
 .activity-log-page .activity-log-table .col-action {
@@ -285,6 +295,14 @@
     vertical-align: middle !important;
 }
 
+.activity-log-page .activity-log-table .col-actor,
+.activity-log-page .activity-log-table .col-module,
+.activity-log-page .activity-log-table .col-description {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* --------------------------------------------------------------------------
    5. Modal
    -------------------------------------------------------------------------- */
@@ -326,6 +344,10 @@
     .activity-log-page .filter-item.search-box {
         flex: 2 1 calc(40% - 10px);
         min-width: 180px;
+    }
+    .activity-log-page .filter-item.actor-box {
+        flex: 1 1 calc(20% - 10px);
+        min-width: 150px;
     }
     .activity-log-page .filter-buttons {
         flex: 1 1 auto;
@@ -379,6 +401,10 @@
     .activity-log-page .activity-log-table .col-module {
         width: 90px;
         min-width: 90px;
+    }
+    .activity-log-page .activity-log-table .col-actor {
+        width: 110px;
+        min-width: 110px;
     }
     .activity-log-page .activity-log-table .col-action {
         width: 100px;
@@ -438,6 +464,9 @@
     .activity-log-page .activity-log-table .col-module {
         width: 80px;
         min-width: 80px;
+    }
+    .activity-log-page .activity-log-table .col-actor {
+        display: none;
     }
     .activity-log-page .activity-log-table .col-action {
         width: 90px;

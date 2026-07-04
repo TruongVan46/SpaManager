@@ -56,6 +56,7 @@ from core.auth.permissions import (
     is_owner,
     is_staff,
 )
+from core.activity_log_utils import sanitize_activity_log_value
 import core.csrf as csrf_module
 
 
@@ -1646,6 +1647,66 @@ class BasicTestCase(unittest.TestCase):
             response = self.client.get(route, follow_redirects=False)
             self.assertEqual(response.status_code, 200, route)
 
+    def test_activity_log_sanitizer_redacts_sensitive_keys(self):
+        payload = {
+            "username": "demo",
+            "password": "secret123",
+            "confirm_password": "secret123",
+            "csrf_token": "csrf-abc",
+            "nested": {
+                "api_key": "api-123",
+                "note": "keep-me",
+            },
+            "raw": "password=abc123 token=xyz csrf=zz",
+        }
+
+        sanitized = sanitize_activity_log_value(payload)
+
+        self.assertIn("demo", sanitized)
+        self.assertIn("***REDACTED***", sanitized)
+        self.assertNotIn("secret123", sanitized)
+        self.assertNotIn("csrf-abc", sanitized)
+        self.assertNotIn("api-123", sanitized)
+        self.assertNotIn("password=abc123", sanitized)
+        self.assertNotIn("token=xyz", sanitized)
+
+    def test_activity_log_service_write_log_sanitizes_details_and_supports_actor_filter(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        actor = self.create_user("actor-filter", password="actor-pass", full_name="Actor Filter", role="ADMIN")
+
+        with self.client.session_transaction() as sess:
+            sess[AUTH_SESSION_KEY] = actor.id
+
+        ActivityLogService.write_log(
+            module="System",
+            action="custom_event",
+            description={
+                "password": "abc123",
+                "message": "audit payload",
+                "csrf_token": "csrf-x",
+            },
+            reference_id=77,
+            severity="warning",
+            user_id_override=actor.id,
+        )
+
+        stored_log = ActivityLog.query.order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(stored_log)
+        self.assertEqual(stored_log.action, "CUSTOM_EVENT")
+        self.assertEqual(stored_log.severity, "WARNING")
+        self.assertEqual(stored_log.user_id, actor.id)
+        self.assertNotIn("abc123", stored_log.description)
+        self.assertNotIn("csrf-x", stored_log.description)
+
+        filtered = ActivityLogService.get_filtered_logs(
+            page=1,
+            per_page=20,
+            actor="actor-filter",
+        )
+        self.assertGreaterEqual(filtered.total, 1)
+        self.assertTrue(any(log.user_id == actor.id for log in filtered.items))
+
     def test_disabled_user_session_is_blocked_on_next_request(self):
         owner = AuthService.seed_owner_if_empty()
         staff = self.create_user("session-disabled", password="SessionPass123", full_name="Session Disabled", role="STAFF")
@@ -1896,11 +1957,14 @@ class BasicTestCase(unittest.TestCase):
         css = Path("static/css/pages/activity-log.css").read_text(encoding="utf-8")
 
         self.assertIn("activity-action-badge", template)
+        self.assertIn("name=\"actor\"", template)
+        self.assertIn("col-actor", template)
         self.assertIn(".activity-log-page .activity-action-badge", css)
         self.assertIn("text-overflow: ellipsis", css)
         self.assertIn("overflow: hidden", css)
         self.assertIn(".activity-log-page .activity-log-table .col-action", css)
         self.assertIn(".activity-log-page .activity-log-table .col-severity", css)
+        self.assertIn(".activity-log-page .activity-log-table .col-actor", css)
 
     def test_db_stamp_head_marks_existing_schema_without_rebuilding(self):
         tables_before = sorted(sa_inspect(db.engine).get_table_names())

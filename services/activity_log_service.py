@@ -5,6 +5,12 @@ from core.logger import app_logger
 from extensions import db
 from models.activity_log import ActivityLog
 from services.auth_service import AuthService
+from models.user import User
+from core.activity_log_utils import (
+    build_activity_log_entry,
+    normalize_activity_action,
+    normalize_activity_severity,
+)
 from utils.timezone_utils import local_day_bounds_utc, local_today, parse_datetime_value, utc_now
 
 
@@ -50,15 +56,15 @@ class ActivityLogService:
         """
         try:
             current_user = AuthService.get_current_user()
-            log_entry = ActivityLog(
+            log_entry = build_activity_log_entry(
                 module=module,
-                action=action,
+                action=normalize_activity_action(action),
                 description=description,
                 reference_id=reference_id,
-                severity=severity,
-                created_at=utc_now(),
+                severity=normalize_activity_severity(severity),
                 user_id=user_id_override if user_id_override is not None else (current_user.id if current_user else None)
             )
+            log_entry.created_at = utc_now()
             if session_override is not None:
                 session_override.add(log_entry)
                 if commit:
@@ -144,21 +150,41 @@ class ActivityLogService:
         ).order_by(ActivityLog.created_at.desc()).all()
 
     @staticmethod
+    def get_actor_options():
+        """Return distinct users that appear in activity logs."""
+        return (
+            User.query.join(ActivityLog, ActivityLog.user_id == User.id)
+            .distinct()
+            .order_by(User.username.asc())
+            .all()
+        )
+
+    @staticmethod
     def get_filtered_logs(page=1, per_page=10, module=None, action=None, severity=None, 
-                          search_query=None, time_range=None, from_date=None, to_date=None, 
+                          search_query=None, actor=None, time_range=None, from_date=None, to_date=None, 
                           sort_by='newest'):
         """
         Retrieve paginated activity logs with advanced filtering, searching, and sorting.
         """
-        query = ActivityLog.query
+        query = ActivityLog.query.outerjoin(User, ActivityLog.user_id == User.id)
         
         # Search query (description, module, action)
         if search_query:
             query = query.filter(
                 (ActivityLog.description.ilike(f'%{search_query}%')) |
                 (ActivityLog.module.ilike(f'%{search_query}%')) |
-                (ActivityLog.action.ilike(f'%{search_query}%'))
+                (ActivityLog.action.ilike(f'%{search_query}%')) |
+                (User.username.ilike(f'%{search_query}%')) |
+                (User.full_name.ilike(f'%{search_query}%'))
             )
+
+        if actor:
+            actor_query = actor.strip()
+            if actor_query and actor_query != 'Tất cả':
+                query = query.filter(
+                    (User.username.ilike(f'%{actor_query}%')) |
+                    (User.full_name.ilike(f'%{actor_query}%'))
+                )
             
         # Filter Module
         if module and module != 'Tất cả':

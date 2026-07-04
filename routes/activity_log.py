@@ -20,6 +20,7 @@ def index():
     module = request.args.get('module', '').strip()
     action = request.args.get('action', '').strip()
     severity = request.args.get('severity', '').strip()
+    actor = request.args.get('actor', '').strip()
     time_range = request.args.get('time_range', '').strip()
     from_date = request.args.get('from_date', '').strip()
     to_date = request.args.get('to_date', '').strip()
@@ -34,11 +35,13 @@ def index():
         action=action,
         severity=severity,
         search_query=q,
+        actor=actor,
         time_range=time_range,
         from_date=from_date,
         to_date=to_date,
         sort_by=sort_by
     )
+    actors = ActivityLogService.get_actor_options()
     
     return render_template(
         'activity_log/index.html',
@@ -47,9 +50,11 @@ def index():
         module=module,
         action=action,
         severity=severity,
+        actor=actor,
         time_range=time_range,
         from_date=from_date,
         to_date=to_date,
         sort_by=sort_by,
-        per_page=per_page
+        per_page=per_page,
+        actors=actors
     )

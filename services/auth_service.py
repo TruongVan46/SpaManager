@@ -8,7 +8,6 @@ from werkzeug.utils import secure_filename
 
 from extensions import db
 from models.user import User
-from models.activity_log import ActivityLog
 from core.auth.enums import UserRole, normalize_role_value
 from core.auth.constants import AUTH_SESSION_KEY
 from core.logger import app_logger
@@ -18,6 +17,7 @@ from validators.profile_validator import ProfileValidator
 from utils.timezone_utils import utc_now
 from utils.media_storage import resolve_media_file_path
 from core.auth.permissions import can_manage_users
+from core.activity_log_utils import build_activity_log_entry
 
 # services/auth_service.py
 
@@ -72,14 +72,13 @@ class AuthService:
         """Hook called when login succeeds."""
         try:
             app_logger.security(f"User login successful: {user.username} (ID: {user.id})", module="AUTHENTICATION")
-            log = ActivityLog(
+            db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="LOGIN",
                 severity="SUCCESS",
                 description=f"Chủ Spa ({user.full_name}) đăng nhập thành công.",
                 user_id=user.id
-            )
-            db.session.add(log)
+            ))
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -90,14 +89,13 @@ class AuthService:
         """Hook called when logout occurs."""
         try:
             app_logger.security(f"User logout: {user.username} (ID: {user.id})", module="AUTHENTICATION")
-            log = ActivityLog(
+            db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="LOGOUT",
                 severity="INFO",
                 description=f"Chủ Spa ({user.full_name}) đăng xuất khỏi hệ thống.",
                 user_id=user.id
-            )
-            db.session.add(log)
+            ))
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -269,14 +267,13 @@ class AuthService:
         """Hook called when change password succeeds."""
         try:
             app_logger.security(f"Password changed successfully for user: {user.username} (ID: {user.id})", module="SECURITY")
-            log = ActivityLog(
+            db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="CHANGE_PASSWORD",
                 severity="SUCCESS",
                 description="Đổi mật khẩu thành công.",
                 user_id=user.id
-            )
-            db.session.add(log)
+            ))
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -287,14 +284,13 @@ class AuthService:
         """Hook called when change password fails."""
         try:
             app_logger.security(f"Password change failed for user: {user.username} (ID: {user.id}) - Reason: {reason}", module="SECURITY")
-            log = ActivityLog(
+            db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="CHANGE_PASSWORD_FAILED",
                 severity="WARNING",
                 description=f"Đổi mật khẩu thất bại: {reason}",
                 user_id=user.id
-            )
-            db.session.add(log)
+            ))
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -377,14 +373,13 @@ class AuthService:
     def on_profile_update_success(user):
         """Hook called when profile update succeeds."""
         try:
-            log = ActivityLog(
+            db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="PROFILE_UPDATE",
                 severity="SUCCESS",
                 description="Cập nhật thông tin tài khoản.",
                 user_id=user.id
-            )
-            db.session.add(log)
+            ))
             db.session.commit()
         except Exception as e:
             db.session.rollback()

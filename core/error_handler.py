@@ -5,11 +5,11 @@ from werkzeug.exceptions import HTTPException
 from extensions import db
 from core.exceptions import SpaManagerException
 from core.logger import app_logger
-from models.activity_log import ActivityLog
 from services.notification_service import NotificationService
 from services.auth_service import AuthService
 from sqlalchemy.exc import SQLAlchemyError
 from core.csrf import CSRFError, csrf_error_json
+from core.activity_log_utils import build_activity_log_entry
 
 class ExceptionMapper:
     @staticmethod
@@ -235,7 +235,7 @@ class ErrorHandler:
         user_id = current_user.id if current_user else None
         
         # Build unique log entry
-        log = ActivityLog(
+        log = build_activity_log_entry(
             module="SYSTEM",
             action=code,
             severity=severity,

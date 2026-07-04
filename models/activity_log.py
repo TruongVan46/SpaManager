@@ -12,6 +12,7 @@ class ActivityLog(db.Model):
     reference_id = db.Column(db.Integer, nullable=True) # ID of the related object (if applicable)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     severity = db.Column(db.String(50), nullable=False, default='INFO', index=True) # INFO, SUCCESS, WARNING, ERROR
+    user = db.relationship('User', lazy=True)
 
     def __repr__(self):
         return f'<ActivityLog {self.module} - {self.action} [{self.severity}] at {self.created_at}>'

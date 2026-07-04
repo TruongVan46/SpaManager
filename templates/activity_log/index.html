@@ -43,8 +43,14 @@
                             <input type="text" id="search-input" name="q" class="app-form-control form-control form-control-sm" placeholder="Tìm theo mô tả, module, action..." value="{{ q or '' }}">
                         </div>
                     </div>
+
+                    <!-- 2. Filter Actor -->
+                    <div class="filter-item actor-box">
+                        <label class="form-label small mb-1" for="actor-input">Người thực hiện</label>
+                        <input type="text" id="actor-input" name="actor" class="app-form-control form-control form-control-sm" placeholder="Tài khoản hoặc tên..." value="{{ actor or '' }}">
+                    </div>
                     
-                    <!-- 2. Filter Module -->
+                    <!-- 3. Filter Module -->
                     <div class="filter-item module-box">
                         <label class="form-label small mb-1" for="module-select">Module</label>
                         <select id="module-select" name="module" class="app-form-select form-select form-select-sm">
@@ -60,7 +66,7 @@
                         </select>
                     </div>
 
-                    <!-- 3. Filter Action -->
+                    <!-- 4. Filter Action -->
                     <div class="filter-item action-box">
                         <label class="form-label small mb-1" for="action-select">Action</label>
                         <select id="action-select" name="action" class="app-form-select form-select form-select-sm">
@@ -79,7 +85,7 @@
                         </select>
                     </div>
 
-                    <!-- 4. Filter Severity -->
+                    <!-- 5. Filter Severity -->
                     <div class="filter-item severity-box">
                         <label class="form-label small mb-1" for="severity-select">Severity</label>
                         <select id="severity-select" name="severity" class="app-form-select form-select form-select-sm">
@@ -91,7 +97,7 @@
                         </select>
                     </div>
 
-                    <!-- 5. Filter Thời gian -->
+                    <!-- 6. Filter Thời gian -->
                     <div class="filter-item time-box">
                         <label class="form-label small mb-1" for="time-range-select">Thời gian</label>
                         <select name="time_range" id="time-range-select" class="app-form-select form-select form-select-sm">
@@ -104,7 +110,7 @@
                         </select>
                     </div>
 
-                    <!-- 6. Sắp xếp -->
+                    <!-- 7. Sắp xếp -->
                     <div class="filter-item sort-box">
                         <label class="form-label small mb-1" for="sort-select">Sắp xếp</label>
                         <select id="sort-select" name="sort_by" class="app-form-select form-select form-select-sm">
@@ -155,6 +161,7 @@
                         <tr>
                             <th class="col-time" scope="col">Thời gian</th>
                             <th class="col-module" scope="col">Module</th>
+                            <th class="col-actor d-none d-lg-table-cell" scope="col">Người thực hiện</th>
                             <th class="col-action text-center" scope="col">Action</th>
                             <th class="col-severity text-center" scope="col">Severity</th>
                             <th class="col-description" scope="col">Nội dung</th>
@@ -182,6 +189,7 @@
                         <tr class="log-row" 
                             data-time="{{ formatted_time }}"
                             data-module="{{ translated_module }}"
+                            data-actor="{{ log.user.username if log.user else 'Hệ thống' }}"
                             data-action="{{ log.action }}"
                             data-severity="{{ log.severity }}"
                             data-description="{{ log.description }}"
@@ -200,6 +208,9 @@
                             </td>
                             <td class="col-module">
                                 <strong>{{ translated_module }}</strong>
+                            </td>
+                            <td class="col-actor d-none d-lg-table-cell">
+                                {{ log.user.username if log.user else 'Hệ thống' }}
                             </td>
                             <td class="col-action text-center">
                                 {% if log.action == 'CREATE' %}
@@ -267,7 +278,7 @@
             {%- from 'layout/table_macros.html' import pagination_widget %}
             {{ pagination_widget(logs, 'activity_log.index', {
                 'q': q, 'module': module, 'action': action,
-                'severity': severity, 'time_range': time_range,
+                'severity': severity, 'actor': actor, 'time_range': time_range,
                 'from_date': from_date, 'to_date': to_date,
                 'sort_by': sort_by, 'per_page': per_page
             }) }}
