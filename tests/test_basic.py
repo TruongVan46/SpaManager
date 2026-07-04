@@ -2015,7 +2015,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(config.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"))
         self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
         self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
-        self.assertEqual(config.APP_VERSION, "5.1.0")
+        self.assertEqual(config.APP_VERSION, "5.2.0")
 
     def test_google_oauth_variables_remain_optional(self):
         with patch.dict(
@@ -2047,8 +2047,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("compileall .", readme)
         self.assertIn("DATABASE_URL=sqlite:///database/spa.db", env_example)
         self.assertIn("# DATABASE_URL=sqlite:////app/database/spa.db", env_example)
-        self.assertIn("APP_VERSION=5.1.0", env_example)
-        self.assertIn("v5.1.0", changelog)
+        self.assertIn("APP_VERSION=5.2.0", env_example)
+        self.assertIn("v5.2.0", changelog)
         self.assertIn("change-this-to-a-strong-password", env_example)
         self.assertIn("CSRF_ENABLED=1", env_example)
         self.assertIn("python -m compileall .", workflow)
@@ -2091,16 +2091,16 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         response = self.client.get("/settings")
         html = response.get_data(as_text=True)
-        self.assertIn("Spa Manager v5.1.0", html)
-        self.assertIn("v5.1.0 Stable", html)
-        self.assertIn(">5.1.0<", html)
+        self.assertIn("Spa Manager v5.2.0", html)
+        self.assertIn("v5.2.0 Stable", html)
+        self.assertIn(">5.2.0<", html)
 
     def test_sidebar_footer_shows_current_version(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
         response = self.client.get("/")
         html = response.get_data(as_text=True)
-        self.assertIn("Spa Manager v5.1.0", html)
+        self.assertIn("Spa Manager v5.2.0", html)
         self.assertNotIn("Spa Manager v4.0", html)
 
     def test_settings_template_includes_explicit_csrf_tokens_for_post_forms(self):

@@ -2,6 +2,34 @@
 
 SpaManager release notes.
 
+## [v5.2.0] - 2026-07-04
+
+### Added
+- Basic User Management for OWNER/ADMIN.
+- Role/permission helpers for OWNER / ADMIN / STAFF.
+- Admin Dashboard summary for OWNER/ADMIN.
+
+### Changed
+- Sidebar visibility now follows role permissions.
+- Settings menu moved to bottom of sidebar.
+- Backup/restore UX improved with clearer warnings and confirmation.
+
+### Fixed
+- Sidebar Vietnamese mojibake.
+- Activity Log action badge overlap.
+- Shared pagination page-size full reload regression.
+- Backup Center Vietnamese mojibake.
+
+### Security
+- STAFF blocked from admin routes at backend.
+- Activity Log sanitization for password/token/csrf/session/path.
+- Settings/backup/restore/import path and CSRF hardening.
+- Restore/import/backup no-side-effect regression tests.
+
+### Infrastructure / Tests
+- Expanded regression test coverage.
+- GitHub Actions remains passing.
+
 ## [v5.1.0] - 2026-07-04
 
 ### Added
