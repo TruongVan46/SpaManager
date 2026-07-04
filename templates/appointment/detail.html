@@ -37,16 +37,18 @@
                 <div class="col-md-6 mb-3">
                     <label class="fw-bold text-muted">Trạng thái:</label>
                     <p class="fs-5">
-                        {% if appointment.status == 'Pending' %}
-                            <span class="app-badge app-badge-pending badge status-pending">Chờ xác nhận</span>
-                        {% elif appointment.status == 'Confirmed' %}
+                        {% set appointment_status_label = appointment.display_status or appointment.status or 'Không rõ' %}
+                        {% set appointment_status_key = appointment.status|lower if appointment.status else '' %}
+                        {% if appointment_status_key == 'pending' %}
+                            <span class="app-badge app-badge-pending badge status-pending">Chờ xử lý</span>
+                        {% elif appointment_status_key == 'confirmed' %}
                             <span class="app-badge app-badge-confirmed badge status-confirmed">Đã xác nhận</span>
-                        {% elif appointment.status == 'Completed' %}
+                        {% elif appointment_status_key == 'completed' %}
                             <span class="app-badge app-badge-completed badge status-completed">Hoàn thành</span>
-                        {% elif appointment.status == 'Cancelled' %}
+                        {% elif appointment_status_key in ['cancelled', 'canceled'] %}
                             <span class="app-badge app-badge-cancelled badge status-cancelled">Đã hủy</span>
                         {% else %}
-                            {{ appointment.status }}
+                            {{ appointment_status_label }}
                         {% endif %}
                     </p>
                 </div>
@@ -56,7 +58,7 @@
                 </div>
             </div>
             <div class="text-end mt-4">
-                <a href="{{ url_for('appointment.edit', id=appointment.id) }}" class="app-btn app-btn-primary btn btn-primary px-4">
+                <a href="{{ url_for('appointment.edit', id=appointment.id, return_to=back_url) }}" class="app-btn app-btn-primary btn btn-primary px-4">
                     <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Chỉnh sửa
                 </a>
             </div>

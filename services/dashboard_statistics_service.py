@@ -84,9 +84,9 @@ class DashboardStatisticsService:
         ).order_by(Appointment.appointment_time.asc()).all()
         
         status_map = {
-            'Pending': 'Chờ xác nhận',
+            'Pending': 'Chờ xử lý',
             'Confirmed': 'Đã xác nhận',
-            'Completed': 'Đã hoàn thành',
+            'Completed': 'Hoàn thành',
             'Cancelled': 'Đã hủy'
         }
         

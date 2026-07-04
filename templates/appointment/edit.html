@@ -9,7 +9,7 @@
 <div class="container-fluid app-page appointment-page">
     <div class="app-page-header">
         <h1 class="app-title mb-0">Chỉnh sửa lịch hẹn</h1>
-        <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+        <a href="{{ back_url if back_url else url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
             <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
         </a>
     </div>
@@ -23,6 +23,9 @@
         <div class="app-card-body">
             <form action="{{ url_for('appointment.edit', id=appointment.id) }}" method="POST" id="editAppointmentForm" class="needs-validation" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if return_to %}
+                <input type="hidden" name="return_to" value="{{ return_to }}">
+                {% endif %}
                 <div class="row">
                     <!-- Khách hàng -->
                     <div class="col-md-6 mb-3">
@@ -65,9 +68,9 @@
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-info-circle"></i></span>
                             <select class="app-form-select form-select" id="status" name="status">
-                                <option value="Pending" {% if appointment.status == 'Pending' %}selected{% endif %}>Chờ xác nhận</option>
+                                <option value="Pending" {% if appointment.status == 'Pending' %}selected{% endif %}>Chờ xử lý</option>
                                 <option value="Confirmed" {% if appointment.status == 'Confirmed' %}selected{% endif %}>Đã xác nhận</option>
-                                <option value="Completed" {% if appointment.status == 'Completed' %}selected{% endif %}>Đã hoàn thành</option>
+                                <option value="Completed" {% if appointment.status == 'Completed' %}selected{% endif %}>Hoàn thành</option>
                                 <option value="Cancelled" {% if appointment.status == 'Cancelled' %}selected{% endif %}>Đã hủy</option>
                             </select>
                         </div>
@@ -84,7 +87,7 @@
                 </div>
 
                 <div class="text-end mt-4">
-                    <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-secondary me-2">
+                    <a href="{{ back_url if back_url else url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-secondary me-2">
                         <i class="bi bi-x-circle" style="margin-right: 8px;"></i>Hủy
                     </a>
                     <button type="submit" class="app-btn app-btn-primary btn btn-primary px-4">

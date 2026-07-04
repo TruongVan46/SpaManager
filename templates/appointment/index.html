@@ -52,10 +52,10 @@
             </div>
         </div>
 
-        <!-- Chờ xác nhận -->
+        <!-- Chờ xử lý -->
         <div class="app-kpi-card app-kpi-border-warning">
             <div class="app-card-body text-warning">
-                <div class="app-small text-uppercase mb-1 fw-medium text-warning">Chờ xác nhận</div>
+                <div class="app-small text-uppercase mb-1 fw-medium text-warning">Chờ xử lý</div>
                 <div class="h5 mb-0 fw-semibold app-title">{{ summary.pending }}</div>
                 <i class="bi bi-clock-history app-kpi-icon text-warning"></i>
             </div>
@@ -70,10 +70,10 @@
             </div>
         </div>
 
-        <!-- Đã hoàn thành -->
+        <!-- Hoàn thành -->
         <div class="app-kpi-card app-kpi-border-success">
             <div class="app-card-body text-success">
-                <div class="app-small text-uppercase mb-1 fw-medium text-success">Đã hoàn thành</div>
+                <div class="app-small text-uppercase mb-1 fw-medium text-success">Hoàn thành</div>
                 <div class="h5 mb-0 fw-semibold app-title">{{ summary.completed }}</div>
                 <i class="bi bi-check-all app-kpi-icon text-success"></i>
             </div>
@@ -146,7 +146,7 @@
                                 <label>Trạng thái</label>
                                 <select name="status" class="app-form-select form-select">
                                     <option value="" {% if not request.args.get('status') %}selected{% endif %}>Tất cả trạng thái</option>
-                                    <option value="Pending" {% if request.args.get('status') == 'Pending' %}selected{% endif %}>Chờ xác nhận</option>
+                                    <option value="Pending" {% if request.args.get('status') == 'Pending' %}selected{% endif %}>Chờ xử lý</option>
                                     <option value="Confirmed" {% if request.args.get('status') == 'Confirmed' %}selected{% endif %}>Đã xác nhận</option>
                                     <option value="Completed" {% if request.args.get('status') == 'Completed' %}selected{% endif %}>Hoàn thành</option>
                                     <option value="Cancelled" {% if request.args.get('status') == 'Cancelled' %}selected{% endif %}>Đã hủy</option>
@@ -222,8 +222,8 @@
                                     <td>
                                         <div class="customer-cell">
                                             <div class="d-flex align-items-center gap-1">
-                                                {% if appointment.is_today and appointment.status == 'Pending' %}
-                                                <i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xác nhận"></i>
+                                                {% if appointment.is_today and appointment.status|lower == 'pending' %}
+                                                <i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xử lý"></i>
                                                 {% endif %}
                                                 <div class="customer-name fw-bold">{{ appointment.customer.name | highlight(q) if appointment.customer else 'N/A' }}</div>
                                             </div>
@@ -233,46 +233,48 @@
                                     <td class="fw-medium app-text-primary">{{ appointment.service.name | highlight(q) if appointment.service else 'N/A' }}</td>
                                     <td>
                                         <div class="dropdown status-dropdown" data-id="{{ appointment.id }}">
-                                            {% if appointment.status == 'Pending' %}
-                                                <button class="app-btn-sm app-badge app-badge-pending btn btn-sm dropdown-toggle status-badge-btn badge status-pending d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Pending">
-                                                    <span><i class="bi bi-clock me-1"></i>Chờ xác nhận</span>
+                                            {% set status_key = appointment.status|lower if appointment.status else '' %}
+                                            {% set status_label = appointment.display_status or appointment.status or 'Không rõ' %}
+                                            {% if status_key == 'pending' %}
+                                                    <button class="app-btn-sm app-badge app-badge-pending btn btn-sm dropdown-toggle status-badge-btn badge status-pending d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Pending">
+                                                    <span><i class="bi bi-clock me-1"></i>{{ status_label }}</span>
                                                 </button>
-                                            {% elif appointment.status == 'Confirmed' %}
+                                            {% elif status_key == 'confirmed' %}
                                                 <button class="app-btn-sm app-badge app-badge-confirmed btn btn-sm dropdown-toggle status-badge-btn badge status-confirmed d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Confirmed">
-                                                    <span><i class="bi bi-check-circle me-1"></i>Đã xác nhận</span>
+                                                    <span><i class="bi bi-check-circle me-1"></i>{{ status_label }}</span>
                                                 </button>
-                                            {% elif appointment.status == 'Completed' %}
+                                            {% elif status_key == 'completed' %}
                                                 <button class="app-btn-sm app-badge app-badge-completed btn btn-sm dropdown-toggle status-badge-btn badge status-completed d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Completed">
-                                                    <span><i class="bi bi-check2-all me-1"></i>Hoàn thành</span>
+                                                    <span><i class="bi bi-check2-all me-1"></i>{{ status_label }}</span>
                                                 </button>
-                                            {% elif appointment.status == 'Cancelled' %}
+                                            {% elif status_key in ['cancelled', 'canceled'] %}
                                                 <button class="app-btn-sm app-badge app-badge-cancelled btn btn-sm dropdown-toggle status-badge-btn badge status-cancelled d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" data-current-status="Cancelled">
-                                                    <span><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
+                                                    <span><i class="bi bi-x-circle me-1"></i>{{ status_label }}</span>
                                                 </button>
                                             {% endif %}
                                             <ul class="dropdown-menu shadow border-0 py-1">
                                                 <li>
-                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Pending' %}active fw-bold disabled{% endif %}" type="button" data-value="Pending">
-                                                        <span><i class="bi bi-clock me-2"></i>Chờ xác nhận</span>
-                                                        {% if appointment.status == 'Pending' %}<i class="bi bi-check"></i>{% endif %}
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if status_key == 'pending' %}active fw-bold disabled{% endif %}" type="button" data-value="Pending">
+                                                        <span><i class="bi bi-clock me-2"></i>Chờ xử lý</span>
+                                                        {% if status_key == 'pending' %}<i class="bi bi-check"></i>{% endif %}
                                                     </button>
                                                 </li>
                                                 <li>
-                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Confirmed' %}active fw-bold disabled{% endif %}" type="button" data-value="Confirmed">
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if status_key == 'confirmed' %}active fw-bold disabled{% endif %}" type="button" data-value="Confirmed">
                                                         <span><i class="bi bi-check-circle me-2"></i>Đã xác nhận</span>
-                                                        {% if appointment.status == 'Confirmed' %}<i class="bi bi-check"></i>{% endif %}
+                                                        {% if status_key == 'confirmed' %}<i class="bi bi-check"></i>{% endif %}
                                                     </button>
                                                 </li>
                                                 <li>
-                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Completed' %}active fw-bold disabled{% endif %}" type="button" data-value="Completed">
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if status_key == 'completed' %}active fw-bold disabled{% endif %}" type="button" data-value="Completed">
                                                         <span><i class="bi bi-check2-all me-2"></i>Hoàn thành</span>
-                                                        {% if appointment.status == 'Completed' %}<i class="bi bi-check"></i>{% endif %}
+                                                        {% if status_key == 'completed' %}<i class="bi bi-check"></i>{% endif %}
                                                     </button>
                                                 </li>
                                                 <li>
-                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if appointment.status == 'Cancelled' %}active fw-bold disabled{% endif %}" type="button" data-value="Cancelled">
+                                                    <button class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if status_key in ['cancelled', 'canceled'] %}active fw-bold disabled{% endif %}" type="button" data-value="Cancelled">
                                                         <span><i class="bi bi-x-circle me-2"></i>Đã hủy</span>
-                                                        {% if appointment.status == 'Cancelled' %}<i class="bi bi-check"></i>{% endif %}
+                                                        {% if status_key in ['cancelled', 'canceled'] %}<i class="bi bi-check"></i>{% endif %}
                                                     </button>
                                                 </li>
                                             </ul>
@@ -280,10 +282,10 @@
                                     </td>
                                     <td class="text-center">
                                          <div class="btn-group btn-group-sm">
-                                             <a href="{{ url_for('appointment.detail', id=appointment.id) }}" class="btn btn-outline-secondary" title="Chi tiết">
+                                             <a href="{{ url_for('appointment.detail', id=appointment.id, return_to=request.full_path) }}" class="btn btn-outline-secondary" title="Chi tiết">
                                                  <i class="bi bi-eye"></i>
                                              </a>
-                                             <a href="{{ url_for('appointment.edit', id=appointment.id) }}" class="btn btn-outline-primary" title="Sửa">
+                                             <a href="{{ url_for('appointment.edit', id=appointment.id, return_to=request.full_path) }}" class="btn btn-outline-primary" title="Sửa">
                                                  <i class="bi bi-pencil-square"></i>
                                              </a>
                                              <form action="{{ url_for('appointment.delete', id=appointment.id) }}" method="POST" class="d-inline">

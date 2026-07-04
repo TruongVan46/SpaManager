@@ -11,9 +11,18 @@
        ============================ */
     const STATUS_MAP = {
         Confirmed:  { label: 'Đã xác nhận',   icon: '✔', cls: 'confirmed', badge: 'cal-status-confirmed', bi: 'bi-check-circle-fill text-primary' },
-        Pending:    { label: 'Chờ xác nhận',   icon: '⏳', cls: 'pending',   badge: 'cal-status-pending',   bi: 'bi-clock-fill text-warning' },
+        Pending:    { label: 'Chờ xử lý',   icon: '⏳', cls: 'pending',   badge: 'cal-status-pending',   bi: 'bi-clock-fill text-warning' },
         Completed:  { label: 'Hoàn thành',     icon: '✔', cls: 'completed', badge: 'cal-status-completed', bi: 'bi-check2-all text-success' },
         Cancelled:  { label: 'Đã hủy',         icon: '✖', cls: 'cancelled', badge: 'cal-status-cancelled', bi: 'bi-x-circle-fill text-danger' }
+    };
+    const STATUS_MAP_BY_KEY = {
+        confirmed: STATUS_MAP.Confirmed,
+        pending: STATUS_MAP.Pending,
+        completed: STATUS_MAP.Completed,
+        cancelled: STATUS_MAP.Cancelled,
+        canceled: STATUS_MAP.Cancelled,
+        no_show: { label: 'Không đến', icon: '✖', cls: 'no-show', badge: 'cal-status-no-show', bi: 'bi-person-x-fill text-secondary' },
+        noshow: { label: 'Không đến', icon: '✖', cls: 'no-show', badge: 'cal-status-no-show', bi: 'bi-person-x-fill text-secondary' }
     };
 
     const EVENTS_URL = '/appointments/events';
@@ -60,7 +69,8 @@
     }
 
     function statusInfo(status) {
-        return STATUS_MAP[status] || STATUS_MAP.Pending;
+        const normalized = (status || '').toString().trim().toLowerCase();
+        return STATUS_MAP[status] || STATUS_MAP_BY_KEY[normalized] || STATUS_MAP.Pending;
     }
 
     function destroyActivePopover() {
@@ -170,7 +180,7 @@
                     <span class="cal-day-pop-time">${fmtTime(ev.start || ev.startStr)}</span>
                     <div class="cal-day-pop-info">
                         <div class="cal-day-pop-name">${e.customer_name || ev.title}</div>
-                        <div class="cal-day-pop-service">${e.service_name || ''} · <span class="cal-status-badge ${s.badge}">${s.label}</span></div>
+                        <div class="cal-day-pop-service">${e.service_name || ''} · <span class="cal-status-badge ${s.badge}">${e.display_status || s.label}</span></div>
                     </div>
                 </li>`;
         });
@@ -380,7 +390,7 @@
             <div class="cal-pop-row"><span class="cal-pop-label">Ngày</span><span class="cal-pop-value">${fmtDateShort(ev.start)}</span></div>
             <div class="cal-pop-row"><span class="cal-pop-label">Giờ</span><span class="cal-pop-value">${fmtTime(ev.start)} - ${fmtTime(ev.end)}</span></div>
             <div class="cal-pop-row"><span class="cal-pop-label">Thời lượng</span><span class="cal-pop-value">${e.service_duration || 30} phút</span></div>
-            <div class="cal-pop-row"><span class="cal-pop-label">Trạng thái</span><span class="cal-pop-value"><span class="cal-status-badge ${s.badge}">${s.label}</span></span></div>
+            <div class="cal-pop-row"><span class="cal-pop-label">Trạng thái</span><span class="cal-pop-value"><span class="cal-status-badge ${s.badge}">${e.display_status || s.label}</span></span></div>
             <div class="cal-pop-row"><span class="cal-pop-label">Giá</span><span class="cal-pop-value fw-bold">${fmt(e.service_price || 0)}</span></div>
             ${e.notes ? `<div class="cal-pop-row"><span class="cal-pop-label">Ghi chú</span><span class="cal-pop-value">${e.notes}</span></div>` : ''}
         `;
@@ -476,7 +486,7 @@
                         <span class="cal-evt-time">${time}</span>
                         <span class="cal-evt-name">${e.customer_name || arg.event.title}</span>
                     </div>
-                    <span class="cal-evt-icon" title="${s.label}">${s.icon}</span>
+                    <span class="cal-evt-icon" title="${e.display_status || s.label}">${s.icon}</span>
                 `;
 
                 return { domNodes: [wrapper] };

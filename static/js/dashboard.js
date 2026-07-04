@@ -190,7 +190,7 @@ function initDashboard() {
                             let html = '';
                             data.today_appointments.forEach(appt => {
                                 let badgeClass = 'app-badge-default';
-                                if (appt.status === 'Chờ xác nhận') badgeClass = 'app-badge-pending';
+                                if (appt.status === 'Chờ xử lý') badgeClass = 'app-badge-pending';
                                 else if (appt.status === 'Đã xác nhận') badgeClass = 'app-badge-confirmed';
                                 else if (appt.status === 'Hoàn thành') badgeClass = 'app-badge-completed';
                                 else if (appt.status === 'Đã hủy') badgeClass = 'app-badge-cancelled';

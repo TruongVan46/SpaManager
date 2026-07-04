@@ -54,7 +54,7 @@
             <a href="{{ url_for('customer.edit', id=customer.id) }}" class="app-btn app-btn-primary btn btn-primary">
                 <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Sửa khách hàng
             </a>
-            <a href="{{ url_for('appointment.create', customer_id=customer.id) }}" class="app-btn app-btn-secondary btn btn-outline-primary">
+            <a href="{{ url_for('appointment.create', customer_id=customer.id, return_to=customer_detail_url) }}" class="app-btn app-btn-secondary btn btn-outline-primary">
                 <i class="bi bi-calendar-plus" style="margin-right: 8px;"></i>Tạo lịch hẹn
             </a>
             <a href="{{ url_for('invoice.create', customer_id=customer.id) }}" class="app-btn app-btn-secondary btn btn-outline-success">

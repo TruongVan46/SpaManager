@@ -1494,6 +1494,122 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('name="csrf_token"', edit_html)
         self.assertIn('name="csrf_token"', index_html)
 
+    def test_appointment_status_and_calendar_display_vietnamese_labels(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Appointment Status Customer")
+        service = self.create_service_record("Appointment Status Service")
+
+        statuses = ["Pending", "Confirmed", "Completed", "Cancelled"]
+        first_appointment_id = None
+        for index, status in enumerate(statuses):
+            appointment = Appointment(
+                customer_id=customer.id,
+                service_id=service.id,
+                appointment_time=datetime(2026, 7, 4, 9, 0) + timedelta(days=index),
+                status=status,
+                notes=f"Status {status}"
+            )
+            db.session.add(appointment)
+            if first_appointment_id is None:
+                db.session.flush()
+                first_appointment_id = appointment.id
+        db.session.commit()
+
+        list_html = self.client.get("/appointments").get_data(as_text=True)
+        detail_html = self.client.get(f"/appointments/detail/{first_appointment_id}").get_data(as_text=True)
+        customer_detail_html = self.client.get(f"/customers/{customer.id}").get_data(as_text=True)
+        calendar_json = self.client.get("/appointments/events").get_json()
+
+        normalized_list_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", list_html)).strip()
+        normalized_detail_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", detail_html)).strip()
+        normalized_customer_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", customer_detail_html)).strip()
+
+        self.assertIn("Chờ xử lý", normalized_list_html)
+        self.assertIn("Đã xác nhận", normalized_list_html)
+        self.assertIn("Hoàn thành", normalized_list_html)
+        self.assertIn("Đã hủy", normalized_list_html)
+        self.assertIn("Chờ xử lý", normalized_detail_html)
+        self.assertIn("Chờ xử lý", normalized_customer_html)
+        self.assertTrue(any(item.get("display_status") == "Chờ xử lý" for item in calendar_json))
+        self.assertTrue(any(item.get("display_status") == "Đã xác nhận" for item in calendar_json))
+        for marker in ("Pending", "Confirmed", "Completed", "Cancelled"):
+            self.assertNotIn(marker, normalized_list_html)
+
+    def test_appointment_create_from_customer_detail_preserves_return_to(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Create From Detail Customer")
+        service = self.create_service_record("Create From Detail Service")
+        customer_detail_url = f"/customers/{customer.id}?appointment_page=2&invoice_page=3"
+
+        create_html = self.client.get(
+            "/appointments/create",
+            query_string={"customer_id": customer.id, "return_to": customer_detail_url}
+        ).get_data(as_text=True)
+
+        self.assertIn("Đang tạo lịch hẹn cho:", create_html)
+        self.assertIn(customer.name, create_html)
+        self.assertIn('name="return_to"', create_html)
+        self.assertIn(customer_detail_url.replace("&", "&amp;"), create_html)
+
+        create_page_response = self.client.get(
+            "/appointments/create",
+            query_string={"customer_id": customer.id, "return_to": customer_detail_url}
+        )
+        token_match = re.search(r'name="csrf_token" value="([^"]+)"', create_page_response.get_data(as_text=True))
+        self.assertIsNotNone(token_match, "CSRF token not found in create page")
+        token = token_match.group(1)
+        response = self.client.post(
+            "/appointments/create",
+            data={
+                "csrf_token": token,
+                "customer_id": customer.id,
+                "service_id": service.id,
+                "appointment_date": "2026-07-04",
+                "appointment_time": "10:30",
+                "status": "Pending",
+                "notes": "Create from customer detail",
+                "return_to": customer_detail_url,
+            },
+            follow_redirects=False
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(customer_detail_url, response.headers.get("Location", ""))
+
+    def test_appointment_detail_back_url_sanitizes_and_staff_can_open_workflow(self):
+        owner = AuthService.seed_owner_if_empty()
+        staff = self.create_user("appointment-staff", password="staff-pass", full_name="Appointment Staff", role="STAFF")
+        customer = self.create_customer_record("Back URL Appointment Customer")
+        service = self.create_service_record("Back URL Appointment Service")
+        appointment = self.create_appointment_record(customer=customer, service=service)
+
+        anonymous_response = self.client.get(f"/appointments/detail/{appointment.id}", follow_redirects=False)
+        self.assertEqual(anonymous_response.status_code, 302)
+        self.assertIn("/login", anonymous_response.headers.get("Location", ""))
+
+        self.login_as(staff)
+        list_response = self.client.get("/appointments")
+        create_response = self.client.get("/appointments/create", query_string={"customer_id": customer.id})
+        edit_response = self.client.get(f"/appointments/edit/{appointment.id}")
+        detail_response = self.client.get(
+            f"/appointments/detail/{appointment.id}",
+            query_string={"return_to": "/customers/1?appointment_page=2"},
+        )
+        evil_detail_response = self.client.get(
+            f"/appointments/detail/{appointment.id}",
+            query_string={"return_to": "https://evil.com"},
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(create_response.status_code, 200)
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertIn("/customers/1?appointment_page=2", detail_response.get_data(as_text=True))
+        self.assertEqual(evil_detail_response.status_code, 200)
+        self.assertIn('href="/appointments"', evil_detail_response.get_data(as_text=True))
+
     def test_appointment_create_requires_and_accepts_csrf_token(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)

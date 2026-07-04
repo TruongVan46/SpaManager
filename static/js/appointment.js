@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Map status values to their displayed text in the table
         const statusMap = {
-            'Pending': 'Chờ xác nhận',
+            'Pending': 'Chờ xử lý',
             'Confirmed': 'Đã xác nhận',
             'Completed': 'Hoàn thành',
             'Cancelled': 'Đã hủy'
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'Pending': {
             badgeClass: 'bg-warning text-dark',
             iconClass: 'bi-clock',
-            label: 'Chờ xác nhận'
+            label: 'Chờ xử lý'
         },
         'Confirmed': {
             badgeClass: 'bg-primary text-white',
@@ -284,9 +284,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const cfg = statusConfig[newStatus];
+            const displayStatus = result.appointment && result.appointment.display_status ? result.appointment.display_status : cfg.label;
             badgeBtn.className = `btn btn-sm dropdown-toggle status-badge-btn badge ${cfg.badgeClass} rounded-pill d-flex align-items-center justify-content-between`;
             badgeBtn.setAttribute('data-current-status', newStatus);
-            badgeBtn.innerHTML = `<span><i class="bi ${cfg.iconClass} me-1"></i>${cfg.label}</span>`;
+            badgeBtn.innerHTML = `<span><i class="bi ${cfg.iconClass} me-1"></i>${displayStatus}</span>`;
 
             menuItems.forEach(mi => {
                 const miVal = mi.getAttribute('data-value');
@@ -314,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!exclIcon) {
                             const dFlex = customerCell.querySelector('.d-flex');
                             if (dFlex) {
-                                dFlex.insertAdjacentHTML('afterbegin', '<i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xác nhận"></i>');
+                                dFlex.insertAdjacentHTML('afterbegin', '<i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xử lý"></i>');
                             }
                         }
                     } else if (exclIcon) {

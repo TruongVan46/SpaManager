@@ -15,25 +15,50 @@ from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import local_now_naive, local_today, utc_now
 
 class AppointmentService:
+    STATUS_DISPLAY_LABELS = {
+        "pending": "Chờ xử lý",
+        "confirmed": "Đã xác nhận",
+        "completed": "Hoàn thành",
+        "cancelled": "Đã hủy",
+        "canceled": "Đã hủy",
+        "no_show": "Không đến",
+        "noshow": "Không đến",
+    }
+
+    @staticmethod
+    def _normalize_status(status):
+        return (status or "").strip().lower()
+
+    @staticmethod
+    def _status_display_label(status):
+        normalized = AppointmentService._normalize_status(status)
+        if not normalized or normalized == "none":
+            return "Không rõ"
+        return AppointmentService.STATUS_DISPLAY_LABELS.get(normalized, status if status else "Không rõ")
+
     @staticmethod
     def _attach_flags(appt):
         if not appt or not appt.appointment_time:
             appt.is_today = False
             appt.is_upcoming = False
             appt.is_overdue = False
+            if appt:
+                appt.display_status = AppointmentService._status_display_label(appt.status)
             return
         
         now = local_now_naive()
         today = now.date()
         appt.is_today = (appt.appointment_time.date() == today)
+        status_key = AppointmentService._normalize_status(appt.status)
+        appt.display_status = AppointmentService._status_display_label(appt.status)
         
-        if appt.is_today and appt.status in ['Pending', 'Confirmed']:
+        if appt.is_today and status_key in ['pending', 'confirmed']:
             time_diff = (appt.appointment_time - now).total_seconds()
             appt.is_upcoming = (0 <= time_diff <= 30 * 60)
         else:
             appt.is_upcoming = False
             
-        if appt.is_today and appt.status not in ['Completed', 'Cancelled']:
+        if appt.is_today and status_key not in ['completed', 'cancelled', 'canceled']:
             appt.is_overdue = (now > appt.appointment_time)
         else:
             appt.is_overdue = False
@@ -153,7 +178,7 @@ class AppointmentService:
             )
         
         if status:
-            query = query.filter(Appointment.status == status)
+            query = query.filter(func.lower(Appointment.status) == str(status).strip().lower())
 
         if period == 'today':
             today = local_today()
@@ -230,6 +255,7 @@ class AppointmentService:
         
         for item in paginated.items:
             AppointmentService._attach_flags(item)
+            item.display_status = AppointmentService._status_display_label(item.status)
                 
         return paginated
 
@@ -254,13 +280,14 @@ class AppointmentService:
         }
         
         for (st,) in results:
-            if st == 'Pending':
+            status_key = AppointmentService._normalize_status(st)
+            if status_key == 'pending':
                 summary['pending'] += 1
-            elif st == 'Confirmed':
+            elif status_key == 'confirmed':
                 summary['confirmed'] += 1
-            elif st == 'Completed':
+            elif status_key == 'completed':
                 summary['completed'] += 1
-            elif st == 'Cancelled':
+            elif status_key in ('cancelled', 'canceled'):
                 summary['cancelled'] += 1
                 
         return summary
@@ -342,7 +369,8 @@ class AppointmentService:
         
         new_status = kwargs.get('status')
         if new_status and new_status != old_status:
-            if new_status == 'Cancelled':
+            new_status_key = AppointmentService._normalize_status(new_status)
+            if new_status_key in ('cancelled', 'canceled'):
                 ActivityLogService.log_action(
                     module=ActivityLogService.MODULE_APPOINTMENT,
                     action=ActivityLogService.ACTION_STATUS_CHANGE,
@@ -354,7 +382,7 @@ class AppointmentService:
                 ActivityLogService.log_action(
                     module=ActivityLogService.MODULE_APPOINTMENT,
                     action=ActivityLogService.ACTION_STATUS_CHANGE,
-                    description=f'Đổi trạng thái lịch hẹn #{appointment.id} sang "{new_status}"',
+                    description=f'Đổi trạng thái lịch hẹn #{appointment.id} sang "{AppointmentService._status_display_label(new_status)}"',
                     reference_id=appointment.id,
                     severity=ActivityLogService.SEVERITY_SUCCESS
                 )

@@ -9,7 +9,7 @@
 <div class="container-fluid app-page appointment-page">
     <div class="app-page-header">
         <h1 class="app-title mb-0">Thêm Lịch Hẹn Mới</h1>
-        <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+        <a href="{{ back_url if back_url else url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
             <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
         </a>
     </div>
@@ -23,6 +23,9 @@
         <div class="app-card-body">
             <form action="{{ url_for('appointment.create') }}" method="POST" class="needs-validation" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if return_to %}
+                <input type="hidden" name="return_to" value="{{ return_to }}">
+                {% endif %}
                 <div class="row g-3">
                     
                     <div class="col-md-6">
@@ -39,6 +42,9 @@
                                 <option value="" selected disabled>Nhập tên hoặc SĐT để tìm</option>
                             {% endif %}
                         </select>
+                        {% if selected_customer_name %}
+                        <div class="form-text mt-1">Đang tạo lịch hẹn cho: <strong>{{ selected_customer_name }}</strong></div>
+                        {% endif %}
                         <div class="invalid-feedback">Vui lòng chọn khách hàng.</div>
                     </div>
 
@@ -72,7 +78,7 @@
                     <div class="col-md-6">
                         <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
                          <select class="app-form-select form-select" id="status" name="status" required>
-                             <option value="Pending" {{ 'selected' if (form_data and form_data.status == 'Pending') or (not form_data and status == 'Pending') else '' }}>Chờ xác nhận</option>
+                             <option value="Pending" {{ 'selected' if (form_data and form_data.status == 'Pending') or (not form_data and status == 'Pending') else '' }}>Chờ xử lý</option>
                              <option value="Confirmed" {{ 'selected' if (form_data and form_data.status == 'Confirmed') or (not form_data and status == 'Confirmed') else '' }}>Đã xác nhận</option>
                              <option value="Completed" {{ 'selected' if (form_data and form_data.status == 'Completed') or (not form_data and status == 'Completed') else '' }}>Hoàn thành</option>
                              <option value="Cancelled" {{ 'selected' if (form_data and form_data.status == 'Cancelled') or (not form_data and status == 'Cancelled') else '' }}>Đã hủy</option>
@@ -86,7 +92,7 @@
                     </div>
 
                     <div class="col-12 text-end mt-4">
-                        <a href="{{ url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-secondary me-2">
+                        <a href="{{ back_url if back_url else url_for('appointment.index') }}" class="app-btn app-btn-secondary btn btn-secondary me-2">
                             <i class="bi bi-x-circle" style="margin-right: 8px;"></i>Hủy
                         </a>
                         <button type="submit" class="app-btn app-btn-primary btn btn-primary">

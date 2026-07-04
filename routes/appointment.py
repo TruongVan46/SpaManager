@@ -55,6 +55,7 @@ def index():
 
 @appointment_bp.route('/appointments/create', methods=['GET', 'POST'])
 def create():
+    return_to = _sanitize_return_to(request.args.get('return_to') or request.form.get('return_to'))
     if request.method == 'GET':
         customers = CustomerService.get_all()
         services = ServiceService.get_all_services()
@@ -72,6 +73,8 @@ def create():
             current_date=current_date,
             selected_customer_id=selected_customer_id,
             selected_customer_name=selected_customer_name,
+            return_to=return_to,
+            back_url=return_to or url_for('appointment.index'),
         )
 
     if request.method == 'POST':
@@ -92,7 +95,7 @@ def create():
                 status=status
             )
             NotificationService.flash_success('Đã tạo lịch hẹn thành công.')
-            return redirect(url_for('appointment.index'))
+            return redirect(return_to or url_for('appointment.index'))
         except BusinessException as e:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
                 raise e
@@ -108,10 +111,27 @@ def create():
                 'status': status,
                 'notes': notes
             }
-            return render_template('appointment/create.html', customers=customers, services=services, current_date=current_date, form_data=form_data)
+            selected_customer_id = int(customer_id) if customer_id and str(customer_id).isdigit() else None
+            selected_customer_name = None
+            if selected_customer_id:
+                selected_customer = CustomerService.get_by_id(selected_customer_id)
+                if selected_customer:
+                    selected_customer_name = selected_customer.name
+            return render_template(
+                'appointment/create.html',
+                customers=customers,
+                services=services,
+                current_date=current_date,
+                form_data=form_data,
+                selected_customer_id=selected_customer_id,
+                selected_customer_name=selected_customer_name,
+                return_to=return_to,
+                back_url=return_to or url_for('appointment.index'),
+            )
 
 @appointment_bp.route('/appointments/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id):
+    return_to = _sanitize_return_to(request.args.get('return_to') or request.form.get('return_to'))
     if request.method == 'GET':
         appointment = AppointmentService.get_by_id(id)
         if not appointment:
@@ -121,7 +141,15 @@ def edit(id):
         customers = CustomerService.get_all()
         services = ServiceService.get_all_services()
         current_datetime = local_now().strftime('%Y-%m-%dT%H:%M')
-        return render_template('appointment/edit.html', appointment=appointment, customers=customers, services=services, current_datetime=current_datetime)
+        return render_template(
+            'appointment/edit.html',
+            appointment=appointment,
+            customers=customers,
+            services=services,
+            current_datetime=current_datetime,
+            return_to=return_to,
+            back_url=return_to or url_for('appointment.detail', id=appointment.id),
+        )
 
     if request.method == 'POST':
         customer_id = request.form.get('customer_id')
@@ -148,7 +176,7 @@ def edit(id):
                 notes=notes
             )
             NotificationService.flash_success('Cập nhật lịch hẹn thành công.')
-            return redirect(url_for('appointment.index'))
+            return redirect(return_to or url_for('appointment.index'))
         except BusinessException as e:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
                 raise e
@@ -175,7 +203,15 @@ def edit(id):
             customers = CustomerService.get_all()
             services = ServiceService.get_all_services()
             current_datetime = local_now().strftime('%Y-%m-%dT%H:%M')
-            return render_template('appointment/edit.html', appointment=appointment, customers=customers, services=services, current_datetime=current_datetime)
+            return render_template(
+                'appointment/edit.html',
+                appointment=appointment,
+                customers=customers,
+                services=services,
+                current_datetime=current_datetime,
+                return_to=return_to,
+                back_url=return_to or url_for('appointment.detail', id=appointment.id),
+            )
 
 @appointment_bp.route('/appointments/detail/<int:id>')
 def detail(id):
@@ -199,8 +235,12 @@ def update_status():
     appointment = AppointmentService.update_status(appointment_id, status)
     
     return jsonify({
-        'message': 'Status updated successfully', 
-        'appointment': {'id': appointment.id, 'status': appointment.status}
+        'message': 'Đã cập nhật trạng thái lịch hẹn.',
+        'appointment': {
+            'id': appointment.id,
+            'status': appointment.status,
+            'display_status': AppointmentService._status_display_label(appointment.status),
+        }
     })
 
 @appointment_bp.route('/appointments/delete/<int:id>', methods=['POST'])
@@ -270,6 +310,7 @@ def get_events():
             'start': a.appointment_time.isoformat() if a.appointment_time else None,
             'end': end_time.isoformat() if end_time else None,
             'status': a.status,
+            'display_status': AppointmentService._status_display_label(a.status),
             'customer_name': a.customer.name if a.customer else 'N/A',
             'customer_phone': a.customer.phone if a.customer else '',
             'service_name': a.service.name if a.service else 'N/A',
