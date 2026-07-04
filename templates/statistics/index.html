@@ -279,7 +279,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const statsForm = document.querySelector('form[action="{{ url_for('statistics.index') }}"]');
+    const statsForm = document.querySelector('form[action="{{ url_for("statistics.index") }}"]');
     const fromInput = document.getElementById('from_date');
     const toInput = document.getElementById('to_date');
     const todayStr = "{{ today_str }}";

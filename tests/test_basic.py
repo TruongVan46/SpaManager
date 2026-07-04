@@ -2596,6 +2596,27 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Không xác định", response.get_data(as_text=True))
 
+    def test_recycle_bin_inline_script_parses_cleanly(self):
+        node_binary = shutil.which("node")
+        if not node_binary:
+            self.skipTest("Node.js is required to validate the inline recycle bin script.")
+
+        recycle_bin_template = Path("templates/recycle_bin/index.html").read_text(encoding="utf-8")
+        script_match = re.search(r"<script>(.*?)</script>\s*{% endblock %}", recycle_bin_template, re.S)
+        self.assertIsNotNone(script_match)
+
+        script_path = Path(tempfile.gettempdir()) / "spamanager-recycle-bin-inline.js"
+        script_path.write_text(script_match.group(1), encoding="utf-8")
+
+        result = subprocess.run(
+            [node_binary, "--check", str(script_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
     def test_production_requires_owner_password(self):
         with patch.dict(
             os.environ,
