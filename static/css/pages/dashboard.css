@@ -146,6 +146,82 @@
     font-style: italic;
 }
 
+.dashboard-page .dashboard-admin-summary-card .app-card-body {
+    padding-top: 1rem;
+}
+
+.dashboard-page .admin-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.dashboard-page .admin-summary-card {
+    border: 1px solid var(--spa-border-color);
+    border-radius: var(--spa-radius-lg);
+    background: var(--spa-white);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dashboard-page .admin-summary-card-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--spa-text-muted);
+    margin-bottom: 0.65rem;
+}
+
+.dashboard-page .admin-summary-card-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--spa-text-main);
+    line-height: 1.2;
+}
+
+.dashboard-page .admin-summary-card-meta {
+    font-size: 13px;
+    color: var(--spa-text-muted);
+    margin-top: 0.35rem;
+    line-height: 1.45;
+}
+
+.dashboard-page .admin-summary-empty {
+    font-size: 14px;
+    color: var(--spa-text-muted);
+    line-height: 1.5;
+}
+
+.dashboard-page .admin-shortcut-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.dashboard-page .admin-shortcut-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--spa-radius-md);
+    border: 1px solid var(--spa-border-color);
+    color: var(--spa-text-main);
+    text-decoration: none;
+    transition: var(--spa-transition);
+}
+
+.dashboard-page .admin-shortcut-link:hover {
+    border-color: var(--spa-primary-light);
+    background: var(--spa-secondary);
+    color: var(--spa-primary);
+}
+
+.dashboard-page .admin-shortcut-link i {
+    color: var(--spa-primary);
+}
+
 @media (max-width: 768px) {
     .dashboard-page .appointment-item,
     .dashboard-page .schedule-item {
@@ -161,5 +237,9 @@
 
     .dashboard-page #revenueChart {
         height: 300px !important;
+    }
+
+    .dashboard-page .admin-summary-grid {
+        grid-template-columns: 1fr;
     }
 }

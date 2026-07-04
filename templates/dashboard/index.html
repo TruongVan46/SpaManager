@@ -148,37 +148,68 @@ Dashboard
         </div>
     </div>
 
-    <!-- Recent Activity Card (Task D3.3 / Hot Fix Requirement) -->
+    {% if admin_summary %}
     <div class="app-section">
-        <div class="app-card">
-            <div class="app-card-header">
-                <h5 class="app-card-header-title card-title m-0"><i class="bi bi-clock-history" style="font-size: 18px; margin-right: 8px;"></i>Hoạt động gần đây</h5>
+        <div class="app-card dashboard-admin-summary-card">
+            <div class="app-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <h5 class="app-card-header-title card-title m-0">
+                    <i class="bi bi-shield-check" style="font-size: 18px; margin-right: 8px;"></i>Tổng quan quản trị
+                </h5>
+                <span class="badge rounded-pill text-bg-light border text-secondary">{{ admin_summary.activity.status }}</span>
             </div>
             <div class="app-card-body">
-                <div class="activity-timeline" id="dashboard-recent-activities" style="max-height: 400px; overflow-y: auto; padding-right: 8px;">
-                    {% for log in recent_activities %}
-                    <div class="activity-item d-flex align-items-center mb-3">
-                        <div class="activity-icon me-3">
-                            <span class="badge {% if log.severity == 'SUCCESS' %}bg-success{% elif log.severity == 'WARNING' %}bg-warning text-dark{% elif log.severity == 'ERROR' %}bg-danger{% else %}bg-info{% endif %}">
-                                {{ log.action }}
-                            </span>
+                <div class="admin-summary-grid">
+                    <div class="admin-summary-card">
+                        <div class="admin-summary-card-label">Backup gần nhất</div>
+                        {% if admin_summary.backup.has_backup %}
+                        <div class="admin-summary-card-value">{{ admin_summary.backup.display_name }}</div>
+                        <div class="admin-summary-card-meta">
+                            {{ admin_summary.backup.friendly_time or 'Không rõ thời gian' }} · {{ admin_summary.backup.status or 'Valid' }}
                         </div>
-                        <div class="activity-content flex-grow-1">
-                            <div class="small fw-semibold app-text-primary">{{ log.description }}</div>
-                            <div class="text-muted small" style="font-size: 11px;">{{ log.time }} - Phân hệ: {{ log.module }}</div>
+                        <div class="admin-summary-card-meta">{{ admin_summary.backup.count }} bản sao lưu</div>
+                        {% else %}
+                        <div class="admin-summary-empty">Chưa có bản sao lưu.</div>
+                        {% endif %}
+                        <a href="{{ url_for('setting.index') }}#card-backup-center" class="btn btn-sm btn-outline-primary mt-3">Mở Backup Center</a>
+                    </div>
+
+                    <div class="admin-summary-card">
+                        <div class="admin-summary-card-label">Người dùng</div>
+                        <div class="admin-summary-card-value">{{ admin_summary.users.active }}</div>
+                        <div class="admin-summary-card-meta">Hoạt động · {{ admin_summary.users.inactive }} không hoạt động</div>
+                        <div class="admin-summary-card-meta">Tổng cộng {{ admin_summary.users.total }} tài khoản</div>
+                        <a href="{{ url_for('user.index') }}" class="btn btn-sm btn-outline-success mt-3">Quản lý người dùng</a>
+                    </div>
+
+                    <div class="admin-summary-card">
+                        <div class="admin-summary-card-label">Cảnh báo gần đây</div>
+                        <div class="admin-summary-card-value">{{ admin_summary.activity.warning_count + admin_summary.activity.error_count }}</div>
+                        <div class="admin-summary-card-meta">Trong 7 ngày gần nhất</div>
+                        <div class="admin-summary-card-meta">
+                            {{ admin_summary.activity.status }}
+                            {% if admin_summary.activity.latest_time %}
+                            · Lần gần nhất {{ admin_summary.activity.latest_time }}
+                            {% endif %}
+                        </div>
+                        <a href="{{ url_for('activity_log.index') }}" class="btn btn-sm btn-outline-warning mt-3">Mở Nhật ký hoạt động</a>
+                    </div>
+
+                    <div class="admin-summary-card">
+                        <div class="admin-summary-card-label">Phím tắt quản trị</div>
+                        <div class="admin-shortcut-list">
+                            {% for shortcut in admin_summary.shortcuts %}
+                            <a href="{{ shortcut.url }}" class="admin-shortcut-link">
+                                <i class="bi {{ shortcut.icon }}"></i>
+                                <span>{{ shortcut.label }}</span>
+                            </a>
+                            {% endfor %}
                         </div>
                     </div>
-                    {% endfor %}
-                    {% if not recent_activities %}
-                    <div class="text-center py-4 text-muted" id="activities-empty-state">
-                        <div class="mb-2"><i class="bi bi-clock-history" style="font-size: 32px; color: #ccc;"></i></div>
-                        <p class="app-text m-0">Không có hoạt động nào gần đây</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <script src="{{ url_for('static', filename='js/libs/chart.js') }}?v=4.4.1"></script>

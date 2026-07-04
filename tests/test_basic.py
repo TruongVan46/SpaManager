@@ -790,6 +790,74 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('class="appointment-item schedule-item"', html)
         self.assertIn('id="appt-footer"', html)
 
+    def test_dashboard_manager_sees_admin_summary_and_backup_status(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        response = self.client.get("/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Tổng quan quản trị", html)
+        self.assertIn("Backup gần nhất", html)
+        self.assertIn("Người dùng", html)
+        self.assertIn("Cảnh báo gần đây", html)
+        self.assertIn("Phím tắt quản trị", html)
+        self.assertNotIn(os.path.abspath("backup"), html)
+
+        api_response = self.client.get("/api/dashboard/data")
+        payload = api_response.get_json()
+        self.assertIn("admin_summary", payload)
+        self.assertIn("backup", payload["admin_summary"])
+        self.assertIn("users", payload["admin_summary"])
+        self.assertIn("activity", payload["admin_summary"])
+
+    def test_dashboard_manager_shows_latest_backup_summary_when_available(self):
+        owner = self.create_user("dashboard-backup-owner", password="owner-pass", full_name="Dashboard Backup Owner", role="OWNER")
+        self.login_as(owner)
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Dashboard summary backup")
+
+        try:
+            response = self.client.get("/")
+            html = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Backup ngày", html)
+            self.assertIn("Hôm nay", html)
+            self.assertIn(backup_meta["display_name"], html)
+            self.assertNotIn(str(backup_path), html)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
+    def test_dashboard_staff_hides_admin_summary_and_api_does_not_leak_sensitive_blocks(self):
+        owner = AuthService.seed_owner_if_empty()
+        staff = self.create_user("dashboard-staff", password="staff-pass", full_name="Dashboard Staff", role="STAFF")
+        self.login_as(owner)
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Staff visibility backup")
+
+        try:
+            self.login_as(staff)
+            response = self.client.get("/")
+            html = response.get_data(as_text=True)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Lịch hẹn hôm nay", html)
+            self.assertIn("Doanh thu hôm nay", html)
+            self.assertNotIn("Tổng quan quản trị", html)
+            self.assertNotIn("Phím tắt quản trị", html)
+            self.assertNotIn("Backup gần nhất", html)
+            self.assertNotIn("Người dùng", html)
+
+            api_response = self.client.get("/api/dashboard/data")
+            payload = api_response.get_json()
+            self.assertNotIn("admin_summary", payload)
+            self.assertNotIn("recent_activities", payload)
+        finally:
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
+
     def test_topbar_exposes_command_palette_hint(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
