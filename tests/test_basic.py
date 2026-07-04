@@ -56,7 +56,7 @@ from core.auth.permissions import (
     is_owner,
     is_staff,
 )
-from core.activity_log_utils import sanitize_activity_log_value
+from core.activity_log_utils import sanitize_activity_log_value, get_activity_actor_display_name
 import core.csrf as csrf_module
 
 
@@ -1580,6 +1580,8 @@ class BasicTestCase(unittest.TestCase):
             self.assertIn(label, staff_sidebar)
             self.assertIn(label, owner_sidebar)
             self.assertIn(label, admin_sidebar)
+        self.assertLess(owner_sidebar.index("Người dùng"), owner_sidebar.index("Cài đặt"))
+        self.assertLess(admin_sidebar.index("Người dùng"), admin_sidebar.index("Cài đặt"))
 
     def test_admin_routes_are_blocked_for_staff_but_available_to_owner_and_admin(self):
         staff = self.create_user("route-staff", password="staff-pass", full_name="Route Staff", role="STAFF")
@@ -1669,6 +1671,54 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("api-123", sanitized)
         self.assertNotIn("password=abc123", sanitized)
         self.assertNotIn("token=xyz", sanitized)
+
+    def test_auth_activity_log_uses_actor_display_name(self):
+        owner = self.create_user("owner-log", password="owner-pass", full_name="Chủ Spa", role="OWNER")
+        self.assertEqual(get_activity_actor_display_name(owner), owner.username)
+
+        login_token = self.get_csrf_token("/login")
+        login_response = self.client.post(
+            "/login",
+            json={
+                "username": "owner-log",
+                "password": "owner-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        login_log = ActivityLog.query.filter_by(action="LOGIN", user_id=owner.id).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(login_log)
+        self.assertNotIn("Chủ Spa", login_log.description)
+        self.assertTrue(login_log.description.startswith("owner-log"))
+        self.assertIn("đăng nhập thành công", login_log.description)
+
+        self.login_as(owner)
+        AuthService.on_logout(owner)
+
+        logout_log = ActivityLog.query.filter_by(action="LOGOUT", user_id=owner.id).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(logout_log)
+        self.assertNotIn("Chủ Spa", logout_log.description)
+        self.assertIn("đăng xuất khỏi hệ thống", logout_log.description)
+
+        AuthService.on_profile_update_success(owner)
+        profile_log = ActivityLog.query.filter_by(action="PROFILE_UPDATE", user_id=owner.id).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(profile_log)
+        self.assertNotIn("Chủ Spa", profile_log.description)
+        self.assertIn("cập nhật thông tin tài khoản", profile_log.description)
+
+        regular_user = self.create_user("Truong", password="truong-pass", full_name="Văn Công Trường", role="ADMIN")
+        self.assertEqual(get_activity_actor_display_name(regular_user), "Văn Công Trường")
+        AuthService.on_login_success(regular_user)
+        regular_login_log = ActivityLog.query.filter_by(action="LOGIN", user_id=regular_user.id).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(regular_login_log)
+        self.assertNotIn("Chủ Spa", regular_login_log.description)
+        self.assertIn("Văn Công Trường", regular_login_log.description)
 
     def test_activity_log_service_write_log_sanitizes_details_and_supports_actor_filter(self):
         owner = AuthService.seed_owner_if_empty()

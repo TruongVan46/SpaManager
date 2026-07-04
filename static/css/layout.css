@@ -127,16 +127,22 @@ body {
 }
 
 
+.sidebar-bottom {
+    margin-top: auto;
+}
+
+.sidebar-bottom-menu {
+    margin-top: 20px;
+    border-top: 1px solid var(--spa-border-color);
+}
+
+
 /* ==========================================
    SIDEBAR FOOTER
 ========================================== */
 
 .sidebar-footer {
-    margin-top: auto;
-
     padding-top: 20px;
-
-    border-top: 1px solid var(--spa-border-color);
 
     text-align: center;
 

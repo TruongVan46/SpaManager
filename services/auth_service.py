@@ -17,7 +17,7 @@ from validators.profile_validator import ProfileValidator
 from utils.timezone_utils import utc_now
 from utils.media_storage import resolve_media_file_path
 from core.auth.permissions import can_manage_users
-from core.activity_log_utils import build_activity_log_entry
+from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
 
 # services/auth_service.py
 
@@ -71,12 +71,13 @@ class AuthService:
     def on_login_success(user):
         """Hook called when login succeeds."""
         try:
+            actor_display_name = get_activity_actor_display_name(user)
             app_logger.security(f"User login successful: {user.username} (ID: {user.id})", module="AUTHENTICATION")
             db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="LOGIN",
                 severity="SUCCESS",
-                description=f"Chủ Spa ({user.full_name}) đăng nhập thành công.",
+                description=f"{actor_display_name} đăng nhập thành công.",
                 user_id=user.id
             ))
             db.session.commit()
@@ -88,12 +89,13 @@ class AuthService:
     def on_logout(user):
         """Hook called when logout occurs."""
         try:
+            actor_display_name = get_activity_actor_display_name(user)
             app_logger.security(f"User logout: {user.username} (ID: {user.id})", module="AUTHENTICATION")
             db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="LOGOUT",
                 severity="INFO",
-                description=f"Chủ Spa ({user.full_name}) đăng xuất khỏi hệ thống.",
+                description=f"{actor_display_name} đăng xuất khỏi hệ thống.",
                 user_id=user.id
             ))
             db.session.commit()
@@ -266,12 +268,13 @@ class AuthService:
     def on_change_password_success(user):
         """Hook called when change password succeeds."""
         try:
+            actor_display_name = get_activity_actor_display_name(user)
             app_logger.security(f"Password changed successfully for user: {user.username} (ID: {user.id})", module="SECURITY")
             db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="CHANGE_PASSWORD",
                 severity="SUCCESS",
-                description="Đổi mật khẩu thành công.",
+                description=f"{actor_display_name} đổi mật khẩu thành công.",
                 user_id=user.id
             ))
             db.session.commit()
@@ -283,12 +286,13 @@ class AuthService:
     def on_change_password_failed(user, reason):
         """Hook called when change password fails."""
         try:
+            actor_display_name = get_activity_actor_display_name(user)
             app_logger.security(f"Password change failed for user: {user.username} (ID: {user.id}) - Reason: {reason}", module="SECURITY")
             db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="CHANGE_PASSWORD_FAILED",
                 severity="WARNING",
-                description=f"Đổi mật khẩu thất bại: {reason}",
+                description=f"{actor_display_name} đổi mật khẩu thất bại: {reason}",
                 user_id=user.id
             ))
             db.session.commit()
@@ -373,11 +377,12 @@ class AuthService:
     def on_profile_update_success(user):
         """Hook called when profile update succeeds."""
         try:
+            actor_display_name = get_activity_actor_display_name(user)
             db.session.add(build_activity_log_entry(
                 module="Auth",
                 action="PROFILE_UPDATE",
                 severity="SUCCESS",
-                description="Cập nhật thông tin tài khoản.",
+                description=f"{actor_display_name} cập nhật thông tin tài khoản.",
                 user_id=user.id
             ))
             db.session.commit()

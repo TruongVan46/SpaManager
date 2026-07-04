@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from core.auth.enums import UserRole, normalize_role_value
-from core.activity_log_utils import build_activity_log_entry
+from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
 from core.exceptions import ConflictException, NotFoundException, ValidationException
 from models.user import User
 from utils.timezone_utils import utc_now
@@ -174,13 +174,14 @@ class UserService:
         )
         user.set_password(password)
         db.session.add(user)
+        actor_display_name = get_activity_actor_display_name(actor)
 
         try:
             db.session.flush()
             UserService._log_user_action(
                 actor=actor,
                 action="CREATE_USER",
-                description=f"{actor.full_name} đã tạo tài khoản {user.username}.",
+                description=f"{actor_display_name} đã tạo tài khoản {user.username}.",
                 target_user=user,
             )
             db.session.commit()
@@ -226,12 +227,13 @@ class UserService:
         user.email = email
         user.role = role
         user.updated_at = utc_now()
+        actor_display_name = get_activity_actor_display_name(actor)
 
         try:
             UserService._log_user_action(
                 actor=actor,
                 action="UPDATE_USER",
-                description=f"{actor.full_name} đã cập nhật tài khoản {user.username}.",
+                description=f"{actor_display_name} đã cập nhật tài khoản {user.username}.",
                 target_user=user,
             )
             db.session.commit()
@@ -251,12 +253,13 @@ class UserService:
 
         user.set_password(new_password)
         user.updated_at = utc_now()
+        actor_display_name = get_activity_actor_display_name(actor)
 
         try:
             UserService._log_user_action(
                 actor=actor,
                 action="RESET_USER_PASSWORD",
-                description=f"{actor.full_name} đã đặt lại mật khẩu cho {user.username}.",
+                description=f"{actor_display_name} đã đặt lại mật khẩu cho {user.username}.",
                 target_user=user,
             )
             db.session.commit()
@@ -279,11 +282,12 @@ class UserService:
 
         user.is_active = desired_active
         user.updated_at = utc_now()
+        actor_display_name = get_activity_actor_display_name(actor)
         action = "ACTIVATE_USER" if desired_active else "DEACTIVATE_USER"
         description = (
-            f"{actor.full_name} đã kích hoạt tài khoản {user.username}."
+            f"{actor_display_name} đã kích hoạt tài khoản {user.username}."
             if desired_active
-            else f"{actor.full_name} đã vô hiệu hóa tài khoản {user.username}."
+            else f"{actor_display_name} đã vô hiệu hóa tài khoản {user.username}."
         )
 
         try:

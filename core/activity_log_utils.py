@@ -20,6 +20,12 @@ SENSITIVE_KEYS = {
     "api_key",
 }
 
+ROLE_DISPLAY_NAMES = {
+    "Chủ Spa",
+    "Quản trị",
+    "Nhân viên",
+}
+
 SENSITIVE_VALUE_PATTERN = re.compile(
     r"(?i)\b(" + "|".join(sorted(SENSITIVE_KEYS)) + r")\b\s*[:=]\s*([^,;\s}]+)"
 )
@@ -39,6 +45,22 @@ def normalize_activity_severity(severity):
         return "INFO"
     normalized = str(severity).strip()
     return normalized.upper() if normalized else "INFO"
+
+
+def get_activity_actor_display_name(user, default="Không xác định"):
+    if not user:
+        return default
+
+    username = (getattr(user, "username", None) or "").strip()
+    full_name = (getattr(user, "full_name", None) or "").strip()
+
+    if full_name and full_name not in ROLE_DISPLAY_NAMES:
+        return full_name
+    if username:
+        return username
+    if full_name:
+        return full_name
+    return default
 
 
 def sanitize_activity_log_value(value, max_length=2000):
