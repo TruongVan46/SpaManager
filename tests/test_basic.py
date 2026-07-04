@@ -1408,11 +1408,24 @@ class BasicTestCase(unittest.TestCase):
             query_string={"return_to": "//evil.com"},
             follow_redirects=False
         )
+        invoice_create_response = self.client.get(
+            "/invoices/create",
+            query_string={"customer_id": customer.id, "return_to": "https://evil.com"},
+        )
+        invoice_print_response = self.client.get(
+            f"/invoices/print/{invoice.id}",
+            query_string={"return_to": "//evil.com"},
+            follow_redirects=False
+        )
 
         self.assertEqual(appointment_response.status_code, 200)
         self.assertEqual(invoice_response.status_code, 200)
+        self.assertEqual(invoice_create_response.status_code, 200)
+        self.assertEqual(invoice_print_response.status_code, 200)
         self.assertIn('/appointments', appointment_response.get_data(as_text=True))
         self.assertIn('/invoices', invoice_response.get_data(as_text=True))
+        self.assertIn('href="/invoices"', invoice_create_response.get_data(as_text=True))
+        self.assertIn('href="/invoices"', invoice_print_response.get_data(as_text=True))
 
     def test_customer_detail_template_is_scoped_and_utf8_safe(self):
         template_paths = [
@@ -1447,6 +1460,72 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn(customer.name, appointment_html)
         self.assertIn(str(customer.id), invoice_html)
         self.assertIn(customer.name, invoice_html)
+
+    def test_invoice_payment_display_and_return_to_navigation_are_vietnamese(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Invoice Display Customer")
+        service = self.create_service_record("Invoice Display Service")
+
+        card_invoice = self.create_invoice_record(customer, service)
+        card_invoice.payment_method = "CARD"
+        paid_invoice = self.create_invoice_record(customer, service)
+        paid_invoice.payment_method = "PAID"
+        db.session.commit()
+
+        customer_detail_url = f"/customers/{customer.id}?appointment_page=2&invoice_page=3"
+
+        list_html = self.client.get("/invoices").get_data(as_text=True)
+        detail_html = self.client.get(
+            f"/invoices/{card_invoice.id}",
+            query_string={"return_to": customer_detail_url},
+        ).get_data(as_text=True)
+        print_html = self.client.get(
+            f"/invoices/print/{card_invoice.id}",
+            query_string={"return_to": customer_detail_url},
+        ).get_data(as_text=True)
+        customer_detail_html = self.client.get(f"/customers/{customer.id}").get_data(as_text=True)
+        create_html = self.client.get(
+            "/invoices/create",
+            query_string={"customer_id": customer.id, "return_to": customer_detail_url},
+        ).get_data(as_text=True)
+
+        token_match = re.search(r'name="csrf_token" value="([^"]+)"', create_html)
+        self.assertIsNotNone(token_match, "CSRF token not found in invoice create page")
+        token = token_match.group(1)
+        post_response = self.client.post(
+            "/invoices/create",
+            data={
+                "csrf_token": token,
+                "customer_id": customer.id,
+                "invoice_date": "2026-07-04",
+                "payment_method": "Cash",
+                "notes": "Invoice from customer detail",
+                "discount": 0,
+                "service_id[]": [service.id],
+                "quantity[]": [1],
+                "price[]": [100000],
+                "return_to": customer_detail_url,
+            },
+            follow_redirects=False
+        )
+
+        self.assertIn("Đang tạo hóa đơn cho:", create_html)
+        self.assertIn(customer.name, create_html)
+        self.assertIn(customer_detail_url.replace("&", "&amp;"), create_html)
+        self.assertIn("Tiền mặt", create_html)
+        self.assertIn("Thẻ", list_html)
+        self.assertIn("Đã thanh toán", list_html)
+        self.assertNotIn("CARD", list_html)
+        self.assertNotIn("PAID", list_html)
+        self.assertIn("Thẻ", detail_html)
+        self.assertIn("Thẻ", print_html)
+        self.assertIn(customer_detail_url, html_module.unescape(detail_html))
+        self.assertIn(customer_detail_url, html_module.unescape(print_html))
+        self.assertIn("Thẻ", customer_detail_html)
+        self.assertIn("Đã thanh toán", customer_detail_html)
+        self.assertEqual(post_response.status_code, 302)
+        self.assertIn(customer_detail_url, post_response.headers.get("Location", ""))
 
     def test_soft_delete_records_deleted_by_for_service_appointment_and_invoice(self):
         owner = AuthService.seed_owner_if_empty()

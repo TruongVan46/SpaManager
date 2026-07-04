@@ -122,9 +122,12 @@ class CustomerService:
             "card": "Thẻ",
             "transfer": "Chuyển khoản",
             "bank_transfer": "Chuyển khoản",
+            "momo": "MoMo",
+            "vnpay": "VNPay",
             "partial": "Thanh toán một phần",
             "paid": "Đã thanh toán",
             "unpaid": "Chưa thanh toán",
+            "refunded": "Đã hoàn tiền",
             "unknown": "Không rõ",
         }
         if not normalized or normalized == "none":

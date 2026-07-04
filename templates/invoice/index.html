@@ -101,10 +101,11 @@
                                 <label>Thanh toán</label>
                                 <select name="payment_method" class="app-form-select form-select">
                                     <option value="Tất cả" {% if not payment_method or payment_method == 'Tất cả' %}selected{% endif %}>Tất cả</option>
-                                    <option value="Tiền mặt" {% if payment_method == 'Tiền mặt' %}selected{% endif %}>Tiền mặt</option>
-                                    <option value="Chuyển khoản" {% if payment_method == 'Chuyển khoản' %}selected{% endif %}>Chuyển khoản</option>
-                                    <option value="Thẻ" {% if payment_method == 'Thẻ' %}selected{% endif %}>Thẻ</option>
-                                    <option value="Ví điện tử" {% if payment_method == 'Ví điện tử' %}selected{% endif %}>Ví điện tử</option>
+                                    <option value="Cash" {% if payment_method and payment_method|lower in ['cash', 'tiền mặt'] %}selected{% endif %}>Tiền mặt</option>
+                                    <option value="Transfer" {% if payment_method and payment_method|lower in ['transfer', 'bank_transfer', 'chuyển khoản'] %}selected{% endif %}>Chuyển khoản</option>
+                                    <option value="Card" {% if payment_method and payment_method|lower in ['card', 'thẻ'] %}selected{% endif %}>Thẻ</option>
+                                    <option value="MOMO" {% if payment_method and payment_method|lower in ['momo', 'ví điện tử'] %}selected{% endif %}>MoMo</option>
+                                    <option value="VNPAY" {% if payment_method and payment_method|lower in ['vnpay'] %}selected{% endif %}>VNPay</option>
                                 </select>
                             </div>
                             <div class="app-select-group">
@@ -180,14 +181,14 @@
                                 <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</td>
                                 <td class="text-end fw-bold">{{ "{:,.0f}".format(invoice.total_amount) }}đ</td>
                                 <td>
-                                    <span class="app-badge badge bg-info text-dark">{{ invoice.payment_method or 'N/A' }}</span>
+                                <span class="app-badge badge bg-info text-dark">{{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</span>
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id) }}" class="app-btn app-btn-primary btn btn-outline-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="Xem chi tiết">
+                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-primary btn btn-outline-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="Xem chi tiết">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id) }}" class="app-btn app-btn-secondary btn btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="In hóa đơn">
+                                        <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-secondary btn btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="In hóa đơn">
                                             <i class="bi bi-printer"></i>
                                         </a>
                                         <button type="button" class="app-btn app-btn-outline-danger btn btn-outline-danger" 

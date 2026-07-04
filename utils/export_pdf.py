@@ -51,6 +51,28 @@ def format_money(val):
         val = 0
     return f"{val:,.0f}".replace(",", ".") + " đ"
 
+
+def _payment_method_display_label(payment_method):
+    normalized = (payment_method or "").strip().lower()
+    labels = {
+        "cash": "Tiền mặt",
+        "card": "Thẻ",
+        "transfer": "Chuyển khoản",
+        "bank_transfer": "Chuyển khoản",
+        "momo": "MoMo",
+        "vnpay": "VNPay",
+        "paid": "Đã thanh toán",
+        "unpaid": "Chưa thanh toán",
+        "partial": "Thanh toán một phần",
+        "pending": "Chờ xử lý",
+        "cancelled": "Đã hủy",
+        "canceled": "Đã hủy",
+        "refunded": "Đã hoàn tiền",
+    }
+    if not normalized or normalized == "none":
+        return "Không rõ"
+    return labels.get(normalized, payment_method if payment_method else "Không rõ")
+
 def generate_invoice_pdf(invoices, summary, keyword=None, from_date=None, to_date=None, payment_method=None):
     buffer = io.BytesIO()
     
@@ -160,7 +182,7 @@ def generate_invoice_pdf(invoices, summary, keyword=None, from_date=None, to_dat
         filter_lines.append(f"<b>Đến ngày:</b> {to_date_str}")
         has_filters = True
     if payment_method and payment_method != "Tất cả":
-        filter_lines.append(f"<b>Phương thức thanh toán:</b> {payment_method}")
+        filter_lines.append(f"<b>Phương thức thanh toán:</b> {_payment_method_display_label(payment_method)}")
         has_filters = True
     if keyword:
         filter_lines.append(f"<b>Từ khóa:</b> {keyword}")
@@ -199,7 +221,7 @@ def generate_invoice_pdf(invoices, summary, keyword=None, from_date=None, to_dat
             Paragraph(date_str, cell_center),
             Paragraph(inv.customer.name if inv.customer else '', cell_style),
             Paragraph(format_money(inv.total_amount), cell_right),
-            Paragraph(inv.payment_method or 'N/A', cell_center)
+            Paragraph(getattr(inv, 'display_payment_method', None) or inv.payment_method or 'Không rõ', cell_center)
         ])
         
     # Column widths setup: STT (35), Mã HĐ (50), Ngày (75), Khách hàng (160), Tổng tiền (103.27), Thanh toán (100)

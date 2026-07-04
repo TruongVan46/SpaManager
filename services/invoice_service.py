@@ -17,24 +17,99 @@ from utils.timezone_utils import local_today, utc_now
 
 
 class InvoiceService:
+    PAYMENT_METHOD_LABELS = {
+        "cash": "Tiền mặt",
+        "card": "Thẻ",
+        "transfer": "Chuyển khoản",
+        "bank_transfer": "Chuyển khoản",
+        "momo": "MoMo",
+        "vnpay": "VNPay",
+        "paid": "Đã thanh toán",
+        "unpaid": "Chưa thanh toán",
+        "partial": "Thanh toán một phần",
+        "pending": "Chờ xử lý",
+        "cancelled": "Đã hủy",
+        "canceled": "Đã hủy",
+        "refunded": "Đã hoàn tiền",
+        "unknown": "Không rõ",
+    }
+    PAYMENT_METHOD_FILTER_ALIASES = {
+        "cash": {"cash", "tiền mặt"},
+        "card": {"card", "thẻ"},
+        "transfer": {"transfer", "bank_transfer", "chuyển khoản"},
+        "bank_transfer": {"transfer", "bank_transfer", "chuyển khoản"},
+        "momo": {"momo", "ví điện tử"},
+        "vnpay": {"vnpay", "ví điện tử"},
+        "paid": {"paid", "đã thanh toán"},
+        "unpaid": {"unpaid", "chưa thanh toán"},
+        "partial": {"partial", "thanh toán một phần"},
+        "pending": {"pending", "chờ xử lý"},
+        "cancelled": {"cancelled", "canceled", "đã hủy"},
+        "canceled": {"cancelled", "canceled", "đã hủy"},
+        "refunded": {"refunded", "đã hoàn tiền"},
+        "unknown": {"unknown", "không rõ"},
+    }
+
+    @staticmethod
+    def _normalize_payment_method(value):
+        normalized = (value or "").strip().lower()
+        if not normalized or normalized == "none":
+            return None
+        for canonical, aliases in InvoiceService.PAYMENT_METHOD_FILTER_ALIASES.items():
+            if normalized in aliases:
+                return canonical
+        return normalized
+
+    @staticmethod
+    def _payment_method_display_label(payment_method):
+        canonical = InvoiceService._normalize_payment_method(payment_method)
+        if not canonical:
+            return "Không rõ"
+        return InvoiceService.PAYMENT_METHOD_LABELS.get(canonical, payment_method if payment_method else "Không rõ")
+
+    @staticmethod
+    def _payment_method_filter_values(payment_method):
+        normalized = (payment_method or "").strip().lower()
+        if not normalized or normalized == "none":
+            return set()
+        for aliases in InvoiceService.PAYMENT_METHOD_FILTER_ALIASES.values():
+            if normalized in aliases:
+                return aliases
+        return {normalized}
+
+    @staticmethod
+    def _attach_display_fields(invoice_or_invoices):
+        if not invoice_or_invoices:
+            return invoice_or_invoices
+        if isinstance(invoice_or_invoices, list):
+            for invoice in invoice_or_invoices:
+                invoice.display_payment_method = InvoiceService._payment_method_display_label(invoice.payment_method)
+            return invoice_or_invoices
+        invoice_or_invoices.display_payment_method = InvoiceService._payment_method_display_label(invoice_or_invoices.payment_method)
+        return invoice_or_invoices
+
     @staticmethod
     def get_by_id(invoice_id):
         """Lấy hóa đơn hoạt động theo ID"""
-        return Invoice.query.filter(Invoice.id == invoice_id, Invoice.deleted_at.is_(None)).first()
+        invoice = Invoice.query.filter(Invoice.id == invoice_id, Invoice.deleted_at.is_(None)).first()
+        return InvoiceService._attach_display_fields(invoice)
 
     @staticmethod
     def get_all():
         """Lấy tất cả hóa đơn hoạt động"""
-        return Invoice.query.options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.asc()).all()
+        invoices = Invoice.query.options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.asc()).all()
+        return InvoiceService._attach_display_fields(invoices)
 
     @staticmethod
     def get_all_paginated(page, per_page=10):
         """Lấy danh sách hóa đơn hoạt động phân trang"""
-        return Invoice.query.options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.desc()).paginate(
+        pagination = Invoice.query.options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.desc()).paginate(
             page=page,
             per_page=per_page,
             error_out=False
         )
+        InvoiceService._attach_display_fields(pagination.items)
+        return pagination
 
     @staticmethod
     def _build_filtered_invoices_query(keyword=None, from_date=None, to_date=None, payment_method=None, sort_by=None, order=None):
@@ -64,7 +139,11 @@ class InvoiceService:
             
         # Apply payment method filter
         if payment_method and payment_method != "Tất cả":
-            query = query.filter(Invoice.payment_method == payment_method)
+            aliases = InvoiceService._payment_method_filter_values(payment_method)
+            if aliases:
+                query = query.filter(
+                    or_(*[func.lower(Invoice.payment_method) == alias for alias in aliases])
+                )
             
         # Apply keyword filters
         if keyword:
@@ -158,7 +237,11 @@ class InvoiceService:
             
         # Apply payment method filter
         if payment_method and payment_method != "Tất cả":
-            query = query.filter(Invoice.payment_method == payment_method)
+            aliases = InvoiceService._payment_method_filter_values(payment_method)
+            if aliases:
+                query = query.filter(
+                    or_(*[func.lower(Invoice.payment_method) == alias for alias in aliases])
+                )
             
         # Apply keyword filters
         if keyword:
@@ -213,7 +296,8 @@ class InvoiceService:
             sort_by=sort_by,
             order=order
         )
-        return query.all()
+        invoices = query.all()
+        return InvoiceService._attach_display_fields(invoices)
 
     @staticmethod
     def search_invoices(keyword, page=1, per_page=10, from_date=None, to_date=None, payment_method=None, sort_by=None, order=None):
@@ -225,11 +309,13 @@ class InvoiceService:
             sort_by=sort_by,
             order=order
         )
-        return query.paginate(
+        pagination = query.paginate(
             page=page,
             per_page=per_page,
             error_out=False
         )
+        InvoiceService._attach_display_fields(pagination.items)
+        return pagination
 
     @staticmethod
     def create_invoice(data):
@@ -313,6 +399,7 @@ class InvoiceService:
                 db.session.add(detail)
 
             db.session.commit()
+            InvoiceService._attach_display_fields(invoice)
             ActivityLogService.log_create(
                 module=ActivityLogService.MODULE_INVOICE,
                 description=f'Tạo hóa đơn HD{invoice.id:06d}',

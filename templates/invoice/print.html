@@ -228,7 +228,7 @@
 </head>
 <body>
     <div class="print-btn-container no-print">
-        <a href="{{ url_for('invoice.index') }}" class="btn-back" id="back-button"><i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại</a>
+        <a href="{{ back_url if back_url else url_for('invoice.index') }}" class="btn-back" id="back-button"><i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại</a>
         <button class="btn-print" onclick="window.print()"><i class="bi bi-printer" style="margin-right: 8px;"></i>In Hóa Đơn</button>
     </div>
 
@@ -260,6 +260,7 @@
             <div class="date-info text-right">
                 <h3>Hóa đơn:</h3>
                 <p><strong>Ngày lập:</strong> {{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</p>
+                <p><strong>Phương thức thanh toán:</strong> {{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</p>
                 <p><strong>Giờ in:</strong> <span id="print-time"></span></p>
             </div>
         </div>
@@ -336,12 +337,9 @@
             // window.print();
         };
 
-        // Smart referrer-based back button behavior
         const backBtn = document.getElementById('back-button');
-        if (backBtn && document.referrer && document.referrer.includes(window.location.host)) {
-            backBtn.href = document.referrer;
-        } else {
-            backBtn.href = "{{ url_for('invoice.index') }}";
+        if (backBtn) {
+            backBtn.href = "{{ back_url if back_url else url_for('invoice.index') }}";
         }
     </script>
 </body>

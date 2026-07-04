@@ -27,6 +27,15 @@ def _sanitize_return_to(return_to):
         return None
     return candidate
 
+
+def _build_invoice_create_url(customer_id=None, return_to=None):
+    params = {}
+    if customer_id:
+        params['customer_id'] = customer_id
+    if return_to:
+        params['return_to'] = return_to
+    return url_for('invoice.create', **params)
+
 @invoice_bp.route('/invoices')
 def index():
     q = request.args.get('q', '').strip()
@@ -71,6 +80,9 @@ def index():
 
 @invoice_bp.route('/invoices/create', methods=['GET', 'POST'])
 def create():
+    return_to = _sanitize_return_to(request.args.get('return_to') or request.form.get('return_to'))
+    back_url = return_to or url_for('invoice.index')
+
     if request.method == 'POST':
         customer_id = request.form.get('customer_id')
         invoice_date = request.form.get('invoice_date')
@@ -123,7 +135,7 @@ def create():
         if errors:
             for err in errors:
                 flash(err, "danger")
-            return redirect(url_for('invoice.create'))
+            return redirect(_build_invoice_create_url(customer_id, return_to))
 
         # Prepare data for service
         try:
@@ -142,10 +154,10 @@ def create():
             
             InvoiceService.create_invoice(data)
             flash("Tạo hóa đơn thành công.", "success")
-            return redirect(url_for("invoice.index"))
+            return redirect(return_to or url_for("invoice.index"))
         except Exception as e:
             flash(f"Lỗi khi tạo hóa đơn: {str(e)}", "danger")
-            return redirect(url_for('invoice.create'))
+            return redirect(_build_invoice_create_url(customer_id, return_to))
 
     customers = CustomerService.get_all()
     services = ServiceService.get_all_services()
@@ -161,6 +173,8 @@ def create():
         services=services,
         selected_customer_id=selected_customer_id,
         selected_customer_name=selected_customer_name,
+        return_to=return_to,
+        back_url=back_url,
     )
 
 @invoice_bp.route('/invoices/<int:invoice_id>')
@@ -181,7 +195,9 @@ def print_invoice(invoice_id):
         return redirect(url_for('invoice.index'))
     
     settings = {s.key: s.value for s in Setting.query.all()}
-    return render_template('invoice/print.html', invoice=invoice, settings=settings)
+    return_to = _sanitize_return_to(request.args.get('return_to') or request.args.get('return_url'))
+    back_url = return_to or url_for('invoice.index')
+    return render_template('invoice/print.html', invoice=invoice, settings=settings, back_url=back_url)
 
 @invoice_bp.route('/invoices/delete/<int:invoice_id>', methods=['POST'])
 def delete(invoice_id):

@@ -88,10 +88,10 @@
                                     <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</td>
                                     <td>{{ invoice.total_amount | format_currency }}</td>
                                     <td>
-                                        <span class="app-badge badge bg-info text-dark">{{ invoice.payment_method or 'N/A' }}</span>
+                                        <span class="app-badge badge bg-info text-dark">{{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</span>
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_url=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary">
+                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary">
                                             <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem chi tiết
                                         </a>
                                     </td>

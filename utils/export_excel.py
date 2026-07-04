@@ -91,7 +91,7 @@ def generate_invoice_excel(invoices, summary):
         c_disc.number_format = '#,##0" VND"'
         
         # Thanh toán
-        c_pay = ws.cell(row=current_row, column=8, value=inv.payment_method or 'N/A')
+        c_pay = ws.cell(row=current_row, column=8, value=getattr(inv, 'display_payment_method', None) or inv.payment_method or 'Không rõ')
         c_pay.alignment = align_center
         
         # Ghi chú
