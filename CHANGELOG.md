@@ -2,6 +2,33 @@
 
 SpaManager release notes.
 
+## [v5.3.0] - 2026-07-05
+
+### Added
+- Customer detail page with appointment and invoice history.
+- Appointment workflow polish for faster operator review.
+- Invoice and payment status polish for clearer staff workflows.
+- Statistics and reporting improvements across key dashboards.
+- Search/filter UX polish while preserving live filtering and highlight behavior.
+- Mobile and tablet workflow refinements for core business pages.
+
+### Changed
+- Customer detail pagination now preserves return links and AJAX partial refresh behavior.
+- Sidebar, settings, and topbar version labels continue to render from `APP_VERSION`.
+- Backup metadata now tracks the current application version.
+
+### Fixed
+- Customer history, appointment, invoice, statistics, and recycle bin UI regressions.
+- Vietnamese encoding issues in sidebar, backup center, and PDF exports.
+- Search and pagination layout regressions on statistics and shared tables.
+
+### Security / Stability
+- Preserved CSRF, role, and actor safety checks during recent workflow updates.
+- Kept backup and restore behavior compatible with persistent storage.
+
+### Tests
+- Expanded regression coverage for live search, workflow pages, PDF export, and backup metadata.
+
 ## [v5.2.0] - 2026-07-04
 
 ### Added

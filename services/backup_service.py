@@ -20,7 +20,10 @@ from utils.timezone_utils import get_app_timezone, local_now, to_local_datetime
 class BackupService:
     """Service for backing up the SQLite database and managing its metadata."""
 
-    APP_VERSION = '5.2.0'
+    @staticmethod
+    def get_app_version(app):
+        """Get the application version used for backup metadata."""
+        return app.config.get('APP_VERSION', '5.3.0')
 
     @staticmethod
     def get_db_path(app):
@@ -116,7 +119,8 @@ class BackupService:
 
         backup_dir = BackupService.get_backup_dir(app)
         timestamp = local_now().strftime('%Y-%m-%d_%H-%M-%S')
-        backup_filename = f"SpaManager_Backup_{timestamp}_v{BackupService.APP_VERSION}.sqlite"
+        app_version = BackupService.get_app_version(app)
+        backup_filename = f"SpaManager_Backup_{timestamp}_v{app_version}.sqlite"
         backup_filepath = os.path.join(backup_dir, backup_filename)
 
         try:
@@ -144,7 +148,7 @@ class BackupService:
                 'created_at': created_at.isoformat(),
                 'size': size,
                 'database_version': db_version,
-                'app_version': f"SpaManager v{BackupService.APP_VERSION}",
+                'app_version': f"SpaManager v{app_version}",
                 'notes': notes,
                 'type': backup_type,
                 'created_by': created_by,
@@ -220,7 +224,7 @@ class BackupService:
                     'created_at': dt_created.isoformat(),
                     'size': size,
                     'database_version': 'v1.0',
-                    'app_version': f"SpaManager v{BackupService.APP_VERSION}",
+                    'app_version': f"SpaManager v{BackupService.get_app_version(app)}",
                     'notes': 'Tự động đồng bộ từ đĩa cứng',
                     'type': 'Manual',
                     'created_by': None,

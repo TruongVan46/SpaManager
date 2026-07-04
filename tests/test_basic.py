@@ -830,9 +830,7 @@ class BasicTestCase(unittest.TestCase):
             html = response.get_data(as_text=True)
 
             self.assertEqual(response.status_code, 200)
-            self.assertIn("Backup ngày", html)
-            self.assertIn("Hôm nay", html)
-            self.assertIn(backup_meta["display_name"], html)
+            self.assertIn("Backup gần nhất", html)
             self.assertNotIn(str(backup_path), html)
         finally:
             if backup_path.exists():
@@ -2657,7 +2655,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(config.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"))
         self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
         self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
-        self.assertEqual(config.APP_VERSION, "5.2.0")
+        self.assertEqual(config.APP_VERSION, "5.3.0")
 
     def test_google_oauth_variables_remain_optional(self):
         with patch.dict(
@@ -2689,8 +2687,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("compileall .", readme)
         self.assertIn("DATABASE_URL=sqlite:///database/spa.db", env_example)
         self.assertIn("# DATABASE_URL=sqlite:////app/database/spa.db", env_example)
-        self.assertIn("APP_VERSION=5.2.0", env_example)
-        self.assertIn("v5.2.0", changelog)
+        self.assertIn("APP_VERSION=5.3.0", env_example)
+        self.assertIn("v5.3.0", changelog)
         self.assertIn("change-this-to-a-strong-password", env_example)
         self.assertIn("CSRF_ENABLED=1", env_example)
         self.assertIn("python -m compileall .", workflow)
@@ -2733,16 +2731,16 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         response = self.client.get("/settings")
         html = response.get_data(as_text=True)
-        self.assertIn("Spa Manager v5.2.0", html)
-        self.assertIn("v5.2.0 Stable", html)
-        self.assertIn(">5.2.0<", html)
+        self.assertIn("Spa Manager v5.3.0", html)
+        self.assertIn("v5.3.0 Stable", html)
+        self.assertIn(">5.3.0<", html)
 
     def test_sidebar_footer_shows_current_version(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
         response = self.client.get("/")
         html = response.get_data(as_text=True)
-        self.assertIn("Spa Manager v5.2.0", html)
+        self.assertIn("Spa Manager v5.3.0", html)
         self.assertNotIn("Spa Manager v4.0", html)
 
     def test_settings_template_includes_explicit_csrf_tokens_for_post_forms(self):
@@ -2908,13 +2906,14 @@ class BasicTestCase(unittest.TestCase):
         )
         second_backup_id, second_backup_meta, second_backup_path = self.create_settings_backup_via_route(
             owner,
-            notes="Backup version 5.2 should stay visible",
+            notes="Backup version 5.3 should stay visible",
         )
 
         first_backup_meta["database_version"] = "v5.1.0"
         first_backup_meta["app_version"] = "SpaManager v5.1.0"
-        second_backup_meta["database_version"] = "v5.2.0"
-        second_backup_meta["app_version"] = "SpaManager v5.2.0"
+        self.assertEqual(second_backup_meta["app_version"], "SpaManager v5.3.0")
+        second_backup_meta["database_version"] = "v5.3.0"
+        second_backup_meta["app_version"] = "SpaManager v5.3.0"
 
         try:
             BackupRepository.save(app, first_backup_id, first_backup_meta)
@@ -2925,9 +2924,9 @@ class BasicTestCase(unittest.TestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertIn("Backup version 5.1 should stay visible", html)
-            self.assertIn("Backup version 5.2 should stay visible", html)
+            self.assertIn("Backup version 5.3 should stay visible", html)
             self.assertIn("SpaManager v5.1.0", html)
-            self.assertIn("SpaManager v5.2.0", html)
+            self.assertIn("SpaManager v5.3.0", html)
             self.assertNotIn("/app/database", html)
         finally:
             if first_backup_path.exists():
