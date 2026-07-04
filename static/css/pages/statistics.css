@@ -25,6 +25,32 @@
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.statistics-table-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.statistics-table-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.statistics-table-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-left: auto;
+}
+
 .statistics-filter-top {
     display: flex;
     justify-content: space-between;
@@ -92,6 +118,7 @@
 .statistics-inline-search {
     min-width: 260px;
     max-width: 360px;
+    flex: 1 1 280px;
 }
 
 .statistics-chart-wrap {
@@ -106,6 +133,7 @@
 
 .statistics-page .stf-table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .statistics-page .app-table th,
@@ -144,6 +172,23 @@
 
     .statistics-range-shortcuts {
         width: 100%;
+    }
+
+    .statistics-table-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .statistics-table-controls {
+        width: 100%;
+        justify-content: stretch;
+        margin-left: 0;
+    }
+
+    .statistics-inline-search {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
 
     .statistics-filter-main {

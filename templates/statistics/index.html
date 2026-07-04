@@ -111,21 +111,23 @@
     </div>
 
     <div class="app-card statistics-table-card">
-        <div class="app-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="app-card-header statistics-table-header">
+            <div class="statistics-table-title-row">
                 <h5 class="app-card-header-title card-title m-0">
                     <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Thống kê chi tiêu khách hàng
                 </h5>
                 <div class="statistics-card-note">Top theo khoảng thời gian đã chọn</div>
+            </div>
+            <div class="statistics-table-controls">
                 <div class="app-search-box statistics-inline-search">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" id="cust_q" name="cust_q" class="app-form-control form-control form-control-sm" value="{{ cust_q or '' }}" placeholder="Tìm theo tên hoặc SĐT..." data-stf-search aria-label="Tìm theo tên hoặc SĐT khách hàng">
                     </div>
                 </div>
+                {%- from 'layout/table_macros.html' import col_vis_button %}
+                {{ col_vis_button('customer_stats') }}
             </div>
-            {%- from 'layout/table_macros.html' import col_vis_button %}
-            {{ col_vis_button('customer_stats') }}
         </div>
         <div class="app-card-body">
             {% if customer_statistics %}
@@ -198,21 +200,23 @@
     </div>
 
     <div class="app-card statistics-table-card">
-        <div class="app-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="app-card-header statistics-table-header">
+            <div class="statistics-table-title-row">
                 <h5 class="app-card-header-title card-title m-0">
                     <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Doanh thu theo dịch vụ
                 </h5>
                 <div class="statistics-card-note">Top theo khoảng thời gian đã chọn</div>
+            </div>
+            <div class="statistics-table-controls">
                 <div class="app-search-box statistics-inline-search">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" id="svc_q" name="svc_q" class="app-form-control form-control form-control-sm" value="{{ svc_q or '' }}" placeholder="Tìm theo tên dịch vụ..." data-stf-search aria-label="Tìm theo tên dịch vụ">
                     </div>
                 </div>
+                {%- from 'layout/table_macros.html' import col_vis_button %}
+                {{ col_vis_button('service_stats') }}
             </div>
-            {%- from 'layout/table_macros.html' import col_vis_button %}
-            {{ col_vis_button('service_stats') }}
         </div>
         <div class="app-card-body">
             {% if service_statistics %}
