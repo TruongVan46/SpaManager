@@ -16,6 +16,8 @@ from utils.timezone_utils import utc_now
 
 
 class CustomerService:
+    CUSTOMER_HISTORY_PAGE_SIZES = [10, 25, 50, 100]
+
     @staticmethod
     def get_all():
         """Lấy tất cả khách hàng hoạt động (chưa xóa mềm)"""
@@ -77,7 +79,60 @@ class CustomerService:
         return pagination
 
     @staticmethod
-    def get_customer_history(customer_id, appointment_page=1, invoice_page=1, per_page=10):
+    def _normalize_per_page(value, default=10):
+        try:
+            per_page = int(value)
+        except (TypeError, ValueError):
+            return default
+
+        if per_page <= 0:
+            return default
+
+        allowed_sizes = CustomerService.CUSTOMER_HISTORY_PAGE_SIZES
+        if per_page in allowed_sizes:
+            return per_page
+        if per_page > allowed_sizes[-1]:
+            return allowed_sizes[-1]
+        if per_page < allowed_sizes[0]:
+            return default
+        return min(allowed_sizes, key=lambda size: abs(size - per_page))
+
+    @staticmethod
+    def _status_display_label(status):
+        normalized = (status or "").strip().lower()
+        labels = {
+            "pending": "Chờ xử lý",
+            "confirmed": "Đã xác nhận",
+            "completed": "Hoàn thành",
+            "cancelled": "Đã hủy",
+            "canceled": "Đã hủy",
+            "no_show": "Không đến",
+            "noshow": "Không đến",
+            "unknown": "Không rõ",
+        }
+        if not normalized or normalized == "none":
+            return "Không rõ"
+        return labels.get(normalized, status if status else "Không rõ")
+
+    @staticmethod
+    def _payment_method_display_label(payment_method):
+        normalized = (payment_method or "").strip().lower()
+        labels = {
+            "cash": "Tiền mặt",
+            "card": "Thẻ",
+            "transfer": "Chuyển khoản",
+            "bank_transfer": "Chuyển khoản",
+            "partial": "Thanh toán một phần",
+            "paid": "Đã thanh toán",
+            "unpaid": "Chưa thanh toán",
+            "unknown": "Không rõ",
+        }
+        if not normalized or normalized == "none":
+            return "Không rõ"
+        return labels.get(normalized, payment_method if payment_method else "Không rõ")
+
+    @staticmethod
+    def get_customer_history(customer_id, appointment_page=1, invoice_page=1, appointment_per_page=10, invoice_per_page=10):
         customer = CustomerService.get_by_id(customer_id)
         if not customer:
             return None
@@ -113,9 +168,18 @@ class CustomerService:
             Invoice.deleted_at.is_(None)
         ).scalar() or 0
 
+        appointment_per_page = CustomerService._normalize_per_page(appointment_per_page)
+        invoice_per_page = CustomerService._normalize_per_page(invoice_per_page)
+
         latest_appointment = appointments_base_query.first()
-        appointment_history = CustomerService._paginate_query(appointments_base_query, appointment_page, per_page)
-        invoice_history = CustomerService._paginate_query(invoices_base_query, invoice_page, per_page)
+        appointment_history = CustomerService._paginate_query(appointments_base_query, appointment_page, appointment_per_page)
+        invoice_history = CustomerService._paginate_query(invoices_base_query, invoice_page, invoice_per_page)
+
+        for appointment in appointment_history.items:
+            appointment.display_status = CustomerService._status_display_label(appointment.status)
+
+        for invoice in invoice_history.items:
+            invoice.display_payment_method = CustomerService._payment_method_display_label(invoice.payment_method)
 
         return {
             "customer": customer,
@@ -125,6 +189,7 @@ class CustomerService:
                 "total_spent": total_spent,
                 "latest_appointment_at": latest_appointment.appointment_time if latest_appointment else None,
                 "latest_appointment_status": latest_appointment.status if latest_appointment else None,
+                "latest_appointment_status_label": CustomerService._status_display_label(latest_appointment.status) if latest_appointment else None,
                 "appointment_count": appointment_count,
                 "invoice_count": invoice_count,
             },
@@ -134,6 +199,7 @@ class CustomerService:
             "invoice_page": invoice_history.page,
             "appointment_per_page": appointment_history.per_page,
             "invoice_per_page": invoice_history.per_page,
+            "page_size_options": CustomerService.CUSTOMER_HISTORY_PAGE_SIZES,
         }
 
     @staticmethod

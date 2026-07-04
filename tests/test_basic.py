@@ -1069,12 +1069,14 @@ class BasicTestCase(unittest.TestCase):
             customer_id=customer.id,
             service_id=service.id,
             appointment_time=datetime(2026, 7, 4, 9, 30),
-            status="Confirmed",
+            status="CONFIRMED",
             notes="Ghi chú lịch hẹn"
         )
         db.session.add(appointment)
 
         invoice = self.create_invoice_record(customer, service)
+        invoice.payment_method = "CARD"
+        db.session.commit()
         other_appointment = Appointment(
             customer_id=other_customer.id,
             service_id=other_service.id,
@@ -1087,28 +1089,37 @@ class BasicTestCase(unittest.TestCase):
 
         response = self.client.get(f"/customers/{customer.id}")
         html = response.get_data(as_text=True)
+        normalized_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("History Customer", html)
         self.assertIn("History Service", html)
         self.assertIn("Ghi chú lịch hẹn", html)
         self.assertIn(f"HD{invoice.id}", html)
+        self.assertIn("Đã xác nhận", html)
+        self.assertIn("Thẻ", html)
         self.assertIn("/appointments/create?customer_id=", html)
         self.assertIn("/invoices/create?customer_id=", html)
         self.assertIn("history-action-btn", html)
         self.assertIn("invoice-history-actions", html)
-        self.assertIn("Trang 1 / 1", html)
-        self.assertIn("Phân trang lịch hẹn", html)
-        self.assertIn("Phân trang hóa đơn", html)
+        self.assertIn("Hiển thị 1 - 1 trong tổng số 1 lịch hẹn", normalized_html)
+        self.assertIn("Hiển thị 1 - 1 trong tổng số 1 hóa đơn", normalized_html)
+        self.assertIn("Mỗi trang", html)
+        self.assertIn("&laquo;&laquo;", html)
+        self.assertIn("&raquo;&raquo;", html)
         self.assertNotIn("Other History Customer", html)
         self.assertNotIn("Không nên xuất hiện", html)
+        self.assertNotIn("PENDING", html)
+        self.assertNotIn("CONFIRMED", html)
+        self.assertNotIn("CARD", html)
 
         invalid_response = self.client.get(f"/customers/{customer.id}?appointment_page=abc&invoice_page=-1")
         invalid_html = invalid_response.get_data(as_text=True)
+        normalized_invalid_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", invalid_html)).strip()
         self.assertEqual(invalid_response.status_code, 200)
-        self.assertIn("Trang 1 / 1", invalid_html)
-        self.assertIn("Phân trang lịch hẹn", invalid_html)
-        self.assertIn("Phân trang hóa đơn", invalid_html)
+        self.assertIn("Hiển thị 1 - 1 trong tổng số 1 lịch hẹn", normalized_invalid_html)
+        self.assertIn("Hiển thị 1 - 1 trong tổng số 1 hóa đơn", normalized_invalid_html)
+        self.assertIn("Mỗi trang", invalid_html)
 
     def test_customer_detail_paginates_appointments_and_invoices_independently(self):
         owner = AuthService.seed_owner_if_empty()
@@ -1153,9 +1164,18 @@ class BasicTestCase(unittest.TestCase):
         db.session.commit()
 
         page1_html = self.client.get(f"/customers/{customer.id}").get_data(as_text=True)
-        page2_html = self.client.get(f"/customers/{customer.id}?appointment_page=2").get_data(as_text=True)
-        invoice_page2_html = self.client.get(f"/customers/{customer.id}?invoice_page=2").get_data(as_text=True)
-        mixed_html = self.client.get(f"/customers/{customer.id}?appointment_page=2&invoice_page=2").get_data(as_text=True)
+        page2_html = self.client.get(
+            f"/customers/{customer.id}?appointment_page=2&appointment_per_page=10&invoice_page=1&invoice_per_page=10"
+        ).get_data(as_text=True)
+        invoice_page2_html = self.client.get(
+            f"/customers/{customer.id}?appointment_page=1&appointment_per_page=10&invoice_page=2&invoice_per_page=10"
+        ).get_data(as_text=True)
+        mixed_html = self.client.get(
+            f"/customers/{customer.id}?appointment_page=2&appointment_per_page=10&invoice_page=2&invoice_per_page=10"
+        ).get_data(as_text=True)
+        mixed_page_size_html = self.client.get(
+            f"/customers/{customer.id}?appointment_page=1&appointment_per_page=25&invoice_page=2&invoice_per_page=10"
+        ).get_data(as_text=True)
 
         self.assertIn("Appointment 11", page1_html)
         self.assertIn("Appointment 1", page2_html)
@@ -1163,10 +1183,20 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Invoice 1", invoice_page2_html)
         self.assertNotIn("Invoice 11", invoice_page2_html)
         self.assertIn("appointment_page=2", html_module.unescape(mixed_html))
+        self.assertIn("appointment_per_page=10", html_module.unescape(mixed_html))
         self.assertIn("invoice_page=2", html_module.unescape(mixed_html))
+        self.assertIn("invoice_per_page=10", html_module.unescape(mixed_html))
         self.assertIn("#appointment-history", html_module.unescape(mixed_html))
         self.assertIn("#invoice-history", html_module.unescape(mixed_html))
-        self.assertIn("Trang 2 / 2", mixed_html)
+        normalized_mixed_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", mixed_html)).strip()
+        self.assertIn("Hiển thị 11 - 11 trong tổng số 11 lịch hẹn", normalized_mixed_html)
+        self.assertIn("Hiển thị 11 - 11 trong tổng số 11 hóa đơn", normalized_mixed_html)
+        self.assertIn("appointment_per_page=25", html_module.unescape(mixed_page_size_html))
+        self.assertIn("invoice_per_page=10", html_module.unescape(mixed_page_size_html))
+        normalized_page_size_html = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", mixed_page_size_html)).strip()
+        self.assertIn("Hiển thị 1 - 11 trong tổng số 11 lịch hẹn", normalized_page_size_html)
+        self.assertIn("Hiển thị 11 - 11 trong tổng số 11 hóa đơn", normalized_page_size_html)
+        self.assertIn("Mỗi trang", mixed_html)
         self.assertIn("Tổng lịch hẹn", mixed_html)
         self.assertIn("Tổng hóa đơn", mixed_html)
         self.assertIn("Lịch sử lịch hẹn", mixed_html)

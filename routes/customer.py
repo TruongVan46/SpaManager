@@ -68,11 +68,15 @@ def create():
 @customer_bp.route('/customers/<int:id>')
 def detail(id):
     appointment_page = request.args.get('appointment_page', 1)
+    appointment_per_page = request.args.get('appointment_per_page', 10)
     invoice_page = request.args.get('invoice_page', 1)
+    invoice_per_page = request.args.get('invoice_per_page', 10)
     detail_data = CustomerService.get_customer_history(
         id,
         appointment_page=appointment_page,
         invoice_page=invoice_page,
+        appointment_per_page=appointment_per_page,
+        invoice_per_page=invoice_per_page,
     )
     if not detail_data:
         raise NotFoundException("Không tìm thấy khách hàng!")
