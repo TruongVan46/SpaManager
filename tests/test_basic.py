@@ -1202,6 +1202,108 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Tổng hóa đơn", mixed_html)
         self.assertIn("Lịch sử lịch hẹn", mixed_html)
 
+    def test_customer_detail_ajax_partials_keep_history_state(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("AJAX Detail Customer")
+        service = self.create_service_record("AJAX Detail Service")
+
+        for index in range(11):
+            appointment = Appointment(
+                customer_id=customer.id,
+                service_id=service.id,
+                appointment_time=datetime(2026, 7, 4, 8, 0) + timedelta(days=index),
+                status="Confirmed",
+                notes=f"AJAX Appointment {index + 1}"
+            )
+            db.session.add(appointment)
+
+        for index in range(11):
+            invoice = Invoice(
+                customer_id=customer.id,
+                invoice_date=datetime(2026, 7, 4).date(),
+                subtotal=200000 + index,
+                discount=0,
+                total_amount=200000 + index,
+                payment_method="Cash",
+                notes=f"AJAX Invoice {index + 1}"
+            )
+            db.session.add(invoice)
+            db.session.flush()
+            db.session.add(
+                InvoiceDetail(
+                    invoice_id=invoice.id,
+                    service_id=service.id,
+                    price=200000 + index,
+                    quantity=1
+                )
+            )
+        db.session.commit()
+
+        appointment_response = self.client.get(
+            f"/customers/{customer.id}",
+            query_string={
+                "appointment_page": 2,
+                "appointment_per_page": 10,
+                "invoice_page": 1,
+                "invoice_per_page": 10,
+                "partial": "appointments",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        appointment_payload = appointment_response.get_json()
+
+        self.assertEqual(appointment_response.status_code, 200)
+        self.assertTrue(appointment_payload["success"])
+        self.assertEqual(appointment_payload["partial"], "appointments")
+        self.assertIn('id="appointment-history"', appointment_payload["html"])
+        self.assertNotIn('id="invoice-history"', appointment_payload["html"])
+        self.assertIn("AJAX Appointment 1", appointment_payload["html"])
+        self.assertIn(
+            f"return_to=/customers/{customer.id}?appointment_page%3D2%26appointment_per_page%3D10%26invoice_page%3D1%26invoice_per_page%3D10",
+            appointment_payload["html"]
+        )
+        self.assertNotIn("partial=", appointment_payload["url"])
+
+        invoice_response = self.client.get(
+            f"/customers/{customer.id}",
+            query_string={
+                "appointment_page": 1,
+                "appointment_per_page": 10,
+                "invoice_page": 2,
+                "invoice_per_page": 10,
+                "partial": "invoices",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        invoice_payload = invoice_response.get_json()
+
+        self.assertEqual(invoice_response.status_code, 200)
+        self.assertTrue(invoice_payload["success"])
+        self.assertEqual(invoice_payload["partial"], "invoices")
+        self.assertIn('id="invoice-history"', invoice_payload["html"])
+        self.assertNotIn('id="appointment-history"', invoice_payload["html"])
+        self.assertIn("AJAX Invoice 1", invoice_payload["html"])
+        self.assertIn(
+            f"return_to=/customers/{customer.id}?appointment_page%3D1%26appointment_per_page%3D10%26invoice_page%3D2%26invoice_per_page%3D10",
+            invoice_payload["html"]
+        )
+
+    def test_customer_detail_ajax_controls_and_js_prevent_full_reload(self):
+        template = Path("templates/customer/detail.html").read_text(encoding="utf-8")
+        script = Path("static/js/customer-detail.js").read_text(encoding="utf-8")
+
+        self.assertIn("customer-detail.js", template)
+        self.assertIn('name="appointment_per_page"', template)
+        self.assertIn('name="invoice_per_page"', template)
+        self.assertNotIn('onchange="this.form.submit()"', template)
+        self.assertIn("customer_detail_url", template)
+        self.assertIn("set(config.pageParam, '1')", script)
+        self.assertIn("set(config.perPageParam, select.value)", script)
+        self.assertIn("partial", script)
+        self.assertIn("replaceState", script)
+        self.assertNotIn("this.form.submit()", script)
+
     def test_customer_detail_hides_soft_deleted_history(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
@@ -1313,14 +1415,25 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('/invoices', invoice_response.get_data(as_text=True))
 
     def test_customer_detail_template_is_scoped_and_utf8_safe(self):
-        template = Path("templates/customer/detail.html").read_text(encoding="utf-8")
+        template_paths = [
+            Path("templates/customer/detail.html"),
+            Path("templates/customer/_appointment_history.html"),
+            Path("templates/customer/_invoice_history.html"),
+        ]
 
-        self.assertIn("customer-detail-page", template)
-        self.assertIn("Chi tiết Khách hàng", template)
-        self.assertIn("Lịch sử lịch hẹn", template)
-        self.assertIn("Hóa đơn liên quan", template)
-        for marker in ("Ã", "á»", "áº", "Æ", "Ä", "Â"):
-            self.assertNotIn(marker, template)
+        for template_path in template_paths:
+            template = template_path.read_text(encoding="utf-8")
+            for marker in ("Ã", "á»", "áº", "Æ", "Ä", "Â"):
+                self.assertNotIn(marker, template)
+
+        full_template = template_paths[0].read_text(encoding="utf-8")
+        appointment_partial = template_paths[1].read_text(encoding="utf-8")
+        invoice_partial = template_paths[2].read_text(encoding="utf-8")
+
+        self.assertIn("customer-detail-page", full_template)
+        self.assertIn("Chi tiết Khách hàng", full_template)
+        self.assertIn("Lịch sử lịch hẹn", appointment_partial)
+        self.assertIn("Hóa đơn liên quan", invoice_partial)
 
     def test_customer_detail_quick_actions_prefill_related_creates(self):
         owner = AuthService.seed_owner_if_empty()

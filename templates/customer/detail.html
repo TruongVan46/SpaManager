@@ -184,7 +184,7 @@
                                     <td class="text-wrap">{{ appointment.notes or 'Không có' }}</td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-2">
-                                            <a href="{{ url_for('appointment.detail', id=appointment.id, return_to=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary history-action-btn">
+                            <a href="{{ url_for('appointment.detail', id=appointment.id, return_to=customer_detail_url) }}" class="app-btn app-btn-sm app-btn-primary history-action-btn">
                                                 <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
                                             </a>
                                             <a href="{{ url_for('appointment.edit', id=appointment.id) }}" class="app-btn app-btn-sm app-btn-secondary btn btn-outline-secondary history-action-btn">
@@ -213,11 +213,14 @@
                             <input type="hidden" name="invoice_per_page" value="{{ invoice_history.per_page }}">
                             <span class="stf-per-page">
                                 Mỗi trang:
-                                <select class="form-select form-select-sm page-size-select" name="appointment_per_page" onchange="this.form.submit()">
+                                <select class="form-select form-select-sm page-size-select" name="appointment_per_page">
                                     {% for size in page_size_options %}
                                     <option value="{{ size }}"{% if appointment_history.per_page == size %} selected{% endif %}>{{ size }}</option>
                                     {% endfor %}
                                 </select>
+                                <noscript>
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary ms-2">Áp dụng</button>
+                                </noscript>
                             </span>
                         </form>
                         <nav aria-label="Phân trang lịch hẹn" class="stf-pagination-wrap">
@@ -296,7 +299,7 @@
                                     <td class="text-wrap">{{ invoice.notes or 'Không có' }}</td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-2 invoice-history-actions">
-                                            <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary history-action-btn">
+                                            <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=customer_detail_url) }}" class="app-btn app-btn-sm app-btn-primary history-action-btn">
                                                 <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
                                             </a>
                                             <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id) }}" class="app-btn app-btn-sm app-btn-secondary btn btn-outline-secondary history-action-btn">
@@ -325,11 +328,14 @@
                             <input type="hidden" name="invoice_page" value="{{ invoice_history.page }}">
                             <span class="stf-per-page">
                                 Mỗi trang:
-                                <select class="form-select form-select-sm page-size-select" name="invoice_per_page" onchange="this.form.submit()">
+                                <select class="form-select form-select-sm page-size-select" name="invoice_per_page">
                                     {% for size in page_size_options %}
                                     <option value="{{ size }}"{% if invoice_history.per_page == size %} selected{% endif %}>{{ size }}</option>
                                     {% endfor %}
                                 </select>
+                                <noscript>
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary ms-2">Áp dụng</button>
+                                </noscript>
                             </span>
                         </form>
                         <nav aria-label="Phân trang hóa đơn" class="stf-pagination-wrap">
@@ -371,4 +377,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/customer-detail.js') }}?v={{ asset_version('static/js/customer-detail.js') }}"></script>
 {% endblock %}

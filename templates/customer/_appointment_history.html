@@ -1,0 +1,114 @@
+<div class="col-12" id="appointment-history">
+    <div class="app-card">
+        <div class="app-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-calendar-check" style="font-size: 18px; margin-right: 8px;"></i>Lịch sử lịch hẹn
+            </h5>
+        </div>
+        <div class="app-card-body">
+            {% set appointment_total_pages = appointment_history.pages if appointment_history.pages else 1 %}
+            {% set appointment_start = 0 if appointment_history.total == 0 else ((appointment_history.page - 1) * appointment_history.per_page + 1) %}
+            {% set appointment_end = 0 if appointment_history.total == 0 else [appointment_history.page * appointment_history.per_page, appointment_history.total] | min %}
+            {% if appointment_history.items %}
+            <div class="table-responsive app-table-container">
+                <table class="app-table table table-hover align-middle">
+                    <thead class="app-table-header">
+                        <tr>
+                            <th scope="col" style="width: 70px;">STT</th>
+                            <th scope="col">Ngày giờ</th>
+                            <th scope="col">Dịch vụ</th>
+                            <th scope="col">Trạng thái</th>
+                            <th scope="col">Ghi chú</th>
+                            <th scope="col" style="width: 180px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in appointment_history.items %}
+                        <tr>
+                            <td>{{ loop.index + ((appointment_history.page - 1) * appointment_history.per_page) }}</td>
+                            <td>{{ appointment.appointment_time.strftime('%d/%m/%Y %H:%M') if appointment.appointment_time else 'Không rõ' }}</td>
+                            <td>
+                                <div class="fw-semibold">{{ appointment.service.name if appointment.service else 'Không có' }}</div>
+                            </td>
+                            <td>
+                                <span class="app-badge badge bg-info text-dark">{{ appointment.display_status or appointment.status or 'Không rõ' }}</span>
+                            </td>
+                            <td class="text-wrap">{{ appointment.notes or 'Không có' }}</td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a href="{{ url_for('appointment.detail', id=appointment.id, return_to=customer_detail_url) }}" class="app-btn app-btn-sm app-btn-primary history-action-btn">
+                                        <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
+                                    </a>
+                                    <a href="{{ url_for('appointment.edit', id=appointment.id) }}" class="app-btn app-btn-sm app-btn-secondary btn btn-outline-secondary history-action-btn">
+                                        <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Sửa
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <div class="fs-1 mb-2"><i class="bi bi-calendar-x"></i></div>
+                <div>Chưa có lịch hẹn nào.</div>
+            </div>
+            {% endif %}
+            <div class="stf-footer customer-history-footer">
+                <span class="stf-info-text">
+                    Hiển thị <strong>{{ appointment_start }}</strong>-<strong>{{ appointment_end }}</strong> trong tổng số <strong>{{ appointment_history.total }}</strong> lịch hẹn
+                </span>
+                <form method="get" action="{{ url_for('customer.detail', id=customer.id) }}" class="customer-history-page-size-form">
+                    <input type="hidden" name="appointment_page" value="{{ appointment_history.page }}">
+                    <input type="hidden" name="invoice_page" value="{{ invoice_history.page }}">
+                    <input type="hidden" name="invoice_per_page" value="{{ invoice_history.per_page }}">
+                    <span class="stf-per-page">
+                        Mỗi trang:
+                        <select class="form-select form-select-sm page-size-select" name="appointment_per_page">
+                            {% for size in page_size_options %}
+                            <option value="{{ size }}"{% if appointment_history.per_page == size %} selected{% endif %}>{{ size }}</option>
+                            {% endfor %}
+                        </select>
+                        <noscript>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary ms-2">Áp dụng</button>
+                        </noscript>
+                    </span>
+                </form>
+                <nav aria-label="Phân trang lịch hẹn" class="stf-pagination-wrap">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item {{ 'disabled' if not appointment_history.has_prev else '' }}">
+                            <a class="page-link" href="{{ url_for('customer.detail', id=customer.id, **dict(appointment_page=1, appointment_per_page=appointment_history.per_page, invoice_page=invoice_history.page, invoice_per_page=invoice_history.per_page, _anchor='appointment-history')) if appointment_history.has_prev else '#' }}">&laquo;&laquo;</a>
+                        </li>
+                        <li class="page-item {{ 'disabled' if not appointment_history.has_prev else '' }}">
+                            <a class="page-link" href="{{ url_for('customer.detail', id=customer.id, **dict(appointment_page=appointment_history.prev_num, appointment_per_page=appointment_history.per_page, invoice_page=invoice_history.page, invoice_per_page=invoice_history.per_page, _anchor='appointment-history')) if appointment_history.has_prev else '#' }}">&laquo; Trước</a>
+                        </li>
+                        {% if appointment_total_pages > 1 %}
+                            {% for page_num in appointment_history.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                <li class="page-item {{ 'active' if page_num == appointment_history.page else '' }}">
+                                    {% if page_num == appointment_history.page %}
+                                    <span class="page-link">{{ page_num }}</span>
+                                    {% else %}
+                                    <a class="page-link" href="{{ url_for('customer.detail', id=customer.id, **dict(appointment_page=page_num, appointment_per_page=appointment_history.per_page, invoice_page=invoice_history.page, invoice_per_page=invoice_history.per_page, _anchor='appointment-history')) }}">{{ page_num }}</a>
+                                    {% endif %}
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                        <li class="page-item active" aria-current="page"><span class="page-link">1</span></li>
+                        {% endif %}
+                        <li class="page-item {{ 'disabled' if not appointment_history.has_next else '' }}">
+                            <a class="page-link" href="{{ url_for('customer.detail', id=customer.id, **dict(appointment_page=appointment_history.next_num, appointment_per_page=appointment_history.per_page, invoice_page=invoice_history.page, invoice_per_page=invoice_history.per_page, _anchor='appointment-history')) if appointment_history.has_next else '#' }}">Sau &raquo;</a>
+                        </li>
+                        <li class="page-item {{ 'disabled' if not appointment_history.has_next else '' }}">
+                            <a class="page-link" href="{{ url_for('customer.detail', id=customer.id, **dict(appointment_page=appointment_total_pages, appointment_per_page=appointment_history.per_page, invoice_page=invoice_history.page, invoice_per_page=invoice_history.per_page, _anchor='appointment-history')) if appointment_history.has_next else '#' }}">&raquo;&raquo;</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>

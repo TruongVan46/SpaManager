@@ -6,6 +6,23 @@ from utils.pagination import get_pagination_params
 from core.exceptions import BusinessException, NotFoundException
 from services.notification_service import NotificationService
 
+CUSTOMER_DETAIL_PARTIAL_TEMPLATES = {
+    'appointments': 'customer/_appointment_history.html',
+    'invoices': 'customer/_invoice_history.html',
+}
+
+
+def _build_customer_detail_url(customer_id, appointment_page, appointment_per_page, invoice_page, invoice_per_page):
+    return url_for(
+        'customer.detail',
+        id=customer_id,
+        appointment_page=appointment_page,
+        appointment_per_page=appointment_per_page,
+        invoice_page=invoice_page,
+        invoice_per_page=invoice_per_page,
+    )
+
+
 @customer_bp.route('/customers')
 def index():
     query = request.args.get('q', '')
@@ -80,6 +97,24 @@ def detail(id):
     )
     if not detail_data:
         raise NotFoundException("Không tìm thấy khách hàng!")
+    detail_data['customer_detail_url'] = _build_customer_detail_url(
+        id,
+        detail_data['appointment_page'],
+        detail_data['appointment_per_page'],
+        detail_data['invoice_page'],
+        detail_data['invoice_per_page'],
+    )
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        partial = request.args.get('partial')
+        if partial in CUSTOMER_DETAIL_PARTIAL_TEMPLATES:
+            return jsonify({
+                'success': True,
+                'partial': partial,
+                'html': render_template(CUSTOMER_DETAIL_PARTIAL_TEMPLATES[partial], **detail_data),
+                'url': detail_data['customer_detail_url'],
+            })
+        if partial is not None:
+            return jsonify({'success': False, 'message': 'Partial không hợp lệ.'}), 400
     return render_template('customer/detail.html', **detail_data)
 
 @customer_bp.route('/customers/<int:id>/edit', methods=['GET', 'POST'])
