@@ -1,4 +1,5 @@
 import math
+import re
 
 from sqlalchemy import func
 
@@ -61,6 +62,74 @@ class CustomerService:
     def get_by_id(customer_id):
         """Lấy chi tiết một khách hàng hoạt động theo ID"""
         return Customer.query.filter(Customer.id == customer_id, Customer.deleted_at.is_(None)).first()
+
+    @staticmethod
+    def _normalize_phone(phone):
+        if phone is None:
+            return None
+        cleaned = re.sub(r"\s+", "", str(phone)).strip()
+        return cleaned or None
+
+    @staticmethod
+    def _normalize_email(email):
+        if email is None:
+            return None
+        cleaned = str(email).strip().lower()
+        return cleaned or None
+
+    @staticmethod
+    def normalize_customer_phone(phone):
+        return CustomerService._normalize_phone(phone)
+
+    @staticmethod
+    def normalize_customer_email(email):
+        return CustomerService._normalize_email(email)
+
+    @staticmethod
+    def _load_duplicate_candidates(include_deleted=True):
+        query = Customer.query
+        if not include_deleted:
+            query = query.filter(Customer.deleted_at.is_(None))
+        return query.all()
+
+    @staticmethod
+    def find_duplicate_conflicts(phone=None, email=None, exclude_customer_id=None, include_deleted=True, customer_records=None):
+        normalized_phone = CustomerService._normalize_phone(phone)
+        normalized_email = CustomerService._normalize_email(email)
+        conflicts = {"phone": [], "email": []}
+        if not normalized_phone and not normalized_email:
+            return conflicts
+
+        candidates = customer_records if customer_records is not None else CustomerService._load_duplicate_candidates(include_deleted=include_deleted)
+        for customer in candidates:
+            if exclude_customer_id is not None and customer.id == exclude_customer_id:
+                continue
+            if normalized_phone and CustomerService._normalize_phone(customer.phone) == normalized_phone:
+                conflicts["phone"].append(customer)
+            if normalized_email and CustomerService._normalize_email(customer.email) == normalized_email:
+                conflicts["email"].append(customer)
+        return conflicts
+
+    @staticmethod
+    def _build_duplicate_messages(conflicts):
+        messages = []
+        if conflicts["phone"]:
+            active_conflicts = [customer for customer in conflicts["phone"] if getattr(customer, "deleted_at", None) is None]
+            deleted_conflicts = [customer for customer in conflicts["phone"] if getattr(customer, "deleted_at", None) is not None]
+            if active_conflicts:
+                messages.append("Số điện thoại đã tồn tại ở khách hàng khác.")
+            if deleted_conflicts:
+                messages.append("Số điện thoại đã tồn tại ở khách hàng trong thùng rác. Vui lòng khôi phục hoặc kiểm tra lại.")
+
+        if conflicts["email"]:
+            active_conflicts = [customer for customer in conflicts["email"] if getattr(customer, "deleted_at", None) is None]
+            deleted_conflicts = [customer for customer in conflicts["email"] if getattr(customer, "deleted_at", None) is not None]
+            if active_conflicts:
+                messages.append("Email đã tồn tại ở khách hàng khác.")
+            if deleted_conflicts:
+                messages.append("Email đã tồn tại ở khách hàng trong thùng rác. Vui lòng khôi phục hoặc kiểm tra lại.")
+
+        return messages
 
     @staticmethod
     def _coerce_page(value, default=1):
@@ -209,50 +278,46 @@ class CustomerService:
     def clean_phone(phone):
         if not phone:
             return None
-        # Loại bỏ khoảng trắng và ký tự phân cách
-        cleaned = ''.join(c for c in phone if c.isdigit())
+        cleaned = CustomerService._normalize_phone(phone)
         return cleaned if cleaned else None
 
     @staticmethod
     def clean_email(email):
         if not email:
             return None
-        # Loại bỏ khoảng trắng và chuyển thành chữ thường
-        cleaned = email.strip().lower()
+        cleaned = CustomerService._normalize_email(email)
         return cleaned if cleaned else None
 
     @staticmethod
-    def check_duplicate(phone=None, email=None, exclude_customer_id=None):
+    def check_duplicate(phone=None, email=None, exclude_customer_id=None, include_deleted=True, customer_records=None):
         """
-        Kiểm tra trùng số điện thoại và email trong số các khách hàng hoạt động.
-        Loại trừ customer có ID bằng exclude_customer_id (khi update).
-        Trả về dictionary chứa kết quả kiểm tra.
+        Ki?m tra tr?ng s? ?i?n tho?i v? email trong s? c?c kh?ch h?ng.
+        Lo?i tr? customer c? ID b?ng exclude_customer_id (khi update).
+        Tr? v? dictionary ch?a k?t qu? ki?m tra.
         """
+        conflicts = CustomerService.find_duplicate_conflicts(
+            phone=phone,
+            email=email,
+            exclude_customer_id=exclude_customer_id,
+            include_deleted=include_deleted,
+            customer_records=customer_records,
+        )
         errors = {}
-        
-        cleaned_phone = CustomerService.clean_phone(phone)
-        cleaned_email = CustomerService.clean_email(email)
-        
-        if cleaned_phone:
-            query = db.session.query(Customer.id).filter(
-                Customer.phone == cleaned_phone,
-                Customer.deleted_at.is_(None)
-            )
-            if exclude_customer_id:
-                query = query.filter(Customer.id != exclude_customer_id)
-            if query.count() > 0:
-                errors['phone'] = 'Số điện thoại này đã tồn tại trong hệ thống.'
-                
-        if cleaned_email:
-            query = db.session.query(Customer.id).filter(
-                Customer.email == cleaned_email,
-                Customer.deleted_at.is_(None)
-            )
-            if exclude_customer_id:
-                query = query.filter(Customer.id != exclude_customer_id)
-            if query.count() > 0:
-                errors['email'] = 'Email này đã được sử dụng.'
-                
+        if conflicts["phone"]:
+            has_active_phone = any(getattr(customer, "deleted_at", None) is None for customer in conflicts["phone"])
+            has_deleted_phone = any(getattr(customer, "deleted_at", None) is not None for customer in conflicts["phone"])
+            if has_active_phone:
+                errors["phone"] = "Số điện thoại đã tồn tại ở khách hàng khác."
+            elif has_deleted_phone:
+                errors["phone"] = "Số điện thoại đã tồn tại ở khách hàng trong thùng rác. Vui lòng khôi phục hoặc kiểm tra lại."
+
+        if conflicts["email"]:
+            has_active_email = any(getattr(customer, "deleted_at", None) is None for customer in conflicts["email"])
+            has_deleted_email = any(getattr(customer, "deleted_at", None) is not None for customer in conflicts["email"])
+            if has_active_email:
+                errors["email"] = "Email đã tồn tại ở khách hàng khác."
+            elif has_deleted_email:
+                errors["email"] = "Email đã tồn tại ở khách hàng trong thùng rác. Vui lòng khôi phục hoặc kiểm tra lại."
         return errors
 
     @staticmethod
@@ -267,7 +332,7 @@ class CustomerService:
         cleaned_phone = CustomerService.clean_phone(phone)
         cleaned_email = CustomerService.clean_email(email)
         
-        errors = CustomerService.check_duplicate(phone=cleaned_phone, email=cleaned_email)
+        errors = CustomerService.check_duplicate(phone=cleaned_phone, email=cleaned_email, include_deleted=True)
         if errors:
             raise ConflictException(", ".join(errors.values()))
             
@@ -305,7 +370,12 @@ class CustomerService:
         cleaned_phone = CustomerService.clean_phone(phone)
         cleaned_email = CustomerService.clean_email(email)
         
-        errors = CustomerService.check_duplicate(phone=cleaned_phone, email=cleaned_email, exclude_customer_id=customer_id)
+        errors = CustomerService.check_duplicate(
+            phone=cleaned_phone,
+            email=cleaned_email,
+            exclude_customer_id=customer_id,
+            include_deleted=True,
+        )
         if errors:
             raise ConflictException(", ".join(errors.values()))
             
@@ -345,14 +415,14 @@ class CustomerService:
 
     @staticmethod
     def delete(customer_id, actor=None):
-        """Xóa mềm khách hàng và chuyển vào thùng rác"""
+        """X?a m?m kh?ch h?ng v? chuy?n v?o th?ng r?c"""
         customer = Customer.query.get(customer_id)
         if not customer or customer.deleted_at is not None:
-            raise NotFoundException("Không tìm thấy khách hàng hoặc khách hàng đã bị xóa.")
+            raise NotFoundException("Kh?ng t?m th?y kh?ch h?ng ho?c kh?ch h?ng ?? b? x?a.")
 
         status = CustomerService.can_delete(customer_id)
         if not status["can_delete"]:
-            raise ConflictException("Không thể xóa khách hàng này vì đã phát sinh lịch hẹn hoặc hóa đơn liên quan.")
+            raise ConflictException("Kh?ng th? x?a kh?ch h?ng n?y v? ?? ph?t sinh l?ch h?n ho?c h?a ??n li?n quan.")
         try:
             actor_name = actor
             if actor_name is None or not str(actor_name).strip():
@@ -364,11 +434,11 @@ class CustomerService:
             ActivityLogService.write_log(
                 module=ActivityLogService.MODULE_CUSTOMER,
                 action=ActivityLogService.ACTION_DELETE,
-                description=f'{actor_name} chuyển khách hàng "{name}" vào Thùng rác',
+                description=f'{actor_name} chuy?n kh?ch h?ng "{name}" v?o Th?ng r?c',
                 reference_id=customer_id,
                 session_override=db.session,
                 commit=False,
-                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                user_id_override=current_user.id if current_user and actor_name != "H? th?ng" else None
             )
             db.session.commit()
         except Exception:
@@ -381,26 +451,35 @@ class CustomerService:
 
     @staticmethod
     def restore(customer_id, actor=None):
-        """Khôi phục khách hàng từ thùng rác"""
+        """Kh?i ph?c kh?ch h?ng t? th?ng r?c"""
         customer = Customer.query.get(customer_id)
         if not customer or customer.deleted_at is None:
-            raise NotFoundException("Không tìm thấy khách hàng trong Thùng rác.")
+            raise NotFoundException("Kh?ng t?m th?y kh?ch h?ng trong Th?ng r?c.")
 
         try:
             actor_name = actor
             if actor_name is None or not str(actor_name).strip():
                 actor_name = AuthService.require_current_username()
             current_user = AuthService.get_current_user()
+            conflicts = CustomerService.find_duplicate_conflicts(
+                phone=customer.phone,
+                email=customer.email,
+                exclude_customer_id=customer_id,
+                include_deleted=False,
+            )
+            messages = CustomerService._build_duplicate_messages(conflicts)
+            if messages:
+                raise ConflictException(", ".join(messages))
             customer.deleted_at = None
             customer.deleted_by = None
             ActivityLogService.write_log(
                 module=ActivityLogService.MODULE_CUSTOMER,
                 action=ActivityLogService.ACTION_UPDATE,
-                description=f'{actor_name} khôi phục khách hàng "{customer.name}" từ Thùng rác',
+                description=f'{actor_name} kh?i ph?c kh?ch h?ng "{customer.name}" t? Th?ng r?c',
                 reference_id=customer_id,
                 session_override=db.session,
                 commit=False,
-                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
+                user_id_override=current_user.id if current_user and actor_name != "H? th?ng" else None
             )
             db.session.commit()
         except Exception:

@@ -14,6 +14,7 @@ from models.service import Service
 from core.logger import app_logger
 from validators.import_validator import ImportValidator
 from services.backup_service import BackupService
+from services.customer_service import CustomerService
 from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import local_now
 
@@ -217,17 +218,11 @@ class ImportService:
             })
 
         # Preload database records to check duplicates efficiently
-        existing_phones = {}
-        existing_emails = {}
         existing_service_names = {}
+        customer_records = []
 
         if import_type == 'customers':
-            customers = Customer.query.filter(Customer.deleted_at.is_(None)).all()
-            for c in customers:
-                if c.phone:
-                    existing_phones[str(c.phone).strip()] = c.name
-                if c.email:
-                    existing_emails[str(c.email).strip().lower()] = c.name
+            customer_records = Customer.query.all()
         else:
             services = Service.query.filter(Service.deleted_at.is_(None)).all()
             for s in services:
@@ -252,48 +247,84 @@ class ImportService:
 
                 # Validate
                 if not name:
-                    row_errors.append('Họ tên không được để trống')
+                    row_errors.append('H? t?n kh?ng ???c ?? tr?ng')
+
+                normalized_phone = CustomerService.normalize_customer_phone(phone)
+                normalized_email = CustomerService.normalize_customer_email(email)
 
                 if phone:
                     if not ImportService._is_valid_phone(phone):
-                        row_errors.append('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
-                    else:
-                        phone = ''.join(c for c in phone if c.isdigit()) # use cleaned phone
-                        # Check DB duplicates
-                        if phone in existing_phones:
+                        row_errors.append('S? ?i?n tho?i ph?i g?m ??ng 10 ch? s? v? b?t ??u b?ng s? 0')
+                    elif normalized_phone:
+                        phone_conflicts = CustomerService.find_duplicate_conflicts(
+                            phone=normalized_phone,
+                            email=None,
+                            include_deleted=True,
+                            customer_records=customer_records,
+                        )
+                        if phone_conflicts['phone']:
                             is_duplicate = True
-                            dup_reasons.append(f'Số điện thoại trùng với khách hàng "{existing_phones[phone]}"')
-                        # Check batch duplicates
-                        if phone in seen_phones:
+                            dup_reasons.extend(CustomerService._build_duplicate_messages(phone_conflicts))
+                        if normalized_phone in seen_phones:
                             is_duplicate = True
-                            dup_reasons.append(f'Số điện thoại trùng với dòng {seen_phones[phone]}')
+                            dup_reasons.append(f'S? ?i?n tho?i tr?ng v?i d?ng {seen_phones[normalized_phone]}')
                         else:
-                            seen_phones[phone] = idx
-                
+                            seen_phones[normalized_phone] = idx
+
                 if email:
                     if not ImportService._is_valid_email(email):
-                        row_errors.append('Email không đúng định dạng')
-                    else:
-                        email_lower = email.lower()
-                        # Check DB duplicates
-                        if email_lower in existing_emails:
+                        row_errors.append('Email kh?ng ??ng ??nh d?ng')
+                    elif normalized_email:
+                        email_conflicts = CustomerService.find_duplicate_conflicts(
+                            phone=None,
+                            email=normalized_email,
+                            include_deleted=True,
+                            customer_records=customer_records,
+                        )
+                        if email_conflicts['email']:
                             is_duplicate = True
-                            dup_reasons.append(f'Email trùng với khách hàng "{existing_emails[email_lower]}"')
-                        # Check batch duplicates
-                        if email_lower in seen_emails:
+                            dup_reasons.extend(CustomerService._build_duplicate_messages(email_conflicts))
+                        if normalized_email in seen_emails:
                             is_duplicate = True
-                            dup_reasons.append(f'Email trùng với dòng {seen_emails[email_lower]}')
+                            dup_reasons.append(f'Email tr?ng v?i d?ng {seen_emails[normalized_email]}')
                         else:
-                            seen_emails[email_lower] = idx
+                            seen_emails[normalized_email] = idx
+
+                duplicate_conflicts = {
+                    'phone': [
+                        {
+                            'id': customer.id,
+                            'deleted_at': customer.deleted_at is not None,
+                        }
+                        for customer in CustomerService.find_duplicate_conflicts(
+                            phone=normalized_phone,
+                            email=None,
+                            include_deleted=True,
+                            customer_records=customer_records,
+                        )['phone']
+                    ] if normalized_phone else [],
+                    'email': [
+                        {
+                            'id': customer.id,
+                            'deleted_at': customer.deleted_at is not None,
+                        }
+                        for customer in CustomerService.find_duplicate_conflicts(
+                            phone=None,
+                            email=normalized_email,
+                            include_deleted=True,
+                            customer_records=customer_records,
+                        )['email']
+                    ] if normalized_email else [],
+                }
 
                 validation_results.append({
                     'row_index': idx,
                     'data': {'name': name, 'phone': phone, 'email': email, 'address': address},
                     'errors': row_errors,
                     'is_duplicate': is_duplicate,
-                    'duplicate_reason': '; '.join(dup_reasons)
+                    'duplicate_reason': '; '.join(dup_reasons),
+                    'duplicate_conflicts': duplicate_conflicts,
                 })
-
             else:  # services
                 name = str(row[0]).strip() if row[0] is not None else ''
                 price_raw = row[1]
@@ -441,20 +472,29 @@ class ImportService:
                     phone = row_data['phone'] if row_data['phone'] else None
                     email = row_data['email'] if row_data['email'] else None
                     address = row_data['address'] if row_data['address'] else None
+                    normalized_phone = CustomerService.normalize_customer_phone(phone)
+                    normalized_email = CustomerService.normalize_customer_email(email)
+                    duplicate_conflicts = row_data.get('duplicate_conflicts') or {'phone': [], 'email': []}
+                    has_active_duplicate = any(not conflict.get('deleted_at') for conflict in duplicate_conflicts.get('phone', [])) or any(not conflict.get('deleted_at') for conflict in duplicate_conflicts.get('email', []))
+                    has_deleted_duplicate = any(conflict.get('deleted_at') for conflict in duplicate_conflicts.get('phone', [])) or any(conflict.get('deleted_at') for conflict in duplicate_conflicts.get('email', []))
 
                     if is_dup:
                         if duplicate_action == 'skip' or duplicate_action == 'insert_only':
                             report['skipped'] += 1
-                            report['errors'].append({'row': row_idx, 'message': f'Bỏ qua dòng do trùng thông tin (SĐT: {phone}, Email: {email})'})
+                            report['errors'].append({'row': row_idx, 'message': f'B? qua d?ng do tr?ng th?ng tin (S?T: {phone}, Email: {email})'})
                             continue
                         elif duplicate_action == 'overwrite':
-                            # Find the existing active customer by phone or email
                             existing = None
-                            if phone:
-                                existing = Customer.query.filter(Customer.phone == phone, Customer.deleted_at.is_(None)).first()
-                            if not existing and email:
-                                existing = Customer.query.filter(Customer.email == email, Customer.deleted_at.is_(None)).first()
-
+                            if has_active_duplicate:
+                                active_conflict_ids = [
+                                    conflict.get('id')
+                                    for conflict in duplicate_conflicts.get('phone', []) + duplicate_conflicts.get('email', [])
+                                    if not conflict.get('deleted_at')
+                                ]
+                                for conflict_id in active_conflict_ids:
+                                    existing = Customer.query.get(conflict_id)
+                                    if existing and existing.deleted_at is None:
+                                        break
                             if existing:
                                 existing.name = name
                                 if phone:
@@ -464,6 +504,9 @@ class ImportService:
                                 if address:
                                     existing.address = address
                                 report['overwritten'] += 1
+                            elif has_deleted_duplicate:
+                                report['skipped'] += 1
+                                report['errors'].append({'row': row_idx, 'message': f'B? qua d?ng do tr?ng v?i kh?ch h?ng trong th?ng r?c (S?T: {phone}, Email: {email})'})
                             else:
                                 customer = Customer(name=name, phone=phone, email=email, address=address)
                                 db.session.add(customer)
@@ -473,7 +516,6 @@ class ImportService:
                         customer = Customer(name=name, phone=phone, email=email, address=address)
                         db.session.add(customer)
                         report['success'] += 1
-
                 else:  # services
                     name = row_data['name']
                     price = float(row_data['price']) if row_data['price'] is not None else 0.0
