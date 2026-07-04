@@ -3,6 +3,8 @@ import shutil
 import tempfile
 import unittest
 import re
+import base64
+import zlib
 import json
 import html as html_module
 import uuid
@@ -65,6 +67,7 @@ from core.auth.permissions import (
 )
 from core.activity_log_utils import sanitize_activity_log_value, get_activity_actor_display_name
 import core.csrf as csrf_module
+import utils.export_pdf as export_pdf_utils
 
 
 class BasicTestCase(unittest.TestCase):
@@ -202,7 +205,7 @@ class BasicTestCase(unittest.TestCase):
             },
             headers={"X-Requested-With": "XMLHttpRequest"},
         )
-        self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+        self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertTrue(payload["success"])
         backup_id = payload["download_url"].rsplit("/", 1)[-1]
@@ -3300,6 +3303,190 @@ class BasicTestCase(unittest.TestCase):
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
         self.assertIn("0001_baseline", current_after.output)
+
+    def extract_pdf_text(self, pdf_bytes):
+        font_cmaps = {}
+        font_resources = {}
+
+        for obj_match in re.finditer(rb'(\d+)\s+0\s+obj(.*?)endobj', pdf_bytes, re.S):
+            obj_num = int(obj_match.group(1))
+            body = obj_match.group(2)
+            if b'/Subtype /Type0' not in body and b'/Subtype /TrueType' not in body:
+                continue
+
+            name_match = re.search(rb'/Name\s*/([^\s/]+)', body)
+            to_unicode_match = re.search(rb'/ToUnicode\s+(\d+)\s+0\s+R', body)
+            if not name_match or not to_unicode_match:
+                continue
+
+            font_name = name_match.group(1).decode('latin1')
+            cmap_obj_num = int(to_unicode_match.group(1))
+            font_resources[font_name] = cmap_obj_num
+
+        for cmap_match in re.finditer(rb'(\d+)\s+0\s+obj(.*?)endobj', pdf_bytes, re.S):
+            obj_num = int(cmap_match.group(1))
+            body = cmap_match.group(2)
+            if obj_num not in font_resources.values():
+                continue
+            stream_match = re.search(rb'stream\r?\n(.*?)endstream', body, re.S)
+            if not stream_match:
+                continue
+            decoded = zlib.decompress(stream_match.group(1).strip(b'\r\n'))
+            cmap = {}
+            for line in decoded.splitlines():
+                line = line.strip()
+                entry = re.match(rb'<([0-9A-Fa-f]+)>\s+<([0-9A-Fa-f]+)>', line)
+                if not entry:
+                    continue
+                source_code = int(entry.group(1), 16)
+                target_code = int(entry.group(2), 16)
+                if target_code == 0:
+                    continue
+                cmap[source_code] = chr(target_code)
+            font_cmaps[obj_num] = cmap
+
+        extracted_parts = []
+        for stream_match in re.finditer(rb'(\d+)\s+0\s+obj(.*?)endobj', pdf_bytes, re.S):
+            body = stream_match.group(2)
+            if b'stream' not in body:
+                continue
+            stream_match = re.search(rb'stream\r?\n(.*?)endstream', body, re.S)
+            if not stream_match:
+                continue
+            stream_data = stream_match.group(1).strip(b'\r\n')
+            try:
+                decoded_stream = zlib.decompress(base64.a85decode(stream_data, adobe=True))
+            except Exception:
+                try:
+                    decoded_stream = zlib.decompress(base64.a85decode(stream_data, adobe=False))
+                except Exception:
+                    try:
+                        decoded_stream = zlib.decompress(stream_data)
+                    except Exception:
+                        continue
+
+            if b'BT' not in decoded_stream or b'Tj' not in decoded_stream:
+                continue
+
+            current_font = None
+            pos = 0
+            while pos < len(decoded_stream):
+                font_match = re.search(rb'/([A-Za-z0-9\+]+)\s+\d+(?:\.\d+)?\s+Tf', decoded_stream[pos:])
+                text_match = re.search(rb'\((?:\\.|[^()])*\)\s+Tj', decoded_stream[pos:])
+
+                next_pos = len(decoded_stream)
+                next_kind = None
+                if font_match:
+                    next_pos = pos + font_match.start()
+                    next_kind = "font"
+                if text_match and pos + text_match.start() < next_pos:
+                    next_pos = pos + text_match.start()
+                    next_kind = "text"
+
+                if next_kind is None:
+                    break
+
+                if next_kind == "font":
+                    current_font = font_match.group(1).decode('latin1')
+                    pos = pos + font_match.end()
+                    continue
+
+                literal = text_match.group(0)
+                literal_text = literal[1:literal.rfind(b')')]
+                literal_bytes = bytearray()
+                idx = 0
+                while idx < len(literal_text):
+                    char = literal_text[idx:idx+1]
+                    if char == b'\\':
+                        idx += 1
+                        if idx >= len(literal_text):
+                            break
+                        escaped = literal_text[idx:idx+1]
+                        if escaped in {b'\\', b'(', b')'}:
+                            literal_bytes.extend(escaped)
+                            idx += 1
+                            continue
+                        if escaped in {b'n', b'r', b't', b'b', b'f'}:
+                            translation = {b'n': b'\n', b'r': b'\r', b't': b'\t', b'b': b'\b', b'f': b'\f'}[escaped]
+                            literal_bytes.extend(translation)
+                            idx += 1
+                            continue
+                        octal = literal_text[idx:idx+3]
+                        if re.fullmatch(rb'[0-7]{1,3}', octal):
+                            literal_bytes.append(int(octal, 8))
+                            idx += len(octal)
+                            continue
+                        literal_bytes.extend(escaped)
+                        idx += 1
+                        continue
+                    literal_bytes.extend(char)
+                    idx += 1
+
+                if current_font:
+                    cmap_obj_num = font_resources.get(current_font)
+                    cmap = font_cmaps.get(cmap_obj_num, {})
+                    extracted_parts.append(''.join(cmap.get(byte, chr(byte)) for byte in literal_bytes))
+                pos = pos + text_match.end()
+
+        return '\n'.join(extracted_parts)
+
+    def test_pdf_font_helper_falls_back_without_crash(self):
+        export_pdf_utils.reset_pdf_font_config_cache()
+        missing_regular = Path(tempfile.gettempdir()) / f"missing-regular-{uuid.uuid4().hex}.ttf"
+        missing_bold = Path(tempfile.gettempdir()) / f"missing-bold-{uuid.uuid4().hex}.ttf"
+
+        with patch.object(export_pdf_utils, "_candidate_font_pairs", return_value=[(missing_regular, missing_bold)]):
+            font_config = export_pdf_utils.get_pdf_font_config()
+
+        self.assertTrue(font_config.fallback)
+        self.assertEqual(font_config.regular, "Helvetica")
+        self.assertEqual(font_config.bold, "Helvetica-Bold")
+        export_pdf_utils.reset_pdf_font_config_cache()
+
+    def test_pdf_export_source_has_no_hardcoded_windows_font_path(self):
+        source = Path(export_pdf_utils.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("C:/Windows/Fonts", source)
+        self.assertNotIn("C:\\Windows\\Fonts", source)
+
+    def test_invoice_pdf_export_contains_vietnamese_text(self):
+        owner = self.create_user("pdf-invoice-owner", password="owner-pass", full_name="PDF Invoice Owner", role="OWNER")
+        self.login_as(owner)
+        customer = self.create_customer_record(name="Khách hàng Trường")
+        service = self.create_service_record(name="Dịch vụ Chăm sóc")
+        invoice = self.create_invoice_record(customer=customer, service=service)
+        invoice.display_payment_method = "Tiền mặt"
+
+        response = self.client.get("/invoices/export/pdf", follow_redirects=False)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/pdf")
+
+        pdf_text = self.extract_pdf_text(response.data)
+        self.assertIn("DANH SÁCH HÓA ĐƠN", pdf_text)
+        self.assertIn("ĐIỀU KIỆN LỌC", pdf_text)
+        self.assertIn("DANH SÁCH CHI TIẾT", pdf_text)
+        self.assertIn("TỔNG CỘNG", pdf_text)
+        self.assertIn("Khách hàng Trường", pdf_text)
+        self.assertIn("Tiền mặt", pdf_text)
+
+    def test_statistics_pdf_export_contains_vietnamese_text(self):
+        owner = self.create_user("pdf-stat-owner", password="owner-pass", full_name="PDF Stat Owner", role="OWNER")
+        self.login_as(owner)
+        customer = self.create_customer_record(name="Khách hàng Thống kê")
+        service = self.create_service_record(name="Dịch vụ Massage")
+        invoice = self.create_invoice_record(customer=customer, service=service)
+        invoice.display_payment_method = "Tiền mặt"
+
+        response = self.client.get("/statistics/export/pdf", follow_redirects=False)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/pdf")
+
+        pdf_text = self.extract_pdf_text(response.data)
+        self.assertIn("BÁO CÁO THỐNG KÊ SPA", pdf_text)
+        self.assertIn("THÔNG TIN TỔNG QUAN", pdf_text)
+        self.assertIn("THỐNG KÊ KHÁCH HÀNG", pdf_text)
+        self.assertIn("THỐNG KÊ DỊCH VỤ", pdf_text)
+        self.assertIn("Khách hàng Thống kê", pdf_text)
+        self.assertIn("Dịch vụ Massage", pdf_text)
 
 
 if __name__ == "__main__":

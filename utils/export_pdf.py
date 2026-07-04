@@ -1,5 +1,9 @@
 import io
+import logging
+import os
 from datetime import datetime
+from dataclasses import dataclass
+from pathlib import Path
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -9,13 +13,178 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from utils.timezone_utils import local_now
 
-# Register Unicode Calibri Font from Windows Fonts
-try:
-    pdfmetrics.registerFont(TTFont('Calibri', 'C:/Windows/Fonts/calibri.ttf'))
-    pdfmetrics.registerFont(TTFont('Calibri-Bold', 'C:/Windows/Fonts/calibrib.ttf'))
-except Exception:
-    # Fallback to standard Helvetica if Calibri is not found, though Calibri is guaranteed on this Windows machine
-    pass
+logger = logging.getLogger(__name__)
+
+PDF_FONT_REGULAR = "SpaUnicode"
+PDF_FONT_BOLD = "SpaUnicode-Bold"
+PDF_FALLBACK_REGULAR = "Helvetica"
+PDF_FALLBACK_BOLD = "Helvetica-Bold"
+
+_PDF_FONT_CONFIG = None
+
+
+@dataclass(frozen=True)
+class PdfFontConfig:
+    regular: str
+    bold: str
+    regular_path: str | None = None
+    bold_path: str | None = None
+    fallback: bool = False
+
+
+def _candidate_font_pairs():
+    font_pairs = []
+
+    windows_root = os.environ.get("WINDIR") or os.environ.get("SystemRoot")
+    if windows_root:
+        fonts_dir = Path(windows_root) / "Fonts"
+        font_pairs.extend([
+            (fonts_dir / "calibri.ttf", fonts_dir / "calibrib.ttf"),
+            (fonts_dir / "arial.ttf", fonts_dir / "arialbd.ttf"),
+            (fonts_dir / "segoeui.ttf", fonts_dir / "segoeuib.ttf"),
+        ])
+
+    font_pairs.extend([
+        (Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"), Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")),
+        (Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"), Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf")),
+        (Path("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"), Path("/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf")),
+        (Path("/usr/share/fonts/truetype/freefont/FreeSans.ttf"), Path("/usr/share/fonts/truetype/freefont/FreeSansBold.ttf")),
+    ])
+
+    return font_pairs
+
+
+def _ensure_registered_font(font_name, font_path):
+    try:
+        pdfmetrics.getFont(font_name)
+        return
+    except Exception:
+        pass
+
+    pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+
+
+def get_pdf_font_config():
+    global _PDF_FONT_CONFIG
+    if _PDF_FONT_CONFIG is not None:
+        return _PDF_FONT_CONFIG
+
+    for regular_path, bold_path in _candidate_font_pairs():
+        if not regular_path.exists() or not bold_path.exists():
+            continue
+
+        try:
+            _ensure_registered_font(PDF_FONT_REGULAR, regular_path)
+            _ensure_registered_font(PDF_FONT_BOLD, bold_path)
+            _PDF_FONT_CONFIG = PdfFontConfig(
+                regular=PDF_FONT_REGULAR,
+                bold=PDF_FONT_BOLD,
+                regular_path=str(regular_path),
+                bold_path=str(bold_path),
+                fallback=False,
+            )
+            return _PDF_FONT_CONFIG
+        except Exception as exc:
+            logger.warning(
+                "Không đăng ký được font PDF từ %s / %s: %s",
+                regular_path,
+                bold_path,
+                exc,
+            )
+
+    logger.warning(
+        "Không tìm thấy font Unicode phù hợp cho PDF export; dùng %s/%s làm fallback.",
+        PDF_FALLBACK_REGULAR,
+        PDF_FALLBACK_BOLD,
+    )
+    _PDF_FONT_CONFIG = PdfFontConfig(
+        regular=PDF_FALLBACK_REGULAR,
+        bold=PDF_FALLBACK_BOLD,
+        fallback=True,
+    )
+    return _PDF_FONT_CONFIG
+
+
+def reset_pdf_font_config_cache():
+    global _PDF_FONT_CONFIG
+    _PDF_FONT_CONFIG = None
+
+
+def _build_pdf_styles():
+    font_config = get_pdf_font_config()
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'PDFTitle',
+        parent=styles['Normal'],
+        fontName=font_config.bold,
+        fontSize=18,
+        leading=22,
+        alignment=1,
+        spaceAfter=15
+    )
+
+    meta_style = ParagraphStyle(
+        'PDFMeta',
+        parent=styles['Normal'],
+        fontName=font_config.regular,
+        fontSize=10,
+        leading=14,
+        spaceAfter=4
+    )
+
+    heading2_style = ParagraphStyle(
+        'PDFHeading2',
+        parent=styles['Normal'],
+        fontName=font_config.bold,
+        fontSize=13,
+        leading=16,
+        spaceBefore=14,
+        spaceAfter=8
+    )
+
+    cell_style = ParagraphStyle(
+        'TableCell',
+        parent=styles['Normal'],
+        fontName=font_config.regular,
+        fontSize=9,
+        leading=12
+    )
+
+    cell_center = ParagraphStyle(
+        'TableCellCenter',
+        parent=cell_style,
+        alignment=1
+    )
+
+    cell_right = ParagraphStyle(
+        'TableCellRight',
+        parent=cell_style,
+        alignment=2
+    )
+
+    cell_bold = ParagraphStyle(
+        'TableCellBold',
+        parent=cell_style,
+        fontName=font_config.bold
+    )
+
+    cell_bold_center = ParagraphStyle(
+        'TableCellBoldCenter',
+        parent=cell_center,
+        fontName=font_config.bold
+    )
+
+    return font_config, {
+        'title_style': title_style,
+        'meta_style': meta_style,
+        'heading2_style': heading2_style,
+        'cell_style': cell_style,
+        'cell_center': cell_center,
+        'cell_right': cell_right,
+        'cell_bold': cell_bold,
+        'cell_bold_center': cell_bold_center,
+    }
 
 class NumberedCanvas(canvas.Canvas):
     """Custom canvas to compute total page count and draw page numbers in footer."""
@@ -37,10 +206,11 @@ class NumberedCanvas(canvas.Canvas):
 
     def draw_page_number(self, page_count):
         self.saveState()
+        font_config = get_pdf_font_config()
         try:
-            self.setFont("Calibri", 9)
+            self.setFont(font_config.regular, 9)
         except Exception:
-            self.setFont("Helvetica", 9)
+            self.setFont(PDF_FALLBACK_REGULAR, 9)
             
         page_text = f"Trang {self._pageNumber} / {page_count}"
         self.drawRightString(self._pagesize[0] - 36, 30, page_text)
@@ -86,76 +256,15 @@ def generate_invoice_pdf(invoices, summary, keyword=None, from_date=None, to_dat
         bottomMargin=54
     )
     
-    styles = getSampleStyleSheet()
-    
-    font_family = 'Calibri'
-    font_bold = 'Calibri-Bold'
-    try:
-        pdfmetrics.getFont('Calibri')
-    except Exception:
-        font_family = 'Helvetica'
-        font_bold = 'Helvetica-Bold'
-        
-    title_style = ParagraphStyle(
-        'PDFTitle',
-        parent=styles['Normal'],
-        fontName=font_bold,
-        fontSize=18,
-        leading=22,
-        alignment=1,  # Center
-        spaceAfter=15
-    )
-    
-    meta_style = ParagraphStyle(
-        'PDFMeta',
-        parent=styles['Normal'],
-        fontName=font_family,
-        fontSize=10,
-        leading=14,
-        spaceAfter=4
-    )
-    
-    heading2_style = ParagraphStyle(
-        'PDFHeading2',
-        parent=styles['Normal'],
-        fontName=font_bold,
-        fontSize=13,
-        leading=16,
-        spaceBefore=14,
-        spaceAfter=8
-    )
-    
-    cell_style = ParagraphStyle(
-        'TableCell',
-        parent=styles['Normal'],
-        fontName=font_family,
-        fontSize=9,
-        leading=12
-    )
-    
-    cell_center = ParagraphStyle(
-        'TableCellCenter',
-        parent=cell_style,
-        alignment=1
-    )
-    
-    cell_right = ParagraphStyle(
-        'TableCellRight',
-        parent=cell_style,
-        alignment=2
-    )
-    
-    cell_bold = ParagraphStyle(
-        'TableCellBold',
-        parent=cell_style,
-        fontName=font_bold
-    )
-    
-    cell_bold_center = ParagraphStyle(
-        'TableCellBoldCenter',
-        parent=cell_center,
-        fontName=font_bold
-    )
+    _, styles = _build_pdf_styles()
+    title_style = styles['title_style']
+    meta_style = styles['meta_style']
+    heading2_style = styles['heading2_style']
+    cell_style = styles['cell_style']
+    cell_center = styles['cell_center']
+    cell_right = styles['cell_right']
+    cell_bold = styles['cell_bold']
+    cell_bold_center = styles['cell_bold_center']
     
     story = []
     
@@ -284,78 +393,15 @@ def generate_statistics_pdf(summary, customer_stats, service_stats, from_date=No
         bottomMargin=54
     )
     
-    # Styles
-    styles = getSampleStyleSheet()
-    
-    # Use Calibri if registered, otherwise Helvetica
-    font_family = 'Calibri'
-    font_bold = 'Calibri-Bold'
-    try:
-        pdfmetrics.getFont('Calibri')
-    except Exception:
-        font_family = 'Helvetica'
-        font_bold = 'Helvetica-Bold'
-        
-    title_style = ParagraphStyle(
-        'PDFTitle',
-        parent=styles['Normal'],
-        fontName=font_bold,
-        fontSize=18,
-        leading=22,
-        alignment=1,  # Center
-        spaceAfter=10
-    )
-    
-    meta_style = ParagraphStyle(
-        'PDFMeta',
-        parent=styles['Normal'],
-        fontName=font_family,
-        fontSize=10,
-        leading=14,
-        spaceAfter=4
-    )
-    
-    heading2_style = ParagraphStyle(
-        'PDFHeading2',
-        parent=styles['Normal'],
-        fontName=font_bold,
-        fontSize=13,
-        leading=16,
-        spaceBefore=14,
-        spaceAfter=8
-    )
-    
-    cell_style = ParagraphStyle(
-        'TableCell',
-        parent=styles['Normal'],
-        fontName=font_family,
-        fontSize=9,
-        leading=12
-    )
-    
-    cell_center = ParagraphStyle(
-        'TableCellCenter',
-        parent=cell_style,
-        alignment=1
-    )
-    
-    cell_right = ParagraphStyle(
-        'TableCellRight',
-        parent=cell_style,
-        alignment=2
-    )
-    
-    cell_bold = ParagraphStyle(
-        'TableCellBold',
-        parent=cell_style,
-        fontName=font_bold
-    )
-    
-    cell_bold_center = ParagraphStyle(
-        'TableCellBoldCenter',
-        parent=cell_center,
-        fontName=font_bold
-    )
+    _, styles = _build_pdf_styles()
+    title_style = styles['title_style']
+    meta_style = styles['meta_style']
+    heading2_style = styles['heading2_style']
+    cell_style = styles['cell_style']
+    cell_center = styles['cell_center']
+    cell_right = styles['cell_right']
+    cell_bold = styles['cell_bold']
+    cell_bold_center = styles['cell_bold_center']
 
     story = []
     
