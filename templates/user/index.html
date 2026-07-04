@@ -1,0 +1,100 @@
+{% extends 'layout/base.html' %}
+{%- from 'layout/table_macros.html' import pagination_widget %}
+
+{% block title %}Quản lý Người dùng - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <div>
+            <h1 class="app-title mb-0">Quản lý Người dùng</h1>
+            <p class="text-muted mb-0">Chỉ owner/admin mới được truy cập khu vực này.</p>
+        </div>
+        <a href="{{ url_for('user.create') }}" class="app-btn app-btn-primary btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Thêm người dùng
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-people-fill" style="font-size: 18px; margin-right: 8px;"></i>Danh sách người dùng
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form method="GET" action="{{ url_for('user.index') }}" class="mb-3">
+                <div class="input-group" style="max-width: 420px;">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control app-form-control" placeholder="Tìm theo username, tên, email, vai trò" value="{{ q }}">
+                    <button type="submit" class="btn btn-primary app-btn-primary">Tìm</button>
+                    {% if q %}
+                    <a href="{{ url_for('user.index') }}" class="btn btn-outline-secondary">Xóa</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="app-table table table-hover align-middle">
+                    <thead class="app-table-header">
+                        <tr>
+                            <th scope="col">Username</th>
+                            <th scope="col">Họ tên</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Vai trò</th>
+                            <th scope="col" class="text-center">Trạng thái</th>
+                            <th scope="col">Tạo lúc</th>
+                            <th scope="col" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users.items %}
+                        <tr>
+                            <td><strong>{{ user.username | highlight(q) }}</strong></td>
+                            <td>{{ user.full_name | highlight(q) }}</td>
+                            <td>{{ user.email | highlight(q) if user.email else 'Chưa có' }}</td>
+                            <td>{{ role_labels.get(user.role, user.role) }}</td>
+                            <td class="text-center">
+                                {% if user.is_active %}
+                                <span class="badge bg-success">Đang hoạt động</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Vô hiệu hóa</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm flex-wrap" role="group">
+                                    <a href="{{ url_for('user.edit', user_id=user.id) }}" class="btn btn-outline-primary" title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                                    <a href="{{ url_for('user.reset_password', user_id=user.id) }}" class="btn btn-outline-warning" title="Đặt lại mật khẩu"><i class="bi bi-key"></i></a>
+                                    <form action="{{ url_for('user.toggle_active', user_id=user.id) }}" method="post" class="d-inline m-0">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="is_active" value="{{ '0' if user.is_active else '1' }}">
+                                        <button type="submit"
+                                                class="btn {% if user.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                                                {% if current_user and current_user.id == user.id and user.is_active %}disabled title="Không thể tự vô hiệu hóa"{% endif %}>
+                                            {% if user.is_active %}
+                                            <i class="bi bi-person-x"></i>
+                                            {% else %}
+                                            <i class="bi bi-person-check"></i>
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">Chưa có người dùng phù hợp.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {{ pagination_widget(users, 'user.index', {'q': q, 'sort_by': sort_by, 'sort_dir': sort_dir}, module_name='user') }}
+        </div>
+    </div>
+</div>
+{% endblock %}

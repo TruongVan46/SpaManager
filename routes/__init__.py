@@ -10,6 +10,7 @@ setting_bp = Blueprint('setting', __name__)
 activity_log_bp = Blueprint('activity_log', __name__)
 recycle_bin_bp = Blueprint('recycle_bin', __name__)
 auth_bp = Blueprint('auth', __name__)
+user_bp = Blueprint('user', __name__)
 
 # Import route modules so blueprint routes are registered
-from . import dashboard, customer, service, appointment, invoice, statistics, setting, activity_log, recycle_bin, auth # noqa: F401
+from . import dashboard, customer, service, appointment, invoice, statistics, setting, activity_log, recycle_bin, auth, user # noqa: F401

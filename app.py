@@ -19,7 +19,8 @@ from routes import (
     setting_bp,
     activity_log_bp,
     recycle_bin_bp,
-    auth_bp
+    auth_bp,
+    user_bp
 )
 from services.auth_service import AuthService
 from core.csrf import validate_csrf_request, csrf_token, CSRFError
@@ -45,6 +46,7 @@ app.register_blueprint(activity_log_bp)
 app.register_blueprint(setting_bp)
 app.register_blueprint(recycle_bin_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(user_bp)
 register_migration_commands(app)
 
 BASELINE_TABLES = [
@@ -106,7 +108,7 @@ def require_login():
     if request.endpoint is None:
         return
 
-    if request.endpoint in ['static', 'auth.login', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
+    if request.endpoint in ['static', 'auth.login', 'auth.logout', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
         return
 
     # Redirect to login if user is not authenticated

@@ -133,7 +133,7 @@ class ErrorHandler:
             return redirect(url_for('auth.login', next=next_url))
 
         if status_code == 403:
-            response = make_response(description or "Forbidden", 403)
+            response = make_response(render_template("errors/403.html", message=description), 403)
             response.headers["Cache-Control"] = "no-store"
             return response
 
@@ -210,7 +210,7 @@ class ErrorHandler:
             return ErrorHandler.render_html_status("errors/404.html", 404)
 
         if isinstance(e, SpaManagerException) and status_code == 403:
-            response = make_response(message, 403)
+            response = make_response(render_template("errors/403.html", message=message), 403)
             response.headers["Cache-Control"] = "no-store"
             return response
 

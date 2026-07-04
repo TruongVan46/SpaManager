@@ -9,10 +9,10 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from models.user import User
 from models.activity_log import ActivityLog
-from core.auth.enums import UserRole
+from core.auth.enums import UserRole, normalize_role_value
 from core.auth.constants import AUTH_SESSION_KEY
 from core.logger import app_logger
-from core.exceptions import AuthenticationException, ValidationException
+from core.exceptions import AuthenticationException, PermissionDeniedException, ValidationException
 from validators.auth_validator import AuthValidator
 from validators.profile_validator import ProfileValidator
 from utils.timezone_utils import utc_now
@@ -21,6 +21,8 @@ from utils.media_storage import resolve_media_file_path
 # services/auth_service.py
 
 class AuthService:
+    MANAGER_ROLES = {UserRole.OWNER.value, UserRole.ADMIN.value}
+
     @staticmethod
     def login(username, password, remember=False):
         """
@@ -115,13 +117,26 @@ class AuthService:
         return None
 
     @staticmethod
+    def get_current_active_user():
+        user = AuthService.get_current_user()
+        if user and user.is_active:
+            return user
+        return None
+
+    @staticmethod
     def get_current_username():
         """
         Get the username of the currently logged-in user.
         Returns: str or None
         """
-        current_user = AuthService.get_current_user()
+        current_user = AuthService.get_current_active_user()
         return current_user.username if current_user else None
+
+    @staticmethod
+    def is_manager_user(user=None):
+        user = user or AuthService.get_current_active_user()
+        role_value = normalize_role_value(user.role) if user else None
+        return bool(user and role_value in AuthService.MANAGER_ROLES)
 
     @staticmethod
     def require_current_username():
@@ -135,12 +150,21 @@ class AuthService:
         return username
 
     @staticmethod
+    def require_manager_user():
+        user = AuthService.get_current_active_user()
+        if not user:
+            raise AuthenticationException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.")
+        if normalize_role_value(user.role) not in AuthService.MANAGER_ROLES:
+            raise PermissionDeniedException("Bạn không có quyền truy cập khu vực quản lý người dùng.")
+        return user
+
+    @staticmethod
     def is_authenticated():
         """
         Check if there is an active logged-in user session.
         Returns: bool
         """
-        return AuthService.get_current_user() is not None
+        return AuthService.get_current_active_user() is not None
 
     @staticmethod
     def seed_owner_if_empty():

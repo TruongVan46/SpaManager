@@ -1,0 +1,85 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Chỉnh sửa Người dùng - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <h1 class="app-title mb-0">Chỉnh sửa Người dùng</h1>
+        <a href="{{ url_for('user.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-person-gear" style="font-size: 18px; margin-right: 8px;"></i>Thông tin tài khoản
+            </h5>
+        </div>
+        <div class="app-card-body">
+            <form action="{{ url_for('user.edit', user_id=user.id) }}" method="POST" class="needs-validation {% if errors %}was-validated{% endif %}" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="username" class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                        <input type="text" id="username" name="username" class="form-control app-form-control {% if errors and errors.username %}is-invalid{% endif %}" value="{{ form_data.username if form_data else user.username }}" required maxlength="100">
+                        {% if errors and errors.username %}<div class="invalid-feedback d-block">{{ errors.username }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="full_name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" id="full_name" name="full_name" class="form-control app-form-control {% if errors and errors.full_name %}is-invalid{% endif %}" value="{{ form_data.full_name if form_data else user.full_name }}" required maxlength="100">
+                        {% if errors and errors.full_name %}<div class="invalid-feedback d-block">{{ errors.full_name }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" id="email" name="email" class="form-control app-form-control {% if errors and errors.email %}is-invalid{% endif %}" value="{{ form_data.email if form_data else (user.email or '') }}">
+                        {% if errors and errors.email %}<div class="invalid-feedback d-block">{{ errors.email }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="role" class="form-label">Vai trò <span class="text-danger">*</span></label>
+                        <select id="role" name="role" class="form-select app-form-select {% if errors and errors.role %}is-invalid{% endif %}" required>
+                            {% for role_value, role_label in available_roles %}
+                            <option value="{{ role_value }}" {% if (form_data and form_data.role == role_value) or (not form_data and user.role == role_value) %}selected{% endif %}>{{ role_label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if errors and errors.role %}<div class="invalid-feedback d-block">{{ errors.role }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Trạng thái</label>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Đang hoạt động</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Vô hiệu hóa</span>
+                            {% endif %}
+                            <span class="text-muted small">Dùng nút trong danh sách để kích hoạt/vô hiệu hóa.</span>
+                        </div>
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button type="submit" class="app-btn app-btn-primary btn btn-primary px-4">
+                            <i class="bi bi-check-circle"></i> Lưu thay đổi
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+</script>
+{% endblock %}

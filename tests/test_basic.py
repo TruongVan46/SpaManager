@@ -1148,6 +1148,397 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(deleted_service.deleted_by, "Há»‡ thá»‘ng")
         self.assertEqual(ActivityLog.query.filter_by(reference_id=service.id).count(), 1)
 
+    def test_user_management_is_manager_only(self):
+        staff = self.create_user("staff-user", password="staff-pass", full_name="Staff User", role="STAFF")
+        admin = self.create_user("admin-user", password="admin-pass", full_name="Admin User", role="ADMIN")
+        owner = self.create_user("owner-user", password="owner-pass", full_name="Owner User", role="OWNER")
+
+        self.login_as(staff)
+        staff_response = self.client.get("/users", follow_redirects=False)
+        self.assertEqual(staff_response.status_code, 403)
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        self.login_as(admin)
+        admin_response = self.client.get("/users", follow_redirects=False)
+        self.assertEqual(admin_response.status_code, 200)
+        self.assertIn("Quản lý Người dùng", admin_response.get_data(as_text=True))
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        self.login_as(owner)
+        owner_response = self.client.get("/users", follow_redirects=False)
+        self.assertEqual(owner_response.status_code, 200)
+        self.assertIn("Quản lý Người dùng", owner_response.get_data(as_text=True))
+
+    def test_user_create_edit_reset_toggle_and_logs_work_with_csrf(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        create_token = self.get_csrf_token("/users/create")
+        create_response = self.client.post(
+            "/users/create",
+            data={
+                "username": "staff-live",
+                "full_name": "Staff Live",
+                "email": "staff-live@example.com",
+                "role": "STAFF",
+                "password": "StrongPass123",
+                "confirm_password": "StrongPass123",
+                "is_active": "1",
+            },
+            headers={"X-CSRFToken": create_token},
+            follow_redirects=False
+        )
+
+        self.assertEqual(create_response.status_code, 302)
+        created_user = User.query.filter_by(username="staff-live").first()
+        self.assertIsNotNone(created_user)
+        self.assertTrue(created_user.check_password("StrongPass123"))
+        create_log = ActivityLog.query.filter_by(
+            module="Users",
+            action="CREATE_USER",
+            reference_id=created_user.id
+        ).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(create_log)
+        self.assertEqual(create_log.user_id, owner.id)
+
+        edit_token = self.get_csrf_token(f"/users/{created_user.id}/edit")
+        edit_response = self.client.post(
+            f"/users/{created_user.id}/edit",
+            data={
+                "username": "staff-live-updated",
+                "full_name": "Staff Live Updated",
+                "email": "staff-live-updated@example.com",
+                "role": "ADMIN",
+            },
+            headers={"X-CSRFToken": edit_token},
+            follow_redirects=False
+        )
+
+        self.assertEqual(edit_response.status_code, 302)
+        updated_user = User.query.get(created_user.id)
+        self.assertEqual(updated_user.username, "staff-live-updated")
+        self.assertEqual(updated_user.full_name, "Staff Live Updated")
+        self.assertEqual(updated_user.role, "ADMIN")
+        edit_log = ActivityLog.query.filter_by(
+            module="Users",
+            action="UPDATE_USER",
+            reference_id=created_user.id
+        ).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(edit_log)
+        self.assertEqual(edit_log.user_id, owner.id)
+
+        reset_token = self.get_csrf_token(f"/users/{created_user.id}/reset-password")
+        reset_response = self.client.post(
+            f"/users/{created_user.id}/reset-password",
+            data={
+                "new_password": "AnotherStrong123",
+                "confirm_password": "AnotherStrong123",
+            },
+            headers={"X-CSRFToken": reset_token},
+            follow_redirects=False
+        )
+
+        self.assertEqual(reset_response.status_code, 302)
+        refreshed_user = User.query.get(created_user.id)
+        self.assertTrue(refreshed_user.check_password("AnotherStrong123"))
+        reset_log = ActivityLog.query.filter_by(
+            module="Users",
+            action="RESET_USER_PASSWORD",
+            reference_id=created_user.id
+        ).order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(reset_log)
+        self.assertEqual(reset_log.user_id, owner.id)
+
+        toggle_token = self.get_csrf_token("/users")
+        deactivate_response = self.client.post(
+            f"/users/{created_user.id}/toggle-active",
+            data={"is_active": "0"},
+            headers={"X-CSRFToken": toggle_token},
+            follow_redirects=False
+        )
+        self.assertEqual(deactivate_response.status_code, 302)
+        self.assertFalse(User.query.get(created_user.id).is_active)
+
+        toggle_token = self.get_csrf_token("/users")
+        activate_response = self.client.post(
+            f"/users/{created_user.id}/toggle-active",
+            data={"is_active": "1"},
+            headers={"X-CSRFToken": toggle_token},
+            follow_redirects=False
+        )
+        self.assertEqual(activate_response.status_code, 302)
+        self.assertTrue(User.query.get(created_user.id).is_active)
+
+    def test_user_management_blocks_self_disable_and_self_role_demotion(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        self_disable_token = self.get_csrf_token("/users")
+        self_disable_response = self.client.post(
+            f"/users/{owner.id}/toggle-active",
+            data={"is_active": "0"},
+            headers={"X-CSRFToken": self_disable_token},
+            follow_redirects=False
+        )
+        self.assertEqual(self_disable_response.status_code, 302)
+        self.assertTrue(User.query.get(owner.id).is_active)
+
+        edit_token = self.get_csrf_token(f"/users/{owner.id}/edit")
+        self_demote_response = self.client.post(
+            f"/users/{owner.id}/edit",
+            data={
+                "username": owner.username,
+                "full_name": owner.full_name,
+                "email": owner.email or "",
+                "role": "STAFF",
+            },
+            headers={"X-CSRFToken": edit_token},
+            follow_redirects=False
+        )
+        self.assertEqual(self_demote_response.status_code, 200)
+        self.assertEqual(User.query.get(owner.id).role, "OWNER")
+
+        second_owner = self.create_user("second-owner", password="second-pass", full_name="Second Owner", role="OWNER")
+        second_owner_token = self.get_csrf_token("/users")
+        second_owner_response = self.client.post(
+            f"/users/{second_owner.id}/toggle-active",
+            data={"is_active": "0"},
+            headers={"X-CSRFToken": second_owner_token},
+            follow_redirects=False
+        )
+        self.assertEqual(second_owner_response.status_code, 302)
+        self.assertFalse(User.query.get(second_owner.id).is_active)
+
+    def test_user_validation_and_csrf_guards(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        missing_csrf = self.client.post(
+            "/users/create",
+            data={
+                "username": "csrf-user",
+                "full_name": "CSRF User",
+                "email": "csrf-user@example.com",
+                "role": "STAFF",
+                "password": "StrongPass123",
+                "confirm_password": "StrongPass123",
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(missing_csrf.status_code, 400)
+        self.assertIsNone(User.query.filter_by(username="csrf-user").first())
+
+        create_token = self.get_csrf_token("/users/create")
+        self.client.post(
+            "/users/create",
+            data={
+                "username": "duplicate-user",
+                "full_name": "Duplicate One",
+                "email": "duplicate-one@example.com",
+                "role": "STAFF",
+                "password": "StrongPass123",
+                "confirm_password": "StrongPass123",
+            },
+            headers={"X-CSRFToken": create_token},
+            follow_redirects=False
+        )
+
+        duplicate_token = self.get_csrf_token("/users/create")
+        duplicate_response = self.client.post(
+            "/users/create",
+            data={
+                "username": "duplicate-user",
+                "full_name": "Duplicate Two",
+                "email": "duplicate-two@example.com",
+                "role": "STAFF",
+                "password": "StrongPass123",
+                "confirm_password": "StrongPass123",
+            },
+            headers={"X-CSRFToken": duplicate_token},
+            follow_redirects=False
+        )
+        self.assertIn(duplicate_response.status_code, (200, 400))
+        self.assertEqual(User.query.filter_by(username="duplicate-user").count(), 1)
+        self.assertEqual(ActivityLog.query.filter_by(module="Users", action="CREATE_USER").count(), 1)
+
+        mismatch_token = self.get_csrf_token("/users/create")
+        mismatch_response = self.client.post(
+            "/users/create",
+            data={
+                "username": "mismatch-user",
+                "full_name": "Mismatch User",
+                "email": "mismatch-user@example.com",
+                "role": "STAFF",
+                "password": "StrongPass123",
+                "confirm_password": "DifferentPass123",
+            },
+            headers={"X-CSRFToken": mismatch_token},
+            follow_redirects=False
+        )
+        self.assertEqual(mismatch_response.status_code, 400)
+        self.assertIsNone(User.query.filter_by(username="mismatch-user").first())
+        self.assertEqual(ActivityLog.query.filter_by(module="Users", action="CREATE_USER").count(), 1)
+
+    def test_user_password_reset_login_and_enable_disable_flow(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        staff = self.create_user("flow-user", password="OldPass123", full_name="Flow User", role="STAFF")
+        def get_token_for(client, path):
+            response = client.get(path)
+            html = response.get_data(as_text=True)
+            match = re.search(r'name="csrf-token" content="([^"]+)"', html)
+            if not match:
+                match = re.search(r'name="csrf_token" value="([^"]+)"', html)
+            self.assertIsNotNone(match)
+            return match.group(1)
+
+        reset_token = self.get_csrf_token(f"/users/{staff.id}/reset-password")
+        reset_response = self.client.post(
+            f"/users/{staff.id}/reset-password",
+            data={
+                "new_password": "NewPass123",
+                "confirm_password": "NewPass123",
+            },
+            headers={"X-CSRFToken": reset_token},
+            follow_redirects=False
+        )
+        self.assertEqual(reset_response.status_code, 302)
+        self.assertTrue(User.query.get(staff.id).check_password("NewPass123"))
+
+        login_client = app.test_client()
+        login_token = get_token_for(login_client, "/login")
+        login_response = login_client.post(
+            "/login",
+            json={
+                "username": "flow-user",
+                "password": "NewPass123",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(login_response.status_code, 200)
+        self.assertTrue(login_response.get_json()["success"])
+
+        self.login_as(owner)
+        disable_token = self.get_csrf_token("/users")
+        disable_response = self.client.post(
+            f"/users/{staff.id}/toggle-active",
+            data={"is_active": "0"},
+            headers={"X-CSRFToken": disable_token},
+            follow_redirects=False
+        )
+        self.assertEqual(disable_response.status_code, 302)
+        self.assertFalse(User.query.get(staff.id).is_active)
+
+        disabled_login_client = app.test_client()
+        login_token = get_token_for(disabled_login_client, "/login")
+        disabled_login = disabled_login_client.post(
+            "/login",
+            json={
+                "username": "flow-user",
+                "password": "NewPass123",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(disabled_login.status_code, 401)
+        self.assertFalse(disabled_login.get_json()["success"])
+
+        self.login_as(owner)
+        enable_token = self.get_csrf_token("/users")
+        enable_response = self.client.post(
+            f"/users/{staff.id}/toggle-active",
+            data={"is_active": "1"},
+            headers={"X-CSRFToken": enable_token},
+            follow_redirects=False
+        )
+        self.assertEqual(enable_response.status_code, 302)
+        self.assertTrue(User.query.get(staff.id).is_active)
+
+        enabled_login_client = app.test_client()
+        login_token = get_token_for(enabled_login_client, "/login")
+        enabled_login = enabled_login_client.post(
+            "/login",
+            json={
+                "username": "flow-user",
+                "password": "NewPass123",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(enabled_login.status_code, 200)
+        self.assertTrue(enabled_login.get_json()["success"])
+
+    def test_legacy_lowercase_manager_role_still_has_access(self):
+        legacy_admin = User(
+            username="legacy-admin",
+            full_name="Legacy Admin",
+            role="admin",
+            is_active=True,
+        )
+        legacy_admin.set_password("LegacyPass123")
+        db.session.add(legacy_admin)
+        db.session.commit()
+        self.login_as(legacy_admin)
+
+        response = self.client.get("/users", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Quản lý Người dùng", response.get_data(as_text=True))
+
+    def test_disabled_user_session_is_blocked_on_next_request(self):
+        owner = AuthService.seed_owner_if_empty()
+        staff = self.create_user("session-disabled", password="SessionPass123", full_name="Session Disabled", role="STAFF")
+
+        staff_client = app.test_client()
+        staff_login_html = staff_client.get("/login").get_data(as_text=True)
+        staff_login_token = re.search(r'name="csrf-token" content="([^"]+)"', staff_login_html).group(1)
+        staff_login = staff_client.post(
+            "/login",
+            json={
+                "username": "session-disabled",
+                "password": "SessionPass123",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": staff_login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(staff_login.status_code, 200)
+
+        self.login_as(owner)
+        disable_token = self.get_csrf_token("/users")
+        disable_response = self.client.post(
+            f"/users/{staff.id}/toggle-active",
+            data={"is_active": "0"},
+            headers={"X-CSRFToken": disable_token},
+            follow_redirects=False
+        )
+        self.assertEqual(disable_response.status_code, 302)
+        self.assertFalse(User.query.get(staff.id).is_active)
+
+        blocked_response = staff_client.get("/customers", follow_redirects=False)
+        self.assertEqual(blocked_response.status_code, 302)
+        self.assertIn("/login", blocked_response.headers.get("Location", ""))
+
     def test_two_users_write_two_different_deleted_by_values(self):
         user_a = self.create_user("user-a", password="pass-a", full_name="User A", role="STAFF")
         user_b = self.create_user("user-b", password="pass-b", full_name="User B", role="STAFF")
