@@ -155,10 +155,11 @@ class BasicTestCase(unittest.TestCase):
     def create_appointment_record(self, customer=None, service=None):
         customer = customer or self.create_customer_record("Appointment Customer")
         service = service or self.create_service_record("Appointment Service")
+        appointment_date = local_now().date() + timedelta(days=1)
         appointment = Appointment(
             customer_id=customer.id,
             service_id=service.id,
-            appointment_time=datetime(2026, 7, 4, 10, 0),
+            appointment_time=datetime.combine(appointment_date, datetime.min.time()).replace(hour=10),
             status="Pending"
         )
         db.session.add(appointment)
@@ -1626,6 +1627,7 @@ class BasicTestCase(unittest.TestCase):
         customer = self.create_customer_record("Create From Detail Customer")
         service = self.create_service_record("Create From Detail Service")
         customer_detail_url = f"/customers/{customer.id}?appointment_page=2&invoice_page=3"
+        appointment_date = (local_now().date() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         create_html = self.client.get(
             "/appointments/create",
@@ -1650,7 +1652,7 @@ class BasicTestCase(unittest.TestCase):
                 "csrf_token": token,
                 "customer_id": customer.id,
                 "service_id": service.id,
-                "appointment_date": "2026-07-04",
+                "appointment_date": appointment_date,
                 "appointment_time": "10:30",
                 "status": "Pending",
                 "notes": "Create from customer detail",
@@ -1700,13 +1702,14 @@ class BasicTestCase(unittest.TestCase):
         customer = self.create_customer_record("Appointment Create Customer")
         service = self.create_service_record("Appointment Create Service")
         before_count = Appointment.query.count()
+        appointment_date = (local_now().date() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         missing = self.client.post(
             "/appointments/create",
             data={
                 "customer_id": customer.id,
                 "service_id": service.id,
-                "appointment_date": "2026-07-04",
+                "appointment_date": appointment_date,
                 "appointment_time": "10:00",
                 "status": "Pending",
                 "notes": "Test create",
@@ -1722,7 +1725,7 @@ class BasicTestCase(unittest.TestCase):
             data={
                 "customer_id": customer.id,
                 "service_id": service.id,
-                "appointment_date": "2026-07-04",
+                "appointment_date": appointment_date,
                 "appointment_time": "10:00",
                 "status": "Pending",
                 "notes": "Test create",
