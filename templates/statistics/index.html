@@ -110,28 +110,32 @@
         </div>
     </div>
 
-    <div class="app-card statistics-table-card">
-        <div class="app-card-header statistics-table-header">
-            <div class="statistics-table-title-row">
-                <h5 class="app-card-header-title card-title m-0">
+    <div class="app-card statistics-report-card statistics-table-card">
+        <div class="statistics-report-heading">
+            <div class="statistics-report-title-row">
+                <h5 class="app-card-header-title statistics-report-title card-title m-0">
                     <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Thống kê chi tiêu khách hàng
                 </h5>
-                <div class="statistics-card-note">Top theo khoảng thời gian đã chọn</div>
+                <div class="statistics-report-badge statistics-card-note">Top theo khoảng thời gian đã chọn</div>
             </div>
-            <div class="statistics-table-controls">
-                <div class="app-search-box statistics-inline-search">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="cust_q" name="cust_q" class="app-form-control form-control form-control-sm" value="{{ cust_q or '' }}" placeholder="Tìm theo tên hoặc SĐT..." data-stf-search aria-label="Tìm theo tên hoặc SĐT khách hàng">
+            <div class="statistics-report-tools">
+                <div class="statistics-report-search statistics-inline-search">
+                    <div class="app-search-box">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="cust_q" name="cust_q" class="app-form-control form-control form-control-sm" value="{{ cust_q or '' }}" placeholder="Tìm theo tên hoặc SĐT..." data-stf-search aria-label="Tìm theo tên hoặc SĐT khách hàng">
+                        </div>
                     </div>
                 </div>
-                {%- from 'layout/table_macros.html' import col_vis_button %}
-                {{ col_vis_button('customer_stats') }}
+                <div class="statistics-report-actions">
+                    {%- from 'layout/table_macros.html' import col_vis_button %}
+                    {{ col_vis_button('customer_stats') }}
+                </div>
             </div>
         </div>
         <div class="app-card-body">
             {% if customer_statistics %}
-            <div class="stf-table-wrap">
+            <div class="statistics-table-scroll stf-table-wrap">
                 <table class="app-table table table-hover align-middle stf-table" id="customer-statistics-table">
                     <thead class="app-table-header">
                         <tr>
@@ -164,14 +168,16 @@
                 </table>
             </div>
 
-            {%- from 'layout/table_macros.html' import pagination_widget %}
-            {{ pagination_widget(customer_statistics, 'statistics.index', {
-                'from_date': from_date, 'to_date': to_date,
-                'cust_q': cust_q, 'svc_q': svc_q,
-                'cust_sort_by': cust_sort_by, 'cust_order': cust_order,
-                'svc_page': service_statistics.page, 'svc_per_page': service_statistics.per_page,
-                'svc_sort_by': svc_sort_by, 'svc_order': svc_order
-            }, page_param_name='cust_page', per_page_param_name='cust_per_page', module_name='customer_stats') }}
+            <div class="statistics-table-footer">
+                {%- from 'layout/table_macros.html' import pagination_widget %}
+                {{ pagination_widget(customer_statistics, 'statistics.index', {
+                    'from_date': from_date, 'to_date': to_date,
+                    'cust_q': cust_q, 'svc_q': svc_q,
+                    'cust_sort_by': cust_sort_by, 'cust_order': cust_order,
+                    'svc_page': service_statistics.page, 'svc_per_page': service_statistics.per_page,
+                    'svc_sort_by': svc_sort_by, 'svc_order': svc_order
+                }, page_param_name='cust_page', per_page_param_name='cust_per_page', module_name='customer_stats') }}
+            </div>
             {% else %}
             <div class="text-center py-5 text-muted">
                 <div class="fs-1 mb-2"><i class="bi bi-people"></i></div>
@@ -199,28 +205,32 @@
         </div>
     </div>
 
-    <div class="app-card statistics-table-card">
-        <div class="app-card-header statistics-table-header">
-            <div class="statistics-table-title-row">
-                <h5 class="app-card-header-title card-title m-0">
+    <div class="app-card statistics-report-card statistics-table-card">
+        <div class="statistics-report-heading">
+            <div class="statistics-report-title-row">
+                <h5 class="app-card-header-title statistics-report-title card-title m-0">
                     <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Doanh thu theo dịch vụ
                 </h5>
-                <div class="statistics-card-note">Top theo khoảng thời gian đã chọn</div>
+                <div class="statistics-report-badge statistics-card-note">Top theo khoảng thời gian đã chọn</div>
             </div>
-            <div class="statistics-table-controls">
-                <div class="app-search-box statistics-inline-search">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="svc_q" name="svc_q" class="app-form-control form-control form-control-sm" value="{{ svc_q or '' }}" placeholder="Tìm theo tên dịch vụ..." data-stf-search aria-label="Tìm theo tên dịch vụ">
+            <div class="statistics-report-tools">
+                <div class="statistics-report-search statistics-inline-search">
+                    <div class="app-search-box">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="svc_q" name="svc_q" class="app-form-control form-control form-control-sm" value="{{ svc_q or '' }}" placeholder="Tìm theo tên dịch vụ..." data-stf-search aria-label="Tìm theo tên dịch vụ">
+                        </div>
                     </div>
                 </div>
-                {%- from 'layout/table_macros.html' import col_vis_button %}
-                {{ col_vis_button('service_stats') }}
+                <div class="statistics-report-actions">
+                    {%- from 'layout/table_macros.html' import col_vis_button %}
+                    {{ col_vis_button('service_stats') }}
+                </div>
             </div>
         </div>
         <div class="app-card-body">
             {% if service_statistics %}
-            <div class="stf-table-wrap">
+            <div class="statistics-table-scroll stf-table-wrap">
                 <table class="app-table table table-hover align-middle stf-table" id="service-statistics-table">
                     <thead class="app-table-header">
                         <tr>
@@ -237,7 +247,7 @@
                             <td>{{ stat.quantity_sold }}</td>
                             <td>{{ stat.revenue | format_currency }}</td>
                             <td class="text-center">
-                                <a href="{{ url_for('statistics.service_detail', service_id=stat.service_id, from_date=from_date, to_date=to_date) }}" class="btn btn-sm btn-light-brown d-inline-flex align-items-center gap-1" title="Xem chi tiết">
+                                <a href="{{ url_for('statistics.service_detail', service_id=stat.service_id, from_date=from_date, to_date=to_date) }}" class="btn btn-sm btn-light-brown d-inline-flex align-items-center gap-1" title="Xem chi ti?t">
                                     <i class="bi bi-eye"></i> Xem
                                 </a>
                             </td>
@@ -247,14 +257,16 @@
                 </table>
             </div>
 
-            {%- from 'layout/table_macros.html' import pagination_widget %}
-            {{ pagination_widget(service_statistics, 'statistics.index', {
-                'from_date': from_date, 'to_date': to_date,
-                'cust_q': cust_q, 'svc_q': svc_q,
-                'svc_sort_by': svc_sort_by, 'svc_order': svc_order,
-                'cust_page': customer_statistics.page, 'cust_per_page': customer_statistics.per_page,
-                'cust_sort_by': cust_sort_by, 'cust_order': cust_order
-            }, page_param_name='svc_page', per_page_param_name='svc_per_page', module_name='service_stats') }}
+            <div class="statistics-table-footer">
+                {%- from 'layout/table_macros.html' import pagination_widget %}
+                {{ pagination_widget(service_statistics, 'statistics.index', {
+                    'from_date': from_date, 'to_date': to_date,
+                    'cust_q': cust_q, 'svc_q': svc_q,
+                    'svc_sort_by': svc_sort_by, 'svc_order': svc_order,
+                    'cust_page': customer_statistics.page, 'cust_per_page': customer_statistics.per_page,
+                    'cust_sort_by': cust_sort_by, 'cust_order': cust_order
+                }, page_param_name='svc_page', per_page_param_name='svc_per_page', module_name='service_stats') }}
+            </div>
             {% else %}
             <div class="text-center py-5 text-muted">
                 <div class="fs-1 mb-2"><i class="bi bi-scissors"></i></div>
@@ -263,9 +275,8 @@
             {% endif %}
         </div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const statsForm = document.querySelector('form[action="{{ url_for('statistics.index') }}"]');

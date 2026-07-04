@@ -25,11 +25,43 @@
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.statistics-report-card {
+    overflow: visible;
+}
+
+.statistics-report-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem 0.85rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
 .statistics-table-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
     gap: 0.75rem 1rem;
     align-items: center;
+}
+
+.statistics-report-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.statistics-report-title {
+    margin: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.statistics-report-badge {
+    flex: 0 1 auto;
+    white-space: normal;
 }
 
 .statistics-table-title-row {
@@ -49,6 +81,40 @@
     min-width: 0;
     width: 100%;
     justify-self: end;
+}
+
+.statistics-report-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.statistics-report-search {
+    flex: 1 1 320px;
+    max-width: 420px;
+    min-width: 0;
+}
+
+.statistics-report-search .app-search-box,
+.statistics-report-search .input-group {
+    width: 100%;
+}
+
+.statistics-report-actions {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.statistics-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.statistics-table-footer {
+    margin-top: 1rem;
 }
 
 .statistics-filter-top {
@@ -163,6 +229,10 @@
     font-weight: 600;
 }
 
+.statistics-page .statistics-report-actions .d-none.d-md-inline {
+    display: inline !important;
+}
+
 .statistics-page .breadcrumb-item a {
     color: var(--spa-info, #0d6efd);
     text-decoration: none;
@@ -190,6 +260,45 @@
 
     .statistics-range-shortcuts {
         width: 100%;
+    }
+
+    .statistics-report-heading {
+        padding: 0.875rem 0.875rem 0.75rem;
+    }
+
+    .statistics-report-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .statistics-report-tools {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .statistics-report-search {
+        width: 100%;
+        max-width: none;
+        flex-basis: auto;
+    }
+
+    .statistics-report-actions {
+        width: 100%;
+    }
+
+    .statistics-report-actions .btn,
+    .statistics-report-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .statistics-page .statistics-report-actions .d-none.d-md-inline {
+        display: inline !important;
+    }
+
+    .statistics-table-scroll {
+        overflow-x: auto;
     }
 
     .statistics-table-header {
