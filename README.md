@@ -152,6 +152,11 @@ PERSISTENT_ROOT=/app/database
 - `static/` - CSS, JavaScript, and assets
 - `tests/` - automated tests
 
+## Author
+
+**Văn Công Trường**  
+GitHub: [truongvan46](https://github.com/truongvan46)
+
 ## Notes
 
 - Google OAuth is not implemented.

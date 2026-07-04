@@ -1,4 +1,4 @@
-import os
+﻿import os
 import uuid
 import shutil
 import sqlite3
@@ -17,7 +17,7 @@ from utils.timezone_utils import get_app_timezone, local_now, to_local_datetime
 class BackupService:
     """Service for backing up the SQLite database and managing its metadata."""
 
-    APP_VERSION = '4.0'
+    APP_VERSION = '5.1.0'
 
     @staticmethod
     def get_db_path(app):
@@ -57,7 +57,7 @@ class BackupService:
         data = {'notes': notes}
         validator = BackupValidator()
         validator.validate(data)
-        validator.raise_if_invalid("Thông tin sao lưu không hợp lệ.")
+        validator.raise_if_invalid("ThÃ´ng tin sao lÆ°u khÃ´ng há»£p lá»‡.")
 
         db_path = BackupService.get_db_path(app)
         if not os.path.exists(db_path):
@@ -80,7 +80,7 @@ class BackupService:
             
             # Default note if blank
             if not notes or not notes.strip():
-                notes = f"Backup tạo lúc {created_at.strftime('%H:%M %d/%m/%Y')}"
+                notes = f"Backup táº¡o lÃºc {created_at.strftime('%H:%M %d/%m/%Y')}"
             else:
                 notes = notes.strip()
                 
@@ -89,7 +89,7 @@ class BackupService:
             metadata = {
                 'id': backup_id,
                 'filename': backup_filename,
-                'display_name': f"Backup ngày {created_at.strftime('%d/%m/%Y %H:%M')}",
+                'display_name': f"Backup ngÃ y {created_at.strftime('%d/%m/%Y %H:%M')}",
                 'created_at': created_at.isoformat(),
                 'size': size,
                 'database_version': db_version,
@@ -108,7 +108,7 @@ class BackupService:
             ActivityLogService.log_action(
                 module=ActivityLogService.MODULE_SETTINGS,
                 action='BACKUP',
-                description=f'Tạo bản sao lưu: {metadata["display_name"]}',
+                description=f'Táº¡o báº£n sao lÆ°u: {metadata["display_name"]}',
                 reference_id=None,
                 severity=ActivityLogService.SEVERITY_SUCCESS
             )
@@ -158,12 +158,12 @@ class BackupService:
                 metadata[bid] = {
                     'id': bid,
                     'filename': filename,
-                    'display_name': f"Backup ngày {dt_created.strftime('%d/%m/%Y %H:%M')}",
+                    'display_name': f"Backup ngÃ y {dt_created.strftime('%d/%m/%Y %H:%M')}",
                     'created_at': dt_created.isoformat(),
                     'size': size,
                     'database_version': 'v1.0',
                     'app_version': f"SpaManager v{BackupService.APP_VERSION}",
-                    'notes': 'Tự động đồng bộ từ đĩa cứng',
+                    'notes': 'Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ tá»« Ä‘Ä©a cá»©ng',
                     'type': 'Manual',
                     'created_by': None,
                     'status': status
@@ -199,7 +199,7 @@ class BackupService:
             ActivityLogService.log_action(
                 module=ActivityLogService.MODULE_SETTINGS,
                 action='SYNC',
-                description='Tự động đồng bộ và quét lỗi danh sách sao lưu',
+                description='Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ vÃ  quÃ©t lá»—i danh sÃ¡ch sao lÆ°u',
                 severity=ActivityLogService.SEVERITY_SUCCESS
             )
             
@@ -275,7 +275,7 @@ class BackupService:
         ActivityLogService.log_action(
             module=ActivityLogService.MODULE_SETTINGS,
             action='DELETE',
-            description=f'Xóa vĩnh viễn bản sao lưu: {meta["display_name"]}',
+            description=f'XÃ³a vÄ©nh viá»…n báº£n sao lÆ°u: {meta["display_name"]}',
             severity=ActivityLogService.SEVERITY_WARNING
         )
         return True
@@ -293,7 +293,7 @@ class BackupService:
         ActivityLogService.log_action(
             module=ActivityLogService.MODULE_SETTINGS,
             action='UPDATE',
-            description=f'Cập nhật ghi chú bản sao lưu: {meta["display_name"]}',
+            description=f'Cáº­p nháº­t ghi chÃº báº£n sao lÆ°u: {meta["display_name"]}',
             severity=ActivityLogService.SEVERITY_SUCCESS
         )
         return True
@@ -313,9 +313,9 @@ class BackupService:
     def format_friendly_time(dt):
         now = local_now()
         if dt.date() == now.date():
-            return f"Hôm nay {dt.strftime('%H:%M')}"
+            return f"HÃ´m nay {dt.strftime('%H:%M')}"
         elif dt.date() == (now - timedelta(days=1)).date():
-            return f"Hôm qua {dt.strftime('%H:%M')}"
+            return f"HÃ´m qua {dt.strftime('%H:%M')}"
         else:
             return dt.strftime('%d/%m/%Y %H:%M')
     
@@ -330,7 +330,7 @@ class BackupService:
         filename = meta['filename']
         filepath = os.path.join(BackupService.get_backup_dir(app), filename)
         integrity = BackupService.check_file_integrity(filepath)
-        # Check version compatibility – compare backup DB version with current DB version setting
+        # Check version compatibility â€“ compare backup DB version with current DB version setting
         current_db_version = Setting.get('db_version', 'v1.0')
         backup_db_version = meta.get('database_version', 'v1.0')
         compatible = (backup_db_version == current_db_version)
@@ -360,7 +360,7 @@ class BackupService:
         # 1. Check integrity check
         tested = BackupService.check_file_integrity(filepath)
         if tested != 'Valid':
-            return False, "Cơ sở dữ liệu SQLite bị lỗi hoặc không thể đọc."
+            return False, "CÆ¡ sá»Ÿ dá»¯ liá»‡u SQLite bá»‹ lá»—i hoáº·c khÃ´ng thá»ƒ Ä‘á»c."
 
         # 2. Check schema (required tables of SpaManager)
         conn = None
@@ -371,7 +371,7 @@ class BackupService:
             tables = {row[0] for row in cursor.fetchall()}
             required_tables = {'users', 'customers', 'services', 'appointments', 'invoices', 'activity_logs', 'settings'}
             if not required_tables.issubset(tables):
-                return False, "Tệp tin không chứa cấu trúc bảng hợp lệ của SpaManager."
+                return False, "Tá»‡p tin khÃ´ng chá»©a cáº¥u trÃºc báº£ng há»£p lá»‡ cá»§a SpaManager."
                 
             # 3. Read metadata from settings table
             db_version = 'v1.0'
@@ -408,7 +408,7 @@ class BackupService:
                 'checksum': checksum
             }
         except Exception as e:
-            return False, f"Không thể đọc thông tin Metadata từ cơ sở dữ liệu: {str(e)}"
+            return False, f"KhÃ´ng thá»ƒ Ä‘á»c thÃ´ng tin Metadata tá»« cÆ¡ sá»Ÿ dá»¯ liá»‡u: {str(e)}"
         finally:
             if conn:
                 conn.close()

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import tempfile
 import unittest
@@ -188,7 +188,7 @@ class BasicTestCase(unittest.TestCase):
                 {
                     "username": "owner",
                     "password_hash": "existing-owner-hash",
-                    "full_name": "Chủ Spa",
+                    "full_name": "Chá»§ Spa",
                     "role": "OWNER",
                     "is_active": 1,
                     "created_at": now,
@@ -771,7 +771,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(User.query.filter_by(username="owner").first().check_password("owner123"))
 
     def test_seed_owner_does_not_change_existing_owner(self):
-        existing_owner = self.create_user("owner", password="old-password", full_name="Chủ Spa", role="OWNER")
+        existing_owner = self.create_user("owner", password="old-password", full_name="Chá»§ Spa", role="OWNER")
         existing_hash = existing_owner.password_hash
 
         result = AuthService.seed_owner_if_empty()
@@ -821,7 +821,7 @@ class BasicTestCase(unittest.TestCase):
                 duplicate_added = True
                 duplicate_owner = User(
                     username="owner",
-                    full_name="Chủ Spa",
+                    full_name="Chá»§ Spa",
                     role="OWNER",
                     is_active=True,
                 )
@@ -848,7 +848,7 @@ class BasicTestCase(unittest.TestCase):
                 duplicate_added = True
                 duplicate_owner = User(
                     username="owner",
-                    full_name="Chủ Spa",
+                    full_name="Chá»§ Spa",
                     role="OWNER",
                     is_active=True,
                 )
@@ -1141,11 +1141,11 @@ class BasicTestCase(unittest.TestCase):
     def test_background_actor_system_is_only_explicit(self):
         service = self.create_service_record("System Actor Service")
 
-        result = ServiceService.delete_service(service.id, actor="Hệ thống")
+        result = ServiceService.delete_service(service.id, actor="Há»‡ thá»‘ng")
 
         self.assertTrue(result)
         deleted_service = Service.query.get(service.id)
-        self.assertEqual(deleted_service.deleted_by, "Hệ thống")
+        self.assertEqual(deleted_service.deleted_by, "Há»‡ thá»‘ng")
         self.assertEqual(ActivityLog.query.filter_by(reference_id=service.id).count(), 1)
 
     def test_two_users_write_two_different_deleted_by_values(self):
@@ -1196,7 +1196,7 @@ class BasicTestCase(unittest.TestCase):
         customer.deleted_by = "legacy"
         db.session.commit()
 
-        result = CustomerService.restore(customer.id, actor="Hệ thống")
+        result = CustomerService.restore(customer.id, actor="Há»‡ thá»‘ng")
 
         self.assertTrue(result)
         restored_customer = Customer.query.get(customer.id)
@@ -1204,7 +1204,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertIsNone(restored_customer.deleted_by)
         log_entry = ActivityLog.query.filter_by(reference_id=customer.id).order_by(ActivityLog.id.desc()).first()
         self.assertIsNotNone(log_entry)
-        self.assertIn("Hệ thống", log_entry.description)
+        self.assertIn("Há»‡ thá»‘ng", log_entry.description)
         self.assertIsNone(log_entry.user_id)
 
     def test_recycle_bin_shows_fallback_for_missing_deleted_by(self):
@@ -1260,6 +1260,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(config.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"))
         self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
         self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
+        self.assertEqual(config.APP_VERSION, "5.1.0")
 
     def test_google_oauth_variables_remain_optional(self):
         with patch.dict(
@@ -1280,6 +1281,7 @@ class BasicTestCase(unittest.TestCase):
     def test_readme_and_env_template_match_current_production_setup(self):
         readme = Path("README.md").read_text(encoding="utf-8")
         env_example = Path(".env.example").read_text(encoding="utf-8")
+        changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
         workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
         self.assertIn("SpaManager is a Flask-based web app", readme)
@@ -1290,12 +1292,15 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("compileall .", readme)
         self.assertIn("DATABASE_URL=sqlite:///database/spa.db", env_example)
         self.assertIn("# DATABASE_URL=sqlite:////app/database/spa.db", env_example)
+        self.assertIn("APP_VERSION=5.1.0", env_example)
+        self.assertIn("v5.1.0", changelog)
         self.assertIn("change-this-to-a-strong-password", env_example)
         self.assertIn("CSRF_ENABLED=1", env_example)
         self.assertIn("python -m compileall .", workflow)
         self.assertNotIn("master", workflow)
         self.assertNotIn("owner123", readme)
         self.assertNotIn("owner123", env_example)
+        self.assertNotIn("4.0.0", readme)
 
     def test_migration_commands_expose_baseline_revision(self):
         runner = app.test_cli_runner()
@@ -1325,6 +1330,23 @@ class BasicTestCase(unittest.TestCase):
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
         self.assertIn("0001_baseline", current_after.output)
+
+    def test_version_is_rendered_from_config_in_setting_ui(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        response = self.client.get("/settings")
+        html = response.get_data(as_text=True)
+        self.assertIn("Spa Manager v5.1.0", html)
+        self.assertIn("v5.1.0 Stable", html)
+        self.assertIn(">5.1.0<", html)
+
+    def test_sidebar_footer_shows_current_version(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        response = self.client.get("/")
+        html = response.get_data(as_text=True)
+        self.assertIn("Spa Manager v5.1.0", html)
+        self.assertNotIn("Spa Manager v4.0", html)
 
     def test_db_stamp_head_marks_existing_schema_without_rebuilding(self):
         tables_before = sorted(sa_inspect(db.engine).get_table_names())
