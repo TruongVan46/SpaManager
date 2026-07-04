@@ -184,7 +184,7 @@ def export_pdf():
     
     pdf_stream = generate_statistics_pdf(summary, customer_statistics, service_statistics, from_date, to_date)
     
-    filename = f"ThongKe_{local_now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filename = f"ThongKe_{local_now().strftime('%Y%m%d_%H%M%S_%f')}.pdf"
     
     response = send_file(
         pdf_stream,

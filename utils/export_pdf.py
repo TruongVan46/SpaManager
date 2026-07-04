@@ -117,6 +117,15 @@ def reset_pdf_font_config_cache():
     _PDF_FONT_CONFIG = None
 
 
+def _assert_pdf_text_clean(*segments):
+    for segment in segments:
+        if segment is None:
+            continue
+        logger.debug("PDF text segment: %r", segment)
+        if any(marker in segment for marker in ("■", "\ufffd")):
+            raise ValueError(f"Corrupted PDF text segment detected: {segment!r}")
+
+
 def _build_pdf_styles():
     font_config = get_pdf_font_config()
     styles = getSampleStyleSheet()
@@ -413,6 +422,7 @@ def generate_statistics_pdf(summary, customer_stats, service_stats, from_date=No
     story = []
     
     # 1. Document Title
+    _assert_pdf_text_clean("BÁO CÁO THỐNG KÊ SPA")
     story.append(Paragraph("BÁO CÁO THỐNG KÊ SPA", title_style))
     story.append(Spacer(1, 10))
     
@@ -426,6 +436,17 @@ def generate_statistics_pdf(summary, customer_stats, service_stats, from_date=No
         date_range_str = f"Đến ngày {to_date.strftime('%d/%m/%Y')}"
         
     now_str = local_now().strftime('%d/%m/%Y %H:%M:%S')
+    _assert_pdf_text_clean(
+        "Khoảng thời gian",
+        date_range_str,
+        "Tất cả thời gian",
+        now_str,
+        "Tổng doanh thu",
+        "Tổng hóa đơn",
+        "Tổng lịch hẹn",
+        "Tên dịch vụ",
+        "Số lượt sử dụng",
+    )
     
     story.append(Paragraph(f"<b>Khoảng thời gian:</b> {date_range_str}", meta_style))
     story.append(Paragraph(f"<b>Ngày xuất báo cáo:</b> {now_str}", meta_style))
@@ -478,6 +499,7 @@ def generate_statistics_pdf(summary, customer_stats, service_stats, from_date=No
     ]
     
     for idx, cust in enumerate(customer_stats, start=1):
+        _assert_pdf_text_clean(cust.get("name", ""), cust.get("phone", ""))
         cust_table_data.append([
             Paragraph(str(idx), cell_center),
             Paragraph(cust.get("name", ""), cell_style),
@@ -514,6 +536,7 @@ def generate_statistics_pdf(summary, customer_stats, service_stats, from_date=No
     ]
     
     for idx, svc in enumerate(service_stats, start=1):
+        _assert_pdf_text_clean(svc.get("service_name", ""))
         svc_table_data.append([
             Paragraph(str(idx), cell_center),
             Paragraph(svc.get("service_name", ""), cell_style),

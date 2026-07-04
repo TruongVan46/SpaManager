@@ -55,6 +55,7 @@ from services.auth_service import AuthService
 from services.backup_service import BackupService
 from services.import_service import ImportService
 from repositories.backup_repository import BackupRepository
+from utils.timezone_utils import local_now
 from core.auth.permissions import (
     can_manage_backups,
     can_manage_business_data,
@@ -3490,6 +3491,10 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("no-cache", response.headers.get("Cache-Control", ""))
         self.assertEqual(response.headers.get("Pragma"), "no-cache")
         self.assertEqual(response.headers.get("Expires"), "0")
+        self.assertRegex(
+            response.headers.get("Content-Disposition", ""),
+            r'Danh_sach_hoa_don_\d{8}_\d{6}_\d{6}\.pdf',
+        )
         self.assertIn(b"NotoSans", response.data)
 
         pdf_text = self.extract_pdf_text(response.data)
@@ -3515,6 +3520,10 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("no-cache", response.headers.get("Cache-Control", ""))
         self.assertEqual(response.headers.get("Pragma"), "no-cache")
         self.assertEqual(response.headers.get("Expires"), "0")
+        self.assertRegex(
+            response.headers.get("Content-Disposition", ""),
+            r'ThongKe_\d{8}_\d{6}_\d{6}\.pdf',
+        )
         self.assertIn(b"NotoSans", response.data)
 
         pdf_text = self.extract_pdf_text(response.data)
@@ -3524,6 +3533,11 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("THỐNG KÊ DỊCH VỤ", pdf_text)
         self.assertIn("Khách hàng Thống kê", pdf_text)
         self.assertIn("Dịch vụ Massage", pdf_text)
+        timestamp_match = re.search(r"Ngày xuất báo cáo:\s*(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2})", pdf_text)
+        self.assertIsNotNone(timestamp_match)
+        pdf_timestamp = datetime.strptime(timestamp_match.group(1), "%d/%m/%Y %H:%M:%S")
+        pdf_timestamp = pdf_timestamp.replace(tzinfo=local_now().tzinfo)
+        self.assertLess(abs((local_now() - pdf_timestamp).total_seconds()), 60)
 
 
 if __name__ == "__main__":

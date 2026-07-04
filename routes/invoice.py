@@ -301,7 +301,7 @@ def export_pdf():
         payment_method=payment_method if payment_method else None
     )
     
-    filename = f"Danh_sach_hoa_don_{local_now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filename = f"Danh_sach_hoa_don_{local_now().strftime('%Y%m%d_%H%M%S_%f')}.pdf"
     response = send_file(
         pdf_stream,
         mimetype="application/pdf",
