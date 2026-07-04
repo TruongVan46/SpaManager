@@ -67,10 +67,10 @@ def create():
 
 @customer_bp.route('/customers/<int:id>')
 def detail(id):
-    customer = CustomerService.get_by_id(id)
-    if not customer:
+    detail_data = CustomerService.get_customer_history(id)
+    if not detail_data:
         raise NotFoundException("Không tìm thấy khách hàng!")
-    return render_template('customer/detail.html', customer=customer)
+    return render_template('customer/detail.html', **detail_data)
 
 @customer_bp.route('/customers/<int:id>/edit', methods=['GET', 'POST'])
 def edit(id):

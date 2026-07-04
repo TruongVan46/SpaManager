@@ -135,10 +135,18 @@ def create():
 
     customers = CustomerService.get_all()
     services = ServiceService.get_all_services()
+    selected_customer_id = request.args.get('customer_id', type=int)
+    selected_customer_name = None
+    if selected_customer_id:
+        selected_customer = CustomerService.get_by_id(selected_customer_id)
+        if selected_customer:
+            selected_customer_name = selected_customer.name
     return render_template(
         "invoice/create.html",
         customers=customers,
-        services=services
+        services=services,
+        selected_customer_id=selected_customer_id,
+        selected_customer_name=selected_customer_name,
     )
 
 @invoice_bp.route('/invoices/<int:invoice_id>')

@@ -45,7 +45,20 @@ def create():
         customers = CustomerService.get_all()
         services = ServiceService.get_all_services()
         current_date = local_now().strftime('%Y-%m-%d')
-        return render_template('appointment/create.html', customers=customers, services=services, current_date=current_date)
+        selected_customer_id = request.args.get('customer_id', type=int)
+        selected_customer_name = None
+        if selected_customer_id:
+            selected_customer = CustomerService.get_by_id(selected_customer_id)
+            if selected_customer:
+                selected_customer_name = selected_customer.name
+        return render_template(
+            'appointment/create.html',
+            customers=customers,
+            services=services,
+            current_date=current_date,
+            selected_customer_id=selected_customer_id,
+            selected_customer_name=selected_customer_name,
+        )
 
     if request.method == 'POST':
         customer_id = request.form.get('customer_id')

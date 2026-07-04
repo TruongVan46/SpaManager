@@ -1032,6 +1032,131 @@ class BasicTestCase(unittest.TestCase):
         self.assertIsNone(restored_customer.deleted_at)
         self.assertIsNone(restored_customer.deleted_by)
 
+    def test_customer_detail_requires_login(self):
+        customer = self.create_customer_record("Anonymous Detail Customer")
+
+        response = self.client.get(f"/customers/{customer.id}", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+
+    def test_customer_detail_visible_for_staff_owner_and_admin(self):
+        owner = AuthService.seed_owner_if_empty()
+        admin = self.create_user("detail-admin", password="admin-pass", full_name="Detail Admin", role="ADMIN")
+        staff = self.create_user("detail-staff", password="staff-pass", full_name="Detail Staff", role="STAFF")
+        customer = self.create_customer_record("Detail Customer")
+
+        for user in (staff, admin, owner):
+            self.login_as(user)
+            response = self.client.get(f"/customers/{customer.id}")
+            self.assertEqual(response.status_code, 200)
+            html = response.get_data(as_text=True)
+            self.assertIn("Chi tiết Khách hàng", html)
+            self.assertIn(customer.name, html)
+            self.assertIn("Tổng lịch hẹn", html)
+            self.assertIn("Tổng hóa đơn", html)
+
+    def test_customer_detail_shows_history_and_quick_actions(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("History Customer")
+        other_customer = self.create_customer_record("Other History Customer")
+        service = self.create_service_record("History Service")
+        other_service = self.create_service_record("Other History Service")
+
+        appointment = Appointment(
+            customer_id=customer.id,
+            service_id=service.id,
+            appointment_time=datetime(2026, 7, 4, 9, 30),
+            status="Confirmed",
+            notes="Ghi chú lịch hẹn"
+        )
+        db.session.add(appointment)
+
+        invoice = self.create_invoice_record(customer, service)
+        other_appointment = Appointment(
+            customer_id=other_customer.id,
+            service_id=other_service.id,
+            appointment_time=datetime(2026, 7, 4, 11, 0),
+            status="Pending",
+            notes="Không nên xuất hiện"
+        )
+        db.session.add(other_appointment)
+        db.session.commit()
+
+        response = self.client.get(f"/customers/{customer.id}")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("History Customer", html)
+        self.assertIn("History Service", html)
+        self.assertIn("Ghi chú lịch hẹn", html)
+        self.assertIn(f"HD{invoice.id}", html)
+        self.assertIn("/appointments/create?customer_id=", html)
+        self.assertIn("/invoices/create?customer_id=", html)
+        self.assertNotIn("Other History Customer", html)
+        self.assertNotIn("Không nên xuất hiện", html)
+
+    def test_customer_detail_hides_soft_deleted_history(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Soft Delete Detail Customer")
+        service = self.create_service_record("Soft Delete Detail Service")
+        appointment = self.create_appointment_record(customer=customer, service=service)
+        invoice = self.create_invoice_record(customer, service)
+
+        appointment.deleted_at = datetime.utcnow()
+        appointment.deleted_by = "owner"
+        invoice.deleted_at = datetime.utcnow()
+        invoice.deleted_by = "owner"
+        db.session.commit()
+
+        response = self.client.get(f"/customers/{customer.id}")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Chưa có lịch hẹn nào", html)
+        self.assertIn("Chưa có hóa đơn nào", html)
+        self.assertNotIn(service.name, html)
+        self.assertNotIn(f"HD{invoice.id}", html)
+
+    def test_customer_detail_404_for_missing_or_deleted_customer(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Deleted Detail Customer")
+        customer.deleted_at = datetime.utcnow()
+        customer.deleted_by = "owner"
+        db.session.commit()
+
+        deleted_response = self.client.get(f"/customers/{customer.id}")
+        missing_response = self.client.get("/customers/999999")
+
+        self.assertEqual(deleted_response.status_code, 404)
+        self.assertEqual(missing_response.status_code, 404)
+
+    def test_customer_detail_template_is_scoped_and_utf8_safe(self):
+        template = Path("templates/customer/detail.html").read_text(encoding="utf-8")
+
+        self.assertIn("customer-detail-page", template)
+        self.assertIn("Chi tiết Khách hàng", template)
+        self.assertIn("Lịch sử lịch hẹn", template)
+        self.assertIn("Hóa đơn liên quan", template)
+        for marker in ("Ã", "á»", "áº", "Æ", "Ä", "Â"):
+            self.assertNotIn(marker, template)
+
+    def test_customer_detail_quick_actions_prefill_related_creates(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+        customer = self.create_customer_record("Quick Action Customer")
+
+        appointment_html = self.client.get(f"/appointments/create?customer_id={customer.id}").get_data(as_text=True)
+        invoice_html = self.client.get(f"/invoices/create?customer_id={customer.id}").get_data(as_text=True)
+
+        self.assertIn(str(customer.id), appointment_html)
+        self.assertIn(customer.name, appointment_html)
+        self.assertIn(str(customer.id), invoice_html)
+        self.assertIn(customer.name, invoice_html)
+
     def test_soft_delete_records_deleted_by_for_service_appointment_and_invoice(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)

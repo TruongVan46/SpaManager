@@ -1,3 +1,5 @@
+from sqlalchemy import func
+
 from extensions import db
 from models.customer import Customer
 from models.appointment import Appointment
@@ -55,6 +57,66 @@ class CustomerService:
     def get_by_id(customer_id):
         """Lấy chi tiết một khách hàng hoạt động theo ID"""
         return Customer.query.filter(Customer.id == customer_id, Customer.deleted_at.is_(None)).first()
+
+    @staticmethod
+    def get_customer_history(customer_id, history_limit=10):
+        customer = CustomerService.get_by_id(customer_id)
+        if not customer:
+            return None
+
+        appointment_count = db.session.query(func.count(Appointment.id)).filter(
+            Appointment.customer_id == customer_id,
+            Appointment.deleted_at.is_(None)
+        ).scalar() or 0
+        latest_appointment_at = db.session.query(func.max(Appointment.appointment_time)).filter(
+            Appointment.customer_id == customer_id,
+            Appointment.deleted_at.is_(None)
+        ).scalar()
+        latest_appointment_status = db.session.query(Appointment.status).filter(
+            Appointment.customer_id == customer_id,
+            Appointment.deleted_at.is_(None)
+        ).order_by(Appointment.appointment_time.desc(), Appointment.id.desc()).limit(1).scalar()
+
+        invoice_count = db.session.query(func.count(Invoice.id)).filter(
+            Invoice.customer_id == customer_id,
+            Invoice.deleted_at.is_(None)
+        ).scalar() or 0
+        total_spent = db.session.query(func.coalesce(func.sum(Invoice.total_amount), 0)).filter(
+            Invoice.customer_id == customer_id,
+            Invoice.deleted_at.is_(None)
+        ).scalar() or 0
+
+        recent_appointments = Appointment.query.options(
+            db.joinedload(Appointment.service)
+        ).filter(
+            Appointment.customer_id == customer_id,
+            Appointment.deleted_at.is_(None)
+        ).order_by(
+            Appointment.appointment_time.desc(),
+            Appointment.id.desc()
+        ).limit(history_limit).all()
+
+        recent_invoices = Invoice.query.filter(
+            Invoice.customer_id == customer_id,
+            Invoice.deleted_at.is_(None)
+        ).order_by(
+            Invoice.invoice_date.desc(),
+            Invoice.id.desc()
+        ).limit(history_limit).all()
+
+        return {
+            "customer": customer,
+            "summary": {
+                "appointment_count": appointment_count,
+                "latest_appointment_at": latest_appointment_at,
+                "latest_appointment_status": latest_appointment_status,
+                "invoice_count": invoice_count,
+                "total_spent": total_spent,
+            },
+            "appointments": recent_appointments,
+            "invoices": recent_invoices,
+            "history_limit": history_limit,
+        }
 
     @staticmethod
     def clean_phone(phone):

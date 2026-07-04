@@ -3,70 +3,229 @@
 {% block title %}Chi tiết Khách hàng - Spa Manager{% endblock %}
 
 {% block content %}
-<div class="container-fluid app-page">
+<div class="container-fluid app-page customer-detail-page">
     <div class="app-page-header">
-        <h1 class="app-title mb-0">Chi tiết Khách hàng</h1>
         <div>
-            <a href="{{ url_for('customer.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary me-2">
+            <h1 class="app-title mb-1">Chi tiết Khách hàng</h1>
+            <div class="text-muted">Xem thông tin, lịch hẹn và hóa đơn liên quan của khách hàng.</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('customer.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
                 <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
             </a>
             <a href="{{ url_for('customer.edit', id=customer.id) }}" class="app-btn app-btn-primary btn btn-primary">
-                <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Chỉnh sửa
+                <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Sửa khách hàng
+            </a>
+            <a href="{{ url_for('appointment.create', customer_id=customer.id) }}" class="app-btn app-btn-secondary btn btn-outline-primary">
+                <i class="bi bi-calendar-plus" style="margin-right: 8px;"></i>Tạo lịch hẹn
+            </a>
+            <a href="{{ url_for('invoice.create', customer_id=customer.id) }}" class="app-btn app-btn-secondary btn btn-outline-success">
+                <i class="bi bi-receipt-cutoff" style="margin-right: 8px;"></i>Tạo hóa đơn
             </a>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="app-card mb-4">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="app-card h-100">
                 <div class="app-card-header">
                     <h5 class="app-card-header-title card-title m-0">
-                        <i class="bi bi-people" style="font-size: 18px; margin-right: 8px;"></i>Thông tin chi tiết
+                        <i class="bi bi-person-vcard" style="font-size: 18px; margin-right: 8px;"></i>Thông tin khách hàng
                     </h5>
                 </div>
                 <div class="app-card-body">
-                    <div class="row mb-3">
-                        <div class="col-sm-4 text-muted">Họ và Tên:</div>
-                        <div class="col-sm-8"><strong>{{ customer.name }}</strong></div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-4 text-muted">Số điện thoại:</div>
-                        <div class="col-sm-8">{{ customer.phone or 'Không có thông tin' }}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-4 text-muted">Email:</div>
-                        <div class="col-sm-8">{{ customer.email or 'Không có thông tin' }}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-4 text-muted">Địa chỉ:</div>
-                        <div class="col-sm-8">{{ customer.address or 'Không có thông tin' }}</div>
-                    </div>
-                    <div class="row mb-0">
-                        <div class="col-sm-4 text-muted">Ngày tạo:</div>
-                        {% set created_local = customer.created_at | vietnam_time if customer.created_at else None %}
-                        <div class="col-sm-8">{{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}</div>
+                    <div class="d-grid gap-3">
+                        <div>
+                            <div class="text-muted small mb-1">Họ và tên</div>
+                            <div class="fw-semibold">{{ customer.name }}</div>
+                        </div>
+                        <div>
+                            <div class="text-muted small mb-1">Số điện thoại</div>
+                            <div>{{ customer.phone or 'Không có thông tin' }}</div>
+                        </div>
+                        <div>
+                            <div class="text-muted small mb-1">Email</div>
+                            <div>{{ customer.email or 'Không có thông tin' }}</div>
+                        </div>
+                        <div>
+                            <div class="text-muted small mb-1">Địa chỉ</div>
+                            <div>{{ customer.address or 'Không có thông tin' }}</div>
+                        </div>
+                        <div>
+                            <div class="text-muted small mb-1">Ngày tạo</div>
+                            {% set created_local = customer.created_at | vietnam_time if customer.created_at else None %}
+                            <div>{{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="app-card mb-4">
+
+        <div class="col-lg-8">
+            <div class="app-card h-100">
                 <div class="app-card-header">
                     <h5 class="app-card-header-title card-title m-0">
-                        <i class="bi bi-gear" style="font-size: 18px; margin-right: 8px;"></i>Thao tác nhanh
+                        <i class="bi bi-graph-up-arrow" style="font-size: 18px; margin-right: 8px;"></i>Tổng quan nhanh
                     </h5>
                 </div>
                 <div class="app-card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('customer.edit', id=customer.id) }}" class="app-btn app-btn-primary btn btn-outline-primary text-start">
-                            <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Chỉnh sửa thông tin
-                        </a>
-                        <form action="{{ url_for('customer.delete', id=customer.id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa khách hàng này không?');">
-                            <button type="submit" class="app-btn app-btn-outline-danger btn btn-outline-danger w-100 text-start">
-                                <i class="bi bi-trash" style="margin-right: 8px;"></i>Xóa khách hàng
-                            </button>
-                        </form>
+                    <div class="row g-3">
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                                <div class="text-muted small mb-1">Tổng lịch hẹn</div>
+                                <div class="fs-4 fw-bold">{{ summary.appointment_count }}</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                                <div class="text-muted small mb-1">Lần hẹn gần nhất</div>
+                                <div class="fw-semibold">
+                                    {% if summary.latest_appointment_at %}
+                                        {{ summary.latest_appointment_at.strftime('%d/%m/%Y %H:%M') }}
+                                    {% else %}
+                                        Chưa có
+                                    {% endif %}
+                                </div>
+                                {% if summary.latest_appointment_status %}
+                                <span class="badge text-bg-info mt-2">{{ summary.latest_appointment_status }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                                <div class="text-muted small mb-1">Tổng hóa đơn</div>
+                                <div class="fs-4 fw-bold">{{ summary.invoice_count }}</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                                <div class="text-muted small mb-1">Tổng chi tiêu</div>
+                                <div class="fs-4 fw-bold">{{ summary.total_spent | format_currency }}</div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="app-card">
+                <div class="app-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-calendar-check" style="font-size: 18px; margin-right: 8px;"></i>Lịch sử lịch hẹn
+                    </h5>
+                    <div class="text-muted small">
+                        Hiển thị {{ appointments|length }} / {{ summary.appointment_count }} lịch hẹn gần nhất
+                    </div>
+                </div>
+                <div class="app-card-body">
+                    {% if appointments %}
+                    <div class="table-responsive app-table-container">
+                        <table class="app-table table table-hover align-middle">
+                            <thead class="app-table-header">
+                                <tr>
+                                    <th scope="col" style="width: 70px;">STT</th>
+                                    <th scope="col">Ngày giờ</th>
+                                    <th scope="col">Dịch vụ</th>
+                                    <th scope="col">Trạng thái</th>
+                                    <th scope="col">Ghi chú</th>
+                                    <th scope="col" style="width: 180px;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in appointments %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ appointment.appointment_time.strftime('%d/%m/%Y %H:%M') if appointment.appointment_time else 'N/A' }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ appointment.service.name if appointment.service else 'N/A' }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="app-badge badge bg-info text-dark">{{ appointment.status }}</span>
+                                    </td>
+                                    <td class="text-wrap">{{ appointment.notes or 'Không có' }}</td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a href="{{ url_for('appointment.detail', id=appointment.id) }}" class="app-btn app-btn-sm app-btn-primary">
+                                                <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
+                                            </a>
+                                            <a href="{{ url_for('appointment.edit', id=appointment.id) }}" class="app-btn app-btn-sm app-btn-secondary btn btn-outline-secondary">
+                                                <i class="bi bi-pencil-square" style="margin-right: 8px;"></i>Sửa
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <div class="fs-1 mb-2"><i class="bi bi-calendar-x"></i></div>
+                        <div>Chưa có lịch hẹn nào.</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="app-card">
+                <div class="app-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="app-card-header-title card-title m-0">
+                        <i class="bi bi-receipt" style="font-size: 18px; margin-right: 8px;"></i>Hóa đơn liên quan
+                    </h5>
+                    <div class="text-muted small">
+                        Hiển thị {{ invoices|length }} / {{ summary.invoice_count }} hóa đơn gần nhất
+                    </div>
+                </div>
+                <div class="app-card-body">
+                    {% if invoices %}
+                    <div class="table-responsive app-table-container">
+                        <table class="app-table table table-hover align-middle">
+                            <thead class="app-table-header">
+                                <tr>
+                                    <th scope="col" style="width: 70px;">STT</th>
+                                    <th scope="col">Mã hóa đơn</th>
+                                    <th scope="col">Ngày lập</th>
+                                    <th scope="col">Tổng tiền</th>
+                                    <th scope="col">Thanh toán</th>
+                                    <th scope="col">Ghi chú</th>
+                                    <th scope="col" style="width: 180px;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in invoices %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td class="fw-semibold">HD{{ invoice.id }}</td>
+                                    <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</td>
+                                    <td>{{ invoice.total_amount | format_currency }}</td>
+                                    <td>
+                                        <span class="app-badge badge bg-info text-dark">{{ invoice.payment_method or 'N/A' }}</span>
+                                    </td>
+                                    <td class="text-wrap">{{ invoice.notes or 'Không có' }}</td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_url=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary">
+                                                <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
+                                            </a>
+                                            <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id) }}" class="app-btn app-btn-sm app-btn-secondary btn btn-outline-secondary">
+                                                <i class="bi bi-printer" style="margin-right: 8px;"></i>In
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <div class="fs-1 mb-2"><i class="bi bi-receipt"></i></div>
+                        <div>Chưa có hóa đơn nào.</div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
