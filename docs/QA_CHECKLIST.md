@@ -37,6 +37,7 @@ Checklist này dùng để kiểm tra nhanh sau deploy, sau demo, và trước k
 - [ ] `git status --short` sạch, không có artifact runtime.
 - [ ] Đã có backup mới trước khi kiểm tra thao tác nguy hiểm.
 - [ ] Sau rehearsal import/export/PDF/backup, đã kiểm `git status --short` để chắc không staged artifact.
+- [ ] Nếu phát hiện lỗi, đã ghi lại ngắn gọn trong issue/incident note.
 
 ### Auth / account
 
@@ -146,6 +147,7 @@ Checklist này dùng để kiểm tra nhanh sau deploy, sau demo, và trước k
 - [ ] Nếu có dữ liệu fake, đã dọn hoặc ghi chú rõ.
 - [ ] Nếu có backup test, đã ghi tên / version rõ.
 - [ ] Nếu vừa rehearsal import/export/PDF/backup, đã dọn file tạm và kiểm `git status --short`.
+- [ ] Nếu có issue/incident note, đã lưu link hoặc mô tả đủ để truy lại sau này.
 
 ## Checklist đầy đủ 20 phút
 

@@ -144,7 +144,7 @@ For the production smoke checklist, backup and restore safety, internal CLI comm
 
 ## Documentation
 
-- Documentation index: [docs/README.md](docs/README.md)
+- Docs index: [docs/README.md](docs/README.md)
 - QA checklist: [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md)
 - Demo data plan: [docs/DEMO_DATA.md](docs/DEMO_DATA.md)
 - User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)

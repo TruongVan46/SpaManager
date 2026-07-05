@@ -1,5 +1,10 @@
 # Tài liệu SpaManager
 
+## Tài liệu gốc
+
+- `README.md`
+- `CHANGELOG.md`
+
 ## Tài liệu bàn giao hiện hành
 
 - `RUNBOOK.md`

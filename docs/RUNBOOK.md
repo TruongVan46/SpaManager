@@ -55,6 +55,17 @@ Use this after every deploy:
 - [ ] `ops diagnostics` runs when shell access is available.
 - [ ] `data audit` runs when shell access is available.
 
+### 3.1 Quick 5-minute smoke
+
+Use this when you only have a very small window after deploy:
+
+- [ ] `GET /health` returns `200`.
+- [ ] OWNER or ADMIN can log in.
+- [ ] The footer/sidebar shows the expected `APP_VERSION`.
+- [ ] Backup Center opens and lists backups.
+- [ ] PDF export works on a fresh file, not a cached old one.
+- [ ] After any rehearsal, `git status --short` is still clean.
+
 ## 4. Health check
 
 - Primary check: `GET /health`
