@@ -1949,6 +1949,16 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("rollback remains a controlled data plan", rehearsal_text)
         self.assertNotIn("migrations/versions/0002_workspace_foundation.py", rehearsal_text)
 
+    def test_workspace_migration_execution_gate_is_documented_and_blocks_auto_deploy(self):
+        gate_path = Path("docs/workspace/WORKSPACE_MIGRATION_EXECUTION_GATE.md")
+        self.assertTrue(gate_path.exists())
+
+        gate_text = gate_path.read_text(encoding="utf-8")
+        self.assertIn("Workspace Migration Execution Gate and Deployment Control", gate_text)
+        self.assertIn("Do not create or merge an executable workspace migration", gate_text)
+        self.assertIn("Railway’s pre-deploy `db upgrade` can execute it automatically", gate_text)
+        self.assertIn("before the file reaches `migrations/versions/`", gate_text)
+
     def test_db_upgrade_creates_schema_and_stamps_head(self):
         self.clear_database_schema()
         self.assertEqual(sa_inspect(db.engine).get_table_names(), [])

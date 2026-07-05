@@ -9,6 +9,7 @@
 - Railway pre-deploy risk acknowledged.
 - A review-only candidate migration lives at `docs/workspace/migration_candidates/0002_workspace_foundation.py.txt`.
 - The controlled rehearsal path is documented in `docs/workspace/WORKSPACE_MIGRATION_REHEARSAL_PLAN.md`.
+- The execution gate is documented in `docs/workspace/WORKSPACE_MIGRATION_EXECUTION_GATE.md`.
 
 This document turns the v6.0.1 audit and v6.0.2 schema design into a concrete, non-executable draft for the next implementation tasks.
 
@@ -217,7 +218,7 @@ For 6.0.3 specifically:
 
 ### 6.0.5 — Safe migration implementation and local rehearsal
 
-- Create the executable migration.
+- Create the executable migration only after the execution gate is explicitly approved.
 - Rehearse locally and in staging before any production push.
 - Review duplicate rows and backup safety before deploy.
 - Follow the controlled rehearsal plan before any executable migration is introduced.

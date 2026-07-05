@@ -77,3 +77,5 @@ The rehearsal is complete only when:
 ## Follow-up
 
 After this rehearsal plan is approved, the next step is to implement the migration in a separate controlled task with explicit deploy safety review.
+
+See also: `docs/workspace/WORKSPACE_MIGRATION_EXECUTION_GATE.md` for the approval gate that must pass before any executable migration is added.

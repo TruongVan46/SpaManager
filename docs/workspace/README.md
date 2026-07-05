@@ -8,6 +8,7 @@ This folder collects the early v6.0 planning docs for workspace support.
 - [Workspace schema design](WORKSPACE_SCHEMA_DESIGN.md)
 - [Workspace models and migration draft](WORKSPACE_MODELS_AND_MIGRATION_DRAFT.md)
 - [Controlled workspace migration rehearsal plan](WORKSPACE_MIGRATION_REHEARSAL_PLAN.md)
+- [Workspace migration execution gate and deployment control](WORKSPACE_MIGRATION_EXECUTION_GATE.md)
 - [Workspace migration candidate](migration_candidates/0002_workspace_foundation.py.txt)
 
 ## Notes
@@ -17,3 +18,4 @@ This folder collects the early v6.0 planning docs for workspace support.
 - No workspace migration executable or workspace query logic is implemented yet.
 - The migration candidate is documentation-only and cannot be executed by Railway pre-deploy.
 - The rehearsal plan stays documentation-only and defines the safe path before any executable migration.
+- The execution gate defines when a future executable migration may be introduced and how Railway deploy control is kept safe.
