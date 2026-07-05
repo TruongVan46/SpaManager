@@ -23,6 +23,7 @@
 - `LOGGING.md`
 - `VALIDATION.md`
 - `TECH_DEBT.md`
+- `POSTGRESQL_MIGRATION_AUDIT.md`
 
 ## Tài liệu lưu trữ / lịch sử
 
