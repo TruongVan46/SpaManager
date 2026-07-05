@@ -3,6 +3,7 @@
 ## Tài liệu bàn giao hiện hành
 
 - `RUNBOOK.md`
+- `QA_CHECKLIST.md`
 - `USER_GUIDE.md`
 - `ADMIN_GUIDE.md`
 - `DEMO_SCRIPT.md`
@@ -28,4 +29,3 @@
 - Các tài liệu kỹ thuật cũ được giữ lại để tham khảo lịch sử.
 - Lịch sử release chính thức nằm trong `CHANGELOG.md`.
 - Không cần tạo audit report riêng cho từng version mới.
-
