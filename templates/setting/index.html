@@ -316,20 +316,20 @@
                                 </td>
                                 <td class="text-center">
                                     {% if b.source == 'Imported' %}
-                                        <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 11px; border-radius: 4px;"><i class="bi bi-box-arrow-in-down me-1"></i>IMPORTED</span>
+                                        <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 11px; border-radius: 4px;"><i class="bi bi-box-arrow-in-down me-1"></i>ĐÃ NHẬP</span>
                                     {% else %}
-                                        <span class="badge bg-info text-white px-2 py-1" style="font-size: 11px; border-radius: 4px;"><i class="bi bi-pc-display me-1"></i>LOCAL</span>
+                                        <span class="badge bg-info text-white px-2 py-1" style="font-size: 11px; border-radius: 4px;"><i class="bi bi-pc-display me-1"></i>CỤC BỘ</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
                                     {% if b.type == 'Manual' %}
-                                        <span class="badge-backup-type badge-backup-manual">Manual</span>
+                                        <span class="badge-backup-type badge-backup-manual">Thủ công</span>
                                     {% elif b.type == 'Before Import' %}
-                                        <span class="badge-backup-type badge-backup-auto">Import</span>
+                                        <span class="badge-backup-type badge-backup-auto">Trước nhập</span>
                                     {% elif b.type == 'Before Restore' %}
-                                        <span class="badge-backup-type badge-backup-db">Restore</span>
+                                        <span class="badge-backup-type badge-backup-db">Trước khôi phục</span>
                                     {% elif b.type == 'Before Update' %}
-                                        <span class="badge-backup-type bg-dark text-white px-2 py-1" style="font-size: 11px; border-radius: 4px;">Update</span>
+                                        <span class="badge-backup-type bg-dark text-white px-2 py-1" style="font-size: 11px; border-radius: 4px;">Trước cập nhật</span>
                                     {% else %}
                                         <span class="badge bg-secondary">{{ b.type }}</span>
                                     {% endif %}
@@ -338,9 +338,9 @@
                                     {% if b.status == 'Valid' %}
                                         <span class="badge bg-success">Hợp lệ</span>
                                     {% elif b.status == 'File Missing' %}
-                                        <span class="badge bg-danger">Mất file Backup</span>
+                                        <span class="badge bg-danger">Thiếu tệp sao lưu</span>
                                     {% elif b.status == 'Invalid' %}
-                                        <span class="badge bg-warning text-dark">Backup lỗi</span>
+                                        <span class="badge bg-warning text-dark">Không hợp lệ</span>
                                     {% else %}
                                         <span class="badge bg-secondary">{{ b.status }}</span>
                                     {% endif %}
@@ -563,10 +563,10 @@
                     <div class="mb-3">
                         <label for="backupType" class="form-label fw-bold">Loại sao lưu</label>
                         <select class="form-select" id="backupType" name="backup_type">
-                            <option value="Manual" selected>Manual (Sao lưu thủ công)</option>
-                            <option value="Before Import">Before Import (Trước khi import)</option>
-                            <option value="Before Restore">Before Restore (Trước khi khôi phục)</option>
-                            <option value="Before Update">Before Update (Trước khi cập nhật)</option>
+                            <option value="Manual" selected>Sao lưu thủ công</option>
+                            <option value="Before Import">Trước khi import</option>
+                            <option value="Before Restore">Trước khi khôi phục</option>
+                            <option value="Before Update">Trước khi cập nhật</option>
                         </select>
                     </div>
                 </div>

@@ -1962,6 +1962,29 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('wizardBtnConfirm.disabled = !this.checked || isExecutingRestore', script)
         self.assertIn('requestSubmit', script)
 
+    def test_settings_backup_center_uses_vietnamese_badges_and_status_labels(self):
+        template = Path("templates/setting/index.html").read_text(encoding="utf-8")
+
+        self.assertIn("ĐÃ NHẬP", template)
+        self.assertIn("CỤC BỘ", template)
+        self.assertIn("Thủ công", template)
+        self.assertIn("Trước nhập", template)
+        self.assertIn("Trước khôi phục", template)
+        self.assertIn("Trước cập nhật", template)
+        self.assertIn("Sao lưu thủ công", template)
+        self.assertIn("Trước khi import", template)
+        self.assertIn("Trước khi khôi phục", template)
+        self.assertIn("Trước khi cập nhật", template)
+        self.assertIn("Hợp lệ", template)
+        self.assertIn("Thiếu tệp sao lưu", template)
+        self.assertIn("Không hợp lệ", template)
+        self.assertNotIn(">IMPORTED<", template)
+        self.assertNotIn(">LOCAL<", template)
+        self.assertNotIn(">Manual<", template)
+        self.assertNotIn(">Import<", template)
+        self.assertNotIn(">Restore<", template)
+        self.assertNotIn(">Update<", template)
+
     def test_backup_service_metadata_uses_clean_vietnamese_text(self):
         service_source = Path("services/backup_service.py").read_text(encoding="utf-8")
         self.assertIn("Backup ngày", service_source)
