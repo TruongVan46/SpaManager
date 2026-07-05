@@ -2,6 +2,45 @@
 
 SpaManager release notes.
 
+## [v5.5.0] - 2026-07-05
+
+### Added
+- Login protection with lightweight in-memory rate limiting by username and IP.
+- Failed-login telemetry with ActivityLog events:
+  - `AUTH_LOGIN_FAILED`
+  - `AUTH_LOGIN_RATE_LIMITED`
+- Security / Accounts section in operational diagnostics.
+- Route-level regression coverage for user lifecycle workflows.
+
+### Changed
+- Password policy validation was centralized and shared across change password, admin reset password, and create user.
+- Login UI now handles failed login and rate-limited responses consistently.
+- Operational diagnostics now reports user, role, and security visibility.
+
+### Fixed / Hardened
+- Login failed and rate-limited attempts now have dedicated telemetry.
+- Password policy messages are clearer and consistent.
+- User lifecycle routes are protected by regression tests:
+  - create user
+  - edit user
+  - reset password
+  - toggle active/inactive
+  - self-disable/self-demotion protection
+  - STAFF blocked from user management
+- ActivityLog sanitization continues to prevent password fields from being exposed.
+
+### Safety
+- No schema or migration changes.
+- No password plaintext logging.
+- No token, session, or secret logging.
+- No change to CSRF, session, or permission model.
+- No rewrite to Flask-Login.
+- Rate limiting remains in-memory and best-effort for small deployments.
+
+### Tests
+- Added tests for login protection, password policy, security diagnostics, and user lifecycle route regressions.
+- Existing auth, CSRF, permission, data audit, repair, perf, and ops diagnostics behavior preserved.
+
 ## [v5.4.0] - 2026-07-05
 
 ### Added

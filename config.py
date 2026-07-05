@@ -14,7 +14,7 @@ class BaseConfig:
     """
     # Application identity
     APP_NAME = os.getenv("APP_NAME", "SpaManager")
-    APP_VERSION = os.getenv("APP_VERSION", "5.4.0")
+    APP_VERSION = os.getenv("APP_VERSION", "5.5.0")
     APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
 
     # SQLAlchemy Configurations

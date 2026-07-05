@@ -19,7 +19,7 @@ from utils.timezone_utils import get_app_timezone, local_now, to_local_datetime
 
 class BackupService:
     """Service for backing up the SQLite database and managing its metadata."""
-    APP_VERSION = "5.4.0"
+    APP_VERSION = "5.5.0"
 
     @staticmethod
     def get_app_version(app):
