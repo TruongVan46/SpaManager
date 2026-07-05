@@ -4,6 +4,7 @@
 
 - `RUNBOOK.md`
 - `QA_CHECKLIST.md`
+- `DEMO_DATA.md`
 - `USER_GUIDE.md`
 - `ADMIN_GUIDE.md`
 - `DEMO_SCRIPT.md`

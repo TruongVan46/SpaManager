@@ -1,5 +1,9 @@
 # SpaManager Demo Script
 
+Xem thêm:
+
+- [Demo Data Plan](DEMO_DATA.md)
+
 Tài liệu này dùng cho demo, bàn giao, và thuyết trình. Chỉ sử dụng dữ liệu mẫu hoặc dữ liệu local do bạn tự chuẩn bị. Không dùng dữ liệu khách hàng thật.
 
 ## 1. Mục đích
@@ -217,4 +221,3 @@ Cảnh báo:
 - Không chạy repair apply.
 - Không xóa vĩnh viễn dữ liệu nếu chưa backup.
 - Không commit file temp, import, hoặc backup.
-
