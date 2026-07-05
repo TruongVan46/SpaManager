@@ -87,3 +87,8 @@
 
 - Kế hoạch init schema sạch cho PostgreSQL: `V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md`
 - Tài liệu này mô tả schema init, owner bootstrap, smoke check, và rollback.
+
+## v5.9.4 PostgreSQL cutover rehearsal and validation plan
+
+- Kế hoạch rehearsal/validation trước cutover thật: `V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md`
+- Tài liệu này chỉ mô tả rehearsal, không phải production cutover.

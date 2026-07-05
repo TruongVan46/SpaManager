@@ -359,3 +359,8 @@ Current stable checkpoint: `v5.8.0`.
 
 - Tham chiếu: `docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md`
 - Dùng sau freeze/backup để init schema PostgreSQL sạch, bootstrap owner, rồi smoke trước cutover.
+
+## v5.9.4 PostgreSQL cutover rehearsal and validation plan note
+
+- Tham chiếu: `docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md`
+- Dùng để rehearsal/validate mọi bước trước khi owner cho phép đổi production `DATABASE_URL`.
