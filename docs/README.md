@@ -72,3 +72,8 @@
 
 - Chốt trạng thái readiness cho PostgreSQL migration: `V5_8_0_READINESS_CHECKPOINT.md`
 - Tài liệu này tóm tắt phạm vi v5.8 và nhấn mạnh rằng production vẫn chưa cutover.
+
+## v5.9.1 Railway PostgreSQL provisioning
+
+- Ghi nhận provision Railway PostgreSQL service: `V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`
+- Tài liệu này chỉ mô tả provisioning/readiness, chưa cutover app `DATABASE_URL`.

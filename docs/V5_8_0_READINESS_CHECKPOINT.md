@@ -40,6 +40,7 @@
 ## v5.9 entry criteria
 
 - Provision PostgreSQL.
+- Record Railway PostgreSQL provisioning in `docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`.
 - Set safe env.
 - Init fresh schema.
 - Bootstrap owner.

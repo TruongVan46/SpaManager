@@ -344,3 +344,8 @@ Current stable checkpoint: `v5.8.0`.
 
 - Tham chiếu: `docs/V5_8_0_READINESS_CHECKPOINT.md`
 - Đây là checkpoint chốt readiness cho v5.8 trước khi bước sang kế hoạch fresh PostgreSQL cutover ở v5.9.
+
+## v5.9.1 Railway PostgreSQL provisioning note
+
+- Tham chiếu: `docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`
+- Dùng khi owner xác nhận tạo PostgreSQL service trên Railway nhưng chưa cutover app `DATABASE_URL`.

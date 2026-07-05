@@ -221,3 +221,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## v5.8.0 readiness checkpoint
 
 - [docs/V5_8_0_READINESS_CHECKPOINT.md](docs/V5_8_0_READINESS_CHECKPOINT.md)
+
+## v5.9.1 Railway PostgreSQL provisioning
+
+- [docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md](docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md)
