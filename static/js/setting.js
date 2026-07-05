@@ -1032,6 +1032,14 @@ wizardBtnContinue1.addEventListener('click', function () {
     fetch(`/settings/restore-wizard/validate/${wizardBackupId}`)
         .then(res => res.json())
         .then(data => {
+            if (data.blocked) {
+                wizardValidationResult.innerHTML = `<strong>Trạng thái:</strong> Bị khóa<br><strong>Thông báo:</strong> ${data.message || 'Backup Center đang tạm khóa trong chế độ PostgreSQL.'}`;
+                if (wizardBtnContinue1) wizardBtnContinue1.disabled = true;
+                if (wizardBtnContinue2) wizardBtnContinue2.disabled = true;
+                if (wizardBtnConfirm) wizardBtnConfirm.disabled = true;
+                if (wizardWarningMsg) wizardWarningMsg.textContent = data.message || 'Backup Center đang tạm khóa trong chế độ PostgreSQL.';
+                return;
+            }
             const integrity = data.integrity || 'Unknown';
             const compatible = data.compatible ? 'Có' : 'Không';
             wizardValidationResult.innerHTML = `<strong>Trạng thái:</strong> ${integrity}<br><strong>Khả năng tương thích:</strong> ${compatible}`;

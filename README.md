@@ -241,3 +241,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## v5.9.5 Production DATABASE_URL cutover
 
 - [docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md](docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md)
+
+## v5.9.6 Post-cutover QA and PostgreSQL Backup Center guard
+
+- [docs/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md](docs/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md)

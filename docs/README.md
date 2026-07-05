@@ -97,3 +97,8 @@
 
 - Kế hoạch cutover production thật: `V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md`
 - Trạng thái hiện tại: chờ owner Railway action.
+
+## v5.9.6 Post-cutover QA and PostgreSQL Backup Center guard
+
+- Guard Backup Center sau cutover PostgreSQL: `V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md`
+- Dùng để xác nhận SQLite backup cũ vẫn hiển thị nhưng không còn được dùng cho DB restore PostgreSQL.

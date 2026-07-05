@@ -226,15 +226,15 @@
             </button>
         </div>
         <div class="collapse show" id="collapseBackupCenter">
-            <div class="app-card-body">
+            <div class="app-card-body" data-backup-engine="{{ backup_engine|default('sqlite') }}">
                 
                 <!-- Toolbar -->
                 <div class="backup-toolbar">
                     <div class="backup-toolbar-left d-flex gap-2">
-                        <button type="button" class="btn btn-create-backup" data-bs-toggle="modal" data-bs-target="#createBackupModal">
+                        <button type="button" class="btn btn-create-backup" data-bs-toggle="modal" data-bs-target="#createBackupModal" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Backup Center đang bị khóa khi chạy PostgreSQL"{% endif %}>
                             <i class="bi bi-cloud-arrow-up-fill"></i> Tạo bản sao lưu
                         </button>
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;">
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Backup Center đang bị khóa khi chạy PostgreSQL"{% endif %}>
                             <i class="bi bi-upload"></i> Nhập bản sao lưu
                         </button>
                     </div>
@@ -258,6 +258,13 @@
                         </div>
                     </div>
                 </div>
+
+                {% if backup_engine == 'postgresql' %}
+                <div class="alert alert-warning backup-guard-message mb-4 py-2 px-3 small">
+                    <i class="bi bi-shield-exclamation me-1"></i>
+                    {{ backup_guard_message }}
+                </div>
+                {% endif %}
 
                 <div class="alert alert-info backup-ux-hint mb-4 py-2 px-3 small">
                     <i class="bi bi-shield-lock me-1"></i>
@@ -355,7 +362,7 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group backup-action-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-outline-success me-1 btn-restore-backup" data-id="{{ b.id }}" data-name="{{ b.display_name }}" title="Khôi phục" {% if b.status != 'Valid' %}disabled{% endif %} aria-label="Khôi phục từ bản sao lưu này">
+                                        <button type="button" class="btn btn-sm btn-outline-success me-1 btn-restore-backup" data-id="{{ b.id }}" data-name="{{ b.display_name }}" title="Khôi phục" {% if b.status != 'Valid' or backup_engine == 'postgresql' %}disabled{% endif %} aria-label="Khôi phục từ bản sao lưu này">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                         <a href="{{ url_for('setting.download_backup', backup_id=b.id) }}" class="btn btn-sm btn-outline-primary me-1 {% if b.status == 'File Missing' %}disabled{% endif %}" title="Tải xuống" aria-label="Tải xuống bản sao lưu này">

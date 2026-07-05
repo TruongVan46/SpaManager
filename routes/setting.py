@@ -20,6 +20,11 @@ from services.auth_service import AuthService
 from core.auth.permissions import can_manage_settings
 from utils.media_storage import resolve_media_file_path
 from utils.timezone_utils import local_now, to_local_datetime
+from utils.database_engine import (
+    get_database_engine,
+    get_postgresql_backup_center_message,
+    get_postgresql_restore_guard_message,
+)
 
 
 class SimplePagination:
@@ -91,6 +96,7 @@ def index():
     paginated_backups = backups[start:end]
     
     pagination_obj = SimplePagination(paginated_backups, page, per_page, total)
+    backup_engine = get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', ''))
 
     return render_template(
         'setting/index.html', 
@@ -100,7 +106,9 @@ def index():
         backups_pagination=pagination_obj,
         page=page,
         per_page=per_page,
-        backup_error=backup_error
+        backup_error=backup_error,
+        backup_engine=backup_engine,
+        backup_guard_message=get_postgresql_backup_center_message() if backup_engine == 'postgresql' else None,
     )
 
 
@@ -197,6 +205,13 @@ def delete_logo():
 @setting_bp.route('/settings/backup', methods=['POST'])
 def backup_database():
     """Create a database backup with metadata."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        message = get_postgresql_backup_center_message()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.args.get('format') == 'json' or request.form.get('format') == 'json':
+            return jsonify({'success': False, 'message': message, 'blocked': True}), 400
+        flash(message, 'warning')
+        return redirect(url_for('setting.index'))
+
     notes = request.form.get('notes', '').strip()
     backup_type = request.form.get('backup_type', 'Manual').strip()
     
@@ -272,6 +287,13 @@ def update_notes(backup_id):
 @setting_bp.route('/settings/backup/restore/<string:backup_id>', methods=['POST'])
 def restore_from_backup(backup_id):
     """Restore database from a specific backup file using its UUID."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        message = get_postgresql_restore_guard_message()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.args.get('format') == 'json':
+            return jsonify({'success': False, 'message': message, 'blocked': True}), 400
+        flash(message, 'warning')
+        return redirect(url_for('setting.index'))
+
     meta = BackupRepository.get_by_id(current_app, backup_id)
     if not meta:
         return jsonify({'success': False, 'message': 'Không tìm thấy bản sao lưu.'}), 400
@@ -308,6 +330,12 @@ def restore_from_backup(backup_id):
 @setting_bp.route('/settings/backup/upload', methods=['POST'])
 def upload_backup():
     """Upload an external backup file and inspect it."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        return jsonify({
+            'success': False,
+            'message': get_postgresql_backup_center_message(),
+            'blocked': True
+        }), 400
     if 'backup_file' not in request.files:
         return jsonify({'success': False, 'message': 'Không tìm thấy tệp tải lên.'}), 400
         
@@ -463,6 +491,12 @@ def restore_wizard_confirm():
     """Confirm restore after validation.
     Expects JSON payload {"backup_id": "..."}.
     """
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        return jsonify({
+            'success': False,
+            'message': get_postgresql_restore_guard_message(),
+            'blocked': True
+        }), 400
     data = request.get_json() or {}
     backup_id = data.get('backup_id')
     if not backup_id:
@@ -483,6 +517,10 @@ def restore_wizard_confirm():
 @setting_bp.route('/settings/restore', methods=['POST'])
 def restore_database():
     """Restore database from uploaded backup file."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        flash(get_postgresql_restore_guard_message(), 'warning')
+        return redirect(url_for('setting.index'))
+
     file = request.files.get('restore_file')
     if not file or not file.filename:
         flash('Vui lòng chọn file backup để khôi phục.', 'warning')

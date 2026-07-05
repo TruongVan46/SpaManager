@@ -369,3 +369,8 @@ Current stable checkpoint: `v5.8.0`.
 
 - Tham chiếu: `docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md`
 - Dùng khi owner Railway thực hiện cutover production thật và xác nhận xong.
+
+## v5.9.6 Post-cutover QA and PostgreSQL Backup Center guard note
+
+- Tham chiếu: `docs/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md`
+- Dùng sau cutover PostgreSQL để nhắc rằng Backup Center SQLite chỉ còn ở chế độ tham khảo và không được dùng cho DB restore PostgreSQL.

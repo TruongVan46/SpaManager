@@ -6,6 +6,7 @@ from core.logger import app_logger
 from repositories.backup_repository import BackupRepository
 from services.activity_log_service import ActivityLogService
 from services.system_refresh_service import SystemRefreshService
+from utils.database_engine import is_postgresql_database, get_postgresql_restore_guard_message
 
 
 
@@ -73,6 +74,8 @@ class RestoreService:
         Restore database from backup file.
         Returns (success, message).
         """
+        if is_postgresql_database(app.config.get('SQLALCHEMY_DATABASE_URI', '')):
+            return False, get_postgresql_restore_guard_message()
         db_path = RestoreService.get_db_path(app)
         backup_filename = os.path.basename(backup_filepath)
 

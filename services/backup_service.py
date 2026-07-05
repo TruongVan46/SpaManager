@@ -14,12 +14,39 @@ from models.setting import Setting
 from validators.backup_validator import BackupValidator
 from services.activity_log_service import ActivityLogService
 from utils.timezone_utils import get_app_timezone, local_now, to_local_datetime
+from utils.database_engine import (
+    get_database_engine,
+    get_postgresql_backup_center_message,
+    get_postgresql_restore_guard_message,
+    is_postgresql_database,
+    is_sqlite_database,
+)
 
 
 
 class BackupService:
     """Service for backing up the SQLite database and managing its metadata."""
     APP_VERSION = "5.7.0"
+
+    @staticmethod
+    def get_database_engine(app):
+        return get_database_engine(app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+
+    @staticmethod
+    def is_sqlite_database(app):
+        return is_sqlite_database(app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+
+    @staticmethod
+    def is_postgresql_database(app):
+        return is_postgresql_database(app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+
+    @staticmethod
+    def get_postgresql_backup_center_message():
+        return get_postgresql_backup_center_message()
+
+    @staticmethod
+    def get_postgresql_restore_guard_message():
+        return get_postgresql_restore_guard_message()
 
     @staticmethod
     def get_app_version(app):
@@ -98,12 +125,10 @@ class BackupService:
         NOTE: This feature is SQLite-only. When PostgreSQL or another database is configured,
         this method returns None immediately. Use pg_dump for PostgreSQL backups.
         """
-        # Guard: Backup Center only supports SQLite
-        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        if not db_uri.startswith('sqlite:///'):
+        # Guard: Backup Center only supports SQLite backup flow
+        if not BackupService.is_sqlite_database(app):
             app_logger.warning(
-                "Backup Center is disabled: only supported on SQLite databases. "
-                "Use pg_dump for PostgreSQL backups.",
+                "Backup Center is disabled: only supported on SQLite databases. Use the PostgreSQL backup runbook instead.",
                 module="BACKUP"
             )
             return None, None, None
@@ -409,6 +434,16 @@ class BackupService:
         """Validate a backup for restore wizard.
         Returns a dict with keys: exists (bool), integrity (str), compatible (bool), metadata (dict|None).
         """
+        if BackupService.is_postgresql_database(app):
+            return {
+                'exists': False,
+                'integrity': 'Blocked',
+                'compatible': False,
+                'metadata': None,
+                'blocked': True,
+                'engine': 'postgresql',
+                'message': BackupService.get_postgresql_restore_guard_message(),
+            }
         meta = BackupRepository.get_by_id(app, backup_id)
         if not meta:
             return {'exists': False, 'integrity': 'File Missing', 'compatible': False, 'metadata': None}

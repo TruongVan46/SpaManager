@@ -83,6 +83,12 @@ Khi PostgreSQL mode được bật:
 - Nếu file/uploads backup còn phù hợp, vẫn có thể hiển thị phần file backup riêng.
 - UI nên ưu tiên giải thích hơn là “ẩn lỗi”.
 
+### Trạng thái hiện tại trong code
+
+- Backup Center đã có guard PostgreSQL cho create/restore/upload.
+- Restore Wizard trả trạng thái bị khóa thay vì tiếp tục flow SQLite.
+- Danh sách backup cũ vẫn có thể hiển thị để tham khảo nếu metadata hợp lệ.
+
 ## Restore safety policy
 
 Quy tắc an toàn đề xuất:

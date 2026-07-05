@@ -62,6 +62,13 @@ from services.operational_diagnostics_service import run_operational_diagnostics
 from services.import_service import ImportService
 from services.login_rate_limit_service import reset_all_login_attempts
 from repositories.backup_repository import BackupRepository
+from utils.database_engine import (
+    get_database_engine,
+    get_postgresql_backup_center_message,
+    get_postgresql_restore_guard_message,
+    is_postgresql_database,
+    is_sqlite_database,
+)
 from utils.timezone_utils import local_now
 from core.auth.permissions import (
     can_manage_backups,
@@ -1987,6 +1994,104 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('confirmDeleteBackupBtn.disabled = !this.checked', script)
         self.assertIn('wizardBtnConfirm.disabled = !this.checked || isExecutingRestore', script)
         self.assertIn('requestSubmit', script)
+
+    def test_database_engine_helpers_detect_sqlite_and_postgresql(self):
+        self.assertEqual(get_database_engine("sqlite:///example.db"), "sqlite")
+        self.assertEqual(get_database_engine("postgresql://user:pass@localhost:5432/spamanager"), "postgresql")
+        self.assertTrue(is_sqlite_database("sqlite:///example.db"))
+        self.assertTrue(is_postgresql_database("postgresql://user:pass@localhost:5432/spamanager"))
+        self.assertIn("Backup Center", get_postgresql_backup_center_message())
+        self.assertIn("PostgreSQL", get_postgresql_restore_guard_message())
+
+    def test_settings_backup_center_shows_postgresql_guard_and_disables_actions(self):
+        owner = self.create_user("settings-pg-guard-owner", password="owner-pass", full_name="PG Guard Owner", role="OWNER")
+        self.login_as(owner)
+        original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://user:pass@localhost:5432/spamanager"
+        try:
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+        finally:
+            app.config["SQLALCHEMY_DATABASE_URI"] = original_uri
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Backup Center", html)
+        self.assertIn("PostgreSQL", html)
+        self.assertIn("data-backup-engine=\"postgresql\"", html)
+        self.assertIn("btn-create-backup", html)
+        self.assertIn("disabled", html)
+
+    def test_settings_postgresql_backup_guard_blocks_create_restore_upload_and_validate(self):
+        owner = self.create_user("settings-pg-guard-actions-owner", password="owner-pass", full_name="PG Guard Actions Owner", role="OWNER")
+        self.login_as(owner)
+        backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="SQLite backup before PG guard")
+
+        temp_restore = Path(tempfile.gettempdir()) / f"pg-restore-{uuid.uuid4().hex}.sqlite"
+        shutil.copy2(backup_path, temp_restore)
+
+        try:
+            original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+            app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://user:pass@localhost:5432/spamanager"
+            before_files = {path.name for path in Path(BackupService.get_backup_dir(app)).glob("*.sqlite")}
+            before_total = Customer.query.count()
+
+            create_response = self.post_with_csrf(
+                "/settings/backup",
+                path="/settings",
+                data={"notes": "PG blocked", "backup_type": "Manual", "format": "json"},
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            )
+            self.assertEqual(create_response.status_code, 400)
+            self.assertTrue(create_response.is_json)
+            self.assertTrue(create_response.get_json()["blocked"])
+            self.assertIn("PostgreSQL", create_response.get_json()["message"])
+
+            with temp_restore.open("rb") as restore_handle:
+                upload_response = self.post_with_csrf(
+                    "/settings/backup/upload",
+                    path="/settings",
+                    data={"backup_file": (restore_handle, temp_restore.name), "notes": "PG blocked"},
+                    headers={"X-Requested-With": "XMLHttpRequest"},
+                )
+            self.assertEqual(upload_response.status_code, 400)
+            self.assertTrue(upload_response.is_json)
+            self.assertTrue(upload_response.get_json()["blocked"])
+
+            validate_response = self.client.get(f"/settings/restore-wizard/validate/{backup_id}")
+            self.assertEqual(validate_response.status_code, 200)
+            self.assertTrue(validate_response.is_json)
+            self.assertTrue(validate_response.get_json()["blocked"])
+
+            restore_response = self.post_with_csrf(
+                f"/settings/backup/restore/{backup_id}",
+                path="/settings",
+                data={"backup_id": backup_id, "format": "json"},
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            )
+            self.assertEqual(restore_response.status_code, 400)
+            self.assertTrue(restore_response.is_json)
+            self.assertTrue(restore_response.get_json()["blocked"])
+
+            confirm_response = self.post_with_csrf(
+                "/settings/restore-wizard/confirm",
+                path="/settings",
+                json={"backup_id": backup_id},
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            )
+            self.assertEqual(confirm_response.status_code, 400)
+            self.assertTrue(confirm_response.is_json)
+            self.assertTrue(confirm_response.get_json()["blocked"])
+
+            after_files = {path.name for path in Path(BackupService.get_backup_dir(app)).glob("*.sqlite")}
+            self.assertEqual(before_files, after_files)
+            self.assertEqual(Customer.query.count(), before_total)
+        finally:
+            app.config["SQLALCHEMY_DATABASE_URI"] = original_uri
+            if temp_restore.exists():
+                temp_restore.unlink()
+            if backup_path.exists():
+                backup_path.unlink()
+            BackupRepository.delete(app, backup_id)
 
     def test_import_template_files_exist_and_routes_download_them(self):
         customers_template = Path("static/templates/import/customers_template.xlsx")
