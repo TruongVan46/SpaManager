@@ -1939,6 +1939,16 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("0002_workspace_foundation.py", migration_files)
         self.assertFalse(any(name.startswith("0002_") for name in migration_files))
 
+    def test_workspace_migration_rehearsal_plan_is_documented_and_non_executable(self):
+        rehearsal_path = Path("docs/workspace/WORKSPACE_MIGRATION_REHEARSAL_PLAN.md")
+        self.assertTrue(rehearsal_path.exists())
+
+        rehearsal_text = rehearsal_path.read_text(encoding="utf-8")
+        self.assertIn("Controlled Workspace Migration Rehearsal Plan", rehearsal_text)
+        self.assertIn("Do not create or ship an executable migration", rehearsal_text)
+        self.assertIn("rollback remains a controlled data plan", rehearsal_text)
+        self.assertNotIn("migrations/versions/0002_workspace_foundation.py", rehearsal_text)
+
     def test_db_upgrade_creates_schema_and_stamps_head(self):
         self.clear_database_schema()
         self.assertEqual(sa_inspect(db.engine).get_table_names(), [])
