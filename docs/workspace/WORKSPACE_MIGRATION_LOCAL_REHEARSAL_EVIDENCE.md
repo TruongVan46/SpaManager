@@ -49,6 +49,7 @@ The following validation was completed successfully during the rehearsal work:
 - The migration candidate is still documentation-only.
 - The execution gate remains the only approved control point before any executable migration is ever added.
 - The local rehearsal evidence supports the current decision to keep production migration behavior unchanged.
+- 6.0.10 is setup/documentation only; PostgreSQL rehearsal execution is still not PASS, and no executable migration was created.
 
 ## Conclusion
 

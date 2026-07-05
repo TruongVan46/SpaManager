@@ -17,6 +17,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - [Backup/restore strategy](POSTGRESQL_BACKUP_RESTORE_STRATEGY.md)
 - [Clean cutover plan](POSTGRESQL_CLEAN_CUTOVER_PLAN.md)
 - [Test profile and CI plan](POSTGRESQL_TEST_CI_PLAN.md)
+- [Rehearsal environment setup](POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
 
 ## Release checkpoints
 
