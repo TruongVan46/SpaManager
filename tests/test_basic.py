@@ -1925,6 +1925,20 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(history.exit_code, 0, history.output)
         self.assertIn("0001_baseline", history.output)
 
+    def test_workspace_migration_candidate_is_docs_only_and_non_executable(self):
+        candidate_path = Path("docs/workspace/migration_candidates/0002_workspace_foundation.py.txt")
+        self.assertTrue(candidate_path.exists())
+
+        candidate_text = candidate_path.read_text(encoding="utf-8")
+        self.assertIn("PSEUDO-CODE ONLY", candidate_text)
+        self.assertIn("workspaces", candidate_text)
+        self.assertIn("workspace_members", candidate_text)
+        self.assertIn("do not place in migrations/versions", candidate_text.lower())
+
+        migration_files = [path.name for path in Path("migrations/versions").glob("*.py")]
+        self.assertNotIn("0002_workspace_foundation.py", migration_files)
+        self.assertFalse(any(name.startswith("0002_") for name in migration_files))
+
     def test_db_upgrade_creates_schema_and_stamps_head(self):
         self.clear_database_schema()
         self.assertEqual(sa_inspect(db.engine).get_table_names(), [])

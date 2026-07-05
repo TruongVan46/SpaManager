@@ -7,6 +7,7 @@
 - Model implementation exists in `models/workspace.py` behind safe tests.
 - No production DB change.
 - Railway pre-deploy risk acknowledged.
+- A review-only candidate migration lives at `docs/workspace/migration_candidates/0002_workspace_foundation.py.txt`.
 
 This document turns the v6.0.1 audit and v6.0.2 schema design into a concrete, non-executable draft for the next implementation tasks.
 
@@ -251,4 +252,5 @@ For 6.0.3 specifically:
 ## Notes
 
 - This file is documentation only.
+- The candidate file is also documentation only and cannot be executed by Railway.
 - No migration code should be copied from here into production without a separate implementation and rehearsal task.
