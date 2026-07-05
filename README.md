@@ -80,6 +80,7 @@ Always back up the active database before stamping or upgrading a live environme
 For local PostgreSQL development and rehearsal without affecting production, use the Docker profile in `docker-compose.postgres.yml`.
 
 Full setup guide: [`docs/postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md`](docs/postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
+Smoke test report: [`docs/postgresql/POSTGRESQL_LOCAL_DEV_SMOKE_TEST.md`](docs/postgresql/POSTGRESQL_LOCAL_DEV_SMOKE_TEST.md)
 
 Quick flow:
 

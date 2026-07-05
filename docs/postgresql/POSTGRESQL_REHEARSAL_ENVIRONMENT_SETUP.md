@@ -84,3 +84,4 @@ The local production-like rehearsal used:
 The temporary executable migration was created only for the local dry-run and then deleted from `migrations/versions/`.
 
 See also: `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` for the current toolchain decision.
+See also: `docs/postgresql/POSTGRESQL_LOCAL_DEV_SMOKE_TEST.md` for the recorded local smoke test result.

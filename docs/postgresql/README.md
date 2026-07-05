@@ -22,6 +22,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - [Rehearsal environment setup](POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
 - [Workspace PostgreSQL rehearsal toolchain decision](../workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md)
 - [Workspace executable migration approval package](../workspace/WORKSPACE_EXECUTABLE_MIGRATION_APPROVAL_PACKAGE.md)
+- [PostgreSQL local dev smoke test](POSTGRESQL_LOCAL_DEV_SMOKE_TEST.md)
 
 ## Release checkpoints
 
