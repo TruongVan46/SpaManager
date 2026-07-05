@@ -2,6 +2,36 @@
 
 SpaManager release notes.
 
+## [v5.6.0] - 2026-07-05
+
+### Added
+- Production runbook and release checklist in `docs/RUNBOOK.md`.
+- User guide and admin guide in `docs/USER_GUIDE.md` and `docs/ADMIN_GUIDE.md`.
+- Demo script and local demo data plan in `docs/DEMO_SCRIPT.md`.
+- Documentation index in `docs/README.md`.
+
+### Changed
+- Documentation links in the main README now point to the handover doc set.
+- Legacy v3.x audit reports were moved into `docs/archive/`.
+- Backup Center labels visible to users were localized to Vietnamese.
+
+### Documentation
+- Added smoke checklist, release checklist, backup and restore safety notes, internal CLI usage, rollback guidance, security checks, and production do-not-run guidance.
+- Added daily workflow guidance for customers, services, appointments, invoices, statistics, search/filter, recycle bin, and common issues.
+- Added admin guidance for roles, user management, password policy, login protection, Activity Log, Settings, Backup/Restore, Recycle Bin, diagnostics, and troubleshooting.
+- Added demo guidance for handover and presentation using fake local-only data.
+
+### Safety
+- No schema or migration changes.
+- No production seed or real demo data was added.
+- No backup, runtime, or import artifacts were committed.
+- No secrets, passwords, real customer data, or real database URLs were added to documentation.
+- No business logic, auth, permission, CSRF, backup/restore, PDF/export, or CLI behavior changed.
+
+### Tests
+- Added regression coverage for Backup Center Vietnamese labels.
+- Existing tests and compile checks remain passing.
+
 ## [v5.5.0] - 2026-07-05
 
 ### Added

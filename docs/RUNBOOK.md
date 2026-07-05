@@ -163,7 +163,7 @@ If production is broken after a deploy:
 6. Restore the database only when data corruption is confirmed.
 7. Back up the current state before any restore.
 
-Current stable checkpoint before v5.6: `v5.5.0`.
+Current stable checkpoint: `v5.6.0`.
 
 ## 9. Security checks
 
@@ -237,4 +237,3 @@ Current stable checkpoint before v5.6: `v5.5.0`.
 - Do not commit temporary import files under `static/uploads/import/`.
 - Do not expose `SECRET_KEY`, `DATABASE_URL`, or passwords.
 - Do not run stress or performance loops on production.
-
