@@ -4,12 +4,12 @@ from collections import Counter
 from dataclasses import dataclass, field
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from flask import current_app
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.engine.url import make_url
 
 from extensions import db
@@ -20,6 +20,7 @@ from models.invoice import Invoice
 from models.invoice_detail import InvoiceDetail
 from models.service import Service
 from models.user import User
+from core.auth.enums import UserRole
 from services.backup_service import BackupService
 from services.data_audit_service import run_data_consistency_audit
 from services.data_repair_service import plan_data_repairs
@@ -74,6 +75,144 @@ def _count_model(model, deleted=False):
     if deleted:
         query = query.filter(model.deleted_at.isnot(None))
     return query.count()
+
+
+def _count_security_events(actions: list[str], cutoff: datetime):
+    if not actions:
+        return 0
+    try:
+        return ActivityLog.query.filter(
+            ActivityLog.created_at >= cutoff,
+            ActivityLog.action.in_(actions),
+        ).count()
+    except Exception:
+        return 0
+
+
+def _count_recent_security_action_codes(cutoff: datetime, allowed_actions: set[str]):
+    if not allowed_actions:
+        return {}
+    try:
+        rows = (
+            db.session.query(ActivityLog.action, func.count(ActivityLog.id))
+            .filter(ActivityLog.created_at >= cutoff)
+            .filter(ActivityLog.action.in_(list(allowed_actions)))
+            .group_by(ActivityLog.action)
+            .all()
+        )
+    except Exception:
+        return {}
+    return {action: count for action, count in rows}
+
+
+def _build_security_summary(target_app):
+    valid_roles = {member.value for member in UserRole}
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    role_counts = {role: 0 for role in valid_roles}
+    active_role_counts = {role: 0 for role in valid_roles}
+
+    total_users = User.query.count()
+    active_users = User.query.filter(User.is_active.is_(True)).count()
+    inactive_users = User.query.filter(User.is_active.is_(False)).count()
+    invalid_role_users = User.query.filter(
+        User.role.isnot(None),
+        ~func.upper(User.role).in_(list(valid_roles)),
+    ).count()
+    users_without_password_hash = User.query.filter(
+        (User.password_hash.is_(None)) | (func.trim(User.password_hash) == "")
+    ).count()
+    users_with_oauth_provider = User.query.filter(
+        User.auth_provider.isnot(None),
+        func.lower(User.auth_provider) != "local",
+    ).count()
+
+    for role in valid_roles:
+        role_counts[role] = User.query.filter(User.role == role).count()
+        active_role_counts[role] = User.query.filter(
+            User.role == role,
+            User.is_active.is_(True),
+        ).count()
+
+    recent_login_failed_count = _count_security_events(["AUTH_LOGIN_FAILED"], cutoff)
+    recent_login_rate_limited_count = _count_security_events(["AUTH_LOGIN_RATE_LIMITED"], cutoff)
+    recent_password_change_count = _count_security_events(
+        ["AUTH_PASSWORD_CHANGE_SUCCESS", "CHANGE_PASSWORD"],
+        cutoff,
+    )
+    recent_password_reset_count = _count_security_events(
+        ["USER_PASSWORD_RESET", "RESET_USER_PASSWORD"],
+        cutoff,
+    )
+    recent_login_success_count = _count_security_events(["AUTH_LOGIN_SUCCESS", "LOGIN"], cutoff)
+    recent_logout_count = _count_security_events(["AUTH_LOGOUT", "LOGOUT"], cutoff)
+    recent_action_counts = _count_recent_security_action_codes(
+        cutoff,
+        {
+            "AUTH_LOGIN_FAILED",
+            "AUTH_LOGIN_RATE_LIMITED",
+            "AUTH_LOGIN_SUCCESS",
+            "AUTH_LOGOUT",
+            "AUTH_PASSWORD_CHANGE_SUCCESS",
+            "AUTH_PASSWORD_CHANGE_FAILED",
+            "CHANGE_PASSWORD",
+            "CHANGE_PASSWORD_FAILED",
+            "USER_PASSWORD_RESET",
+            "RESET_USER_PASSWORD",
+        },
+    )
+
+    warnings = []
+    status = "OK"
+
+    if total_users == 0:
+        status = "FAIL"
+        warnings.append("No users exist in the system.")
+    if active_role_counts.get("OWNER", 0) == 0:
+        status = "FAIL"
+        warnings.append("No active OWNER account exists.")
+    if users_without_password_hash > 0:
+        status = "FAIL"
+        warnings.append("At least one user has no password hash.")
+    if invalid_role_users > 0:
+        warnings.append("Invalid role values were detected.")
+    if role_counts.get("OWNER", 0) == 1 and active_role_counts.get("OWNER", 0) == 1:
+        warnings.append("Only one active OWNER account exists.")
+    if active_role_counts.get("ADMIN", 0) == 0:
+        warnings.append("No active ADMIN account exists.")
+    if inactive_users > 0:
+        warnings.append("Inactive users exist in the database.")
+    if recent_login_rate_limited_count >= 1:
+        warnings.append("Login rate-limited events were detected in the last 24h.")
+    if recent_login_failed_count >= 5:
+        warnings.append("Login failed events reached the warning threshold in the last 24h.")
+
+    if warnings and status == "OK":
+        status = "WARN"
+
+    return {
+        "status": status,
+        "window_hours": 24,
+        "total_users": total_users,
+        "active_users": active_users,
+        "inactive_users": inactive_users,
+        "owners_total": role_counts.get("OWNER", 0),
+        "owners_active": active_role_counts.get("OWNER", 0),
+        "admins_total": role_counts.get("ADMIN", 0),
+        "admins_active": active_role_counts.get("ADMIN", 0),
+        "staff_total": role_counts.get("STAFF", 0),
+        "staff_active": active_role_counts.get("STAFF", 0),
+        "invalid_role_users": invalid_role_users,
+        "users_without_password_hash": users_without_password_hash,
+        "users_with_oauth_provider": users_with_oauth_provider,
+        "recent_login_failed_count": recent_login_failed_count,
+        "recent_login_rate_limited_count": recent_login_rate_limited_count,
+        "recent_password_change_count": recent_password_change_count,
+        "recent_password_reset_count": recent_password_reset_count,
+        "recent_login_success_count": recent_login_success_count,
+        "recent_logout_count": recent_logout_count,
+        "recent_action_counts": dict(sorted(recent_action_counts.items(), key=lambda item: item[1], reverse=True)),
+        "warnings": warnings,
+    }
 
 
 def _parse_backup_created_at(value):
@@ -160,6 +299,7 @@ class OperationalDiagnosticsReport:
     generated_at: datetime
     app: dict[str, Any] = field(default_factory=dict)
     database: dict[str, Any] = field(default_factory=dict)
+    security: dict[str, Any] = field(default_factory=dict)
     backup: dict[str, Any] = field(default_factory=dict)
     audit: dict[str, Any] = field(default_factory=dict)
     repair: dict[str, Any] = field(default_factory=dict)
@@ -172,6 +312,7 @@ class OperationalDiagnosticsReport:
             "generated_at": self.generated_at.isoformat(),
             "app": self.app,
             "database": self.database,
+            "security": self.security,
             "backup": self.backup,
             "audit": self.audit,
             "repair": self.repair,
@@ -225,6 +366,38 @@ class OperationalDiagnosticsReport:
             if key in self.database:
                 label = key.replace("_", " ").title()
                 lines.append(f"- {label}: {self.database[key]}")
+
+        lines.extend(["", "Security / Accounts"])
+        for key, label in [
+            ("total_users", "Users"),
+            ("active_users", "Active users"),
+            ("inactive_users", "Inactive users"),
+            ("owners_total", "OWNER total"),
+            ("owners_active", "OWNER active"),
+            ("admins_total", "ADMIN total"),
+            ("admins_active", "ADMIN active"),
+            ("staff_total", "STAFF total"),
+            ("staff_active", "STAFF active"),
+            ("invalid_role_users", "Invalid roles"),
+            ("users_without_password_hash", "Users without password hash"),
+            ("users_with_oauth_provider", "Users with OAuth provider"),
+            ("recent_login_failed_count", "Login failed"),
+            ("recent_login_rate_limited_count", "Login rate-limited"),
+            ("recent_password_change_count", "Password changes"),
+            ("recent_password_reset_count", "Password resets"),
+        ]:
+            if key in self.security:
+                lines.append(f"- {label}: {self.security[key]}")
+        if self.security.get("window_hours"):
+            lines.append(f"- Window hours: {self.security['window_hours']}")
+        if verbose and self.security.get("warnings"):
+            lines.append("- Security warnings:")
+            for warning in self.security["warnings"]:
+                lines.append(f"  * {warning}")
+        if verbose and self.security.get("recent_action_counts"):
+            lines.append("- Recent security actions:")
+            for action, count in list(self.security["recent_action_counts"].items())[:5]:
+                lines.append(f"  * {action}: {count}")
 
         lines.extend(["", "Backup"])
         for key in [
@@ -379,6 +552,10 @@ def _backup_summary(target_app):
     return summary
 
 
+def _security_summary(target_app):
+    return _build_security_summary(target_app)
+
+
 def _audit_summary(verbose: bool = False):
     report = run_data_consistency_audit()
     issue_counts = Counter(issue.code for issue in report.issues)
@@ -466,6 +643,10 @@ def run_operational_diagnostics(include_performance: bool = True, include_repair
     if backup_summary.get("warning"):
         warnings.append(f"Backup warning: {backup_summary['warning']}")
 
+    security_summary = _security_summary(target_app)
+    if security_summary.get("warnings"):
+        warnings.extend(f"Security warning: {warning}" for warning in security_summary["warnings"])
+
     audit_summary = {
         "status": "FAIL",
         "errors": 0,
@@ -528,10 +709,13 @@ def run_operational_diagnostics(include_performance: bool = True, include_repair
         overall_status = "FAIL"
     elif audit_summary.get("errors", 0) > 0:
         overall_status = "FAIL"
+    elif security_summary.get("status") == "FAIL":
+        overall_status = "FAIL"
     else:
         warning_conditions = [
             audit_summary.get("warnings", 0) > 0,
             backup_summary.get("status") != "OK",
+            security_summary.get("status") == "WARN",
             performance_summary.get("status") in {"WARN", "SLOW"},
             bool(warnings),
         ]
@@ -548,6 +732,7 @@ def run_operational_diagnostics(include_performance: bool = True, include_repair
         generated_at=generated_at,
         app=app_summary,
         database=db_summary,
+        security=security_summary,
         backup=backup_summary,
         audit=audit_summary,
         repair=repair_summary,

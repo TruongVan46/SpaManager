@@ -75,7 +75,7 @@ from core.auth.permissions import (
     is_staff,
 )
 from core.auth.security import PasswordPolicy
-from core.activity_log_utils import sanitize_activity_log_value, get_activity_actor_display_name
+from core.activity_log_utils import sanitize_activity_log_value, get_activity_actor_display_name, build_activity_log_entry
 import core.csrf as csrf_module
 import utils.export_pdf as export_pdf_utils
 
@@ -2559,6 +2559,81 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Repair dry-run", report.to_text())
         self.assertIn("Performance", report.to_text())
 
+    def test_operational_diagnostics_includes_security_account_summary(self):
+        owner = self.create_user("ops-owner", password="owner-pass", full_name="Ops Owner", role="OWNER")
+        admin = self.create_user("ops-admin", password="admin-pass", full_name="Ops Admin", role="ADMIN")
+        staff_active = self.create_user("ops-staff", password="staff-pass", full_name="Ops Staff", role="STAFF")
+        staff_inactive = self.create_user("ops-staff-inactive", password="staff-pass-2", full_name="Ops Staff Inactive", role="STAFF")
+        staff_inactive.is_active = False
+        db.session.commit()
+
+        for action in ["AUTH_LOGIN_FAILED", "AUTH_LOGIN_FAILED", "AUTH_LOGIN_RATE_LIMITED", "CHANGE_PASSWORD", "RESET_USER_PASSWORD"]:
+            log_entry = build_activity_log_entry(
+                module="Auth",
+                action=action,
+                severity="WARNING",
+                description=f"{action} telemetry",
+                user_id=owner.id,
+            )
+            log_entry.created_at = datetime.utcnow()
+            db.session.add(log_entry)
+        db.session.commit()
+
+        before_snapshot = (User.query.count(), ActivityLog.query.count())
+        with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
+            report = run_operational_diagnostics(include_performance=False, include_repair_plan=False)
+        after_snapshot = (User.query.count(), ActivityLog.query.count())
+
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertIn("security", report.to_dict())
+        self.assertEqual(report.security["total_users"], 4)
+        self.assertEqual(report.security["active_users"], 3)
+        self.assertEqual(report.security["inactive_users"], 1)
+        self.assertEqual(report.security["owners_total"], 1)
+        self.assertEqual(report.security["owners_active"], 1)
+        self.assertEqual(report.security["admins_total"], 1)
+        self.assertEqual(report.security["admins_active"], 1)
+        self.assertEqual(report.security["staff_total"], 2)
+        self.assertEqual(report.security["staff_active"], 1)
+        self.assertEqual(report.security["recent_login_failed_count"], 2)
+        self.assertEqual(report.security["recent_login_rate_limited_count"], 1)
+        self.assertEqual(report.security["recent_password_change_count"], 1)
+        self.assertEqual(report.security["recent_password_reset_count"], 1)
+        self.assertIn("Only one active OWNER account exists.", report.security["warnings"])
+        self.assertIn("Inactive users exist in the database.", report.security["warnings"])
+        self.assertIn("Login rate-limited events were detected in the last 24h.", report.security["warnings"])
+        self.assertIn("Security / Accounts", report.to_text())
+        self.assertIn("Login failed", report.to_text())
+        self.assertIn("Login rate-limited", report.to_text())
+        self.assertNotIn("owner-pass", report.to_text())
+        self.assertNotIn("staff-pass", report.to_text())
+
+    def test_operational_diagnostics_flags_invalid_roles_and_no_active_owner(self):
+        owner = self.create_user("ops-owner-fail", password="owner-pass", full_name="Ops Owner Fail", role="OWNER")
+        owner.is_active = False
+        db.session.commit()
+        admin = self.create_user("ops-admin-fail", password="admin-pass", full_name="Ops Admin Fail", role="ADMIN")
+        invalid_user = self.create_user("ops-invalid-role", password="invalid-pass", full_name="Ops Invalid", role="STAFF")
+        with db.engine.begin() as connection:
+            connection.execute(
+                text("UPDATE users SET role = :role WHERE id = :user_id"),
+                {"role": "HACKER", "user_id": invalid_user.id},
+            )
+
+        before_snapshot = (User.query.count(), ActivityLog.query.count())
+        with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
+            report = run_operational_diagnostics(include_performance=False, include_repair_plan=False)
+        after_snapshot = (User.query.count(), ActivityLog.query.count())
+
+        self.assertEqual(before_snapshot, after_snapshot)
+        self.assertEqual(report.status, "FAIL")
+        self.assertEqual(report.security["owners_active"], 0)
+        self.assertEqual(report.security["invalid_role_users"], 1)
+        self.assertIn("No active OWNER account exists.", report.security["warnings"])
+        self.assertIn("Invalid role values were detected.", report.security["warnings"])
+        self.assertNotIn("HACKER", report.to_text())
+        self.assertNotIn("owner-pass", report.to_text())
+
     def test_operational_diagnostics_cli_command_runs_and_skip_flags_work(self):
         runner = app.test_cli_runner()
         with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
@@ -2573,6 +2648,34 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Repair dry-run", result.output)
         self.assertIn("Performance", result.output)
         self.assertIn("SKIPPED", result.output)
+
+    def test_operational_diagnostics_cli_outputs_security_section_without_sensitive_data(self):
+        owner = self.create_user("ops-cli-owner", password="owner-pass", full_name="Ops CLI Owner", role="OWNER")
+        log_entry = build_activity_log_entry(
+            module="Auth",
+            action="AUTH_LOGIN_FAILED",
+            severity="WARNING",
+            description="AUTH_LOGIN_FAILED telemetry",
+            user_id=owner.id,
+        )
+        log_entry.created_at = datetime.utcnow()
+        db.session.add(log_entry)
+        db.session.commit()
+
+        runner = app.test_cli_runner()
+        with patch("services.operational_diagnostics_service._load_backup_metadata", return_value={}):
+            result = runner.invoke(args=["ops", "report", "--skip-performance", "--skip-repair-plan"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Security / Accounts", result.output)
+        self.assertIn("Login failed", result.output)
+        self.assertIn("OWNER total", result.output)
+        self.assertIn("ADMIN total", result.output)
+        self.assertIn("STAFF total", result.output)
+        self.assertNotIn("owner-pass", result.output)
+        self.assertNotIn("password_hash", result.output)
+        self.assertNotIn("SECRET_KEY", result.output)
+        self.assertNotIn("token", result.output.lower())
 
     def test_operational_diagnostics_repair_plan_stays_dry_run(self):
         customer = Customer(name="  Ops Repair Customer  ", phone=" 0901234567 ", email=" ops-repair@example.com ")
