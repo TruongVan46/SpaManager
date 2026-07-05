@@ -213,3 +213,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## PostgreSQL clean cutover plan
 
 - [docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md](docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md)
+
+## PostgreSQL test profile and CI plan
+
+- [docs/POSTGRESQL_TEST_CI_PLAN.md](docs/POSTGRESQL_TEST_CI_PLAN.md)

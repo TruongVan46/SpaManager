@@ -62,3 +62,8 @@
 
 - Kế hoạch chuyển sang PostgreSQL mới sạch: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
 - Current project decision: fresh PostgreSQL clean cutover, không migrate dữ liệu test SQLite cũ.
+
+## PostgreSQL test profile and CI plan
+
+- Kế hoạch test local/CI cho PostgreSQL: `POSTGRESQL_TEST_CI_PLAN.md`
+- SQLite test suite vẫn là default; PostgreSQL CI nên bắt đầu ở mức optional/manual.

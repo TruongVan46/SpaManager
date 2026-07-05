@@ -126,3 +126,8 @@ Các query này nhìn chung tương thích PostgreSQL, nhưng vẫn nên test th
 
 - Tham chiếu: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
 - Khi owner chốt cutover, quy trình sẽ là fresh PostgreSQL init, không migrate dữ liệu test SQLite cũ.
+
+## PostgreSQL test profile and CI plan note
+
+- Tham chiếu: `docs/POSTGRESQL_TEST_CI_PLAN.md`
+- Dùng để thiết lập test profile PostgreSQL local và CI chiến lược.

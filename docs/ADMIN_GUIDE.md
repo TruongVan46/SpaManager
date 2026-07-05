@@ -134,3 +134,7 @@ Cảnh báo:
 ## PostgreSQL clean cutover roadmap
 
 - OWNER/ADMIN có thể xem thêm `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` khi lên lịch cutover.
+
+## PostgreSQL test profile and CI plan note
+
+- OWNER/ADMIN nên đọc `docs/POSTGRESQL_TEST_CI_PLAN.md` nếu muốn rehearsal PostgreSQL local/CI trước cutover.

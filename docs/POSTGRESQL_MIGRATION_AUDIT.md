@@ -299,3 +299,8 @@ Nếu DB đã có schema và chỉ cần đánh dấu revision, dùng:
 
 - Báo cáo kế hoạch mới: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
 - Định hướng hiện tại: clean cutover fresh PostgreSQL thay vì data migration tool cho SQLite test data.
+
+## PostgreSQL test profile and CI plan follow-up
+
+- Báo cáo chi tiết: `docs/POSTGRESQL_TEST_CI_PLAN.md`
+- Đây là bước chuẩn bị trước v5.9 để xác nhận app chạy ổn trên PostgreSQL.

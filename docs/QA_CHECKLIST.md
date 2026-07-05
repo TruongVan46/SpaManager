@@ -316,3 +316,7 @@ Thực hiện toàn bộ nhóm A đến P bên dưới:
 ## PostgreSQL clean cutover rehearsal note
 
 - Trước rehearsal hoặc release lớn, đọc `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` nếu đang chuẩn bị chuyển sang PostgreSQL.
+
+## PostgreSQL test profile and CI plan note
+
+- Trước rehearsal hoặc release lớn, đọc `docs/POSTGRESQL_TEST_CI_PLAN.md` nếu đang chuẩn bị PostgreSQL CI.

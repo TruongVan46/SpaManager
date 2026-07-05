@@ -334,3 +334,8 @@ Current stable checkpoint: `v5.7.0`.
 
 - Tham chiếu: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
 - Dùng khi cần chuyển từ SQLite test data sang PostgreSQL fresh database.
+
+## PostgreSQL test profile and CI plan note
+
+- Tham chiếu: `docs/POSTGRESQL_TEST_CI_PLAN.md`
+- Tài liệu này nêu rõ SQLite test suite vẫn là default và PostgreSQL CI chưa cần bắt buộc ngay.
