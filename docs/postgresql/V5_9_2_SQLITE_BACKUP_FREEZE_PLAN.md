@@ -10,11 +10,11 @@
 
 ## Current state
 
-- Latest stable checkpoint: `v5.8.0`.
-- App production still uses SQLite.
-- SQLite data is test data and does not need migration.
-- v5.9 will use fresh PostgreSQL clean cutover.
-- v5.9.1 created provisioning guidance only.
+- Latest stable checkpoint: `v5.9.0`.
+- App production now uses PostgreSQL.
+- SQLite data was test data and does not need migration.
+- v5.9.1 created provisioning guidance before the cutover.
+- The freeze plan is now historical context for the completed migration.
 
 ## Why backup still matters
 

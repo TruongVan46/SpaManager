@@ -2,7 +2,7 @@
 
 ## Status
 
-WAITING OWNER RAILWAY ACTION
+COMPLETED
 
 ## Scope
 
@@ -71,8 +71,8 @@ Notes:
 - Do not run restore.
 - Do not change `APP_VERSION`.
 - Do not change schema / model / migration code.
-- Do not mark v5.9.0 released yet.
+- v5.9.0 is released and this cutover note is historical.
 
 ## Next task
 
-v5.9.6 — Post-cutover QA and rollback check.
+v5.9.6 — Post-cutover QA and PostgreSQL Backup Center guard.

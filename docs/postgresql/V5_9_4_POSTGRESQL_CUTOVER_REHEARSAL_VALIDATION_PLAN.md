@@ -10,9 +10,9 @@
 
 ## Current state
 
-- Latest stable checkpoint: `v5.8.0`.
-- Production app still uses SQLite.
-- SQLite data is test data.
+- Latest stable checkpoint: `v5.9.0`.
+- Production app now uses PostgreSQL.
+- SQLite data was test data.
 - v5.9.1 provisioning guide is done.
 - v5.9.2 backup/freeze plan is done.
 - v5.9.3 schema init plan is done.

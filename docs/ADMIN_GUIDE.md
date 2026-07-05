@@ -128,13 +128,13 @@ Cảnh báo:
 
 ## PostgreSQL backup/restore roadmap
 
-- OWNER/ADMIN nên đọc thêm `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md` trước khi lên kế hoạch cutover.
+- OWNER/ADMIN nên đọc thêm `postgresql/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md` trước khi lên kế hoạch cutover.
 - Không restore production PostgreSQL bằng flow SQLite hiện tại.
 
 ## PostgreSQL clean cutover roadmap
 
-- OWNER/ADMIN có thể xem thêm `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` khi lên lịch cutover.
+- OWNER/ADMIN có thể xem thêm `postgresql/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` khi lên lịch cutover.
 
 ## PostgreSQL test profile and CI plan note
 
-- OWNER/ADMIN nên đọc `docs/POSTGRESQL_TEST_CI_PLAN.md` nếu muốn rehearsal PostgreSQL local/CI trước cutover.
+- OWNER/ADMIN nên đọc `postgresql/POSTGRESQL_TEST_CI_PLAN.md` nếu muốn rehearsal PostgreSQL local/CI trước cutover.

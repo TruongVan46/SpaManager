@@ -162,12 +162,12 @@ Nếu PostgreSQL cutover fail:
 
 ## Final recommendation
 
-- PostgreSQL production cutover chưa làm trong v5.8.6.
+- PostgreSQL production cutover was the planned path before v5.9.0; the checkpoint is now complete.
 - Được phép bỏ qua data migration vì SQLite hiện chỉ là test data.
 - Task v5.9 nên đi theo hướng clean PostgreSQL cutover.
 - Không được xóa gì cho tới khi có lệnh rõ ở v5.9.
 
 ## PostgreSQL test profile and CI plan note
 
-- Tham chiếu: `docs/POSTGRESQL_TEST_CI_PLAN.md`
+- Tham chiếu: `POSTGRESQL_TEST_CI_PLAN.md`
 - Sau clean cutover plan, đây là bước chốt cách test PostgreSQL trước v5.9.

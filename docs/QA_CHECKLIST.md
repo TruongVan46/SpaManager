@@ -310,13 +310,13 @@ Thực hiện toàn bộ nhóm A đến P bên dưới:
 
 ## PostgreSQL backup/restore rehearsal note
 
-- Trước release hay rehearsal nguy hiểm, tham chiếu `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`.
+- Trước release hay rehearsal nguy hiểm, tham chiếu `postgresql/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`.
 - Không restore production nếu chưa có backup và chưa có plan engine-specific rõ ràng.
 
 ## PostgreSQL clean cutover rehearsal note
 
-- Trước rehearsal hoặc release lớn, đọc `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` nếu đang chuẩn bị chuyển sang PostgreSQL.
+- Trước rehearsal hoặc release lớn, đọc `postgresql/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` nếu đang chuẩn bị chuyển sang PostgreSQL.
 
 ## PostgreSQL test profile and CI plan note
 
-- Trước rehearsal hoặc release lớn, đọc `docs/POSTGRESQL_TEST_CI_PLAN.md` nếu đang chuẩn bị PostgreSQL CI.
+- Trước rehearsal hoặc release lớn, đọc `postgresql/POSTGRESQL_TEST_CI_PLAN.md` nếu đang chuẩn bị PostgreSQL CI.

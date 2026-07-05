@@ -141,8 +141,8 @@ Other supported values:
 ## Railway deployment
 
 - Use `APP_ENV=production`
-- Set `DATABASE_URL` to the Railway SQLite volume path
-- Keep `TEST_DATABASE_URL` reserved for the future PostgreSQL test profile
+- Set `DATABASE_URL` to the Railway PostgreSQL reference variable
+- Keep `TEST_DATABASE_URL` reserved for the PostgreSQL test profile
 - Set `PERSISTENT_ROOT` to the Railway persistent volume root
 - Keep uploaded media under the persistent root so redeploys do not remove files
 - Point Railway health checks to `GET /health`
@@ -150,13 +150,13 @@ Other supported values:
 Example production values:
 
 ```env
-DATABASE_URL=sqlite:////app/database/spa.db
+DATABASE_URL=<Railway PostgreSQL reference variable>
 PERSISTENT_ROOT=/app/database
 ```
 
 ## Backup and restore
 
-- Back up the SQLite database file regularly
+- Back up the PostgreSQL database using Railway / provider-managed backups
 - Restore with care because it overwrites live data
 - Logo and avatar files live under the persistent media folder
 
@@ -203,45 +203,11 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 
 - Google OAuth is not implemented.
 - User management is available with OWNER / ADMIN / STAFF permissions.
-- PostgreSQL migration is not the current deployment path.
+- PostgreSQL production cutover is now the deployment path.
 - SpaManager remains a local-first application with Railway production support.
 
-## PostgreSQL backup/restore strategy
+## PostgreSQL migration & production docs
 
-- [docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md](docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md)
+SpaManager production is now running on PostgreSQL as of v5.9.0. Detailed migration, cutover, backup, and validation notes are grouped here:
 
-## PostgreSQL clean cutover plan
-
-- [docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md](docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md)
-
-## PostgreSQL test profile and CI plan
-
-- [docs/POSTGRESQL_TEST_CI_PLAN.md](docs/POSTGRESQL_TEST_CI_PLAN.md)
-
-## v5.8.0 readiness checkpoint
-
-- [docs/V5_8_0_READINESS_CHECKPOINT.md](docs/V5_8_0_READINESS_CHECKPOINT.md)
-
-## v5.9.1 Railway PostgreSQL provisioning
-
-- [docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md](docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md)
-
-## v5.9.2 Production SQLite backup and freeze plan
-
-- [docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md](docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md)
-
-## v5.9.3 Fresh PostgreSQL schema initialization plan
-
-- [docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md](docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md)
-
-## v5.9.4 PostgreSQL cutover rehearsal and validation plan
-
-- [docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md](docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md)
-
-## v5.9.5 Production DATABASE_URL cutover
-
-- [docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md](docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md)
-
-## v5.9.6 Post-cutover QA and PostgreSQL Backup Center guard
-
-- [docs/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md](docs/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md)
+- [PostgreSQL docs index](docs/postgresql/README.md)

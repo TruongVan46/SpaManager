@@ -2,12 +2,12 @@
 
 ## Mục đích
 
-Tài liệu này ghi nhận hiện trạng SQLite của SpaManager và các yêu cầu cần chuẩn bị trước khi chuyển sang PostgreSQL. Đây là tài liệu nền cho lộ trình v5.8 và v5.9, không phải tài liệu cutover.
+Tài liệu này ghi nhận hiện trạng chuyển đổi PostgreSQL của SpaManager và các yêu cầu đã chuẩn bị trước khi cutover. Đây là tài liệu nền cho lộ trình v5.8 và v5.9, không phải tài liệu vận hành production hiện tại.
 
 ## Trạng thái hiện tại
 
-- Production hiện đang dùng SQLite trên Railway Volume.
-- `DATABASE_URL` production hiện tại là `sqlite:////app/database/spa.db`.
+- Production hiện đã cutover sang PostgreSQL trên Railway.
+- `DATABASE_URL` production hiện trỏ tới Railway PostgreSQL reference variable.
 - `PERSISTENT_ROOT` production hiện tại là `/app/database`.
 - `BACKUP_FOLDER` hiện tại là `PERSISTENT_ROOT/backup`.
 - Local/dev fallback vẫn là `database/spa.db` trong workspace.
@@ -18,10 +18,10 @@ Tài liệu này ghi nhận hiện trạng SQLite của SpaManager và các yêu
 
 - `config.py` đang tách logic theo local/dev/test/production.
 - Production bắt buộc phải có `DATABASE_URL`.
-- `.env.example` hiện vẫn theo cách cấu hình SQLite.
+- `.env.example` hiện có cả cấu hình local SQLite và comment PostgreSQL production/test profile.
 - Tests hiện override `TEST_DATABASE_URL` sang SQLite.
 - PostgreSQL driver readiness now starts with `psycopg2-binary` in `requirements.txt`.
-- Chưa cutover sang PostgreSQL production, và chưa có test profile PostgreSQL thật.
+- Production PostgreSQL cutover đã hoàn tất và test profile PostgreSQL đã được chuẩn bị.
 
 ## Models / schema summary
 
@@ -167,7 +167,7 @@ Những file sẽ cần cập nhật ở các task sau:
 - `docs/ADMIN_GUIDE.md`
 - `docs/QA_CHECKLIST.md`
 - `docs/DEMO_DATA.md`
-- `docs/POSTGRESQL_MIGRATION_AUDIT.md`
+- `POSTGRESQL_MIGRATION_AUDIT.md`
 - Railway deploy notes
 
 Environment cần chuẩn bị:
@@ -215,7 +215,7 @@ Environment cần chuẩn bị:
 - 5.8.5 Backup/restore strategy redesign for PostgreSQL
 - 5.8.6 SQLite → PostgreSQL migration tool design
 - 5.8.7 PostgreSQL test profile and CI plan
-- 5.8.8 v5.8.0 readiness checkpoint
+- 5.8.8 v5.8.0 readiness checkpoint (historical)
 
 ### v5.9 — PostgreSQL Production Migration
 
@@ -287,20 +287,20 @@ Nếu DB đã có schema và chỉ cần đánh dấu revision, dùng:
 
 ## PostgreSQL schema compatibility follow-up
 
-- Báo cáo chi tiết: `docs/POSTGRESQL_SCHEMA_COMPATIBILITY.md`
+- Báo cáo chi tiết: `POSTGRESQL_SCHEMA_COMPATIBILITY.md`
 - Tài liệu này bổ sung cho audit hiện tại bằng một bảng schema/risk rõ ràng hơn.
 
 ## Backup/restore strategy follow-up
 
-- Báo cáo chiến lược chi tiết: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
+- Báo cáo chiến lược chi tiết: `POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
 - Chiến lược này là follow-up bắt buộc trước PostgreSQL production cutover.
 
 ## PostgreSQL clean cutover follow-up
 
-- Báo cáo kế hoạch mới: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
+- Báo cáo kế hoạch mới: `POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
 - Định hướng hiện tại: clean cutover fresh PostgreSQL thay vì data migration tool cho SQLite test data.
 
 ## PostgreSQL test profile and CI plan follow-up
 
-- Báo cáo chi tiết: `docs/POSTGRESQL_TEST_CI_PLAN.md`
+- Báo cáo chi tiết: `POSTGRESQL_TEST_CI_PLAN.md`
 - Đây là bước chuẩn bị trước v5.9 để xác nhận app chạy ổn trên PostgreSQL.

@@ -10,9 +10,9 @@
 
 ## Current state
 
-- Latest stable checkpoint: `v5.8.0`.
-- Production app still uses SQLite.
-- SQLite data is test data.
+- Latest stable checkpoint: `v5.9.0`.
+- Production app now uses PostgreSQL.
+- SQLite data was test data.
 - v5.9.1 provisioning guide is done.
 - v5.9.2 backup/freeze plan is done.
 
@@ -79,7 +79,7 @@ Operational note:
 - No user is actively writing data.
 - `DEFAULT_OWNER_USERNAME`, `DEFAULT_OWNER_PASSWORD`, and `DEFAULT_OWNER_EMAIL` are ready.
 - `SECRET_KEY` is ready.
-- `APP_VERSION` remains `v5.8.0` for the release after this checkpoint.
+- `APP_VERSION` remains `v5.9.0` for the release after this checkpoint.
 - `PERSISTENT_ROOT` is unchanged.
 - No volume is deleted.
 

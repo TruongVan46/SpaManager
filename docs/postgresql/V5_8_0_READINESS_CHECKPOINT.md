@@ -40,8 +40,8 @@
 ## v5.9 entry criteria
 
 - Provision PostgreSQL.
-- Record Railway PostgreSQL provisioning in `docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`.
-- Record SQLite backup/freeze plan in `docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`.
+- Record Railway PostgreSQL provisioning in `V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`.
+- Record SQLite backup/freeze plan in `V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`.
 - Set safe env.
 - Init fresh schema.
 - Bootstrap owner.

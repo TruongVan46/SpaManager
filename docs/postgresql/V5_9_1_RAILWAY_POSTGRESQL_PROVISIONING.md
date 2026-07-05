@@ -10,10 +10,10 @@
 
 ## Current state
 
-- Latest stable checkpoint: `v5.8.0`.
-- App production still uses SQLite.
-- SQLite data is test data and does not need migration.
-- v5.9 will use fresh PostgreSQL clean cutover.
+- Latest stable checkpoint: `v5.9.0`.
+- App production now uses PostgreSQL.
+- SQLite data was test data and does not need migration.
+- v5.9 completed the fresh PostgreSQL clean cutover.
 
 ## Provisioning steps
 

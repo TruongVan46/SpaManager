@@ -2,11 +2,31 @@
 
 SpaManager release notes.
 
+## [v5.9.0] - 2026-07-05
+
+### Added
+- Added PostgreSQL production checkpoint in `docs/postgresql/V5_9_0_POSTGRESQL_PRODUCTION_CHECKPOINT.md`.
+
+### Changed
+- Updated the repository version checkpoint to `v5.9.0`.
+- Refined release notes and runbook links to reflect the PostgreSQL production cutover.
+
+### QA / Validation
+- PostgreSQL production cutover was verified on Railway.
+- Owner bootstrap and core smoke checks passed.
+- Backup Center PostgreSQL guard was verified after cutover.
+- Full test suite and compile checks pass.
+
+### Safety
+- No schema or migration changes.
+- No production data migration from SQLite test data.
+- No secrets, runtime artifacts, or production database URLs were added.
+
 ## [v5.8.0] - 2026-07-05
 
 ### Added
-- Added PostgreSQL readiness checkpoint in `docs/V5_8_0_READINESS_CHECKPOINT.md`.
-- Added PostgreSQL test profile and CI plan in `docs/POSTGRESQL_TEST_CI_PLAN.md`.
+- Added PostgreSQL readiness checkpoint in `docs/postgresql/V5_8_0_READINESS_CHECKPOINT.md`.
+- Added PostgreSQL test profile and CI plan in `docs/postgresql/POSTGRESQL_TEST_CI_PLAN.md`.
 
 ### Changed
 - Updated the repository version checkpoint to `v5.8.0`.

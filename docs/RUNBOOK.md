@@ -5,8 +5,8 @@ This document is for production handover, post-deploy smoke checks, backup/resto
 ## 1. Production overview
 
 - SpaManager runs as a Flask application on Railway.
-- Production uses SQLite on a persistent Railway volume.
-- The expected production database path is `sqlite:////app/database/spa.db`.
+- Production uses PostgreSQL on Railway.
+- The expected production database is the Railway PostgreSQL service referenced by `DATABASE_URL`.
 - Persistent files live under `/app/database`.
 - Uploaded media, export files, and backups must stay on persistent storage.
 - Do not place real secrets or passwords in this document.
@@ -19,7 +19,7 @@ Check these values before and after deploy:
 - `APP_NAME`
 - `APP_VERSION`
 - `DATABASE_URL`
-- `TEST_DATABASE_URL` for the future PostgreSQL test profile
+- `TEST_DATABASE_URL` for the PostgreSQL test profile
 - `PERSISTENT_ROOT`
 - `SECRET_KEY`
 - `DEFAULT_OWNER_USERNAME`
@@ -249,7 +249,7 @@ If production is broken after a deploy:
 6. Restore the database only when data corruption is confirmed.
 7. Back up the current state before any restore.
 
-Current stable checkpoint: `v5.8.0`.
+Current stable checkpoint: `v5.9.0`.
 
 ## 9. Security checks
 
@@ -327,50 +327,50 @@ Current stable checkpoint: `v5.8.0`.
 
 ## PostgreSQL backup/restore strategy note
 
-- Tham chiếu: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
+- Tham chiếu: `postgresql/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
 - Tài liệu này mô tả hướng redesign backup/restore khi PostgreSQL được bật.
 
 ## PostgreSQL clean cutover note
 
-- Tham chiếu: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
+- Tham chiếu: `postgresql/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
 - Dùng khi cần chuyển từ SQLite test data sang PostgreSQL fresh database.
 
 ## PostgreSQL test profile and CI plan note
 
-- Tham chiếu: `docs/POSTGRESQL_TEST_CI_PLAN.md`
+- Tham chiếu: `postgresql/POSTGRESQL_TEST_CI_PLAN.md`
 - Tài liệu này nêu rõ SQLite test suite vẫn là default và PostgreSQL CI chưa cần bắt buộc ngay.
 
-## v5.8.0 readiness checkpoint note
+## v5.9.0 PostgreSQL production checkpoint note
 
-- Tham chiếu: `docs/V5_8_0_READINESS_CHECKPOINT.md`
-- Đây là checkpoint chốt readiness cho v5.8 trước khi bước sang kế hoạch fresh PostgreSQL cutover ở v5.9.
+- Tham chiếu: `postgresql/V5_9_0_POSTGRESQL_PRODUCTION_CHECKPOINT.md`
+- Đây là checkpoint chốt production PostgreSQL sau khi cutover thành công và QA pass.
 
 ## v5.9.1 Railway PostgreSQL provisioning note
 
-- Tham chiếu: `docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`
+- Tham chiếu: `postgresql/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`
 - Dùng khi owner xác nhận tạo PostgreSQL service trên Railway nhưng chưa cutover app `DATABASE_URL`.
 
 ## v5.9.2 Production SQLite backup and freeze plan note
 
-- Tham chiếu: `docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`
+- Tham chiếu: `postgresql/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`
 - Dùng trước cutover để backup SQLite, freeze writes, và giữ rollback window an toàn.
 
 ## v5.9.3 Fresh PostgreSQL schema initialization plan note
 
-- Tham chiếu: `docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md`
+- Tham chiếu: `postgresql/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md`
 - Dùng sau freeze/backup để init schema PostgreSQL sạch, bootstrap owner, rồi smoke trước cutover.
 
 ## v5.9.4 PostgreSQL cutover rehearsal and validation plan note
 
-- Tham chiếu: `docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md`
+- Tham chiếu: `postgresql/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md`
 - Dùng để rehearsal/validate mọi bước trước khi owner cho phép đổi production `DATABASE_URL`.
 
 ## v5.9.5 Production DATABASE_URL cutover note
 
-- Tham chiếu: `docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md`
+- Tham chiếu: `postgresql/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md`
 - Dùng khi owner Railway thực hiện cutover production thật và xác nhận xong.
 
 ## v5.9.6 Post-cutover QA and PostgreSQL Backup Center guard note
 
-- Tham chiếu: `docs/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md`
+- Tham chiếu: `postgresql/V5_9_6_POST_CUTOVER_QA_AND_POSTGRESQL_BACKUP_CENTER_GUARD.md`
 - Dùng sau cutover PostgreSQL để nhắc rằng Backup Center SQLite chỉ còn ở chế độ tham khảo và không được dùng cho DB restore PostgreSQL.
