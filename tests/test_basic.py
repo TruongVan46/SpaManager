@@ -1925,19 +1925,29 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(history.exit_code, 0, history.output)
         self.assertIn("0001_baseline", history.output)
 
-    def test_workspace_migration_candidate_is_docs_only_and_non_executable(self):
+    def test_workspace_migration_candidate_is_docs_only_tested_rehearsal_artifact(self):
         candidate_path = Path("docs/workspace/migration_candidates/0002_workspace_foundation.py.txt")
         self.assertTrue(candidate_path.exists())
+        self.assertEqual(candidate_path.suffixes[-2:], [".py", ".txt"])
 
         candidate_text = candidate_path.read_text(encoding="utf-8")
-        self.assertIn("PSEUDO-CODE ONLY", candidate_text)
-        self.assertIn("workspaces", candidate_text)
-        self.assertIn("workspace_members", candidate_text)
-        self.assertIn("do not place in migrations/versions", candidate_text.lower())
+        self.assertIn("TESTED PROJECT-STYLE REHEARSAL ARTIFACT ONLY", candidate_text)
+        self.assertIn('revision = "0002_workspace_foundation"', candidate_text)
+        self.assertIn('down_revision = "0001_baseline"', candidate_text)
+        self.assertIn("def upgrade():", candidate_text)
+        self.assertIn("def downgrade():", candidate_text)
+        self.assertIn("do not copy into migrations/versions", candidate_text.lower())
+        self.assertTrue(
+            "temporary executable migration removed" in candidate_text.lower()
+            or "dry-run" in candidate_text.lower()
+            or "pass" in candidate_text.lower()
+        )
 
         migration_files = [path.name for path in Path("migrations/versions").glob("*.py")]
         self.assertNotIn("0002_workspace_foundation.py", migration_files)
         self.assertFalse(any(name.startswith("0002_") for name in migration_files))
+        self.assertFalse(Path("migrations/versions/0002_workspace_foundation.py").exists())
+        self.assertFalse(Path("docs/workspace/WORKSPACE_MIGRATION_EXECUTION_APPROVAL.md").exists())
 
     def test_workspace_migration_rehearsal_plan_is_documented_and_non_executable(self):
         rehearsal_path = Path("docs/workspace/WORKSPACE_MIGRATION_REHEARSAL_PLAN.md")
