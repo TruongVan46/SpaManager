@@ -6,7 +6,7 @@ This document captures the local rehearsal evidence for the workspace migration 
 
 The rehearsal was intentionally kept non-destructive and documentation-only. No executable migration was added to `migrations/versions/`.
 
-Important: the critical PostgreSQL rehearsal commands were **not run** in this task, so the evidence below is a truthful record of what was and was not executed.
+Important: the critical PostgreSQL rehearsal commands were **not run** in this task because the local machine does not have Docker or a local PostgreSQL toolchain available, so the evidence below is a truthful record of what was and was not executed.
 
 ## Evidence summary
 
@@ -42,7 +42,7 @@ The following validation was completed successfully during the rehearsal work:
 | `python -m flask --app app db current` | NOT RUN | Not executed against a local/staging PostgreSQL rehearsal DB. |
 | Schema verification | NOT RUN | Workspaces tables and `workspace_id` columns were not verified on a live rehearsal DB. |
 | Data verification | NOT RUN | Default workspace, membership backfill, and business row backfill were not verified on a live rehearsal DB. |
-| Final result | PARTIAL | Docs, gates, and tests are in place; PostgreSQL rehearsal execution is still pending. |
+| Final result | BLOCKED | Docs, gates, and tests are in place, but PostgreSQL rehearsal execution is blocked by missing local Docker/PostgreSQL tooling. |
 
 ## Review notes
 
@@ -52,7 +52,7 @@ The following validation was completed successfully during the rehearsal work:
 
 ## Conclusion
 
-The workspace migration foundation is still in the safe planning / rehearsal stage, and the critical PostgreSQL rehearsal itself remains pending.
+The workspace migration foundation is still in the safe planning / rehearsal stage, and the critical PostgreSQL rehearsal itself is blocked until Docker or another local PostgreSQL toolchain is available.
 
 The repository now has:
 
