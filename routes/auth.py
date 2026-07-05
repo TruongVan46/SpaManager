@@ -4,6 +4,8 @@ from urllib.parse import urlparse, urljoin
 from flask import render_template, request, jsonify, redirect, url_for
 from routes import auth_bp
 from services.auth_service import AuthService
+from core.exceptions import AuthenticationException
+from services.login_rate_limit_service import get_request_ip
 
 
 def _is_safe_next_url(target):
@@ -26,8 +28,12 @@ def login():
         username = data.get('username', '').strip()
         password = data.get('password', '')
         remember = bool(data.get('remember', False))
+        request_ip = get_request_ip(request)
 
-        success, user = AuthService.login(username, password, remember=remember)
+        try:
+            success, user = AuthService.login(username, password, remember=remember, request_ip=request_ip)
+        except AuthenticationException as exc:
+            return jsonify(success=False, message=exc.message), exc.status_code
         if success:
             # Safe redirect extraction
             next_target = request.args.get('next')

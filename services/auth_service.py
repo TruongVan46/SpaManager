@@ -18,6 +18,12 @@ from utils.timezone_utils import utc_now
 from utils.media_storage import resolve_media_file_path
 from core.auth.permissions import can_manage_users
 from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
+from services.login_rate_limit_service import (
+    check_login_allowed,
+    normalize_login_identifier,
+    record_login_failure,
+    record_login_success,
+)
 
 # services/auth_service.py
 
@@ -25,17 +31,56 @@ class AuthService:
     MANAGER_ROLES = {UserRole.OWNER.value, UserRole.ADMIN.value}
 
     @staticmethod
-    def login(username, password, remember=False):
+    def _log_login_attempt(action, description, severity="WARNING"):
+        try:
+            db.session.add(build_activity_log_entry(
+                module="Auth",
+                action=action,
+                severity=severity,
+                description=description,
+                user_id=None,
+            ))
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app_logger.error(f"Error logging login attempt: {e}", module="AUTHENTICATION", exc_info=True)
+
+    @staticmethod
+    def login(username, password, remember=False, request_ip=None):
         """
         Authenticate a user.
         Returns: (success_bool, user_object)
         """
-        
+        request_ip = request_ip or "unknown"
+        normalized_username = normalize_login_identifier(username)
+        sanitized_username = (username or "").strip() or "<empty>"
+
         # 1. Validation
         data = {'username': username, 'password': password}
         validator = AuthValidator()
         validator.validate_login(data)
         validator.raise_if_invalid("Thông tin đăng nhập không hợp lệ.")
+
+        rate_limit_check = check_login_allowed(normalized_username, request_ip)
+        if not rate_limit_check.allowed:
+            app_logger.security(
+                f"Login rate limited for username={sanitized_username} ip={request_ip} reason={rate_limit_check.reason}",
+                module="AUTHENTICATION"
+            )
+            AuthService._log_login_attempt(
+                action="AUTH_LOGIN_RATE_LIMITED",
+                severity="WARNING",
+                description=(
+                    f"Đăng nhập bị giới hạn tạm thời: username={sanitized_username}, ip={request_ip}, "
+                    f"retry_after_seconds={rate_limit_check.retry_after_seconds}"
+                ),
+            )
+            raise AuthenticationException(
+                "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút.",
+                code="AUTH_LOGIN_RATE_LIMITED",
+                status_code=429,
+                severity="WARNING",
+            )
 
         user = User.query.filter_by(username=username).first()
         if user and user.is_active and user.check_password(password):
@@ -48,9 +93,19 @@ class AuthService:
             
             # Trigger hook
             AuthService.on_login_success(user)
+            record_login_success(normalized_username, request_ip)
             return True, user
+        record_login_failure(normalized_username, request_ip)
         # Trigger security log for failed login attempts
-        app_logger.security(f"Failed login attempt for username: {username}", module="AUTHENTICATION")
+        app_logger.security(
+            f"Failed login attempt for username={sanitized_username} ip={request_ip}",
+            module="AUTHENTICATION"
+        )
+        AuthService._log_login_attempt(
+            action="AUTH_LOGIN_FAILED",
+            severity="WARNING",
+            description=f"Đăng nhập thất bại: username={sanitized_username}, ip={request_ip}, reason=invalid_credentials",
+        )
         return False, None
 
     @staticmethod

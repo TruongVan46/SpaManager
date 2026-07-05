@@ -60,6 +60,7 @@ from services.data_repair_service import run_controlled_repair
 from services.performance_profile_service import profile_block, run_performance_profile
 from services.operational_diagnostics_service import run_operational_diagnostics
 from services.import_service import ImportService
+from services.login_rate_limit_service import reset_all_login_attempts
 from repositories.backup_repository import BackupRepository
 from utils.timezone_utils import local_now
 from core.auth.permissions import (
@@ -95,10 +96,12 @@ class BasicTestCase(unittest.TestCase):
         self.app_context = app.app_context()
         self.app_context.push()
         self.client = app.test_client()
+        reset_all_login_attempts()
         self.reset_database_schema()
 
     def tearDown(self):
         db.session.rollback()
+        reset_all_login_attempts()
         self.app_context.pop()
 
     def reset_database_schema(self):
@@ -341,6 +344,136 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertEqual(payload["redirect"], "/")
+
+    def test_login_failed_attempt_is_logged_without_sensitive_data(self):
+        self.create_user("login-telemetry", password="login-pass", full_name="Login Telemetry", role="STAFF")
+        csrf_token = self.get_csrf_token("/login")
+        request_ip = "203.0.113.10"
+
+        with self.assertLogs("spamanager_security", level="INFO") as captured_logs:
+            response = self.client.post(
+                "/login",
+                json={
+                    "username": "login-telemetry",
+                    "password": "wrong-pass",
+                    "remember": False,
+                },
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": csrf_token,
+                    "X-Forwarded-For": request_ip,
+                },
+                follow_redirects=False
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["message"], "Sai tên đăng nhập hoặc mật khẩu.")
+
+        failed_log = ActivityLog.query.filter_by(action="AUTH_LOGIN_FAILED").order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(failed_log)
+        self.assertIn("login-telemetry", failed_log.description)
+        self.assertIn(request_ip, failed_log.description)
+        self.assertNotIn("wrong-pass", failed_log.description)
+        self.assertTrue(any("login-telemetry" in log_entry for log_entry in captured_logs.output))
+        self.assertTrue(any(request_ip in log_entry for log_entry in captured_logs.output))
+        self.assertFalse(any("wrong-pass" in log_entry for log_entry in captured_logs.output))
+
+    def test_login_rate_limit_blocks_after_threshold_and_scopes_by_username_and_ip(self):
+        self.create_user("login-limit-a", password="login-pass-a", full_name="Login Limit A", role="STAFF")
+        self.create_user("login-limit-b", password="login-pass-b", full_name="Login Limit B", role="STAFF")
+        csrf_token = self.get_csrf_token("/login")
+        blocked_ip = "203.0.113.20"
+        other_ip = "203.0.113.21"
+
+        for attempt in range(5):
+            response = self.client.post(
+                "/login",
+                json={
+                    "username": "login-limit-a",
+                    "password": f"wrong-{attempt}",
+                    "remember": False,
+                },
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": csrf_token,
+                    "X-Forwarded-For": blocked_ip,
+                },
+                follow_redirects=False
+            )
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.get_json()["message"], "Sai tên đăng nhập hoặc mật khẩu.")
+
+        rate_limited_response = self.client.post(
+            "/login",
+            json={
+                "username": "login-limit-a",
+                "password": "login-pass-a",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrf_token,
+                "X-Forwarded-For": blocked_ip,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(rate_limited_response.status_code, 429)
+        self.assertEqual(
+            rate_limited_response.get_json()["message"],
+            "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút."
+        )
+
+        limited_log = ActivityLog.query.filter_by(action="AUTH_LOGIN_RATE_LIMITED").order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(limited_log)
+        self.assertIn("login-limit-a", limited_log.description)
+        self.assertIn(blocked_ip, limited_log.description)
+
+        other_user_client = app.test_client()
+        other_user_token = re.search(
+            r'name="csrf-token" content="([^"]+)"',
+            other_user_client.get("/login").get_data(as_text=True)
+        ).group(1)
+        other_user_response = other_user_client.post(
+            "/login",
+            json={
+                "username": "login-limit-b",
+                "password": "login-pass-b",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": other_user_token,
+                "X-Forwarded-For": blocked_ip,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(other_user_response.status_code, 200)
+        self.assertTrue(other_user_response.get_json()["success"])
+
+        different_ip_client = app.test_client()
+        different_ip_token = re.search(
+            r'name="csrf-token" content="([^"]+)"',
+            different_ip_client.get("/login").get_data(as_text=True)
+        ).group(1)
+        different_ip_response = different_ip_client.post(
+            "/login",
+            json={
+                "username": "login-limit-a",
+                "password": "login-pass-a",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": different_ip_token,
+                "X-Forwarded-For": other_ip,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(different_ip_response.status_code, 200)
+        self.assertTrue(different_ip_response.get_json()["success"])
 
     def test_csrf_token_uses_compare_digest(self):
         source = inspect.getsource(csrf_module.validate_csrf_request)

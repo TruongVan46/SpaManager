@@ -158,21 +158,25 @@
                     remember: remember
                 })
             })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error("Lỗi mạng hoặc máy chủ phản hồi không tốt.");
+            .then(async res => {
+                let payload = {};
+                try {
+                    payload = await res.json();
+                } catch (parseError) {
+                    payload = {};
                 }
-                return res.json();
+                return { ok: res.ok, status: res.status, payload: payload };
             })
-            .then(data => {
-                if (data.success) {
-                    Notification.success(data.message || "Đăng nhập thành công!");
+            .then(result => {
+                const payload = result.payload || {};
+                if (result.ok && payload.success) {
+                    Notification.success(payload.message || "Đăng nhập thành công!");
                     // Delay slightly to show notification success state
                     setTimeout(() => {
-                        window.location.href = data.redirect;
+                        window.location.href = payload.redirect;
                     }, 800);
                 } else {
-                    Notification.error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
+                    Notification.error(payload.message || "Sai tên đăng nhập hoặc mật khẩu.");
                 }
             })
             .catch(err => {
