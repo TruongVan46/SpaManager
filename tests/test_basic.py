@@ -2520,6 +2520,115 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn(".activity-log-page .activity-log-table .col-severity", css)
         self.assertIn(".activity-log-page .activity-log-table .col-actor", css)
 
+    def test_public_routes_smoke_do_not_500(self):
+        root_response = self.client.get("/", follow_redirects=False)
+        self.assertNotEqual(root_response.status_code, 500)
+        self.assertIn(root_response.status_code, (200, 302, 401))
+
+        health_response = self.client.get("/health")
+        self.assertEqual(health_response.status_code, 200)
+        self.assertTrue(health_response.is_json)
+        self.assertEqual(health_response.get_json()["status"], "ok")
+
+        login_response = self.client.get("/login")
+        self.assertEqual(login_response.status_code, 200)
+        self.assertIn("csrf-token", login_response.get_data(as_text=True))
+
+        missing_response = self.client.get("/route-smoke-missing", follow_redirects=False)
+        self.assertEqual(missing_response.status_code, 404)
+        self.assertNotIn("Traceback", missing_response.get_data(as_text=True))
+
+    def test_authenticated_main_pages_smoke_render_key_markers(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        smoke_pages = [
+            ("/", "Lịch hẹn hôm nay"),
+            ("/customers", "Danh sách khách hàng"),
+            ("/services", "Danh sách dịch vụ"),
+            ("/appointments", "Danh sách lịch hẹn"),
+            ("/invoices", "Danh sách hóa đơn"),
+            ("/statistics", "Thống kê báo cáo"),
+            ("/activity-logs", "Nhật ký hoạt động"),
+            ("/recycle-bin", "Thùng rác"),
+            ("/settings", "Cài đặt"),
+            ("/profile", "Hồ sơ cá nhân"),
+        ]
+
+        for url, marker in smoke_pages:
+            with self.subTest(url=url):
+                response = self.client.get(url, follow_redirects=False)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(marker, response.get_data(as_text=True))
+
+    def test_empty_state_routes_smoke_render_without_500(self):
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        smoke_checks = [
+            ("/customers", "Chưa có khách hàng nào"),
+            ("/services", "Không tìm thấy dịch vụ nào"),
+            ("/appointments", "Không tìm thấy lịch hẹn nào phù hợp."),
+            ("/invoices", "Đang hiển thị: 0 hóa đơn"),
+            ("/statistics", "statistics-page"),
+            ("/statistics", "statistics-report-card"),
+            ("/activity-logs", "Không tìm thấy nhật ký phù hợp"),
+            ("/recycle-bin", "Thùng rác đang trống"),
+        ]
+
+        for url, marker in smoke_checks:
+            with self.subTest(url=url, marker=marker):
+                response = self.client.get(url, follow_redirects=False)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(marker, response.get_data(as_text=True))
+
+    def test_permission_matrix_smoke_for_admin_pages(self):
+        owner = self.create_user("perm-owner", password="owner-pass", full_name="Perm Owner", role="OWNER")
+        admin = self.create_user("perm-admin", password="admin-pass", full_name="Perm Admin", role="ADMIN")
+        staff = self.create_user("perm-staff", password="staff-pass", full_name="Perm Staff", role="STAFF")
+
+        sensitive_pages = [
+            ("/settings", "Cài đặt"),
+            ("/users", "Người dùng"),
+            ("/activity-logs", "Nhật ký hoạt động"),
+            ("/recycle-bin", "Thùng rác"),
+            ("/statistics", "Thống kê báo cáo"),
+        ]
+
+        for user, expected_status in ((owner, 200), (admin, 200)):
+            self.login_as(user)
+            for url, marker in sensitive_pages:
+                with self.subTest(role=user.role, url=url):
+                    response = self.client.get(url, follow_redirects=False)
+                    self.assertEqual(response.status_code, expected_status)
+                    self.assertIn(marker, response.get_data(as_text=True))
+
+        self.login_as(staff)
+        blocked_pages = [
+            "/settings",
+            "/users",
+            "/activity-logs",
+            "/recycle-bin",
+            "/statistics",
+        ]
+        for url in blocked_pages:
+            with self.subTest(role=staff.role, url=url):
+                response = self.client.get(url, follow_redirects=False)
+                self.assertIn(response.status_code, (401, 403))
+
+    def test_docs_and_readme_include_qa_checklist_links(self):
+        readme = Path("README.md").read_text(encoding="utf-8")
+        docs_readme = Path("docs/README.md").read_text(encoding="utf-8")
+
+        self.assertIn("docs/QA_CHECKLIST.md", readme)
+        self.assertIn("QA_CHECKLIST.md", docs_readme)
+        self.assertIn("RUNBOOK.md", docs_readme)
+        self.assertIn("USER_GUIDE.md", docs_readme)
+        self.assertIn("ADMIN_GUIDE.md", docs_readme)
+        self.assertIn("DEMO_SCRIPT.md", docs_readme)
+        self.assertNotIn("docs/AUDIT_REPORT_v3.7.md", docs_readme)
+        self.assertNotIn("docs/AUTH_AUDIT_v3.9.md", docs_readme)
+
     def test_db_stamp_head_marks_existing_schema_without_rebuilding(self):
         tables_before = sorted(sa_inspect(db.engine).get_table_names())
         runner = app.test_cli_runner()
