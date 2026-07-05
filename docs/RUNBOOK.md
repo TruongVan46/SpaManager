@@ -175,7 +175,7 @@ If production is broken after a deploy:
 6. Restore the database only when data corruption is confirmed.
 7. Back up the current state before any restore.
 
-Current stable checkpoint: `v5.6.0`.
+Current stable checkpoint: `v5.7.0`.
 
 ## 9. Security checks
 

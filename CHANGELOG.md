@@ -2,6 +2,36 @@
 
 SpaManager release notes.
 
+## [v5.7.0] - 2026-07-05
+
+### Added
+- Added post-handover QA checklist in `docs/QA_CHECKLIST.md`.
+- Added reproducible demo data plan in `docs/DEMO_DATA.md`.
+- Expanded route smoke and regression coverage for core pages, empty states, permissions, and docs links.
+- Added rehearsal validation coverage for import templates, PDF/Unicode, backup metadata, and artifact cleanup.
+
+### Changed
+- Refined README and documentation index links.
+- Updated stale user management description in README.
+- Refined runbook with quick post-deploy smoke guidance.
+- Refined QA checklist with issue/incident notes.
+- Marked `docs/TECH_DEBT.md` as historical technical debt notes.
+
+### QA / Validation
+- Added route smoke tests for public and authenticated pages.
+- Added empty-data smoke tests.
+- Added permission matrix smoke tests.
+- Added docs/QA link regression checks.
+- Added import/PDF/backup rehearsal coverage.
+- Full test suite and compile checks pass before release.
+
+### Safety
+- No schema or migration changes.
+- No business logic, auth, permission, CSRF, backup/restore, PDF/export, import, or CLI behavior changes.
+- No production seed or real demo data was added.
+- No database, backup, import temp, PDF/export, or runtime artifacts were committed.
+- No secrets, passwords, real customer data, or real database URLs were added.
+
 ## [v5.6.0] - 2026-07-05
 
 ### Added
