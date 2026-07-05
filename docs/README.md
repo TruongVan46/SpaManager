@@ -23,4 +23,4 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 
 ## Workspace
 
-- [Workspace architecture audit](workspace/WORKSPACE_ARCHITECTURE_AUDIT.md)
+- [Workspace docs index](workspace/README.md)

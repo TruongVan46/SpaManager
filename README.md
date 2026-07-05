@@ -214,4 +214,4 @@ SpaManager production is now running on PostgreSQL as of v5.9.0. Detailed migrat
 
 ## Workspace docs
 
-- [Workspace architecture audit](docs/workspace/WORKSPACE_ARCHITECTURE_AUDIT.md)
+- [Workspace docs index](docs/workspace/README.md)

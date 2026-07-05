@@ -143,3 +143,8 @@ No migration is created in this task.
 - 6.0.6 Workspace user management
 - 6.0.7 Workspace QA and security tests
 - 6.0.8 v6.0.0 checkpoint
+
+## Related docs
+
+- [Workspace docs index](README.md)
+- [Workspace schema design](WORKSPACE_SCHEMA_DESIGN.md)
