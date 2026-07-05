@@ -225,3 +225,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## v5.9.1 Railway PostgreSQL provisioning
 
 - [docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md](docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md)
+
+## v5.9.2 Production SQLite backup and freeze plan
+
+- [docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md](docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md)

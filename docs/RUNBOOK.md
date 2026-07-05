@@ -349,3 +349,8 @@ Current stable checkpoint: `v5.8.0`.
 
 - Tham chiếu: `docs/V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`
 - Dùng khi owner xác nhận tạo PostgreSQL service trên Railway nhưng chưa cutover app `DATABASE_URL`.
+
+## v5.9.2 Production SQLite backup and freeze plan note
+
+- Tham chiếu: `docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`
+- Dùng trước cutover để backup SQLite, freeze writes, và giữ rollback window an toàn.

@@ -77,3 +77,8 @@
 
 - Ghi nhận provision Railway PostgreSQL service: `V5_9_1_RAILWAY_POSTGRESQL_PROVISIONING.md`
 - Tài liệu này chỉ mô tả provisioning/readiness, chưa cutover app `DATABASE_URL`.
+
+## v5.9.2 Production SQLite backup and freeze plan
+
+- Kế hoạch backup và freeze writes trước PostgreSQL cutover: `V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`
+- Tài liệu này chỉ mô tả rollback safety cho SQLite production hiện tại.
