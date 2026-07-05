@@ -130,3 +130,7 @@ Cảnh báo:
 
 - OWNER/ADMIN nên đọc thêm `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md` trước khi lên kế hoạch cutover.
 - Không restore production PostgreSQL bằng flow SQLite hiện tại.
+
+## PostgreSQL clean cutover roadmap
+
+- OWNER/ADMIN có thể xem thêm `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md` khi lên lịch cutover.

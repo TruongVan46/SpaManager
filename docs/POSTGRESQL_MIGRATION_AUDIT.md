@@ -294,3 +294,8 @@ Nếu DB đã có schema và chỉ cần đánh dấu revision, dùng:
 
 - Báo cáo chiến lược chi tiết: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
 - Chiến lược này là follow-up bắt buộc trước PostgreSQL production cutover.
+
+## PostgreSQL clean cutover follow-up
+
+- Báo cáo kế hoạch mới: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
+- Định hướng hiện tại: clean cutover fresh PostgreSQL thay vì data migration tool cho SQLite test data.

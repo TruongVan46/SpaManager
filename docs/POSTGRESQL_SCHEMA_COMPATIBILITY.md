@@ -121,3 +121,8 @@ Các query này nhìn chung tương thích PostgreSQL, nhưng vẫn nên test th
 ## Backup/restore strategy follow-up
 
 - Chi tiết redesign backup/restore: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
+
+## PostgreSQL clean cutover note
+
+- Tham chiếu: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
+- Khi owner chốt cutover, quy trình sẽ là fresh PostgreSQL init, không migrate dữ liệu test SQLite cũ.

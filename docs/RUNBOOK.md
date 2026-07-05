@@ -329,3 +329,8 @@ Current stable checkpoint: `v5.7.0`.
 
 - Tham chiếu: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
 - Tài liệu này mô tả hướng redesign backup/restore khi PostgreSQL được bật.
+
+## PostgreSQL clean cutover note
+
+- Tham chiếu: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
+- Dùng khi cần chuyển từ SQLite test data sang PostgreSQL fresh database.

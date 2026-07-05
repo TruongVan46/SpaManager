@@ -57,3 +57,8 @@
 
 - Báo cáo chiến lược: `POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
 - Đây là tài liệu roadmap cho PostgreSQL backup/restore, không đổi behavior hiện tại.
+
+## PostgreSQL clean cutover plan
+
+- Kế hoạch chuyển sang PostgreSQL mới sạch: `docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md`
+- Current project decision: fresh PostgreSQL clean cutover, không migrate dữ liệu test SQLite cũ.

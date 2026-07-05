@@ -209,3 +209,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## PostgreSQL backup/restore strategy
 
 - [docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md](docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md)
+
+## PostgreSQL clean cutover plan
+
+- [docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md](docs/POSTGRESQL_CLEAN_CUTOVER_PLAN.md)
