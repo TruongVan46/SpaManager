@@ -1959,6 +1959,16 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Railway’s pre-deploy `db upgrade` can execute it automatically", gate_text)
         self.assertIn("before the file reaches `migrations/versions/`", gate_text)
 
+    def test_workspace_migration_local_rehearsal_evidence_is_documented(self):
+        evidence_path = Path("docs/workspace/WORKSPACE_MIGRATION_LOCAL_REHEARSAL_EVIDENCE.md")
+        self.assertTrue(evidence_path.exists())
+
+        evidence_text = evidence_path.read_text(encoding="utf-8")
+        self.assertIn("Workspace Migration Local Rehearsal Evidence", evidence_text)
+        self.assertIn("No executable migration was added to `migrations/versions/`", evidence_text)
+        self.assertIn("python -m unittest discover -s tests -p \"test*.py\" -v", evidence_text)
+        self.assertIn("python -m compileall .", evidence_text)
+
     def test_db_upgrade_creates_schema_and_stamps_head(self):
         self.clear_database_schema()
         self.assertEqual(sa_inspect(db.engine).get_table_names(), [])

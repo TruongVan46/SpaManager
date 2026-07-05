@@ -79,3 +79,5 @@ The gate is open only when all of the following are true:
 ## Follow-up
 
 Once this gate is opened, the next step is to implement the executable migration in a separate task and keep the deployment sequence tightly controlled.
+
+The local rehearsal evidence lives in `docs/workspace/WORKSPACE_MIGRATION_LOCAL_REHEARSAL_EVIDENCE.md`.
