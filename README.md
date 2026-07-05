@@ -136,6 +136,12 @@ PERSISTENT_ROOT=/app/database
 - Restore with care because it overwrites live data
 - Logo and avatar files live under the persistent media folder
 
+## Operations / Runbook
+
+For the production smoke checklist, backup and restore safety, internal CLI commands, and release checklist, see:
+
+[docs/RUNBOOK.md](docs/RUNBOOK.md)
+
 ## Testing
 
 ```bash
