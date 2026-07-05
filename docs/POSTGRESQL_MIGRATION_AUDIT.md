@@ -284,3 +284,8 @@ Nếu DB đã có schema và chỉ cần đánh dấu revision, dùng:
 ```powershell
 .\venv\Scripts\python.exe -m flask --app app db stamp head
 ```
+
+## PostgreSQL schema compatibility follow-up
+
+- Báo cáo chi tiết: `docs/POSTGRESQL_SCHEMA_COMPATIBILITY.md`
+- Tài liệu này bổ sung cho audit hiện tại bằng một bảng schema/risk rõ ràng hơn.

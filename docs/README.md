@@ -47,3 +47,8 @@
 
 - Local PostgreSQL development profile hiện có thể chạy bằng `docker-compose.postgres.yml` ở thư mục gốc.
 - Hướng dẫn khởi động, tạo test DB, đặt env và init schema nằm trong `docs/RUNBOOK.md`.
+
+## PostgreSQL schema compatibility
+
+- Xem báo cáo: `POSTGRESQL_SCHEMA_COMPATIBILITY.md`
+- Báo cáo này tóm tắt mức độ tương thích schema/model hiện tại với PostgreSQL ở mức readiness.
