@@ -324,3 +324,8 @@ Current stable checkpoint: `v5.7.0`.
 - Do not leave rehearsal PDFs, backup copies, or import error reports staged after smoke tests.
 - Do not expose `SECRET_KEY`, `DATABASE_URL`, or passwords.
 - Do not run stress or performance loops on production.
+
+## PostgreSQL backup/restore strategy note
+
+- Tham chiếu: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
+- Tài liệu này mô tả hướng redesign backup/restore khi PostgreSQL được bật.

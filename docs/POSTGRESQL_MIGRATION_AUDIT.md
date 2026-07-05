@@ -289,3 +289,8 @@ Nếu DB đã có schema và chỉ cần đánh dấu revision, dùng:
 
 - Báo cáo chi tiết: `docs/POSTGRESQL_SCHEMA_COMPATIBILITY.md`
 - Tài liệu này bổ sung cho audit hiện tại bằng một bảng schema/risk rõ ràng hơn.
+
+## Backup/restore strategy follow-up
+
+- Báo cáo chiến lược chi tiết: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
+- Chiến lược này là follow-up bắt buộc trước PostgreSQL production cutover.

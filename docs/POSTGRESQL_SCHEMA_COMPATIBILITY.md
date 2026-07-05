@@ -117,3 +117,7 @@ Các query này nhìn chung tương thích PostgreSQL, nhưng vẫn nên test th
 - Chưa cutover production sang PostgreSQL.
 - Schema/model hiện tại ở mức readiness là khá ổn cho giai đoạn chuẩn bị, nhưng còn blocker dài hạn ở tiền tệ (`Float`) và dữ liệu orphan/duplicate.
 - Task tiếp theo nên là hoàn thiện kế hoạch test/migration PostgreSQL hoặc bắt đầu data audit nếu chuẩn bị cutover.
+
+## Backup/restore strategy follow-up
+
+- Chi tiết redesign backup/restore: `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`

@@ -125,3 +125,8 @@ Cảnh báo:
 - Backup list trống: kiểm tra persistent storage.
 - PDF lỗi font: kiểm tra bundled fonts và xuất file mới.
 
+
+## PostgreSQL backup/restore roadmap
+
+- OWNER/ADMIN nên đọc thêm `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md` trước khi lên kế hoạch cutover.
+- Không restore production PostgreSQL bằng flow SQLite hiện tại.

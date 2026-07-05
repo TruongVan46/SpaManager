@@ -205,3 +205,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 - User management is available with OWNER / ADMIN / STAFF permissions.
 - PostgreSQL migration is not the current deployment path.
 - SpaManager remains a local-first application with Railway production support.
+
+## PostgreSQL backup/restore strategy
+
+- [docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md](docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md)

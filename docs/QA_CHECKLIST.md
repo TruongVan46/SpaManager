@@ -307,3 +307,8 @@ Thực hiện toàn bộ nhóm A đến P bên dưới:
 - Kết quả thực tế:
 - Screenshot / log:
 - Mức độ: P0 / P1 / P2
+
+## PostgreSQL backup/restore rehearsal note
+
+- Trước release hay rehearsal nguy hiểm, tham chiếu `docs/POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`.
+- Không restore production nếu chưa có backup và chưa có plan engine-specific rõ ràng.

@@ -52,3 +52,8 @@
 
 - Xem báo cáo: `POSTGRESQL_SCHEMA_COMPATIBILITY.md`
 - Báo cáo này tóm tắt mức độ tương thích schema/model hiện tại với PostgreSQL ở mức readiness.
+
+## PostgreSQL backup/restore strategy
+
+- Báo cáo chiến lược: `POSTGRESQL_BACKUP_RESTORE_STRATEGY.md`
+- Đây là tài liệu roadmap cho PostgreSQL backup/restore, không đổi behavior hiện tại.
