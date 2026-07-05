@@ -2,6 +2,26 @@
 
 SpaManager release notes.
 
+## [v5.8.0] - 2026-07-05
+
+### Added
+- Added PostgreSQL readiness checkpoint in `docs/V5_8_0_READINESS_CHECKPOINT.md`.
+- Added PostgreSQL test profile and CI plan in `docs/POSTGRESQL_TEST_CI_PLAN.md`.
+
+### Changed
+- Updated the repository version checkpoint to `v5.8.0`.
+- Refined docs and runbook links to keep PostgreSQL readiness and v5.9 cutover guidance aligned.
+
+### QA / Validation
+- SQLite test suite remains the default baseline.
+- PostgreSQL local smoke and CI plan are documented but not required yet.
+- Full test suite and compile checks remain the readiness gate before the next phase.
+
+### Safety
+- No schema or migration changes.
+- No production cutover, data migration, backup/restore behavior change, or business logic changes.
+- No secrets, runtime artifacts, or production database URLs were added.
+
 ## [v5.7.0] - 2026-07-05
 
 ### Added

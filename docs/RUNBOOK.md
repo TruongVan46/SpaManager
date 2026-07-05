@@ -249,7 +249,7 @@ If production is broken after a deploy:
 6. Restore the database only when data corruption is confirmed.
 7. Back up the current state before any restore.
 
-Current stable checkpoint: `v5.7.0`.
+Current stable checkpoint: `v5.8.0`.
 
 ## 9. Security checks
 
@@ -339,3 +339,8 @@ Current stable checkpoint: `v5.7.0`.
 
 - Tham chiếu: `docs/POSTGRESQL_TEST_CI_PLAN.md`
 - Tài liệu này nêu rõ SQLite test suite vẫn là default và PostgreSQL CI chưa cần bắt buộc ngay.
+
+## v5.8.0 readiness checkpoint note
+
+- Tham chiếu: `docs/V5_8_0_READINESS_CHECKPOINT.md`
+- Đây là checkpoint chốt readiness cho v5.8 trước khi bước sang kế hoạch fresh PostgreSQL cutover ở v5.9.

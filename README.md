@@ -217,3 +217,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## PostgreSQL test profile and CI plan
 
 - [docs/POSTGRESQL_TEST_CI_PLAN.md](docs/POSTGRESQL_TEST_CI_PLAN.md)
+
+## v5.8.0 readiness checkpoint
+
+- [docs/V5_8_0_READINESS_CHECKPOINT.md](docs/V5_8_0_READINESS_CHECKPOINT.md)

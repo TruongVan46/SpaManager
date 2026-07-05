@@ -67,3 +67,8 @@
 
 - Kế hoạch test local/CI cho PostgreSQL: `POSTGRESQL_TEST_CI_PLAN.md`
 - SQLite test suite vẫn là default; PostgreSQL CI nên bắt đầu ở mức optional/manual.
+
+## v5.8.0 readiness checkpoint
+
+- Chốt trạng thái readiness cho PostgreSQL migration: `V5_8_0_READINESS_CHECKPOINT.md`
+- Tài liệu này tóm tắt phạm vi v5.8 và nhấn mạnh rằng production vẫn chưa cutover.
