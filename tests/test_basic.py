@@ -48,6 +48,7 @@ from models.invoice_detail import InvoiceDetail
 from models.service import Service
 from models.setting import Setting
 from models.user import User
+from models.workspace import Workspace, WorkspaceMember
 from services.appointment_service import AppointmentService
 from services.activity_log_service import ActivityLogService
 from services.customer_service import CustomerService
@@ -1958,6 +1959,62 @@ class BasicTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn("SpaManager v5.9.0", html)
         self.assertNotIn("SpaManager v4.0", html)
+
+    def test_workspace_models_expose_expected_metadata(self):
+        self.assertEqual(Workspace.__tablename__, "workspaces")
+        self.assertEqual(WorkspaceMember.__tablename__, "workspace_members")
+
+        workspace_columns = {column.name for column in Workspace.__table__.columns}
+        member_columns = {column.name for column in WorkspaceMember.__table__.columns}
+
+        self.assertTrue({
+            "id",
+            "name",
+            "slug",
+            "status",
+            "created_by_id",
+            "notes",
+            "created_at",
+            "updated_at",
+        }.issubset(workspace_columns))
+
+        self.assertTrue({
+            "id",
+            "workspace_id",
+            "user_id",
+            "role",
+            "status",
+            "invited_by_id",
+            "joined_at",
+            "created_at",
+            "updated_at",
+        }.issubset(member_columns))
+
+        unique_names = {constraint.name for constraint in WorkspaceMember.__table__.constraints if constraint.__class__.__name__ == "UniqueConstraint"}
+        self.assertIn("uq_workspace_members_workspace_user", unique_names)
+
+    def test_workspace_models_expose_expected_status_and_role_constants(self):
+        self.assertEqual(Workspace.WORKSPACE_STATUSES, ("active", "pending", "suspended", "archived"))
+        self.assertEqual(WorkspaceMember.WORKSPACE_MEMBER_ROLES, ("owner", "admin", "staff"))
+        self.assertEqual(WorkspaceMember.WORKSPACE_MEMBER_STATUSES, ("active", "invited", "disabled"))
+
+    def test_workspace_model_smoke_create_and_relationships(self):
+        owner = self.create_user("workspace-owner", password="owner-pass", full_name="Workspace Owner", role="OWNER")
+        member_user = self.create_user("workspace-member", password="member-pass", full_name="Workspace Member", role="STAFF")
+
+        workspace = Workspace(name="Test Workspace", slug="test-workspace", status="active", created_by=owner, notes="Smoke test")
+        member = WorkspaceMember(workspace=workspace, user=member_user, role="staff", status="active", invited_by=owner)
+        db.session.add(workspace)
+        db.session.add(member)
+        db.session.commit()
+
+        loaded_workspace = Workspace.query.filter_by(slug="test-workspace").first()
+        self.assertIsNotNone(loaded_workspace)
+        self.assertEqual(loaded_workspace.created_by_id, owner.id)
+        self.assertEqual(loaded_workspace.members[0].user_id, member_user.id)
+        self.assertEqual(loaded_workspace.members[0].invited_by_id, owner.id)
+        self.assertTrue(loaded_workspace.is_active())
+        self.assertTrue(loaded_workspace.members[0].is_staff())
 
     def test_settings_template_includes_explicit_csrf_tokens_for_post_forms(self):
         template = Path("templates/setting/index.html").read_text(encoding="utf-8")

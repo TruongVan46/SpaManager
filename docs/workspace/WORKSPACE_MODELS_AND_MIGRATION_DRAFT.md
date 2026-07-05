@@ -4,7 +4,7 @@
 
 - Draft only.
 - No executable migration.
-- No model implementation.
+- Model implementation exists in `models/workspace.py` behind safe tests.
 - No production DB change.
 - Railway pre-deploy risk acknowledged.
 
@@ -251,4 +251,4 @@ For 6.0.3 specifically:
 ## Notes
 
 - This file is documentation only.
-- No model or migration code should be copied from here into production without a separate implementation and rehearsal task.
+- No migration code should be copied from here into production without a separate implementation and rehearsal task.

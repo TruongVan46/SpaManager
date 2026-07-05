@@ -6,3 +6,4 @@ from .invoice_detail import InvoiceDetail
 from .setting import Setting
 from .activity_log import ActivityLog
 from .user import User
+from .workspace import Workspace, WorkspaceMember

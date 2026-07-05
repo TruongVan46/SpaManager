@@ -11,4 +11,5 @@ This folder collects the early v6.0 planning docs for workspace support.
 ## Notes
 
 - These documents are design-only.
-- No workspace model, migration, or query logic is implemented yet.
+- Workspace model code was added in 6.0.4 behind safe tests.
+- No workspace migration executable or workspace query logic is implemented yet.
