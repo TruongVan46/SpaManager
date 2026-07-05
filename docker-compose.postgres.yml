@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: spamanager-postgres
+    environment:
+      POSTGRES_DB: spamanager_dev
+      POSTGRES_USER: spamanager
+      POSTGRES_PASSWORD: spamanager_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - spamanager_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  spamanager_postgres_data:

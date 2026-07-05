@@ -75,6 +75,28 @@ flask db stamp head
 
 Always back up the SQLite file before stamping or upgrading a live environment.
 
+### Local PostgreSQL development profile
+
+For local PostgreSQL rehearsal without affecting production, use the Docker profile in `docker-compose.postgres.yml`.
+
+Quick flow:
+
+```powershell
+docker compose -f docker-compose.postgres.yml up -d
+docker exec -it spamanager-postgres createdb -U spamanager spamanager_test
+$env:DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev"
+$env:TEST_DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_test"
+.\venv\Scripts\python.exe -m flask --app app db upgrade
+.\venv\Scripts\python.exe -m unittest discover -s tests -p "test*.py" -v
+```
+
+To return to the default SQLite local setup:
+
+```powershell
+Remove-Item Env:DATABASE_URL
+Remove-Item Env:TEST_DATABASE_URL
+```
+
 ## Environment variables
 
 Required or commonly used variables:

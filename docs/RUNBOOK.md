@@ -118,6 +118,78 @@ flask --app app perf profile
 
 Purpose:
 
+- Performance profiling only; does not change the database.
+
+## 6. Local PostgreSQL development profile
+
+Use this only for local development and rehearsal. Production stays on SQLite for now.
+
+### 6.1 Start PostgreSQL locally
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+The local container uses:
+
+- database: `spamanager_dev`
+- user: `spamanager`
+- password: `spamanager_dev_password`
+- port: `5433`
+
+### 6.2 Create the local test database
+
+```bash
+docker exec -it spamanager-postgres createdb -U spamanager spamanager_test
+```
+
+### 6.3 Set environment variables in PowerShell
+
+```powershell
+$env:DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev"
+$env:TEST_DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_test"
+```
+
+### 6.4 Initialize schema with the repo migration CLI
+
+The current migration CLI in `core/migration_cli.py` is exposed through `flask --app app db`.
+
+Useful commands:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app db history
+.\venv\Scripts\python.exe -m flask --app app db current
+.\venv\Scripts\python.exe -m flask --app app db upgrade
+.\venv\Scripts\python.exe -m flask --app app db stamp head
+```
+
+For a fresh local PostgreSQL database, run:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app db upgrade
+```
+
+If you need to mark an already initialized database, use:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app db stamp head
+```
+
+### 6.5 Run tests against the PostgreSQL profile
+
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -s tests -p "test*.py" -v
+```
+
+### 6.6 Return to SQLite local development
+
+```powershell
+Remove-Item Env:DATABASE_URL
+Remove-Item Env:TEST_DATABASE_URL
+```
+
+Or set `DATABASE_URL` back to the SQLite local value used by the project.
+
 - Lightweight timing and query-count profiling.
 - Not a stress test.
 - Do not run in a production loop.

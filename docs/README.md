@@ -43,3 +43,7 @@
 - Các tài liệu kỹ thuật cũ được giữ lại để tham khảo lịch sử.
 - Lịch sử release chính thức nằm trong `CHANGELOG.md`.
 - Không cần tạo audit report riêng cho từng version mới.
+## Ghi chú Local PostgreSQL
+
+- Local PostgreSQL development profile hiện có thể chạy bằng `docker-compose.postgres.yml` ở thư mục gốc.
+- Hướng dẫn khởi động, tạo test DB, đặt env và init schema nằm trong `docs/RUNBOOK.md`.

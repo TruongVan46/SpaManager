@@ -233,3 +233,54 @@ Environment cần chuẩn bị:
 - Làm PostgreSQL trước Workspace / Google Registration.
 - Task tiếp theo sau audit doc nên là 5.8.2 Database config and PostgreSQL dependency readiness.
 - Backup/restore phải được redesign trước production cutover.
+
+## Local PostgreSQL development profile
+
+Để developer có thể rehearsal PostgreSQL ở local mà không đụng production, repo hiện có profile Docker tối giản:
+
+- File: `docker-compose.postgres.yml`
+- Image: `postgres:16`
+- Database: `spamanager_dev`
+- User: `spamanager`
+- Password: `spamanager_dev_password`
+- Port: `5433:5432`
+
+Khởi động local PostgreSQL:
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+Tạo database test local:
+
+```bash
+docker exec -it spamanager-postgres createdb -U spamanager spamanager_test
+```
+
+Set env trong PowerShell:
+
+```powershell
+$env:DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev"
+$env:TEST_DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_test"
+```
+
+CLI migration hiện có trong repo là `flask --app app db` từ `core/migration_cli.py`:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app db history
+.\venv\Scripts\python.exe -m flask --app app db current
+.\venv\Scripts\python.exe -m flask --app app db upgrade
+.\venv\Scripts\python.exe -m flask --app app db stamp head
+```
+
+Với local PostgreSQL mới, lệnh init schema là:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app db upgrade
+```
+
+Nếu DB đã có schema và chỉ cần đánh dấu revision, dùng:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app db stamp head
+```
