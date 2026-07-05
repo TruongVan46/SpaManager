@@ -211,3 +211,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 SpaManager production is now running on PostgreSQL as of v5.9.0. Detailed migration, cutover, backup, and validation notes are grouped here:
 
 - [PostgreSQL docs index](docs/postgresql/README.md)
+
+## Workspace docs
+
+- [Workspace architecture audit](docs/workspace/WORKSPACE_ARCHITECTURE_AUDIT.md)

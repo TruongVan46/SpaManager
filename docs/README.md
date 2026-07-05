@@ -20,3 +20,7 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 
 - Tài liệu PostgreSQL đã được tách sang `docs/postgresql/`.
 - README gốc giữ phần tổng quan ngắn gọn, còn chi tiết vận hành nằm trong `docs/`.
+
+## Workspace
+
+- [Workspace architecture audit](workspace/WORKSPACE_ARCHITECTURE_AUDIT.md)
