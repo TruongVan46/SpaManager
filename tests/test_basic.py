@@ -74,6 +74,7 @@ from core.auth.permissions import (
     is_owner,
     is_staff,
 )
+from core.auth.security import PasswordPolicy
 from core.activity_log_utils import sanitize_activity_log_value, get_activity_actor_display_name
 import core.csrf as csrf_module
 import utils.export_pdf as export_pdf_utils
@@ -886,6 +887,229 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["error"], "unauthorized")
         self.assertNotIn("Location", response.headers)
+
+    def test_password_policy_rules_are_centralized(self):
+        empty_result = PasswordPolicy.validate_password("", require_confirm=False)
+        whitespace_result = PasswordPolicy.validate_password("        ", require_confirm=False)
+        short_result = PasswordPolicy.validate_password("short7", require_confirm=False)
+        valid_result = PasswordPolicy.validate_password("validpass", require_confirm=False)
+        mismatch_result = PasswordPolicy.validate_password(
+            "validpass",
+            confirm_password="different",
+            require_confirm=True,
+        )
+        reuse_result = PasswordPolicy.validate_password(
+            "validpass",
+            current_password="validpass",
+            require_confirm=False,
+            prevent_reuse=True,
+        )
+
+        self.assertFalse(empty_result.valid)
+        self.assertEqual(empty_result.message, "Mật khẩu không được để trống.")
+        self.assertFalse(whitespace_result.valid)
+        self.assertEqual(whitespace_result.message, "Mật khẩu không được để trống.")
+        self.assertFalse(short_result.valid)
+        self.assertEqual(short_result.message, "Mật khẩu mới phải có ít nhất 8 ký tự.")
+        self.assertTrue(valid_result.valid)
+        self.assertFalse(mismatch_result.valid)
+        self.assertEqual(mismatch_result.message, "Xác nhận mật khẩu không khớp.")
+        self.assertFalse(reuse_result.valid)
+        self.assertEqual(reuse_result.message, "Mật khẩu mới không được giống mật khẩu hiện tại.")
+
+    def test_change_password_route_enforces_shared_policy(self):
+        self.create_user("policy-change", password="old-pass-123", full_name="Policy Change", role="STAFF")
+        login_token = self.get_csrf_token("/login")
+        login_response = self.client.post(
+            "/login",
+            json={
+                "username": "policy-change",
+                "password": "old-pass-123",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": login_token,
+            },
+            follow_redirects=False
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        short_response = self.post_with_csrf(
+            "/change-password",
+            path="/customers",
+            json={
+                "current_password": "old-pass-123",
+                "new_password": "short",
+                "confirm_password": "short",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(short_response.status_code, 400)
+        self.assertEqual(short_response.get_json()["message"], "Mật khẩu mới phải có ít nhất 8 ký tự.")
+
+        mismatch_response = self.post_with_csrf(
+            "/change-password",
+            path="/customers",
+            json={
+                "current_password": "old-pass-123",
+                "new_password": "new-pass-456",
+                "confirm_password": "new-pass-789",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(mismatch_response.status_code, 400)
+        self.assertEqual(mismatch_response.get_json()["message"], "Xác nhận mật khẩu không khớp.")
+
+        same_password_response = self.post_with_csrf(
+            "/change-password",
+            path="/customers",
+            json={
+                "current_password": "old-pass-123",
+                "new_password": "old-pass-123",
+                "confirm_password": "old-pass-123",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(same_password_response.status_code, 400)
+        self.assertEqual(same_password_response.get_json()["message"], "Mật khẩu mới không được giống mật khẩu hiện tại.")
+
+        success_response = self.post_with_csrf(
+            "/change-password",
+            path="/customers",
+            json={
+                "current_password": "old-pass-123",
+                "new_password": "new-pass-456",
+                "confirm_password": "new-pass-456",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(success_response.status_code, 200)
+        self.assertTrue(success_response.get_json()["success"])
+
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/customers")}, follow_redirects=False)
+        relogin_token = self.get_csrf_token("/login")
+        old_login = self.client.post(
+            "/login",
+            json={"username": "policy-change", "password": "old-pass-123", "remember": False},
+            headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": relogin_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(old_login.status_code, 401)
+        new_login = self.client.post(
+            "/login",
+            json={"username": "policy-change", "password": "new-pass-456", "remember": False},
+            headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": relogin_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(new_login.status_code, 200)
+        self.assertTrue(new_login.get_json()["success"])
+
+        change_log = ActivityLog.query.filter_by(action="CHANGE_PASSWORD").order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(change_log)
+        self.assertNotIn("old-pass-123", change_log.description)
+        self.assertNotIn("new-pass-456", change_log.description)
+
+    def test_admin_reset_password_route_uses_shared_policy(self):
+        owner = self.create_user("policy-owner", password="owner-pass", full_name="Policy Owner", role="OWNER")
+        target = self.create_user("policy-target", password="target-pass", full_name="Policy Target", role="STAFF")
+        self.login_as(owner)
+
+        short_response = self.post_with_csrf(
+            f"/users/{target.id}/reset-password",
+            path="/users",
+            data={"new_password": "short", "confirm_password": "short"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(short_response.status_code, 400)
+        self.assertEqual(short_response.get_json()["message"], "Mật khẩu mới phải có ít nhất 8 ký tự.")
+
+        mismatch_response = self.post_with_csrf(
+            f"/users/{target.id}/reset-password",
+            path="/users",
+            data={"new_password": "target-new-pass", "confirm_password": "different-pass"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(mismatch_response.status_code, 400)
+        self.assertEqual(mismatch_response.get_json()["message"], "Xác nhận mật khẩu không khớp.")
+
+        success_response = self.post_with_csrf(
+            f"/users/{target.id}/reset-password",
+            path="/users",
+            data={"new_password": "target-new-pass", "confirm_password": "target-new-pass"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(success_response.status_code, 200)
+        self.assertTrue(success_response.get_json()["success"])
+
+        reset_log = ActivityLog.query.filter_by(action="RESET_USER_PASSWORD").order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(reset_log)
+        self.assertEqual(reset_log.user_id, owner.id)
+        self.assertNotIn("target-new-pass", reset_log.description)
+
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
+        login_token = self.get_csrf_token("/login")
+        target_login = self.client.post(
+            "/login",
+            json={"username": "policy-target", "password": "target-new-pass", "remember": False},
+            headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": login_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(target_login.status_code, 200)
+        self.assertTrue(target_login.get_json()["success"])
+
+    def test_create_user_route_uses_shared_policy(self):
+        owner = self.create_user("policy-create-owner", password="owner-pass", full_name="Policy Create Owner", role="OWNER")
+        self.login_as(owner)
+
+        short_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "policy-short",
+                "full_name": "Policy Short",
+                "email": "policy-short@example.com",
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "short",
+                "confirm_password": "short",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(short_response.status_code, 400)
+        self.assertEqual(short_response.get_json()["message"], "Mật khẩu mới phải có ít nhất 8 ký tự.")
+
+        success_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "policy-create",
+                "full_name": "Policy Create",
+                "email": "policy-create@example.com",
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "create-pass-123",
+                "confirm_password": "create-pass-123",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(success_response.status_code, 200)
+        self.assertTrue(success_response.get_json()["success"])
+
+        created_user = User.query.filter_by(username="policy-create").first()
+        self.assertIsNotNone(created_user)
+        create_log = ActivityLog.query.filter_by(action="CREATE_USER").order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(create_log)
+        self.assertNotIn("create-pass-123", create_log.description)
 
     def test_html_500_renders_template_and_rolls_back(self):
         owner = AuthService.seed_owner_if_empty()

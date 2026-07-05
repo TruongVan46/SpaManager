@@ -1,5 +1,6 @@
 from validators.base_validator import BaseValidator
 from validators.messages import ValidationMessages
+from core.auth.security import PasswordPolicy
 from validators.rules import validate_required, validate_length, validate_email
 
 
@@ -17,15 +18,14 @@ class UserValidator(BaseValidator):
 
         self._validate_common(username, full_name, email, role)
 
-        if not validate_required(password):
-            self.add_error("password", ValidationMessages.REQUIRED)
-        elif not validate_length(password, min_len=8):
-            self.add_error("password", ValidationMessages.PASSWORD_LENGTH)
-
-        if not validate_required(confirm_password):
-            self.add_error("confirm_password", ValidationMessages.REQUIRED)
-        elif password != confirm_password:
-            self.add_error("confirm_password", ValidationMessages.PASSWORD_MATCH)
+        policy_result = PasswordPolicy.validate_password(
+            password,
+            confirm_password=confirm_password,
+            require_confirm=True,
+            prevent_reuse=False,
+        )
+        for field, message in policy_result.errors.items():
+            self.add_error(field, message)
 
         return self.result
 
@@ -47,16 +47,14 @@ class UserValidator(BaseValidator):
 
         password = data.get("new_password") or ""
         confirm_password = data.get("confirm_password") or ""
-
-        if not validate_required(password):
-            self.add_error("new_password", ValidationMessages.REQUIRED)
-        elif not validate_length(password, min_len=8):
-            self.add_error("new_password", ValidationMessages.PASSWORD_LENGTH)
-
-        if not validate_required(confirm_password):
-            self.add_error("confirm_password", ValidationMessages.REQUIRED)
-        elif password != confirm_password:
-            self.add_error("confirm_password", ValidationMessages.PASSWORD_MATCH)
+        policy_result = PasswordPolicy.validate_password(
+            password,
+            confirm_password=confirm_password,
+            require_confirm=True,
+            prevent_reuse=False,
+        )
+        for field, message in policy_result.errors.items():
+            self.add_error(field, message)
 
         return self.result
 
@@ -76,4 +74,3 @@ class UserValidator(BaseValidator):
 
         if not validate_required(role):
             self.add_error("role", ValidationMessages.REQUIRED)
-

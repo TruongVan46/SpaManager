@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from core.auth.enums import UserRole, normalize_role_value
+from core.auth.security import PasswordPolicy
 from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
 from core.exceptions import ConflictException, NotFoundException, ValidationException
 from models.user import User
@@ -163,6 +164,10 @@ class UserService:
         if errors:
             raise ValidationException("Dữ liệu người dùng không hợp lệ.", field_errors=errors)
 
+        policy_result = PasswordPolicy.validate_password(password, require_confirm=False, prevent_reuse=False)
+        if not policy_result.valid:
+            raise ValidationException(policy_result.message, field_errors=policy_result.errors)
+
         UserService._ensure_unique_fields(username=username, email=email)
 
         user = User(
@@ -250,6 +255,15 @@ class UserService:
         user = UserService._get_user_or_404(user_id)
         if not new_password:
             raise ValidationException("Mật khẩu mới không được để trống.", field_errors={"new_password": "Mật khẩu mới không được để trống."})
+
+        policy_result = PasswordPolicy.validate_password(
+            new_password,
+            require_confirm=False,
+            prevent_reuse=True,
+            current_password_hash=user.password_hash,
+        )
+        if not policy_result.valid:
+            raise ValidationException(policy_result.message, field_errors=policy_result.errors)
 
         user.set_password(new_password)
         user.updated_at = utc_now()

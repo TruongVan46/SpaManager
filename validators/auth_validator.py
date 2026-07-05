@@ -1,7 +1,8 @@
 # validators/auth_validator.py
 from validators.base_validator import BaseValidator
 from validators.messages import ValidationMessages
-from validators.rules import validate_required, validate_length
+from core.auth.security import PasswordPolicy
+from validators.rules import validate_required
 
 
 class AuthValidator(BaseValidator):
@@ -43,17 +44,15 @@ class AuthValidator(BaseValidator):
             
         if not self.is_valid:
             return self.result
-            
-        # 2. Complexity check (Password Policy)
-        if not validate_length(new_password, min_len=8):
-            self.add_error('new_password', ValidationMessages.PASSWORD_LENGTH)
-            
-        # 3. Match check
-        if new_password != confirm_password:
-            self.add_error('confirm_password', ValidationMessages.PASSWORD_MATCH)
-            
-        # 4. Same as old check
-        if current_password == new_password:
-            self.add_error('new_password', ValidationMessages.PASSWORD_SAME)
+
+        policy_result = PasswordPolicy.validate_password(
+            new_password,
+            confirm_password=confirm_password,
+            current_password=current_password,
+            require_confirm=True,
+            prevent_reuse=True,
+        )
+        for field, message in policy_result.errors.items():
+            self.add_error(field, message)
             
         return self.result

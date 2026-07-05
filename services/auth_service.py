@@ -10,6 +10,7 @@ from extensions import db
 from models.user import User
 from core.auth.enums import UserRole, normalize_role_value
 from core.auth.constants import AUTH_SESSION_KEY
+from core.auth.security import PasswordPolicy
 from core.logger import app_logger
 from core.exceptions import AuthenticationException, PermissionDeniedException, ValidationException
 from validators.auth_validator import AuthValidator
@@ -303,7 +304,18 @@ class AuthService:
         }
         validator = AuthValidator()
         validator.validate_change_password(data)
-        validator.raise_if_invalid("Thông tin thay đổi mật khẩu không hợp lệ.")
+        validator.raise_if_invalid(next(iter(validator.errors.values()), "Thông tin thay đổi mật khẩu không hợp lệ."))
+
+        policy_result = PasswordPolicy.validate_password(
+            new_password,
+            confirm_password=confirm_password,
+            current_password=current_password,
+            current_password_hash=user.password_hash,
+            require_confirm=True,
+            prevent_reuse=True,
+        )
+        if not policy_result.valid:
+            raise ValidationException(policy_result.message, field_errors=policy_result.errors)
 
         # 2. Check current password correctness
         if not user.check_password(current_password):

@@ -30,8 +30,9 @@ def _require_user_management_permission():
 
 
 def _render_or_json_error(template_name, context, errors, status_code=400):
+    first_error_message = next(iter(errors.values()), "Dữ liệu người dùng không hợp lệ.")
     if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return jsonify({"success": False, "message": "Dữ liệu người dùng không hợp lệ.", "fields": errors}), status_code
+        return jsonify({"success": False, "message": first_error_message, "fields": errors}), status_code
     context = dict(context)
     context["errors"] = errors
     return render_template(template_name, **context), status_code
