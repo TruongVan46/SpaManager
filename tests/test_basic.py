@@ -1913,7 +1913,7 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         response = self.client.get("/settings")
         html = response.get_data(as_text=True)
-        self.assertIn("Spa Manager v5.7.0", html)
+        self.assertIn("SpaManager v5.7.0", html)
         self.assertIn("v5.7.0 Stable", html)
         self.assertIn(">5.7.0<", html)
 
@@ -1922,8 +1922,8 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         response = self.client.get("/")
         html = response.get_data(as_text=True)
-        self.assertIn("Spa Manager v5.7.0", html)
-        self.assertNotIn("Spa Manager v4.0", html)
+        self.assertIn("SpaManager v5.7.0", html)
+        self.assertNotIn("SpaManager v4.0", html)
 
     def test_settings_template_includes_explicit_csrf_tokens_for_post_forms(self):
         template = Path("templates/setting/index.html").read_text(encoding="utf-8")
@@ -2526,11 +2526,21 @@ class BasicTestCase(unittest.TestCase):
 
     def test_sidebar_template_contains_clean_vietnamese_text(self):
         sidebar = Path("templates/layout/sidebar.html").read_text(encoding="utf-8")
-        self.assertIn("TIỆM NHÀ NHÍM", sidebar)
+        self.assertIn("SpaManager", sidebar)
+        self.assertIn("Quản lý Spa • Nail • Makeup", sidebar)
+        self.assertIn("© Văn Công Trường", sidebar)
         self.assertIn("Trang chủ", sidebar)
         self.assertIn("Người dùng", sidebar)
+        self.assertNotIn("TIỆM NHÀ NHÍM", sidebar)
         for marker in ["Ã", "á»", "áº", "Æ", "Ä‘", "â€¢", "Â"]:
             self.assertNotIn(marker, sidebar)
+
+    def test_login_template_contains_product_branding(self):
+        login = Path("templates/auth/login.html").read_text(encoding="utf-8")
+        self.assertIn("SpaManager", login)
+        self.assertIn("Quản lý Spa • Nail • Makeup", login)
+        self.assertIn("© Văn Công Trường", login)
+        self.assertNotIn("TIỆM NHÀ NHÍM", login)
 
     def test_activity_log_action_badge_is_scoped_and_truncated(self):
         template = Path("templates/activity_log/index.html").read_text(encoding="utf-8")

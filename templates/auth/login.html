@@ -1,6 +1,6 @@
 {% extends 'layout/auth_base.html' %}
 
-{% block title %}Đăng nhập - Spa Manager{% endblock %}
+{% block title %}Đăng nhập - SpaManager{% endblock %}
 
 {% block content %}
 <div class="auth-card-container">
@@ -10,8 +10,9 @@
             <div class="auth-logo-icon">
                 <i class="bi bi-flower1"></i>
             </div>
-            <h3 class="auth-title">TIỆM NHÀ NHÍM</h3>
-            <p class="auth-subtitle">Spa • Nail • Makeup</p>
+            <h3 class="auth-title">SpaManager</h3>
+            <p class="auth-subtitle">Quản lý Spa • Nail • Makeup</p>
+            <p class="auth-credit text-muted mb-0">© Văn Công Trường</p>
         </div>
 
         <!-- Form -->
@@ -89,6 +90,11 @@
     .auth-subtitle {
         color: #888;
         font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .auth-credit {
+        font-size: 0.85rem;
         margin-bottom: 30px;
     }
 
