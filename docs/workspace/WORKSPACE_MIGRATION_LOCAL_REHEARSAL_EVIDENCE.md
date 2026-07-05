@@ -57,6 +57,8 @@ The following validation was completed successfully during the rehearsal work:
 
 The workspace migration foundation has now completed a local production-like PostgreSQL rehearsal in Mode A, while app smoke UI remains a separate validation item if not run.
 
+6.0.13 now packages the approval checklist in `docs/workspace/WORKSPACE_EXECUTABLE_MIGRATION_APPROVAL_PACKAGE.md`; it does not create an executable migration or approval marker.
+
 The repository now has:
 
 - a rehearsal plan,

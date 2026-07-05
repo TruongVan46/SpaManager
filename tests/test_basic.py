@@ -1969,6 +1969,20 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Railway’s pre-deploy `db upgrade` can execute it automatically", gate_text)
         self.assertIn("before the file reaches `migrations/versions/`", gate_text)
 
+    def test_workspace_executable_migration_approval_package_is_documented_and_non_executable(self):
+        package_path = Path("docs/workspace/WORKSPACE_EXECUTABLE_MIGRATION_APPROVAL_PACKAGE.md")
+        self.assertTrue(package_path.exists())
+
+        package_text = package_path.read_text(encoding="utf-8")
+        self.assertIn("Workspace Executable Migration Approval Package", package_text)
+        self.assertIn("approve workspace migration deploy", package_text)
+        self.assertIn("READY FOR OWNER APPROVAL PACKAGE REVIEW", package_text)
+        self.assertIn("Does not create `migrations/versions/0002_workspace_foundation.py`", package_text)
+        self.assertIn("Do not create `docs/workspace/WORKSPACE_MIGRATION_EXECUTION_APPROVAL.md`", package_text)
+        self.assertNotIn("migrations/versions/0002_workspace_foundation.py\n", package_text)
+        self.assertFalse(Path("migrations/versions/0002_workspace_foundation.py").exists())
+        self.assertFalse(Path("docs/workspace/WORKSPACE_MIGRATION_EXECUTION_APPROVAL.md").exists())
+
     def test_workspace_migration_local_rehearsal_evidence_is_documented(self):
         evidence_path = Path("docs/workspace/WORKSPACE_MIGRATION_LOCAL_REHEARSAL_EVIDENCE.md")
         self.assertTrue(evidence_path.exists())
