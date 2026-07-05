@@ -354,3 +354,8 @@ Current stable checkpoint: `v5.8.0`.
 
 - Tham chiếu: `docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`
 - Dùng trước cutover để backup SQLite, freeze writes, và giữ rollback window an toàn.
+
+## v5.9.3 Fresh PostgreSQL schema initialization plan note
+
+- Tham chiếu: `docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md`
+- Dùng sau freeze/backup để init schema PostgreSQL sạch, bootstrap owner, rồi smoke trước cutover.

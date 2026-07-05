@@ -82,3 +82,8 @@
 
 - Kế hoạch backup và freeze writes trước PostgreSQL cutover: `V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md`
 - Tài liệu này chỉ mô tả rollback safety cho SQLite production hiện tại.
+
+## v5.9.3 Fresh PostgreSQL schema initialization plan
+
+- Kế hoạch init schema sạch cho PostgreSQL: `V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md`
+- Tài liệu này mô tả schema init, owner bootstrap, smoke check, và rollback.

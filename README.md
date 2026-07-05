@@ -229,3 +229,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## v5.9.2 Production SQLite backup and freeze plan
 
 - [docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md](docs/V5_9_2_SQLITE_BACKUP_FREEZE_PLAN.md)
+
+## v5.9.3 Fresh PostgreSQL schema initialization plan
+
+- [docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md](docs/V5_9_3_FRESH_POSTGRESQL_SCHEMA_INIT_PLAN.md)

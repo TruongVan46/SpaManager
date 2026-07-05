@@ -79,4 +79,4 @@ Allowed evidence:
 
 ## Next task
 
-v5.9.2 should be the production SQLite backup and freeze plan, or fresh PostgreSQL schema initialization planning depending on owner confirmation.
+v5.9.2 should be the production SQLite backup and freeze plan. v5.9.3 should be fresh PostgreSQL schema initialization planning depending on owner confirmation.
