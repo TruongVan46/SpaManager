@@ -166,3 +166,8 @@
 - 6.0.7 Workspace user/member management
 - 6.0.8 Workspace security regression tests
 - 6.0.9 v6.0.0 checkpoint
+
+## Related docs
+
+- [Workspace docs index](README.md)
+- [Workspace models and migration draft](WORKSPACE_MODELS_AND_MIGRATION_DRAFT.md)

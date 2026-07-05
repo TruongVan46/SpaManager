@@ -148,3 +148,4 @@ No migration is created in this task.
 
 - [Workspace docs index](README.md)
 - [Workspace schema design](WORKSPACE_SCHEMA_DESIGN.md)
+- [Workspace models and migration draft](WORKSPACE_MODELS_AND_MIGRATION_DRAFT.md)
