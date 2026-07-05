@@ -36,6 +36,7 @@ Checklist này dùng để kiểm tra nhanh sau deploy, sau demo, và trước k
 - [ ] `APP_VERSION` production hiển thị đúng.
 - [ ] `git status --short` sạch, không có artifact runtime.
 - [ ] Đã có backup mới trước khi kiểm tra thao tác nguy hiểm.
+- [ ] Sau rehearsal import/export/PDF/backup, đã kiểm `git status --short` để chắc không staged artifact.
 
 ### Auth / account
 
@@ -144,6 +145,7 @@ Checklist này dùng để kiểm tra nhanh sau deploy, sau demo, và trước k
 - [ ] Railway logs không tăng lỗi mới.
 - [ ] Nếu có dữ liệu fake, đã dọn hoặc ghi chú rõ.
 - [ ] Nếu có backup test, đã ghi tên / version rõ.
+- [ ] Nếu vừa rehearsal import/export/PDF/backup, đã dọn file tạm và kiểm `git status --short`.
 
 ## Checklist đầy đủ 20 phút
 
@@ -303,4 +305,3 @@ Thực hiện toàn bộ nhóm A đến P bên dưới:
 - Kết quả thực tế:
 - Screenshot / log:
 - Mức độ: P0 / P1 / P2
-

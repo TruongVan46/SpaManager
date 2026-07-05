@@ -50,6 +50,7 @@ Use this after every deploy:
 - [ ] PDF export renders Vietnamese correctly when tested.
 - [ ] Backup Center shows existing backups.
 - [ ] A fresh backup can be created if the release needs one.
+- [ ] After any import / export / PDF / backup rehearsal, run a quick `git status` check to confirm no runtime artifact is staged.
 - [ ] Backup metadata includes the expected app version.
 - [ ] `ops diagnostics` runs when shell access is available.
 - [ ] `data audit` runs when shell access is available.
@@ -235,5 +236,6 @@ Current stable checkpoint: `v5.6.0`.
 - Do not delete the SQLite file manually.
 - Do not commit `database/backup/`.
 - Do not commit temporary import files under `static/uploads/import/`.
+- Do not leave rehearsal PDFs, backup copies, or import error reports staged after smoke tests.
 - Do not expose `SECRET_KEY`, `DATABASE_URL`, or passwords.
 - Do not run stress or performance loops on production.

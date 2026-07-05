@@ -1962,6 +1962,31 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('wizardBtnConfirm.disabled = !this.checked || isExecutingRestore', script)
         self.assertIn('requestSubmit', script)
 
+    def test_import_template_files_exist_and_routes_download_them(self):
+        customers_template = Path("static/templates/import/customers_template.xlsx")
+        services_template = Path("static/templates/import/services_template.xlsx")
+
+        self.assertTrue(customers_template.exists())
+        self.assertTrue(services_template.exists())
+        self.assertGreater(customers_template.stat().st_size, 0)
+        self.assertGreater(services_template.stat().st_size, 0)
+
+        owner = AuthService.seed_owner_if_empty()
+        self.login_as(owner)
+
+        for url, filename in (
+            ("/settings/template/customers", "customers_template.xlsx"),
+            ("/settings/template/services", "services_template.xlsx"),
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url, follow_redirects=False)
+                try:
+                    self.assertEqual(response.status_code, 200)
+                    self.assertGreater(len(response.data), 0)
+                    self.assertIn(filename, response.headers.get("Content-Disposition", ""))
+                finally:
+                    response.close()
+
     def test_settings_backup_center_uses_vietnamese_badges_and_status_labels(self):
         template = Path("templates/setting/index.html").read_text(encoding="utf-8")
 
@@ -1999,6 +2024,7 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="")
         try:
+            self.assertEqual(backup_meta["app_version"], "SpaManager v5.6.0")
             self.assertIn("Backup ngày", backup_meta["display_name"])
             self.assertIn("Backup tạo lúc", backup_meta["notes"])
 
