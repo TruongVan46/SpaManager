@@ -5,8 +5,7 @@
 This document captures the local rehearsal evidence for the workspace migration foundation review.
 
 The rehearsal was intentionally kept non-destructive and documentation-only. No executable migration was added to `migrations/versions/`.
-
-Important: the critical PostgreSQL rehearsal commands were **not run** in this task because the local machine does not have Docker or a local PostgreSQL toolchain available, so the evidence below is a truthful record of what was and was not executed.
+The rehearsal used a local Docker Desktop PostgreSQL toolchain in **Mode A**.
 
 ## Evidence summary
 
@@ -36,26 +35,27 @@ The following validation was completed successfully during the rehearsal work:
 
 | Item | Status | Notes |
 |---|---|---|
-| Rehearsal environment | NOT RUN | No local PostgreSQL / staging PostgreSQL rehearsal was executed for this task. |
-| Temp executable migration in `migrations/versions/` | NO | None was created for rehearsal. |
-| `python -m flask --app app db upgrade` | NOT RUN | Not executed against a local/staging PostgreSQL rehearsal DB. |
-| `python -m flask --app app db current` | NOT RUN | Not executed against a local/staging PostgreSQL rehearsal DB. |
-| Schema verification | NOT RUN | Workspaces tables and `workspace_id` columns were not verified on a live rehearsal DB. |
-| Data verification | NOT RUN | Default workspace, membership backfill, and business row backfill were not verified on a live rehearsal DB. |
-| Final result | BLOCKED | Docs, gates, and tests are in place, but PostgreSQL rehearsal execution is blocked by missing local Docker/PostgreSQL tooling. |
+| Rehearsal environment | PASS | Docker Desktop local PostgreSQL on `spamanager_workspace_prodlike` was used for the rehearsal. |
+| Temp executable migration in `migrations/versions/` | YES (temporary) | `migrations/versions/0002_workspace_foundation.py` was created only for the local dry-run and then deleted. |
+| `python -m flask --app app db upgrade` | PASS | Applied `0002_workspace_foundation` locally. |
+| `python -m flask --app app db current` | PASS | Reported `0001_baseline` before migration and `0002_workspace_foundation` after migration. |
+| Schema verification | PASS | `workspaces`, `workspace_members`, and nullable `workspace_id` columns were verified. |
+| Data verification | PASS | Default workspace and owner membership were verified; orphan `workspace_members` count was `0`. |
+| Final result | PASS | Local production-like PostgreSQL rehearsal completed successfully. |
 
 ## Review notes
 
 - The migration candidate is still documentation-only.
 - The execution gate remains the only approved control point before any executable migration is ever added.
 - The local rehearsal evidence supports the current decision to keep production migration behavior unchanged.
-- 6.0.10 is setup/documentation only; PostgreSQL rehearsal execution is still not PASS, and no executable migration was created.
-- The PostgreSQL rehearsal environment setup guide is documentation-only and does not itself execute or approve rehearsal.
-- The toolchain decision is documented in `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` and currently records BLOCKED due to missing Docker/psql.
+- 6.0.11 confirms a production-like PostgreSQL rehearsal PASS in Mode A with Docker Desktop.
+- App smoke UI was not run, so any UI smoke result remains NOT RUN unless separately validated.
+- The PostgreSQL rehearsal environment setup guide is documentation-only and now reflects a working local toolchain.
+- The toolchain decision is documented in `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` and now records Option A as selected.
 
 ## Conclusion
 
-The workspace migration foundation is still in the safe planning / rehearsal stage, and the critical PostgreSQL rehearsal itself is blocked until Docker or another local PostgreSQL toolchain is available.
+The workspace migration foundation has now completed a local production-like PostgreSQL rehearsal in Mode A, while app smoke UI remains a separate validation item if not run.
 
 The repository now has:
 

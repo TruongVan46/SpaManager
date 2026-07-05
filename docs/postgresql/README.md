@@ -40,3 +40,4 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - Không commit database dump/backup.
 - Không restore SQLite backup vào PostgreSQL.
 - Dùng Railway/PostgreSQL provider backup cho database-level backup.
+- Mode A Docker Desktop local PostgreSQL rehearsal is the selected local toolchain path.

@@ -1,10 +1,10 @@
 # Workspace Foundation Migration Candidate
 
-# PSEUDO-CODE ONLY — do not place in migrations/versions yet.
+# TESTED PROJECT-STYLE REHEARSAL ARTIFACT ONLY.
+# Do not copy into migrations/versions/ unless the execution gate is approved.
 #
-# This file is a review artifact for v6.0.5.
-# It is intentionally stored under docs/workspace/migration_candidates/
-# so Railway's pre-deploy `db upgrade` cannot execute it.
+# This document reflects the local production-like dry-run that was executed
+# against Docker Desktop PostgreSQL and then deleted from migrations/versions/.
 
 revision = "0002_workspace_foundation"
 down_revision = "0001_baseline"
@@ -14,6 +14,8 @@ message = "Workspace foundation tables and nullable workspace scope columns"
 
 
 def upgrade():
+    # Project-style migration summary from the tested dry-run:
+    #
     # 1. Create workspaces table.
     # 2. Create workspace_members table.
     # 3. Add nullable workspace_id columns to:
@@ -25,14 +27,16 @@ def upgrade():
     #    - activity_logs
     #    - settings
     # 4. Insert default workspace:
+    #    - id = 1
     #    - name = "Default Workspace"
     #    - slug = "default"
     #    - status = "active"
-    # 5. Backfill existing business rows to the default workspace.
-    # 6. Create workspace memberships for existing users:
-    #    - OWNER -> owner
-    #    - ADMIN  -> admin
-    #    - STAFF  -> staff
+    # 5. Backfill existing business rows to workspace_id = 1.
+    # 6. Backfill workspace_members for the existing owner:
+    #    - workspace_id = 1
+    #    - user_id = 1
+    #    - role = "owner"
+    #    - status = "active"
     # 7. Add indexes:
     #    - workspaces.slug unique
     #    - workspaces.status
@@ -52,3 +56,19 @@ def downgrade():
     # In production, workspace adoption should be treated as a forward-only change.
     # If used before production cutover, remove the added tables/columns/indexes carefully.
     pass
+
+
+# Dry-run verification notes:
+#
+# - docker compose local PostgreSQL: PASS
+# - db current before migration: 0001_baseline
+# - db upgrade local: PASS
+# - db current after migration: 0002_workspace_foundation
+# - workspaces table exists: True
+# - workspace_members table exists: True
+# - workspace_id nullable columns exist on all scoped business tables: True
+# - default workspace row: (1, Default Workspace, default, active)
+# - workspace_members row: (1, 1, owner, active)
+# - orphan workspace_members count: 0
+# - temporary executable migration removed from migrations/versions: PASS
+# - app smoke UI: NOT RUN

@@ -23,5 +23,5 @@ This folder collects the early v6.0 planning docs for workspace support.
 - The rehearsal plan stays documentation-only and defines the safe path before any executable migration.
 - The execution gate defines when a future executable migration may be introduced and how Railway deploy control is kept safe.
 - The local rehearsal evidence records the checks that were completed without introducing executable migration code.
-- 6.0.10 only sets up and documents the rehearsal environment; the PostgreSQL rehearsal itself is still not PASS.
-- The toolchain decision records the current blocker and the next setup verification step.
+- 6.0.11 records a successful Mode A production-like PostgreSQL rehearsal using Docker Desktop local PostgreSQL.
+- The toolchain decision records that Option A is selected.

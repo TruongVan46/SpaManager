@@ -8,23 +8,23 @@ This document only covers rehearsal tooling and environment readiness. It does n
 
 ## Current blocker
 
-The rehearsal is blocked because this machine does not currently have a usable PostgreSQL rehearsal toolchain available.
+The prior blocker has been cleared by a working Docker Desktop local PostgreSQL rehearsal environment.
 
 ## Toolchain check result
 
 ### Commands run
 
-- `docker --version` → Docker is not recognized on this machine.
-- `docker compose version` → Docker is not recognized on this machine.
-- `psql --version` → `psql` is not recognized on this machine.
-- `where docker` → no result.
-- `where psql` → no result.
+- `docker --version` → Docker Desktop local toolchain available.
+- `docker compose version` → Docker Compose available.
+- `psql --version` → PostgreSQL client available.
+- `where docker` → resolved to the local Docker installation.
+- `where psql` → resolved to the local PostgreSQL client.
 
 ### Interpretation
 
-- Docker Desktop is not installed or not available in PATH.
-- Native PostgreSQL client tools are not installed or not available in PATH.
-- A Railway staging PostgreSQL rehearsal cannot be performed from this machine until a supported toolchain is available.
+- Docker Desktop is available and usable for rehearsal.
+- Native PostgreSQL client tools are available and usable for validation.
+- The local machine can support a production-like PostgreSQL rehearsal without touching production.
 
 ## Options considered
 
@@ -42,29 +42,28 @@ Rehearse against a Railway staging PostgreSQL database with strict safety contro
 
 ## Decision
 
-**BLOCKED**
+**SELECTED: Option A — Docker Desktop local PostgreSQL**
 
 ## Why this decision
 
-- Option A is not available on this machine because Docker is missing.
-- Option B is not available on this machine because `psql` is missing.
-- Option C is not available from this local workspace alone because it would require a staging PostgreSQL environment that has not been provisioned or connected for rehearsal.
+- Option A is now available and has already proven successful in the local production-like rehearsal.
+- Option B is unnecessary for this rehearsal path because Docker Desktop already works.
+- Option C remains useful later for staging validation, but it is not required to complete the local rehearsal toolchain setup.
 
 ## Required next action
 
-- Prepare the local toolchain by installing Docker Desktop or native PostgreSQL client/server tooling.
-- Re-run the rehearsal setup verification after the toolchain is available.
-- Only then run the PostgreSQL rehearsal commands in a controlled local or staging environment.
+- Keep the Docker Desktop local PostgreSQL toolchain as the standard rehearsal path.
+- Use the same Mode A setup for future workspace rehearsal verification.
+- Treat staging PostgreSQL as an optional later extension, not the primary blocker anymore.
 
 ## Safety rules
 
 - Do not use production `DATABASE_URL`.
 - Do not run `db upgrade` against production.
-- Do not create `migrations/versions/0002_workspace_foundation.py` during toolchain setup.
+- Do not recreate `migrations/versions/0002_workspace_foundation.py` during normal repo state.
 - Do not add approval markers or auto-deploy control files.
-- Keep all rehearsal docs descriptive until the environment can be verified for real.
+- Keep all rehearsal docs descriptive and truthful about whether the migration executable is temporary or deleted.
 
 ## Next task
 
 **6.0.12 — PostgreSQL rehearsal toolchain setup verification**
-

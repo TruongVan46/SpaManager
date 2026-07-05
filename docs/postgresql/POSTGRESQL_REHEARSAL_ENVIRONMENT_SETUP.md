@@ -71,6 +71,14 @@ Remove-Item Env:TEST_DATABASE_URL
 
 ## Current status
 
-The repository already contains the setup pieces above, but on this machine the actual PostgreSQL rehearsal could not be executed because Docker and a local PostgreSQL toolchain were not available.
+The repository already contains the setup pieces above, and the Docker Desktop local PostgreSQL rehearsal path has now been verified as working.
 
-See also: `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` for the current toolchain decision and blocker.
+The local production-like rehearsal used:
+
+- database: `spamanager_workspace_prodlike`
+- baseline revision before migration: `0001_baseline`
+- revision after local dry-run: `0002_workspace_foundation`
+
+The temporary executable migration was created only for the local dry-run and then deleted from `migrations/versions/`.
+
+See also: `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` for the current toolchain decision.
