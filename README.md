@@ -146,6 +146,7 @@ For the production smoke checklist, backup and restore safety, internal CLI comm
 
 - User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 - Admin guide: [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md)
+- Demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 
 ## Testing
 
