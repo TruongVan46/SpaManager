@@ -72,3 +72,5 @@ Remove-Item Env:TEST_DATABASE_URL
 ## Current status
 
 The repository already contains the setup pieces above, but on this machine the actual PostgreSQL rehearsal could not be executed because Docker and a local PostgreSQL toolchain were not available.
+
+See also: `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` for the current toolchain decision and blocker.

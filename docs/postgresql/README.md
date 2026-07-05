@@ -18,6 +18,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - [Clean cutover plan](POSTGRESQL_CLEAN_CUTOVER_PLAN.md)
 - [Test profile and CI plan](POSTGRESQL_TEST_CI_PLAN.md)
 - [Rehearsal environment setup](POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
+- [Workspace PostgreSQL rehearsal toolchain decision](../workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md)
 
 ## Release checkpoints
 

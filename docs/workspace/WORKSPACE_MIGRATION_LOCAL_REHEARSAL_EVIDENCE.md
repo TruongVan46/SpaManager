@@ -50,6 +50,8 @@ The following validation was completed successfully during the rehearsal work:
 - The execution gate remains the only approved control point before any executable migration is ever added.
 - The local rehearsal evidence supports the current decision to keep production migration behavior unchanged.
 - 6.0.10 is setup/documentation only; PostgreSQL rehearsal execution is still not PASS, and no executable migration was created.
+- The PostgreSQL rehearsal environment setup guide is documentation-only and does not itself execute or approve rehearsal.
+- The toolchain decision is documented in `docs/workspace/WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md` and currently records BLOCKED due to missing Docker/psql.
 
 ## Conclusion
 

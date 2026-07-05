@@ -11,6 +11,7 @@ This folder collects the early v6.0 planning docs for workspace support.
 - [Workspace migration execution gate and deployment control](WORKSPACE_MIGRATION_EXECUTION_GATE.md)
 - [Workspace migration local rehearsal evidence](WORKSPACE_MIGRATION_LOCAL_REHEARSAL_EVIDENCE.md)
 - [PostgreSQL rehearsal environment setup](../postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
+- [PostgreSQL rehearsal toolchain decision](WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md)
 - [Workspace migration candidate](migration_candidates/0002_workspace_foundation.py.txt)
 
 ## Notes
@@ -23,3 +24,4 @@ This folder collects the early v6.0 planning docs for workspace support.
 - The execution gate defines when a future executable migration may be introduced and how Railway deploy control is kept safe.
 - The local rehearsal evidence records the checks that were completed without introducing executable migration code.
 - 6.0.10 only sets up and documents the rehearsal environment; the PostgreSQL rehearsal itself is still not PASS.
+- The toolchain decision records the current blocker and the next setup verification step.
