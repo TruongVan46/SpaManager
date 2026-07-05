@@ -1111,6 +1111,271 @@ class BasicTestCase(unittest.TestCase):
         self.assertIsNotNone(create_log)
         self.assertNotIn("create-pass-123", create_log.description)
 
+    def test_user_management_access_control_and_staff_blocked_routes(self):
+        owner = self.create_user("users-access-owner", password="owner-pass", full_name="Users Access Owner", role="OWNER")
+        admin = self.create_user("users-access-admin", password="admin-pass", full_name="Users Access Admin", role="ADMIN")
+        staff = self.create_user("users-access-staff", password="staff-pass", full_name="Users Access Staff", role="STAFF")
+        target = self.create_user("users-access-target", password="target-pass", full_name="Users Access Target", role="STAFF")
+
+        for manager in (owner, admin):
+            self.login_as(manager)
+            response = self.client.get("/users")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Người dùng", response.get_data(as_text=True))
+            self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
+
+        self.login_as(staff)
+        self.assertEqual(self.client.get("/users").status_code, 403)
+
+        create_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "users-access-new",
+                "full_name": "Users Access New",
+                "email": "users-access-new@example.com",
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "users-access-pass",
+                "confirm_password": "users-access-pass",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(create_response.status_code, 403)
+        self.assertIsNone(User.query.filter_by(username="users-access-new").first())
+
+        edit_response = self.post_with_csrf(
+            f"/users/{target.id}/edit",
+            path="/users",
+            data={
+                "username": "users-access-target",
+                "full_name": "Users Access Target",
+                "email": "users-access-target@example.com",
+                "role": "STAFF",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(edit_response.status_code, 403)
+
+        reset_response = self.post_with_csrf(
+            f"/users/{target.id}/reset-password",
+            path="/users",
+            data={"new_password": "users-access-new-pass", "confirm_password": "users-access-new-pass"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(reset_response.status_code, 403)
+
+        toggle_response = self.post_with_csrf(
+            f"/users/{target.id}/toggle-active",
+            path="/users",
+            data={"is_active": "0"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(toggle_response.status_code, 403)
+        self.assertTrue(User.query.get(target.id).is_active)
+
+    def test_user_create_route_rejects_invalid_password_and_duplicate_identity(self):
+        owner = self.create_user("users-create-owner", password="owner-pass", full_name="Users Create Owner", role="OWNER")
+        existing_user = self.create_user("users-create-existing", password="existing-pass", full_name="Users Create Existing", role="STAFF",)
+        existing_user.email = "users-create-existing@example.com"
+        db.session.commit()
+        self.login_as(owner)
+
+        short_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "users-create-short",
+                "full_name": "Users Create Short",
+                "email": "users-create-short@example.com",
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "short",
+                "confirm_password": "short",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(short_response.status_code, 400)
+        self.assertFalse(User.query.filter_by(username="users-create-short").first())
+
+        mismatch_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "users-create-mismatch",
+                "full_name": "Users Create Mismatch",
+                "email": "users-create-mismatch@example.com",
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "users-create-pass-123",
+                "confirm_password": "different-pass",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(mismatch_response.status_code, 400)
+        self.assertFalse(User.query.filter_by(username="users-create-mismatch").first())
+
+        duplicate_username_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "users-create-existing",
+                "full_name": "Users Create Duplicate Username",
+                "email": "users-create-dup-user@example.com",
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "users-create-pass-123",
+                "confirm_password": "users-create-pass-123",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(duplicate_username_response.status_code, 400)
+        self.assertFalse(User.query.filter_by(email="users-create-dup-user@example.com").first())
+
+        duplicate_email_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "users-create-dup-email",
+                "full_name": "Users Create Duplicate Email",
+                "email": existing_user.email,
+                "role": "STAFF",
+                "is_active": "1",
+                "password": "users-create-pass-123",
+                "confirm_password": "users-create-pass-123",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(duplicate_email_response.status_code, 400)
+        self.assertFalse(User.query.filter_by(username="users-create-dup-email").first())
+
+    def test_user_edit_route_updates_profile_and_rejects_invalid_role(self):
+        owner = self.create_user("users-edit-owner", password="owner-pass", full_name="Users Edit Owner", role="OWNER")
+        target = self.create_user("users-edit-target", password="target-pass", full_name="Users Edit Target", role="STAFF")
+        original_password_hash = target.password_hash
+        self.login_as(owner)
+
+        success_response = self.post_with_csrf(
+            f"/users/{target.id}/edit",
+            path="/users",
+            data={
+                "username": "users-edit-target",
+                "full_name": "Users Edit Target Updated",
+                "email": "users-edit-target@example.com",
+                "role": "ADMIN",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(success_response.status_code, 200)
+        self.assertTrue(success_response.get_json()["success"])
+
+        updated_user = User.query.get(target.id)
+        self.assertEqual(updated_user.full_name, "Users Edit Target Updated")
+        self.assertEqual(updated_user.email, "users-edit-target@example.com")
+        self.assertEqual(updated_user.role, "ADMIN")
+        self.assertEqual(updated_user.password_hash, original_password_hash)
+
+        update_log = ActivityLog.query.filter_by(action="UPDATE_USER").order_by(ActivityLog.id.desc()).first()
+        self.assertIsNotNone(update_log)
+        self.assertEqual(update_log.user_id, owner.id)
+        self.assertNotIn("target-pass", update_log.description)
+        self.assertNotIn("password", update_log.description.lower())
+
+        invalid_role_response = self.post_with_csrf(
+            f"/users/{target.id}/edit",
+            path="/users",
+            data={
+                "username": "users-edit-target",
+                "full_name": "Users Edit Target Updated Again",
+                "email": "users-edit-target@example.com",
+                "role": "SUPERADMIN",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(invalid_role_response.status_code, 400)
+        self.assertEqual(invalid_role_response.get_json()["message"], "Vai trò người dùng không hợp lệ.")
+        self.assertEqual(User.query.get(target.id).role, "ADMIN")
+
+    def test_user_edit_route_blocks_self_demote_from_manager_role(self):
+        owner = self.create_user("users-edit-self-owner", password="owner-pass", full_name="Users Edit Self Owner", role="OWNER")
+        self.login_as(owner)
+
+        response = self.post_with_csrf(
+            f"/users/{owner.id}/edit",
+            path="/users",
+            data={
+                "username": "users-edit-self-owner",
+                "full_name": "Users Edit Self Owner",
+                "email": "users-edit-self-owner@example.com",
+                "role": "STAFF",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["message"], "Không thể tự hạ quyền quản trị của chính mình.")
+        self.assertEqual(User.query.get(owner.id).role, "OWNER")
+
+    def test_user_toggle_active_route_enforces_state_changes_and_blocks_self_disable(self):
+        owner = self.create_user("users-toggle-owner", password="owner-pass", full_name="Users Toggle Owner", role="OWNER")
+        target = self.create_user("users-toggle-target", password="target-pass", full_name="Users Toggle Target", role="STAFF")
+        self.login_as(owner)
+
+        deactivate_response = self.post_with_csrf(
+            f"/users/{target.id}/toggle-active",
+            path="/users",
+            data={"is_active": "0"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(deactivate_response.status_code, 200)
+        self.assertFalse(User.query.get(target.id).is_active)
+
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
+        login_token = self.get_csrf_token("/login")
+        inactive_login = self.client.post(
+            "/login",
+            json={"username": "users-toggle-target", "password": "target-pass", "remember": False},
+            headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": login_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(inactive_login.status_code, 401)
+        self.assertFalse(inactive_login.is_json and inactive_login.get_json().get("success", False))
+
+        self.login_as(owner)
+        reactivate_response = self.post_with_csrf(
+            f"/users/{target.id}/toggle-active",
+            path="/users",
+            data={"is_active": "1"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(reactivate_response.status_code, 200)
+        self.assertTrue(User.query.get(target.id).is_active)
+
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
+        self.login_as(owner)
+        self_disable_response = self.post_with_csrf(
+            f"/users/{owner.id}/toggle-active",
+            path="/users",
+            data={"is_active": "0"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(self_disable_response.status_code, 400)
+        self.assertEqual(self_disable_response.get_json()["message"], "Không thể vô hiệu hóa chính mình.")
+        self.assertTrue(User.query.get(owner.id).is_active)
+
     def test_html_500_renders_template_and_rolls_back(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
