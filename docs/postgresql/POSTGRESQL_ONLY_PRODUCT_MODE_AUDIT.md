@@ -25,16 +25,22 @@
 - No executable workspace migration exists.
 - No approval marker exists.
 
+## 6.1.2 cleanup note
+
+- `README.md` and `.env.example` now document PostgreSQL-first local development.
+- `DevelopmentConfig` now defaults to Docker PostgreSQL and only uses SQLite when `SPA_ENABLE_SQLITE_LEGACY=1` is explicitly set.
+- SQLite remains fallback/test only and is not the product path.
+
 ## Audit findings
 
 ### 1. Config/database findings
 
 | File/path | Current behavior | Risk | Recommendation | Priority |
 |---|---|---|---|---|
-| `config.py` | Development still defaults to `sqlite:///database/spa.db` when `DATABASE_URL` is unset. Testing defaults to in-memory SQLite, and Production requires `DATABASE_URL`. | Product docs and local flow still read as SQLite-first. | Make PostgreSQL the documented local/dev default in the next cleanup, while keeping SQLite only as explicit fallback. | P1 |
+| `config.py` | Development now defaults to Docker PostgreSQL when `DATABASE_URL` is unset, and uses SQLite only when `SPA_ENABLE_SQLITE_LEGACY=1` is explicitly set. Testing still defaults to in-memory SQLite, and Production requires `DATABASE_URL`. | SQLite is still available as fallback, but it is no longer the default local path. | Keep the explicit legacy flag only for quick tests; document PostgreSQL as the normal local path. | P1 |
 | `config.py` | `_normalize_database_url()` still normalizes `postgres://` to `postgresql://`. | Good compatibility, but it is still a transitional helper, not a product-mode decision. | Keep it for compatibility until all env references are cleaned. | P2 |
 | `config.py` | `TEST_DATABASE_URL` is supported and falls back to SQLite memory when absent. | Fine for unit tests, but it keeps SQLite as the default test path. | Keep as fast unit-test fallback; add PostgreSQL integration profile later. | P2 |
-| `.env.example` | Local development example still points `DATABASE_URL` to `sqlite:///database/spa.db`. | Strongly suggests SQLite is still the main local path. | Update docs/env in 6.1.2 so PostgreSQL local profile is the primary documented path. | P1 |
+| `.env.example` | Local development example now points `DATABASE_URL` to a PostgreSQL placeholder and lists SQLite only as an explicit legacy fallback. | Much clearer, but the old SQLite fallback must stay labeled as non-product. | Keep PostgreSQL as the top example and leave SQLite as a clearly marked legacy option only. | P1 |
 | `requirements.txt` | `psycopg2-binary` is already present. | No blocker for PostgreSQL-first runtime. | Keep. | P2 |
 | `docker-compose.postgres.yml` | Local PostgreSQL profile exists with `postgres:16`, port `5433`, and local placeholders. | Good; it already supports PostgreSQL-first local dev. | Keep and document as the preferred local dev path. | P2 |
 | `app.py` | If schema tables are missing, the app only logs a warning to run `flask db upgrade`; it does not auto-create schema. | Fresh databases must be initialized explicitly before use. | Keep the explicit migration flow and document the required init step more prominently. | P1 |
@@ -54,7 +60,7 @@
 | `services/backup_service.py` | Backup directory supports a primary folder plus a read-only legacy folder fallback. | Safe for listing old files, but can be confusing if docs imply SQLite backups are still the main path. | Keep legacy read-only compatibility; document it as compatibility only. | P2 |
 | `services/restore_service.py` | PostgreSQL restore is blocked; SQLite restore remains the implementation path. | Good safety for PostgreSQL mode, but the old SQLite flow is still the default implementation for SQLite mode. | Keep for legacy fallback only until a new PostgreSQL backup strategy is finalized. | P1 |
 | `routes/setting.py` + `templates/setting/index.html` + `static/js/setting.js` | Backup Center disables create/upload/restore in PostgreSQL mode, but UI text still contains SQLite-oriented language in multiple places. | Confusing product positioning; admin may still think SQLite is the normal path. | Update wording in 6.1.4 to say PostgreSQL/provider backup is the production path and SQLite is legacy/test only. | P1 |
-| `README.md` and `docs/postgresql/*` | Documentation now acknowledges PostgreSQL production, but several docs still explain SQLite backup/restore as a first-class workflow. | Mixed messaging. | Keep SQLite references only where they are explicitly labeled legacy/test fallback. | P1 |
+| `README.md` and `docs/postgresql/*` | Main docs now acknowledge PostgreSQL production and local development, but some historical docs still explain SQLite backup/restore as a first-class workflow. | Mixed messaging can still leak from older planning docs. | Keep SQLite references only where they are explicitly labeled legacy/test fallback. | P1 |
 
 ### 4. Import/export/report/PDF findings
 

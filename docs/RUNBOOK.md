@@ -122,7 +122,7 @@ Purpose:
 
 ## 6. Local PostgreSQL development profile
 
-Use this only for local development and rehearsal. Production stays on SQLite for now.
+Use this for local development and rehearsal. PostgreSQL is the product path; SQLite is legacy fallback only.
 
 ### 6.1 Start PostgreSQL locally
 
@@ -181,14 +181,14 @@ If you need to mark an already initialized database, use:
 .\venv\Scripts\python.exe -m unittest discover -s tests -p "test*.py" -v
 ```
 
-### 6.6 Return to SQLite local development
+### 6.6 Return to legacy SQLite fallback
 
 ```powershell
 Remove-Item Env:DATABASE_URL
 Remove-Item Env:TEST_DATABASE_URL
 ```
 
-Or set `DATABASE_URL` back to the SQLite local value used by the project.
+Or explicitly enable legacy SQLite fallback with `SPA_ENABLE_SQLITE_LEGACY=1` if you need a quick non-product test path.
 
 - Lightweight timing and query-count profiling.
 - Not a stress test.

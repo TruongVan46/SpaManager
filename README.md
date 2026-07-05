@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/truongvan46/SpaManager/actions/workflows/ci.yml)
 
-SpaManager is a Flask-based web app for managing a spa, nail, and makeup business. It runs with SQLite, Bootstrap, and Railway-friendly persistent storage for media, backups, and the database file.
+SpaManager is a Flask-based web app for managing a spa, nail, and makeup business. It runs with PostgreSQL in production, Docker PostgreSQL for local development, and Railway-friendly persistent storage for media, backups, and the database file.
 
 ## Features
 
@@ -48,7 +48,7 @@ The first run should apply the baseline schema with `flask db upgrade` before st
 
 ## Database migrations
 
-SpaManager ships a lightweight SQLite-safe `flask db` workflow for the current production baseline.
+SpaManager ships a lightweight `flask db` workflow for the current PostgreSQL production baseline.
 
 Useful commands:
 
@@ -73,11 +73,11 @@ flask db stamp head
 - `upgrade` applies the baseline schema to a fresh database.
 - `stamp head` marks an existing production database as already aligned with the baseline.
 
-Always back up the SQLite file before stamping or upgrading a live environment.
+Always back up the active database before stamping or upgrading a live environment.
 
 ### Local PostgreSQL development profile
 
-For local PostgreSQL rehearsal without affecting production, use the Docker profile in `docker-compose.postgres.yml`.
+For local PostgreSQL development and rehearsal without affecting production, use the Docker profile in `docker-compose.postgres.yml`.
 
 Full setup guide: [`docs/postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md`](docs/postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
 
@@ -92,12 +92,14 @@ $env:TEST_DATABASE_URL="postgresql://<user>:<password>@localhost:5433/<test_db>"
 .\venv\Scripts\python.exe -m unittest discover -s tests -p "test*.py" -v
 ```
 
-To return to the default SQLite local setup:
+To return to the legacy SQLite fallback:
 
 ```powershell
 Remove-Item Env:DATABASE_URL
 Remove-Item Env:TEST_DATABASE_URL
 ```
+
+If you explicitly need the legacy SQLite fallback, set `SPA_ENABLE_SQLITE_LEGACY=1` and leave `DATABASE_URL` unset.
 
 ## Environment variables
 
@@ -108,7 +110,8 @@ Required or commonly used variables:
 - `APP_VERSION`
 - `APP_TIMEZONE`
 - `DATABASE_URL`
-- `TEST_DATABASE_URL` for the future PostgreSQL test profile
+- `TEST_DATABASE_URL` for the PostgreSQL test profile
+- `SPA_ENABLE_SQLITE_LEGACY` for explicit legacy SQLite fallback only
 - `LOGIN_MAX_FAILED_ATTEMPTS`
 - `LOGIN_FAILURE_WINDOW_SECONDS`
 - `LOGIN_LOCKOUT_SECONDS`
@@ -145,6 +148,7 @@ Other supported values:
 - Use `APP_ENV=production`
 - Set `DATABASE_URL` to the Railway PostgreSQL reference variable
 - Keep `TEST_DATABASE_URL` reserved for the PostgreSQL test profile
+- Keep `SPA_ENABLE_SQLITE_LEGACY` reserved for explicit legacy fallback only
 - Set `PERSISTENT_ROOT` to the Railway persistent volume root
 - Keep uploaded media under the persistent root so redeploys do not remove files
 - Point Railway health checks to `GET /health`
@@ -159,6 +163,7 @@ PERSISTENT_ROOT=/app/database
 ## Backup and restore
 
 - Back up the PostgreSQL database using Railway / provider-managed backups
+- SQLite backup/restore remains legacy/test-only and is not the product backup path
 - Restore with care because it overwrites live data
 - Logo and avatar files live under the persistent media folder
 

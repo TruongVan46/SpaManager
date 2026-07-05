@@ -92,12 +92,23 @@ class DevelopmentConfig(BaseConfig):
     # Fallback to local developer key
     SECRET_KEY = os.getenv("SECRET_KEY", "spa_manager_dev_key")
 
-    # Local SQLite fallback
-    SQLALCHEMY_DATABASE_URI = (
-        _normalize_database_url(os.getenv("DATABASE_URL")) or
-        _normalize_database_url(os.getenv("SQLALCHEMY_DATABASE_URI")) or
-        ("sqlite:///" + os.path.join(basedir, 'database', 'spa.db').replace('\\', '/'))
-    )
+    def __init__(self):
+        self.SQLITE_LEGACY_ENABLED = os.getenv("SPA_ENABLE_SQLITE_LEGACY", "0") == "1"
+        self.LOCAL_POSTGRESQL_DATABASE_URL = os.getenv(
+            "LOCAL_POSTGRESQL_DATABASE_URL",
+            "postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev",
+        )
+        self.LEGACY_SQLITE_DATABASE_URL = os.getenv(
+            "LEGACY_SQLITE_DATABASE_URL",
+            "sqlite:///" + os.path.join(basedir, 'database', 'spa.db').replace('\\', '/'),
+        )
+
+        # PostgreSQL-first local development with explicit legacy SQLite fallback
+        self.SQLALCHEMY_DATABASE_URI = (
+            _normalize_database_url(os.getenv("DATABASE_URL")) or
+            _normalize_database_url(os.getenv("SQLALCHEMY_DATABASE_URI")) or
+            (_normalize_database_url(self.LEGACY_SQLITE_DATABASE_URL) if self.SQLITE_LEGACY_ENABLED else self.LOCAL_POSTGRESQL_DATABASE_URL)
+        )
 
 
 class TestingConfig(BaseConfig):

@@ -9,6 +9,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - SQLite data cũ chỉ là test data và không được migrate
 - Backup Center đã được guard khi chạy PostgreSQL
 - Database backup nên thực hiện bằng Railway/PostgreSQL provider
+- SQLite references in this folder are legacy or cutover history, not the product path.
 
 ## Overview
 

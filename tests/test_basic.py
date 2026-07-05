@@ -1864,14 +1864,28 @@ class BasicTestCase(unittest.TestCase):
 
         self.assertEqual(config.SQLALCHEMY_DATABASE_URI, "postgresql://user:pass@localhost:5432/spamanager_test")
 
-    def test_local_config_can_still_initialize(self):
-        config = DevelopmentConfig()
+    def test_local_config_defaults_to_postgresql_docker_profile(self):
+        with patch.dict(os.environ, {}, clear=True):
+            config = DevelopmentConfig()
 
         self.assertTrue(config.DEBUG)
-        self.assertTrue(config.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"))
+        self.assertEqual(
+            config.SQLALCHEMY_DATABASE_URI,
+            "postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev",
+        )
         self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
         self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
         self.assertEqual(config.APP_VERSION, "5.9.0")
+
+    def test_local_config_can_use_explicit_legacy_sqlite_fallback(self):
+        with patch.dict(
+            os.environ,
+            {"SPA_ENABLE_SQLITE_LEGACY": "1"},
+            clear=True,
+        ):
+            config = DevelopmentConfig()
+
+        self.assertTrue(config.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"))
 
     def test_google_oauth_variables_remain_optional(self):
         with patch.dict(
@@ -1896,12 +1910,15 @@ class BasicTestCase(unittest.TestCase):
         workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
         self.assertIn("SpaManager is a Flask-based web app", readme)
+        self.assertIn("PostgreSQL in production", readme)
         self.assertIn("Command Palette with `Ctrl+K`", readme)
         self.assertIn("badge.svg?branch=main", readme)
         self.assertIn("flask db upgrade", readme)
         self.assertIn("flask db stamp head", readme)
         self.assertIn("compileall .", readme)
-        self.assertIn("DATABASE_URL=sqlite:///database/spa.db", env_example)
+        self.assertIn("DATABASE_URL=postgresql://<user>:<password>@localhost:5433/<db>", env_example)
+        self.assertIn("TEST_DATABASE_URL=postgresql://<user>:<password>@localhost:5433/<test_db>", env_example)
+        self.assertIn("SPA_ENABLE_SQLITE_LEGACY", env_example)
         self.assertIn("# DATABASE_URL=<Railway PostgreSQL reference variable>", env_example)
         self.assertIn("APP_VERSION=5.9.0", env_example)
         self.assertIn("v5.9.0", changelog)

@@ -56,12 +56,14 @@ Run the migration CLI already present in the project:
 .\venv\Scripts\python.exe -m unittest discover -s tests -p "test*.py" -v
 ```
 
-## Return to SQLite local development
+## Return to legacy SQLite fallback
 
 ```powershell
 Remove-Item Env:DATABASE_URL
 Remove-Item Env:TEST_DATABASE_URL
 ```
+
+If you explicitly need the legacy SQLite fallback, set `SPA_ENABLE_SQLITE_LEGACY=1` and leave `DATABASE_URL` unset.
 
 ## Safety notes
 
