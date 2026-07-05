@@ -178,6 +178,6 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## Notes
 
 - Google OAuth is not implemented.
-- Advanced user management is not included.
+- User management is available with OWNER / ADMIN / STAFF permissions.
 - PostgreSQL migration is not the current deployment path.
 - SpaManager remains a local-first application with Railway production support.
