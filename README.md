@@ -142,6 +142,11 @@ For the production smoke checklist, backup and restore safety, internal CLI comm
 
 [docs/RUNBOOK.md](docs/RUNBOOK.md)
 
+## Documentation
+
+- User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- Admin guide: [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md)
+
 ## Testing
 
 ```bash
