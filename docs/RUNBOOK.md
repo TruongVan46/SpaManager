@@ -364,3 +364,8 @@ Current stable checkpoint: `v5.8.0`.
 
 - Tham chiếu: `docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md`
 - Dùng để rehearsal/validate mọi bước trước khi owner cho phép đổi production `DATABASE_URL`.
+
+## v5.9.5 Production DATABASE_URL cutover note
+
+- Tham chiếu: `docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md`
+- Dùng khi owner Railway thực hiện cutover production thật và xác nhận xong.

@@ -125,4 +125,4 @@ If schema init or app boot fails:
 
 ## Next task
 
-v5.9.4 should be PostgreSQL cutover rehearsal / staging-style validation, or production `DATABASE_URL` cutover only after owner confirmation.
+v5.9.4 should be PostgreSQL cutover rehearsal / staging-style validation, then v5.9.5 production `DATABASE_URL` cutover only after owner confirmation.

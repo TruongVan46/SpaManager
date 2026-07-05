@@ -92,3 +92,8 @@
 
 - Kế hoạch rehearsal/validation trước cutover thật: `V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md`
 - Tài liệu này chỉ mô tả rehearsal, không phải production cutover.
+
+## v5.9.5 Production DATABASE_URL cutover
+
+- Kế hoạch cutover production thật: `V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md`
+- Trạng thái hiện tại: chờ owner Railway action.

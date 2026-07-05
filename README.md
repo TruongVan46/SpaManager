@@ -237,3 +237,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## v5.9.4 PostgreSQL cutover rehearsal and validation plan
 
 - [docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md](docs/V5_9_4_POSTGRESQL_CUTOVER_REHEARSAL_VALIDATION_PLAN.md)
+
+## v5.9.5 Production DATABASE_URL cutover
+
+- [docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md](docs/V5_9_5_PRODUCTION_DATABASE_URL_CUTOVER.md)
