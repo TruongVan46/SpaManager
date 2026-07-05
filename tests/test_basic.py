@@ -36,7 +36,7 @@ os.environ["LOGO_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "logos").as_po
 os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").as_posix()
 
 from app import app
-from config import DevelopmentConfig, ProductionConfig
+from config import DevelopmentConfig, ProductionConfig, TestingConfig
 from extensions import db
 from core.auth.constants import AUTH_SESSION_KEY
 from core.exceptions import AuthenticationException, ConflictException
@@ -1829,6 +1829,32 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(config.LOGO_UPLOAD_FOLDER.replace("\\", "/"), "/app/database/uploads/logos")
         self.assertEqual(config.AVATAR_UPLOAD_FOLDER.replace("\\", "/"), "/app/database/uploads/avatars")
         self.assertFalse(config.DEBUG)
+
+    def test_legacy_postgres_url_is_normalized(self):
+        with patch.dict(
+            os.environ,
+            {
+                "SECRET_KEY": "prod-secret",
+                "DATABASE_URL": "postgres://user:pass@localhost:5432/spamanager",
+                "DEFAULT_OWNER_PASSWORD": "prod-owner-pass",
+            },
+            clear=True,
+        ):
+            config = ProductionConfig()
+
+        self.assertEqual(config.SQLALCHEMY_DATABASE_URI, "postgresql://user:pass@localhost:5432/spamanager")
+
+    def test_testing_config_uses_postgres_test_url_when_provided(self):
+        with patch.dict(
+            os.environ,
+            {
+                "TEST_DATABASE_URL": "postgresql://user:pass@localhost:5432/spamanager_test",
+            },
+            clear=True,
+        ):
+            config = TestingConfig()
+
+        self.assertEqual(config.SQLALCHEMY_DATABASE_URI, "postgresql://user:pass@localhost:5432/spamanager_test")
 
     def test_local_config_can_still_initialize(self):
         config = DevelopmentConfig()

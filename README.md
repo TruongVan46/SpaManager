@@ -84,6 +84,7 @@ Required or commonly used variables:
 - `APP_VERSION`
 - `APP_TIMEZONE`
 - `DATABASE_URL`
+- `TEST_DATABASE_URL` for the future PostgreSQL test profile
 - `LOGIN_MAX_FAILED_ATTEMPTS`
 - `LOGIN_FAILURE_WINDOW_SECONDS`
 - `LOGIN_LOCKOUT_SECONDS`
@@ -119,6 +120,7 @@ Other supported values:
 
 - Use `APP_ENV=production`
 - Set `DATABASE_URL` to the Railway SQLite volume path
+- Keep `TEST_DATABASE_URL` reserved for the future PostgreSQL test profile
 - Set `PERSISTENT_ROOT` to the Railway persistent volume root
 - Keep uploaded media under the persistent root so redeploys do not remove files
 - Point Railway health checks to `GET /health`

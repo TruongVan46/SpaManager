@@ -8,6 +8,14 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 # Load environment variables from .env file at the project root
 load_dotenv(os.path.join(basedir, '.env'))
 
+
+def _normalize_database_url(database_url):
+    if not database_url:
+        return database_url
+    if database_url.startswith("postgres://"):
+        return "postgresql://" + database_url[len("postgres://"):]
+    return database_url
+
 class BaseConfig:
     """
     Base configuration containing settings common to all environments.
@@ -86,8 +94,8 @@ class DevelopmentConfig(BaseConfig):
 
     # Local SQLite fallback
     SQLALCHEMY_DATABASE_URI = (
-        os.getenv("DATABASE_URL") or 
-        os.getenv("SQLALCHEMY_DATABASE_URI") or 
+        _normalize_database_url(os.getenv("DATABASE_URL")) or
+        _normalize_database_url(os.getenv("SQLALCHEMY_DATABASE_URI")) or
         ("sqlite:///" + os.path.join(basedir, 'database', 'spa.db').replace('\\', '/'))
     )
 
@@ -104,7 +112,10 @@ class TestingConfig(BaseConfig):
     CSRF_ENABLED = True
 
     # SQLite in-memory database for fast test isolation
-    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
+    SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:"))
+
+    def __init__(self):
+        self.SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:"))
 
 
 class ProductionConfig(BaseConfig):
@@ -121,7 +132,7 @@ class ProductionConfig(BaseConfig):
     SESSION_COOKIE_SAMESITE = "Lax"
 
     # Database configuration (no default SQLite fallback, must be supplied)
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("DATABASE_URL"))
 
     def __init__(self):
         # In python-dotenv or environment variables, SECRET_KEY must be defined
@@ -129,7 +140,7 @@ class ProductionConfig(BaseConfig):
         if not self.SECRET_KEY:
             raise RuntimeError("SECRET_KEY must be configured in Production.")
 
-        self.SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+        self.SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("DATABASE_URL"))
         if not self.SQLALCHEMY_DATABASE_URI:
             raise RuntimeError("DATABASE_URL must be configured in Production.")
 

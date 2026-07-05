@@ -19,6 +19,7 @@ Check these values before and after deploy:
 - `APP_NAME`
 - `APP_VERSION`
 - `DATABASE_URL`
+- `TEST_DATABASE_URL` for the future PostgreSQL test profile
 - `PERSISTENT_ROOT`
 - `SECRET_KEY`
 - `DEFAULT_OWNER_USERNAME`
@@ -31,6 +32,7 @@ Notes:
 
 - Keep production secrets out of source control.
 - Do not paste the real database URL, password, or secret key into notes or tickets.
+- When preparing PostgreSQL later, use a placeholder `DATABASE_URL` in `.env.example` and a matching `TEST_DATABASE_URL` for the test profile.
 
 ## 3. Post-deploy smoke checklist
 

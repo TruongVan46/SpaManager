@@ -20,7 +20,8 @@ Tài liệu này ghi nhận hiện trạng SQLite của SpaManager và các yêu
 - Production bắt buộc phải có `DATABASE_URL`.
 - `.env.example` hiện vẫn theo cách cấu hình SQLite.
 - Tests hiện override `TEST_DATABASE_URL` sang SQLite.
-- Chưa có PostgreSQL driver/profile chính thức trong dependency hiện tại.
+- PostgreSQL driver readiness now starts with `psycopg2-binary` in `requirements.txt`.
+- Chưa cutover sang PostgreSQL production, và chưa có test profile PostgreSQL thật.
 
 ## Models / schema summary
 
@@ -56,7 +57,7 @@ Các điểm đang phụ thuộc SQLite rõ ràng:
 - `routes/setting.py` hiện chỉ chấp nhận backup `.db`, `.sqlite`, `.sqlite3`.
 - `core/migration_cli.py` là custom migration CLI, không phải bộ migration diff tự động đầy đủ kiểu Alembic workflow cổ điển.
 - `migrations/versions/0001_baseline.py` là baseline khởi tạo schema hiện tại.
-- `requirements.txt` hiện chưa có PostgreSQL driver như `psycopg` hoặc `psycopg2`.
+- `requirements.txt` hiện đã có PostgreSQL driver `psycopg2-binary`.
 
 ## Backup / restore impact
 
@@ -173,7 +174,7 @@ Environment cần chuẩn bị:
 
 - `DATABASE_URL` PostgreSQL URI.
 - `TEST_DATABASE_URL` cho profile PostgreSQL test.
-- PostgreSQL driver dependency.
+- PostgreSQL driver dependency (`psycopg2-binary`).
 - Backup strategy env nếu sau này cần tách cấu hình.
 
 ## Risk assessment

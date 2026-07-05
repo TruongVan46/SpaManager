@@ -25,6 +25,13 @@
 - `TECH_DEBT.md`
 - `POSTGRESQL_MIGRATION_AUDIT.md`
 
+## Ghi chú PostgreSQL
+
+- SpaManager hiện vẫn chạy production SQLite trên Railway Volume.
+- PostgreSQL driver đã được chuẩn bị cho giai đoạn readiness.
+- `DATABASE_URL` production chưa cutover sang PostgreSQL.
+- `TEST_DATABASE_URL` sẽ được dùng cho profile PostgreSQL test ở các task tiếp theo.
+
 ## Tài liệu lưu trữ / lịch sử
 
 - `archive/AUDIT_REPORT_v3.7.md`
