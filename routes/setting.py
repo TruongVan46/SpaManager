@@ -202,6 +202,12 @@ def delete_logo():
 # Backup & Restore
 # ──────────────────────────────────────────────
 
+@setting_bp.route('/settings/backup', methods=['GET'])
+def backup_center_view():
+    """Dedicated read-only view for the Backup Center in PostgreSQL/SQLite mode."""
+    return redirect(url_for('setting.index', _anchor='card-backup-center'))
+
+
 @setting_bp.route('/settings/backup', methods=['POST'])
 def backup_database():
     """Create a database backup with metadata."""

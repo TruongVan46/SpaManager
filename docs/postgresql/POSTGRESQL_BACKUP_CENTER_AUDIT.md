@@ -98,11 +98,14 @@ Tài khoản Google mới đăng nhập (chưa được duyệt) hoặc tài kho
 - **Branding nhầm lẫn:** Trực quan phần mềm vẫn báo chạy trên `SQLite` dù thực tế đang chạy `PostgreSQL`, tạo cảm giác hệ thống chưa đồng bộ.
 - **Bypass Client-side:** Nút bấm trên UI chỉ bị disabled ở client. Nếu admin cố ý gửi POST request đến `/settings/backup` hoặc `/settings/restore`, ứng dụng vẫn nhận request nhưng rất may mắn là route backend và service layer đã cài đặt sẵn chốt chặn PostgreSQL nên yêu cầu sẽ bị từ chối an toàn với mã lỗi 400.
 
+## 10. Implementation Status (Task 6.4.3)
+- **Đã hoàn thành mở route GET `/settings/backup`:** Route này được phân quyền ở mức settings blueprint (chỉ cho phép `OWNER`/`ADMIN` truy cập) và tự động chuyển hướng đến card Trung tâm sao lưu (`/settings#card-backup-center`).
+- **Các hành động nguy hiểm (Dangerous POST actions):** Vẫn được khóa chặt chẽ trong PostgreSQL mode (trả về lỗi 400 hoặc thông báo bị chặn). Không tạo/phục hồi cơ sở dữ liệu thật trong app.
+
 ---
 
-## 10. Recommended Next Tasks
-Để mở lại Backup Center hoặc cải thiện trải nghiệm vận hành với PostgreSQL ở các sprint tiếp theo, khuyến nghị thực hiện các task sau:
-1. **Task 6.4.2 UI policy definition:** Xác định rõ ràng các chức năng PostgreSQL-aware được hỗ trợ trên giao diện (ví dụ: chỉ cho phép tạo backup PostgreSQL qua pg_dump từ UI, tải xuống `.dump` file, nhưng cấm tuyệt đối tính năng Khôi phục/Restore trực tiếp từ UI).
-2. **Task 6.4.3 PostgreSQL-aware UI cleanup:** Thay đổi nhãn Cơ sở dữ liệu trong `#card-about` hiển thị động theo `backup_engine` (SQLite hoặc PostgreSQL).
-3. **Task 6.4.4 Route reopen guard:** Định cấu hình mở lại các endpoint tạo backup PostgreSQL, gọi lệnh `pg_dump` an toàn và ghi nhận metadata tương tự luồng SQLite cũ.
-4. **Task 6.4.5 Integration tests:** Viết thêm integration test kiểm tra luồng tạo backup PostgreSQL ảo (mock) và tải xuống file `.dump`.
+## 11. Recommended Next Tasks
+Để hoàn tất việc kích hoạt PostgreSQL Backup Center, khuyến nghị thực hiện các bước tiếp theo:
+1. **Task 6.4.4 PostgreSQL-aware UI cleanup:** Thay đổi nhãn Cơ sở dữ liệu trong `#card-about` hiển thị động theo `backup_engine` (SQLite hoặc PostgreSQL) và tái cấu trúc giao diện tab Sao lưu.
+2. **Task 6.4.5 Route reopen guard / Optional local backup:** Định cấu hình mở lại các endpoint tạo backup PostgreSQL an toàn cho môi trường local dev.
+3. **Task 6.4.6 Integration tests & Docs:** Hoàn thiện integration test kiểm tra luồng tạo backup PostgreSQL ảo (mock).

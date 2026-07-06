@@ -1158,6 +1158,7 @@ class BasicTestCase(unittest.TestCase):
 
     def test_no_state_changing_get_routes(self):
         allowed_read_only_get_routes = {
+            "/settings/backup",
             "/settings/backup/download/<string:backup_id>",
             "/settings/restore-wizard/validate/<string:backup_id>",
             "/settings/template/customers",
@@ -3292,6 +3293,7 @@ class BasicTestCase(unittest.TestCase):
         staff_token = self.get_csrf_token("/customers")
         routes_to_block = [
             ("GET", "/settings", None, None),
+            ("GET", "/settings/backup", None, None),
             ("POST", "/settings/backup", {"notes": "x", "backup_type": "Manual", "format": "json"}, "form"),
             ("POST", f"/settings/backup/delete/{backup_id}", None, None),
             ("GET", f"/settings/backup/download/{backup_id}", None, None),
@@ -4772,6 +4774,81 @@ class BasicTestCase(unittest.TestCase):
 
         finally:
             app.config.update(original_config)
+
+    def test_backup_center_view_get_route_access_controls(self):
+        """
+        Task 6.4.3: GET /settings/backup access control tests.
+        - Not logged in: redirect to /login
+        - Pending Google user: redirect to /auth/pending
+        - STAFF: 403 Forbidden
+        - ADMIN: 200 (follows redirect to /settings#card-backup-center)
+        - OWNER: 200 (follows redirect to /settings#card-backup-center)
+        - APPROVAL_OWNER: redirect to /approval/pending
+        """
+        owner = self.create_user("settings-backup-get-owner", password="owner-pass", full_name="Get Owner", role="OWNER")
+        admin = self.create_user("settings-backup-get-admin", password="admin-pass", full_name="Get Admin", role="ADMIN")
+        staff = self.create_user("settings-backup-get-staff", password="staff-pass", full_name="Get Staff", role="STAFF")
+
+        # 1. Not logged in
+        res = self.client.get("/settings/backup", follow_redirects=False)
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/login", res.headers.get("Location", ""))
+
+        # 2. Pending Google user
+        pending_user = self.create_user(
+            "settings-backup-get-pending",
+            password="pending-pass",
+            full_name="Get Pending",
+            role="STAFF",
+            is_active=False,
+            approval_status="pending",
+        )
+        self.login_as(pending_user)
+        res = self.client.get("/settings/backup", follow_redirects=False)
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/auth/pending", res.headers.get("Location", ""))
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/auth/pending")})
+
+        # 3. STAFF
+        self.login_as(staff)
+        res = self.client.get("/settings/backup", follow_redirects=False)
+        self.assertEqual(res.status_code, 403)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/customers")})
+
+        # 4. ADMIN
+        self.login_as(admin)
+        res = self.client.get("/settings/backup", follow_redirects=False)
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/settings#card-backup-center", res.headers.get("Location", ""))
+        # Verify 200 with followed redirect
+        res_follow = self.client.get("/settings/backup", follow_redirects=True)
+        self.assertEqual(res_follow.status_code, 200)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/settings")})
+
+        # 5. OWNER
+        self.login_as(owner)
+        res = self.client.get("/settings/backup", follow_redirects=False)
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/settings#card-backup-center", res.headers.get("Location", ""))
+        # Verify 200 with followed redirect
+        res_follow = self.client.get("/settings/backup", follow_redirects=True)
+        self.assertEqual(res_follow.status_code, 200)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/settings")})
+
+        # 6. APPROVAL_OWNER
+        approval_owner = self.create_user(
+            "settings-backup-get-approwner",
+            password="approwner-pass",
+            full_name="Get ApprOwner",
+            role="APPROVAL_OWNER",
+            is_active=True,
+            approval_status="active",
+        )
+        self.login_as(approval_owner)
+        res = self.client.get("/settings/backup", follow_redirects=False)
+        # Approval owner is globally redirected to approval portal if authenticated
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/approval/pending", res.headers.get("Location", ""))
 
 
 if __name__ == "__main__":
