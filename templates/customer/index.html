@@ -152,10 +152,38 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    let rowToDelete = null;
+
+    const deleteForm = document.getElementById('deleteCustomerForm');
+    const deleteNameSpan = document.getElementById('deleteCustomerName');
+    const warningNameSpan = document.getElementById('warningCustomerName');
+    const warningApptCount = document.getElementById('warningAppointmentCount');
+    const warningInvoiceCount = document.getElementById('warningInvoiceCount');
+
+    // Bootstrap Modal instances
+    const confirmModalEl = document.getElementById('deleteConfirmModal');
+    const warningModalEl = document.getElementById('deleteWarningModal');
+
+    let deleteConfirmModal = null;
+    let deleteWarningModal = null;
+
+    if (confirmModalEl) {
+        deleteConfirmModal = new bootstrap.Modal(confirmModalEl);
+    }
+    if (warningModalEl) {
+        deleteWarningModal = new bootstrap.Modal(warningModalEl);
+    }
+
     document.addEventListener('click', function(e) {
         const deleteBtn = e.target.closest('.btn-delete-customer');
         if (!deleteBtn) return;
         e.preventDefault();
+
+        if (!deleteForm || !deleteNameSpan || !warningNameSpan || !warningApptCount || !warningInvoiceCount || !deleteConfirmModal || !deleteWarningModal) {
+            Notification.error('Không thể mở hộp thoại xóa khách hàng.');
+            return;
+        }
+
         const customerId = deleteBtn.getAttribute('data-id');
         rowToDelete = deleteBtn.closest('tr');
 
@@ -204,6 +232,8 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            if (!deleteConfirmModal) return;
+
             const submitBtn = deleteForm.querySelector('button[type="submit"]');
             const originalHtml = submitBtn.innerHTML;
             submitBtn.disabled = true;

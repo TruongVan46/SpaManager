@@ -442,5 +442,26 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
             self.assertEqual(len(logs), 0)
             self.assertEqual(len(ActivityLogService.get_actor_options()), 0)
 
+    def test_customer_index_template_declares_delete_form_variable(self):
+        template_path = Path(app.root_path) / "templates" / "customer" / "index.html"
+        content = template_path.read_text(encoding="utf-8")
+        self.assertIn("const deleteForm =", content)
+        self.assertIn("document.getElementById('deleteCustomerForm')", content)
+
+    def test_customer_index_template_declares_warning_name_span_variable(self):
+        template_path = Path(app.root_path) / "templates" / "customer" / "index.html"
+        content = template_path.read_text(encoding="utf-8")
+        self.assertIn("const warningNameSpan =", content)
+        self.assertIn("document.getElementById('warningCustomerName')", content)
+
+    def test_customer_delete_ajax_success_json(self):
+        self.test_customer_delete_success_returns_json()
+
+    def test_customer_delete_blocked_business_message_json(self):
+        self.test_customer_delete_blocked_by_appointment_returns_business_message()
+
+    def test_customer_delete_ajax_404_json(self):
+        self.test_cross_workspace_customer_delete_returns_json_404()
+
 if __name__ == "__main__":
     unittest.main()
