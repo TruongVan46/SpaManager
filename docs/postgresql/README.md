@@ -17,6 +17,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - [PostgreSQL-only product mode audit](POSTGRESQL_ONLY_PRODUCT_MODE_AUDIT.md)
 - [Schema compatibility](POSTGRESQL_SCHEMA_COMPATIBILITY.md)
 - [Backup/restore strategy](POSTGRESQL_BACKUP_RESTORE_STRATEGY.md)
+- [Backup/restore policy](POSTGRESQL_BACKUP_RESTORE_POLICY.md)
 - [Clean cutover plan](POSTGRESQL_CLEAN_CUTOVER_PLAN.md)
 - [Test profile and CI plan](POSTGRESQL_TEST_CI_PLAN.md)
 - [Rehearsal environment setup](POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
@@ -45,3 +46,4 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - Không restore SQLite backup vào PostgreSQL.
 - Dùng Railway/PostgreSQL provider backup cho database-level backup.
 - Mode A Docker Desktop local PostgreSQL rehearsal is the selected local toolchain path.
+- In-app SQLite backup/restore is legacy/test-only in PostgreSQL product mode.

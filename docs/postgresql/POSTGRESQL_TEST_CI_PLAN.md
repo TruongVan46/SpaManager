@@ -31,13 +31,13 @@ docker exec -it spamanager-postgres createdb -U spamanager spamanager_test
 3. Set `TEST_DATABASE_URL`:
 
 ```powershell
-$env:TEST_DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_test"
+$env:TEST_DATABASE_URL="postgresql://<local_user>:<local_password>@localhost:5433/spamanager_test"
 ```
 
 4. Optional set `DATABASE_URL` for app smoke:
 
 ```powershell
-$env:DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev"
+$env:DATABASE_URL="postgresql://<local_user>:<local_password>@localhost:5433/spamanager_dev"
 ```
 
 5. Init schema:
@@ -163,7 +163,7 @@ jobs:
           --health-retries 5
     env:
       APP_ENV: testing
-      TEST_DATABASE_URL: postgresql://spamanager:spamanager_test_password@localhost:5432/spamanager_test
+      TEST_DATABASE_URL: postgresql://<local_user>:<local_password>@localhost:5432/spamanager_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -260,8 +260,8 @@ docker exec -it spamanager-postgres createdb -U spamanager spamanager_test
 Set env trong PowerShell:
 
 ```powershell
-$env:DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev"
-$env:TEST_DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_test"
+$env:DATABASE_URL="postgresql://<local_user>:<local_password>@localhost:5433/spamanager_dev"
+$env:TEST_DATABASE_URL="postgresql://<local_user>:<local_password>@localhost:5433/spamanager_test"
 ```
 
 CLI migration hiện có trong repo là `flask --app app db` từ `core/migration_cli.py`:

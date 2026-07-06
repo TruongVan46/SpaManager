@@ -165,6 +165,7 @@ PERSISTENT_ROOT=/app/database
 
 - Back up the PostgreSQL database using Railway / provider-managed backups
 - SQLite backup/restore remains legacy/test-only and is not the product backup path
+- PostgreSQL backup/restore policy: [docs/postgresql/POSTGRESQL_BACKUP_RESTORE_POLICY.md](docs/postgresql/POSTGRESQL_BACKUP_RESTORE_POLICY.md)
 - Restore with care because it overwrites live data
 - Logo and avatar files live under the persistent media folder
 
@@ -220,6 +221,7 @@ SpaManager production is now running on PostgreSQL as of v5.9.0. Detailed migrat
 
 - [PostgreSQL docs index](docs/postgresql/README.md)
 - [PostgreSQL-only product mode audit](docs/postgresql/POSTGRESQL_ONLY_PRODUCT_MODE_AUDIT.md)
+- [PostgreSQL backup/restore policy](docs/postgresql/POSTGRESQL_BACKUP_RESTORE_POLICY.md)
 
 ## Workspace docs
 

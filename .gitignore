@@ -67,6 +67,16 @@ database/*.sqlite3
 # --- Project Specific Backups ---
 backup/*
 !backup/.gitkeep
+local_backups/
+backups/
+restore_tmp/
+*.dump
+*.backup
+*.bak
+*_backup.sql
+*_dump.sql
+backup_*.sql
+dump_*.sql
 
 # --- Project Specific Uploads & Exports ---
 static/uploads/*

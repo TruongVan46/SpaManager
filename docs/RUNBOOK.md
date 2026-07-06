@@ -146,8 +146,8 @@ docker exec -it spamanager-postgres createdb -U spamanager spamanager_test
 ### 6.3 Set environment variables in PowerShell
 
 ```powershell
-$env:DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev"
-$env:TEST_DATABASE_URL="postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_test"
+$env:DATABASE_URL="postgresql://<local_user>:<local_password>@localhost:5433/spamanager_dev"
+$env:TEST_DATABASE_URL="postgresql://<local_user>:<local_password>@localhost:5433/spamanager_test"
 ```
 
 ### 6.4 Initialize schema with the repo migration CLI

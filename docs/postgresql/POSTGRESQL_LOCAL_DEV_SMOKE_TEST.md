@@ -29,7 +29,7 @@
 | Docker PostgreSQL started | PASS | `spamanager-postgres` is running from `docker-compose.postgres.yml`. |
 | `spamanager_dev` DB created | PASS | The local development database was recreated successfully. |
 | DevelopmentConfig dialect | PASS | DevelopmentConfig is configured to prefer PostgreSQL local development. |
-| DevelopmentConfig database | PASS | Default local URI points to `postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev`. |
+| DevelopmentConfig database | PASS | Default local URI points to `postgresql://<local_user>:<local_password>@localhost:5433/spamanager_dev`. |
 | `db upgrade` | PASS | Local PostgreSQL schema upgrade completed successfully. |
 | `db current` | PASS | Current revision is `0001_baseline`. |
 | Core tables exist | PASS | Local PostgreSQL schema was created successfully. |
