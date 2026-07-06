@@ -1,0 +1,95 @@
+{% extends 'layout/base.html' %}
+{%- from 'layout/table_macros.html' import pagination_widget %}
+
+{% block title %}Tài khoản chờ duyệt - Spa Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid app-page">
+    <div class="app-page-header">
+        <div>
+            <h1 class="app-title mb-0">Tài khoản chờ duyệt</h1>
+            <p class="text-muted mb-0">Chỉ chủ spa có thể duyệt hoặc từ chối tài khoản.</p>
+        </div>
+        <a href="{{ url_for('user.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại người dùng
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="app-card-header-title card-title m-0">
+                <i class="bi bi-hourglass-split" style="font-size: 18px; margin-right: 8px;"></i>Danh sách chờ duyệt
+            </h5>
+        </div>
+        <div class="app-card-body">
+            {% if users.items %}
+            <div class="table-responsive">
+                <table class="app-table table table-hover align-middle">
+                    <thead class="app-table-header">
+                        <tr>
+                            <th scope="col">Username</th>
+                            <th scope="col">Họ tên</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Vai trò</th>
+                            <th scope="col">Đăng nhập</th>
+                            <th scope="col" class="text-center">Tạo lúc</th>
+                            <th scope="col" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users.items %}
+                        <tr>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td>{{ user.full_name or 'Chưa có' }}</td>
+                            <td>{{ user.email or 'Chưa có' }}</td>
+                            <td>{{ role_labels.get(user.role, user.role) if role_labels else user.role }}</td>
+                            <td>
+                                {% if user.auth_provider %}
+                                <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
+                                {% else %}
+                                <span class="text-muted">local</span>
+                                {% endif %}
+                                {% if user.email_verified %}
+                                <span class="badge bg-success ms-1">Email đã xác minh</span>
+                                {% else %}
+                                <span class="badge bg-secondary ms-1">Email chưa xác minh</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <form method="post" action="{{ url_for('user.approve', user_id=user.id) }}" class="d-inline m-0">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-outline-success">
+                                            <i class="bi bi-check-circle"></i> Duyệt
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('user.reject', user_id=user.id) }}" class="d-inline m-0 ms-1">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-outline-danger">
+                                            <i class="bi bi-x-circle"></i> Từ chối
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {{ pagination_widget(users, 'user.pending', {}, module_name='user') }}
+            {% else %}
+            <div class="empty-state text-center py-5">
+                <i class="bi bi-check2-circle display-4 text-success"></i>
+                <h5 class="mt-3 mb-2">Không có tài khoản đang chờ duyệt.</h5>
+                <p class="text-muted mb-0">Mọi tài khoản mới đã được xử lý xong.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

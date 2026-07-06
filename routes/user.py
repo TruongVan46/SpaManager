@@ -1,6 +1,6 @@
 from flask import jsonify, redirect, render_template, request, url_for, abort
 
-from core.auth.permissions import can_manage_users
+from core.auth.permissions import can_manage_users, is_owner
 from core.exceptions import BusinessException, ValidationException
 from routes import user_bp
 from services.auth_service import AuthService
@@ -12,6 +12,13 @@ from validators.user_validator import UserValidator
 
 def _require_manager():
     return AuthService.require_manager_user()
+
+
+def _require_owner():
+    current_user = _require_manager()
+    if not is_owner(current_user):
+        abort(403)
+    return current_user
 
 
 def _extract_payload():
@@ -62,6 +69,59 @@ def index():
         role_labels=UserService.ROLE_LABELS,
         available_roles=UserService.get_available_roles(),
     )
+
+
+@user_bp.route('/users/pending')
+def pending():
+    current_user = _require_owner()
+    page, per_page = get_pagination_params()
+    users = UserService.pending_paginated(page=page, per_page=per_page)
+    return render_template(
+        'user/pending.html',
+        users=users,
+        current_user=current_user,
+        role_labels=UserService.ROLE_LABELS,
+    )
+
+
+@user_bp.route('/users/<int:user_id>/approve', methods=['POST'])
+def approve(user_id):
+    actor = _require_owner()
+    try:
+        user = UserService.approve_pending_user(actor=actor, user_id=user_id)
+        message = f"Đã duyệt tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('user.pending'))
+
+
+@user_bp.route('/users/<int:user_id>/reject', methods=['POST'])
+def reject(user_id):
+    actor = _require_owner()
+    try:
+        user = UserService.reject_pending_user(actor=actor, user_id=user_id)
+        message = f"Đã từ chối tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('user.pending'))
 
 
 @user_bp.route('/users/create', methods=['GET', 'POST'])

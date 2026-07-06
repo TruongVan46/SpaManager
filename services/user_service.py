@@ -148,6 +148,12 @@ class UserService:
         return query.paginate(page=page, per_page=per_page, error_out=False)
 
     @staticmethod
+    def pending_paginated(page=1, per_page=25):
+        query = User.query.filter(User.approval_status == User.APPROVAL_PENDING)
+        query = query.order_by(User.created_at.desc(), User.id.desc())
+        return query.paginate(page=page, per_page=per_page, error_out=False)
+
+    @staticmethod
     def create_user(actor, username, full_name, password, email=None, role=None, is_active=True):
         username = UserService._normalize_username(username)
         full_name = UserService._normalize_full_name(full_name)
@@ -309,6 +315,58 @@ class UserService:
                 actor=actor,
                 action=action,
                 description=description,
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def approve_pending_user(actor, user_id):
+        user = UserService._get_user_or_404(user_id)
+        if user.approval_status != User.APPROVAL_PENDING:
+            raise ValidationException("Chỉ có thể duyệt tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể duyệt tài khoản đang chờ duyệt."})
+
+        user.approval_status = User.APPROVAL_ACTIVE
+        user.is_active = True
+        user.approved_by_id = actor.id if actor else None
+        user.approved_at = utc_now()
+        user.updated_at = utc_now()
+        actor_display_name = get_activity_actor_display_name(actor)
+
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="APPROVE_PENDING_USER",
+                description=f"{actor_display_name} đã duyệt tài khoản {user.username}.",
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def reject_pending_user(actor, user_id):
+        user = UserService._get_user_or_404(user_id)
+        if user.approval_status != User.APPROVAL_PENDING:
+            raise ValidationException("Chỉ có thể từ chối tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể từ chối tài khoản đang chờ duyệt."})
+
+        user.approval_status = User.APPROVAL_REJECTED
+        user.is_active = False
+        user.approved_by_id = None
+        user.approved_at = None
+        user.updated_at = utc_now()
+        actor_display_name = get_activity_actor_display_name(actor)
+
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="REJECT_PENDING_USER",
+                description=f"{actor_display_name} đã từ chối tài khoản {user.username}.",
                 target_user=user,
             )
             db.session.commit()

@@ -10,9 +10,16 @@
             <h1 class="app-title mb-0">Quản lý Người dùng</h1>
             <p class="text-muted mb-0">Chỉ owner/admin mới được truy cập khu vực này.</p>
         </div>
-        <a href="{{ url_for('user.create') }}" class="app-btn app-btn-primary btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Thêm người dùng
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            {% if is_owner(current_user) %}
+            <a href="{{ url_for('user.pending') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+                <i class="bi bi-hourglass-split"></i> Tài khoản chờ duyệt
+            </a>
+            {% endif %}
+            <a href="{{ url_for('user.create') }}" class="app-btn app-btn-primary btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Thêm người dùng
+            </a>
+        </div>
     </div>
 
     <div class="app-card">

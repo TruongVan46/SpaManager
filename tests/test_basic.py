@@ -1343,6 +1343,115 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(toggle_response.status_code, 403)
         self.assertTrue(User.query.get(target.id).is_active)
 
+    def test_owner_pending_users_page_and_approval_actions_work(self):
+        owner = self.create_user("pending-owner", password="owner-pass", full_name="Pending Owner", role="OWNER")
+        admin = self.create_user("pending-admin", password="admin-pass", full_name="Pending Admin", role="ADMIN")
+        pending_approve = self.create_user(
+            "pending-approve",
+            password="pending-pass",
+            full_name="Pending Approve",
+            role="STAFF",
+            is_active=False,
+            approval_status="pending",
+        )
+        pending_reject = self.create_user(
+            "pending-reject",
+            password="pending-pass",
+            full_name="Pending Reject",
+            role="STAFF",
+            is_active=False,
+            approval_status="pending",
+        )
+        active_user = self.create_user(
+            "active-user",
+            password="active-pass",
+            full_name="Active User",
+            role="STAFF",
+            is_active=True,
+            approval_status="active",
+        )
+
+        self.login_as(owner)
+        page = self.client.get("/users/pending")
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertIn("Tài khoản chờ duyệt", html)
+        self.assertIn("pending-approve", html)
+        self.assertIn("pending-reject", html)
+        self.assertNotIn("active-user", html)
+        self.assertIn("Tài khoản chờ duyệt", self.client.get("/users").get_data(as_text=True))
+
+        approve_response = self.post_with_csrf(
+            f"/users/{pending_approve.id}/approve",
+            path="/users/pending",
+            data={},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        approve_payload = approve_response.get_json()
+        self.assertTrue(approve_payload["success"])
+        approved_user = User.query.get(pending_approve.id)
+        self.assertEqual(approved_user.approval_status, "active")
+        self.assertTrue(approved_user.is_active)
+        self.assertEqual(approved_user.approved_by_id, owner.id)
+        self.assertIsNotNone(approved_user.approved_at)
+
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        login_token = self.get_csrf_token("/login")
+        approved_login = self.client.post(
+            "/login",
+            json={"username": "pending-approve", "password": "pending-pass", "remember": False},
+            headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": login_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(approved_login.status_code, 200)
+        self.assertTrue(approved_login.get_json()["success"])
+
+        self.login_as(owner)
+        reject_response = self.post_with_csrf(
+            f"/users/{pending_reject.id}/reject",
+            path="/users/pending",
+            data={},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(reject_response.status_code, 200)
+        reject_payload = reject_response.get_json()
+        self.assertTrue(reject_payload["success"])
+        rejected_user = User.query.get(pending_reject.id)
+        self.assertEqual(rejected_user.approval_status, "rejected")
+        self.assertFalse(rejected_user.is_active)
+        self.assertIsNone(rejected_user.approved_by_id)
+        self.assertIsNone(rejected_user.approved_at)
+
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        login_token = self.get_csrf_token("/login")
+        rejected_login = self.client.post(
+            "/login",
+            json={"username": "pending-reject", "password": "pending-pass", "remember": False},
+            headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": login_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(rejected_login.status_code, 401)
+        self.assertEqual(rejected_login.get_json()["message"], "Tài khoản không được phép đăng nhập.")
+
+    def test_admin_and_staff_cannot_access_owner_pending_users_page(self):
+        owner = self.create_user("pending-owner-guard", password="owner-pass", full_name="Pending Owner Guard", role="OWNER")
+        admin = self.create_user("pending-admin-guard", password="admin-pass", full_name="Pending Admin Guard", role="ADMIN")
+        staff = self.create_user("pending-staff-guard", password="staff-pass", full_name="Pending Staff Guard", role="STAFF")
+
+        self.login_as(owner)
+        self.assertEqual(self.client.get("/users/pending").status_code, 200)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+
+        self.login_as(admin)
+        self.assertEqual(self.client.get("/users/pending").status_code, 403)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
+
+        self.login_as(staff)
+        self.assertEqual(self.client.get("/users/pending").status_code, 403)
+
     def test_user_create_route_rejects_invalid_password_and_duplicate_identity(self):
         owner = self.create_user("users-create-owner", password="owner-pass", full_name="Users Create Owner", role="OWNER")
         existing_user = self.create_user("users-create-existing", password="existing-pass", full_name="Users Create Existing", role="STAFF",)
