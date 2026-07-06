@@ -36,7 +36,7 @@ os.environ["LOGO_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "logos").as_po
 os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").as_posix()
 
 from app import app
-from config import DevelopmentConfig, ProductionConfig, TestingConfig
+from config import DevelopmentConfig, ProductionConfig, TestingConfig, _parse_bool_env
 from extensions import db
 from core.auth.constants import AUTH_SESSION_KEY
 from core.exceptions import AuthenticationException, ConflictException
@@ -2175,9 +2175,20 @@ class BasicTestCase(unittest.TestCase):
         ):
             config = ProductionConfig()
 
+        self.assertFalse(config.GOOGLE_AUTH_ENABLED)
         self.assertEqual(config.GOOGLE_CLIENT_ID, "")
         self.assertEqual(config.GOOGLE_CLIENT_SECRET, "")
         self.assertEqual(config.GOOGLE_REDIRECT_URI, "")
+        self.assertEqual(config.GOOGLE_ALLOWED_DOMAIN, "")
+        self.assertEqual(config.GOOGLE_SCOPES, ["openid", "email", "profile"])
+        self.assertEqual(config.validate_google_oauth_config(), [])
+
+    def test_google_oauth_flag_parser_handles_common_truthy_and_falsey_values(self):
+        for value in (None, "", "0", "false", "False", "no", "off", "n", "  "):
+            self.assertFalse(_parse_bool_env(value))
+
+        for value in ("1", "true", "True", "yes", "on", "Y", "  yes  "):
+            self.assertTrue(_parse_bool_env(value))
 
     def test_readme_and_env_template_match_current_production_setup(self):
         readme = Path("README.md").read_text(encoding="utf-8")
@@ -2195,12 +2206,16 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("DATABASE_URL=postgresql://<user>:<password>@localhost:5433/<db>", env_example)
         self.assertIn("TEST_DATABASE_URL=postgresql://<user>:<password>@localhost:5433/<test_db>", env_example)
         self.assertIn("SPA_ENABLE_SQLITE_LEGACY", env_example)
+        self.assertIn("GOOGLE_AUTH_ENABLED=false", env_example)
+        self.assertIn("GOOGLE_ALLOWED_DOMAIN=", env_example)
         self.assertIn("# DATABASE_URL=<Railway PostgreSQL reference variable>", env_example)
         self.assertIn("APP_VERSION=5.9.0", env_example)
         self.assertIn("v5.9.0", changelog)
         self.assertIn("v5.9.0", readme)
         self.assertIn("change-this-to-a-strong-password", env_example)
         self.assertIn("CSRF_ENABLED=1", env_example)
+        self.assertIn("Google OAuth is disabled by default", readme)
+        self.assertIn("GOOGLE_AUTH_ENABLED", readme)
         self.assertIn("python -m compileall .", workflow)
         self.assertNotIn("master", workflow)
         self.assertNotIn("owner123", readme)

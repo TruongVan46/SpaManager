@@ -11,6 +11,7 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 - [PostgreSQL docs index](postgresql/README.md)
 - [Google auth design/security plan](auth/GOOGLE_AUTH_DESIGN_SECURITY_PLAN.md)
 - [Google auth schema/migration plan](auth/GOOGLE_AUTH_SCHEMA_MIGRATION_PLAN.md)
+- [Google auth config setup](auth/GOOGLE_AUTH_CONFIG_SETUP.md)
 - [Auth docs index](auth/README.md)
 
 ## Nhóm tài liệu

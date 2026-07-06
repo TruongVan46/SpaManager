@@ -16,6 +16,15 @@ def _normalize_database_url(database_url):
         return "postgresql://" + database_url[len("postgres://"):]
     return database_url
 
+
+def _parse_bool_env(value, default=False):
+    if value is None:
+        return default
+    normalized_value = str(value).strip().lower()
+    if not normalized_value:
+        return False
+    return normalized_value in {"1", "true", "yes", "on", "y", "t"}
+
 class BaseConfig:
     """
     Base configuration containing settings common to all environments.
@@ -78,6 +87,28 @@ class BaseConfig:
     LOGO_UPLOAD_FOLDER = os.getenv("LOGO_UPLOAD_FOLDER") or os.path.join(UPLOAD_ROOT, "logos")
     AVATAR_UPLOAD_FOLDER = os.getenv("AVATAR_UPLOAD_FOLDER") or os.path.join(UPLOAD_ROOT, "avatars")
 
+    def __init__(self):
+        self.GOOGLE_AUTH_ENABLED = _parse_bool_env(os.getenv("GOOGLE_AUTH_ENABLED"), False)
+        self.GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+        self.GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+        self.GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+        self.GOOGLE_ALLOWED_DOMAIN = os.getenv("GOOGLE_ALLOWED_DOMAIN", "")
+        self.GOOGLE_DISCOVERY_URL = os.getenv(
+            "GOOGLE_DISCOVERY_URL",
+            "https://accounts.google.com/.well-known/openid-configuration",
+        )
+        self.GOOGLE_SCOPES = [scope for scope in os.getenv("GOOGLE_SCOPES", "openid email profile").split() if scope]
+
+    def validate_google_oauth_config(self):
+        if not getattr(self, "GOOGLE_AUTH_ENABLED", False):
+            return []
+        missing = []
+        if not getattr(self, "GOOGLE_CLIENT_ID", ""):
+            missing.append("GOOGLE_CLIENT_ID")
+        if not getattr(self, "GOOGLE_CLIENT_SECRET", ""):
+            missing.append("GOOGLE_CLIENT_SECRET")
+        return missing
+
 
 class DevelopmentConfig(BaseConfig):
     """
@@ -93,6 +124,7 @@ class DevelopmentConfig(BaseConfig):
     SECRET_KEY = os.getenv("SECRET_KEY", "spa_manager_dev_key")
 
     def __init__(self):
+        super().__init__()
         self.SQLITE_LEGACY_ENABLED = os.getenv("SPA_ENABLE_SQLITE_LEGACY", "0") == "1"
         self.LOCAL_POSTGRESQL_DATABASE_URL = os.getenv(
             "LOCAL_POSTGRESQL_DATABASE_URL",
@@ -126,6 +158,7 @@ class TestingConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:"))
 
     def __init__(self):
+        super().__init__()
         self.SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:"))
 
 
@@ -146,6 +179,7 @@ class ProductionConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("DATABASE_URL"))
 
     def __init__(self):
+        super().__init__()
         # In python-dotenv or environment variables, SECRET_KEY must be defined
         self.SECRET_KEY = os.getenv("SECRET_KEY")
         if not self.SECRET_KEY:

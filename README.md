@@ -141,6 +141,8 @@ Other supported values:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REDIRECT_URI`
+- `GOOGLE_AUTH_ENABLED`
+- `GOOGLE_ALLOWED_DOMAIN`
 - `GOOGLE_DISCOVERY_URL`
 - `GOOGLE_SCOPES`
 
@@ -211,6 +213,7 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 ## Notes
 
 - Google OAuth is not implemented.
+- Google OAuth is disabled by default until the feature flag is enabled and credentials are configured.
 - User management is available with OWNER / ADMIN / STAFF permissions.
 - PostgreSQL production cutover is now the deployment path.
 - SpaManager remains a local-first application with Railway production support.
