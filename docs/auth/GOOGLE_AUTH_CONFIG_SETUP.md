@@ -4,7 +4,7 @@
 
 This document prepares SpaManager for Google OAuth configuration behind a feature flag.
 
-Google OAuth start and callback routes are available as a safe skeleton. They do not create users, do not log users in, and do not activate Google accounts yet.
+Google OAuth start and callback routes are available behind the feature flag. New Google users are created as pending, while already approved linked Google users can sign in through the callback.
 
 ## Default behavior
 
@@ -17,6 +17,7 @@ Google OAuth start and callback routes are available as a safe skeleton. They do
 - The callback can create a new Google user only from a validated mocked/local OAuth identity.
 - New Google users are created as pending and inactive.
 - Owner approval is required before any Google-created user can access the app.
+- Approved and active linked Google users can log in through the callback.
 - Existing local email accounts are not auto-linked to Google accounts.
 - Google access tokens and refresh tokens are not stored in the database.
 
@@ -38,7 +39,7 @@ Optional values:
 ## Safety rules
 
 - Do not commit real client IDs or client secrets.
-- Do not enable the feature flag in production before the full OAuth login completion flow is implemented and tested.
+- Do not enable the feature flag in production before Google OAuth credentials, redirect URLs, and owner approval operations are tested end to end.
 - Keep the default disabled state in local, test, and production environments until the feature is ready.
 
 ## Validation helper

@@ -544,13 +544,14 @@ class BasicTestCase(unittest.TestCase):
             self.assertIn("/login", response.headers.get("Location", ""))
             self.assertNotEqual(self.get_session_user_id(), user.id)
 
-    def test_google_callback_existing_active_linked_user_is_not_logged_in_yet(self):
+    def test_google_callback_existing_active_linked_user_can_login(self):
         user = self.create_user("google-active", full_name="Google Active", approval_status=User.APPROVAL_ACTIVE)
         user.email = "active.google@example.com"
         user.email_verified = True
         user.auth_provider = "google"
         user.oauth_id = "google-sub-active"
         db.session.commit()
+        self.assertIsNone(user.last_login)
 
         response = self.run_google_callback_with_identity({
             "sub": "google-sub-active",
@@ -560,9 +561,18 @@ class BasicTestCase(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/login", response.headers.get("Location", ""))
+        self.assertEqual(response.headers.get("Location"), "/")
+        self.assertEqual(self.get_session_user_id(), user.id)
+        db.session.refresh(user)
+        self.assertIsNotNone(user.last_login)
+
+        dashboard_response = self.client.get("/", follow_redirects=False)
+        self.assertEqual(dashboard_response.status_code, 200)
+
+        csrf_token = self.get_csrf_token("/")
+        logout_response = self.client.post("/logout", headers={"X-CSRFToken": csrf_token})
+        self.assertEqual(logout_response.status_code, 302)
         self.assertIsNone(self.get_session_user_id())
-        self.assertIn("Google login cho tài khoản đã duyệt sẽ hoàn tất ở bước sau.", self.get_flashed_messages_from_session())
 
     def test_google_callback_existing_local_email_is_not_auto_linked(self):
         local_user = self.create_user("local-email", full_name="Local Email")

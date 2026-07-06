@@ -236,11 +236,29 @@ def _build_google_username(subject):
     return f"google_{digest}"
 
 
-def _set_pending_session(user):
-    session[AUTH_SESSION_KEY] = user.id
+def _rotate_session_csrf():
     from core.csrf import rotate_csrf_token
 
     rotate_csrf_token()
+
+
+def _set_pending_session(user):
+    session[AUTH_SESSION_KEY] = user.id
+    _rotate_session_csrf()
+
+
+def _login_active_google_user(user):
+    session[AUTH_SESSION_KEY] = user.id
+    session.permanent = False
+    _rotate_session_csrf()
+
+    from services.auth_service import AuthService
+    from utils.timezone_utils import utc_now
+
+    user.last_login = utc_now()
+    db.session.commit()
+    AuthService.on_login_success(user)
+    return redirect(url_for("dashboard.index"))
 
 
 def create_or_route_google_pending_user(identity):
@@ -252,8 +270,10 @@ def create_or_route_google_pending_user(identity):
         if linked_user.is_rejected_approval or linked_user.is_disabled_approval or not linked_user.is_active:
             flash("Tài khoản Google này không được phép truy cập.", "warning")
             return redirect(url_for("auth.login", denied=1))
-        flash("Google login cho tài khoản đã duyệt sẽ hoàn tất ở bước sau.", "info")
-        return redirect(url_for("auth.login"))
+        if linked_user.can_access_app:
+            return _login_active_google_user(linked_user)
+        flash("Tài khoản Google này không được phép truy cập.", "warning")
+        return redirect(url_for("auth.login", denied=1))
 
     existing_email_user = User.query.filter_by(email=identity["email"]).first()
     if existing_email_user:
