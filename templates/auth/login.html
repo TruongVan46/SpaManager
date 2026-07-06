@@ -16,7 +16,7 @@
         </div>
 
         <!-- Form -->
-        <form id="login-form" method="post" novalidate>
+        <form id="login-form" method="post" novalidate data-login-url="{{ url_for('auth.login') }}" data-denied-notice="{{ 1 if denied_notice else 0 }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="username" class="form-label fw-semibold">Tên đăng nhập</label>
@@ -130,11 +130,17 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Show info notification if redirected with logout parameter
         const urlParams = new URLSearchParams(window.location.search);
+        const loginForm = document.getElementById('login-form');
+        const loginUrl = loginForm.dataset.loginUrl;
+        const deniedNotice = loginForm.dataset.deniedNotice === '1';
+
         if (urlParams.get('logout') === '1') {
             Notification.info("Bạn đã đăng xuất.");
         }
+        if (deniedNotice) {
+            Notification.warning("Tài khoản của bạn không được phép truy cập.");
+        }
 
-        const loginForm = document.getElementById('login-form');
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -152,7 +158,7 @@
             }
 
             // AJAX login submission
-            csrfFetch("{{ url_for('auth.login') }}", {
+            csrfFetch(loginUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -175,6 +181,13 @@
             })
             .then(result => {
                 const payload = result.payload || {};
+                if (payload.pending && payload.redirect) {
+                    Notification.warning(payload.message || "Tài khoản của bạn đang chờ chủ spa duyệt.");
+                    setTimeout(() => {
+                        window.location.href = payload.redirect;
+                    }, 800);
+                    return;
+                }
                 if (result.ok && payload.success) {
                     Notification.success(payload.message || "Đăng nhập thành công!");
                     // Delay slightly to show notification success state

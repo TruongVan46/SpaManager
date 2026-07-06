@@ -361,14 +361,16 @@ class BasicTestCase(unittest.TestCase):
 
     def test_login_blocks_pending_rejected_and_disabled_users(self):
         blocked_users = [
-            ("login-pending", False, "pending", "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ch\u1ee7 spa duy\u1ec7t."),
-            ("login-rejected", False, "rejected", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp."),
-            ("login-disabled", False, "disabled", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp."),
+            ("login-pending", False, "pending", "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ch\u1ee7 spa duy\u1ec7t.", True, "/auth/pending"),
+            ("login-rejected", False, "rejected", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, None),
+            ("login-disabled", False, "disabled", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, None),
         ]
 
-        for username, is_active, approval_status, expected_message in blocked_users:
+        for username, is_active, approval_status, expected_message, expected_pending, expected_redirect in blocked_users:
             with self.subTest(username=username):
-                self.create_user(
+                with self.client.session_transaction() as sess:
+                    sess.clear()
+                user = self.create_user(
                     username,
                     password="login-pass",
                     full_name=username.replace("-", " ").title(),
@@ -396,8 +398,53 @@ class BasicTestCase(unittest.TestCase):
                 payload = response.get_json()
                 self.assertFalse(payload["success"])
                 self.assertEqual(payload["message"], expected_message)
+                self.assertEqual(bool(payload.get("pending")), expected_pending)
+                if expected_redirect:
+                    self.assertEqual(payload.get("redirect"), expected_redirect)
+                    with self.client.session_transaction() as sess:
+                        self.assertEqual(sess[AUTH_SESSION_KEY], user.id)
+                else:
+                    self.assertNotIn("redirect", payload)
 
-    def test_pending_user_session_is_redirected_out_of_main_app(self):
+    def test_pending_login_sets_session_and_redirects_to_pending_page(self):
+        pending_user = self.create_user(
+            "login-pending-session",
+            password="session-pass",
+            full_name="Login Pending Session",
+            role="STAFF",
+            is_active=False,
+            approval_status="pending",
+        )
+        csrf_token = self.get_csrf_token("/login")
+
+        response = self.client.post(
+            "/login",
+            json={
+                "username": "login-pending-session",
+                "password": "session-pass",
+                "remember": False,
+            },
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrf_token,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 401)
+        payload = response.get_json()
+        self.assertFalse(payload["success"])
+        self.assertTrue(payload["pending"])
+        self.assertEqual(payload["redirect"], "/auth/pending")
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess[AUTH_SESSION_KEY], pending_user.id)
+
+        pending_page = self.client.get("/auth/pending", follow_redirects=False)
+        self.assertEqual(pending_page.status_code, 200)
+        self.assertIn("Tài khoản của bạn đang chờ chủ spa duyệt.", pending_page.get_data(as_text=True))
+        self.assertIn("Đăng xuất", pending_page.get_data(as_text=True))
+
+    def test_pending_user_session_is_redirected_to_pending_page_from_main_app(self):
         pending_user = self.create_user(
             "session-pending",
             password="session-pass",
@@ -411,7 +458,36 @@ class BasicTestCase(unittest.TestCase):
         response = self.client.get("/", follow_redirects=False)
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/login?next=", response.headers["Location"])
+        self.assertEqual(response.headers["Location"], "/auth/pending")
+
+        login_page = self.client.get("/login", follow_redirects=False)
+        self.assertEqual(login_page.status_code, 302)
+        self.assertEqual(login_page.headers["Location"], "/auth/pending")
+
+    def test_rejected_user_session_is_redirected_to_login_denial(self):
+        rejected_user = self.create_user(
+            "session-rejected",
+            password="session-pass",
+            full_name="Session Rejected",
+            role="STAFF",
+            is_active=False,
+            approval_status="rejected",
+        )
+        self.login_as(rejected_user)
+
+        response = self.client.get("/", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login?denied=1", response.headers["Location"])
+
+    def test_pending_page_requires_pending_session(self):
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        response = self.client.get("/auth/pending", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/login")
 
     def test_login_rejects_external_next_redirect(self):
         self.create_user("login-next", password="login-pass", full_name="Login Next", role="STAFF")

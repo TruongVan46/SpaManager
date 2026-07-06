@@ -2,7 +2,7 @@
 import os
 import sys
 import time
-from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory
+from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory, session
 from werkzeug.exceptions import HTTPException
 from extensions import db
 from config import get_active_config
@@ -35,7 +35,8 @@ from core.auth.permissions import (
     is_owner,
     is_staff,
 )
-from core.csrf import validate_csrf_request, csrf_token, CSRFError
+from core.csrf import validate_csrf_request, csrf_token, CSRFError, clear_csrf_token
+from core.auth.constants import AUTH_SESSION_KEY
 from core.migration_cli import register_migration_commands
 from core.data_audit_cli import register_data_audit_commands
 from core.performance_cli import register_performance_profile_commands
@@ -137,11 +138,11 @@ def require_login():
     if request.endpoint is None:
         return
 
-    if request.endpoint in ['static', 'auth.login', 'auth.logout', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
+    if request.endpoint in ['static', 'auth.login', 'auth.pending', 'auth.logout', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
         return
 
-    # Redirect to login if user is not authenticated
-    if not AuthService.is_authenticated():
+    current_user = AuthService.get_current_user()
+    if not current_user:
         from core.error_handler import ErrorHandler
         if ErrorHandler.is_json_request():
             return jsonify({
@@ -151,6 +152,30 @@ def require_login():
             }), 401
         next_url = request.full_path
         return redirect(url_for('auth.login', next=next_url))
+
+    if getattr(current_user, "can_access_app", False):
+        return
+
+    from core.error_handler import ErrorHandler
+    if getattr(current_user, "is_pending_approval", False):
+        if ErrorHandler.is_json_request():
+            return jsonify({
+                "status": "error",
+                "error": "account_pending",
+                "message": "Tài khoản của bạn đang chờ chủ spa duyệt.",
+                "redirect": "/auth/pending",
+            }), 403
+        return redirect("/auth/pending")
+
+    session.pop(AUTH_SESSION_KEY, None)
+    clear_csrf_token()
+    if ErrorHandler.is_json_request():
+        return jsonify({
+            "status": "error",
+            "error": "forbidden",
+            "message": "Tài khoản của bạn không được phép truy cập.",
+        }), 403
+    return redirect(url_for('auth.login', denied=1))
 
 
 @app.before_request

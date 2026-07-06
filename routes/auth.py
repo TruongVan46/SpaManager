@@ -1,11 +1,13 @@
 # routes/auth.py
 from urllib.parse import urlparse, urljoin
 
-from flask import render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, redirect, url_for, session
 from routes import auth_bp
 from services.auth_service import AuthService
+from core.auth.constants import AUTH_SESSION_KEY
 from core.exceptions import AuthenticationException
 from services.login_rate_limit_service import get_request_ip
+from core.csrf import clear_csrf_token
 
 
 def _is_safe_next_url(target):
@@ -16,8 +18,23 @@ def _is_safe_next_url(target):
     test_url = urljoin(base_url, target)
     return urlparse(test_url).scheme in ("http", "https") and urlparse(base_url).netloc == urlparse(test_url).netloc
 
+
+def _clear_stale_session():
+    session.pop(AUTH_SESSION_KEY, None)
+    clear_csrf_token()
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    denied_notice = request.args.get('denied') == '1'
+    current_user = AuthService.get_current_user()
+    if current_user:
+        if getattr(current_user, "can_access_app", False):
+            return redirect(url_for('dashboard.index'))
+        if getattr(current_user, "is_pending_approval", False):
+            return redirect('/auth/pending')
+        denied_notice = True
+        _clear_stale_session()
+
     # If already logged in, redirect to index
     if AuthService.is_authenticated():
         return redirect(url_for('dashboard.index'))
@@ -33,7 +50,14 @@ def login():
         try:
             success, user = AuthService.login(username, password, remember=remember, request_ip=request_ip)
         except AuthenticationException as exc:
-            return jsonify(success=False, message=exc.message), exc.status_code
+            payload = {
+                "success": False,
+                "message": exc.message,
+            }
+            if exc.code == "AUTH_ACCOUNT_PENDING":
+                payload["pending"] = True
+                payload["redirect"] = "/auth/pending"
+            return jsonify(payload), exc.status_code
         if success:
             # Safe redirect extraction
             next_target = request.args.get('next')
@@ -46,7 +70,24 @@ def login():
         else:
             return jsonify(success=False, message="Sai tên đăng nhập hoặc mật khẩu."), 401
 
-    return render_template('auth/login.html')
+    return render_template('auth/login.html', denied_notice=denied_notice)
+
+
+@auth_bp.route('/auth/pending', methods=['GET'])
+@auth_bp.route('/pending', methods=['GET'])
+def pending():
+    current_user = AuthService.get_current_user()
+    if not current_user:
+        return redirect(url_for('auth.login'))
+
+    if getattr(current_user, "can_access_app", False):
+        return redirect(url_for('dashboard.index'))
+
+    if not getattr(current_user, "is_pending_approval", False):
+        _clear_stale_session()
+        return redirect(url_for('auth.login', denied=1))
+
+    return render_template('auth/pending.html', user=current_user)
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
