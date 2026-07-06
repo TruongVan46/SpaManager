@@ -94,7 +94,22 @@ class AuthService:
             )
 
         user = User.query.filter_by(username=username).first()
-        if user and user.is_active and user.check_password(password):
+        if user and user.check_password(password):
+            if not getattr(user, "can_access_app", False):
+                record_login_failure(normalized_username, request_ip)
+                if getattr(user, "is_pending_approval", False):
+                    raise AuthenticationException(
+                        "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ch\u1ee7 spa duy\u1ec7t.",
+                        code="AUTH_ACCOUNT_PENDING",
+                        status_code=401,
+                        severity="WARNING",
+                    )
+                raise AuthenticationException(
+                    "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.",
+                    code="AUTH_ACCOUNT_NOT_ALLOWED",
+                    status_code=401,
+                    severity="WARNING",
+                )
             session[AUTH_SESSION_KEY] = user.id
             session.permanent = remember
             from core.csrf import rotate_csrf_token
@@ -186,7 +201,7 @@ class AuthService:
     @staticmethod
     def get_current_active_user():
         user = AuthService.get_current_user()
-        if user and user.is_active:
+        if user and getattr(user, "can_access_app", False):
             return user
         return None
 

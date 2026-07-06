@@ -6,7 +6,16 @@ STAFF_ROLES = {UserRole.STAFF.value}
 
 
 def _is_active_user(user):
-    return bool(user and getattr(user, "is_active", False))
+    if not user:
+        return False
+    can_access_app = getattr(user, "can_access_app", None)
+    if callable(can_access_app):
+        return bool(can_access_app())
+    if can_access_app is not None:
+        return bool(can_access_app)
+    is_active = bool(getattr(user, "is_active", False))
+    approval_status = (getattr(user, "approval_status", "active") or "active").strip().lower()
+    return is_active and approval_status == "active"
 
 
 def _normalized_role(user):

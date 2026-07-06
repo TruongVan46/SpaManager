@@ -128,12 +128,21 @@ class BasicTestCase(unittest.TestCase):
         with db.engine.begin() as connection:
             connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
-    def create_user(self, username, password="secret123", full_name="Test User", role="STAFF"):
+    def create_user(
+        self,
+        username,
+        password="secret123",
+        full_name="Test User",
+        role="STAFF",
+        is_active=True,
+        approval_status="active",
+    ):
         user = User(
             username=username,
             full_name=full_name,
             role=role,
-            is_active=True,
+            is_active=is_active,
+            approval_status=approval_status,
         )
         user.set_password(password)
         db.session.add(user)
@@ -334,6 +343,75 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(response.is_json)
         payload = response.get_json()
         self.assertTrue(payload["success"])
+
+    def test_user_can_access_app_only_when_active_and_approved(self):
+        active_user = self.create_user("approval-active", password="approval-pass", full_name="Approval Active", role="STAFF")
+        pending_user = self.create_user("approval-pending", password="approval-pass", full_name="Approval Pending", role="STAFF", is_active=False, approval_status="pending")
+        rejected_user = self.create_user("approval-rejected", password="approval-pass", full_name="Approval Rejected", role="STAFF", is_active=False, approval_status="rejected")
+        disabled_user = self.create_user("approval-disabled", password="approval-pass", full_name="Approval Disabled", role="STAFF", is_active=False, approval_status="disabled")
+
+        self.assertTrue(active_user.can_access_app)
+        self.assertTrue(active_user.is_approval_active)
+        self.assertFalse(pending_user.can_access_app)
+        self.assertTrue(pending_user.is_pending_approval)
+        self.assertFalse(rejected_user.can_access_app)
+        self.assertTrue(rejected_user.is_rejected_approval)
+        self.assertFalse(disabled_user.can_access_app)
+        self.assertTrue(disabled_user.is_disabled_approval)
+
+    def test_login_blocks_pending_rejected_and_disabled_users(self):
+        blocked_users = [
+            ("login-pending", False, "pending", "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ch\u1ee7 spa duy\u1ec7t."),
+            ("login-rejected", False, "rejected", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp."),
+            ("login-disabled", False, "disabled", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp."),
+        ]
+
+        for username, is_active, approval_status, expected_message in blocked_users:
+            with self.subTest(username=username):
+                self.create_user(
+                    username,
+                    password="login-pass",
+                    full_name=username.replace("-", " ").title(),
+                    role="STAFF",
+                    is_active=is_active,
+                    approval_status=approval_status,
+                )
+                csrf_token = self.get_csrf_token("/login")
+                response = self.client.post(
+                    "/login",
+                    json={
+                        "username": username,
+                        "password": "login-pass",
+                        "remember": False,
+                    },
+                    headers={
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRFToken": csrf_token,
+                    },
+                    follow_redirects=False,
+                )
+
+                self.assertEqual(response.status_code, 401)
+                self.assertTrue(response.is_json)
+                payload = response.get_json()
+                self.assertFalse(payload["success"])
+                self.assertEqual(payload["message"], expected_message)
+
+    def test_pending_user_session_is_redirected_out_of_main_app(self):
+        pending_user = self.create_user(
+            "session-pending",
+            password="session-pass",
+            full_name="Session Pending",
+            role="STAFF",
+            is_active=False,
+            approval_status="pending",
+        )
+        self.login_as(pending_user)
+
+        response = self.client.get("/", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login?next=", response.headers["Location"])
 
     def test_login_rejects_external_next_redirect(self):
         self.create_user("login-next", password="login-pass", full_name="Login Next", role="STAFF")
