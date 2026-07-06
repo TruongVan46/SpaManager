@@ -321,6 +321,111 @@ class AuthService:
             raise
 
     @staticmethod
+    def seed_approval_owner_if_configured():
+        """
+        Idempotently bootstrap the approval owner account if variables are configured.
+        """
+        if has_app_context():
+            approval_username = current_app.config.get("APPROVAL_OWNER_USERNAME", "")
+            approval_password = current_app.config.get("APPROVAL_OWNER_PASSWORD", "")
+            approval_email = current_app.config.get("APPROVAL_OWNER_EMAIL", "")
+        else:
+            from config import get_active_config
+            active_config = get_active_config()
+            approval_username = getattr(active_config, "APPROVAL_OWNER_USERNAME", "")
+            approval_password = getattr(active_config, "APPROVAL_OWNER_PASSWORD", "")
+            approval_email = getattr(active_config, "APPROVAL_OWNER_EMAIL", "")
+
+        # Skip if any of them is empty
+        if not approval_username or not approval_password or not approval_email:
+            app_logger.info(
+                "Approval owner bootstrap skipped: configuration is incomplete.",
+                module="AUTHENTICATION"
+            )
+            return None
+
+        # Check if the database has the schema ready
+        if not AuthService._user_schema_has_approval_columns():
+            app_logger.warning(
+                "Skipping approval owner seed until the user approval schema migration is applied.",
+                module="AUTHENTICATION"
+            )
+            return None
+
+        # 1. Look up user by username
+        existing_user = User.query.filter_by(username=approval_username).first()
+        if existing_user:
+            if existing_user.role == UserRole.APPROVAL_OWNER.value:
+                existing_user.email = approval_email
+                existing_user.is_active = True
+                existing_user.approval_status = "active"
+                existing_user.set_password(approval_password)
+                db.session.commit()
+                app_logger.info(
+                    f"Approval owner account updated/synced successfully (username={approval_username}).",
+                    module="AUTHENTICATION"
+                )
+                return existing_user
+            else:
+                app_logger.warning(
+                    f"Conflicting username found for approval owner bootstrap (username={approval_username}). Role update skipped to prevent hijacking.",
+                    module="AUTHENTICATION"
+                )
+                return None
+
+        # 2. Look up by email
+        existing_email_user = User.query.filter_by(email=approval_email).first()
+        if existing_email_user:
+            if existing_email_user.role == UserRole.APPROVAL_OWNER.value:
+                existing_email_user.username = approval_username
+                existing_email_user.is_active = True
+                existing_email_user.approval_status = "active"
+                existing_email_user.set_password(approval_password)
+                db.session.commit()
+                app_logger.info(
+                    f"Approval owner account updated/synced successfully (email={approval_email}).",
+                    module="AUTHENTICATION"
+                )
+                return existing_email_user
+            else:
+                app_logger.warning(
+                    f"Conflicting email found for approval owner bootstrap (email={approval_email}). Role update skipped to prevent hijacking.",
+                    module="AUTHENTICATION"
+                )
+                return None
+
+        # 3. Create new APPROVAL_OWNER
+        approval_user = User(
+            username=approval_username,
+            full_name="Quản trị duyệt tài khoản",
+            role=UserRole.APPROVAL_OWNER.value,
+            is_active=True,
+            approval_status="active",
+            email=approval_email
+        )
+        approval_user.set_password(approval_password)
+        db.session.add(approval_user)
+
+        try:
+            db.session.commit()
+            app_logger.info(
+                f"Approval owner seeded successfully (username={approval_username}).",
+                module="AUTHENTICATION"
+            )
+            return approval_user
+        except IntegrityError:
+            db.session.rollback()
+            existing_user = User.query.filter_by(username=approval_username).first()
+            if existing_user and existing_user.role == UserRole.APPROVAL_OWNER.value:
+                return existing_user
+            app_logger.critical(
+                f"IntegrityError while seeding approval owner (username={approval_username}).",
+                module="AUTHENTICATION",
+                exc_info=True
+            )
+            raise
+
+    @staticmethod
     def change_password(user, current_password, new_password, confirm_password=None):
         """
         Change a user's password.

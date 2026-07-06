@@ -80,6 +80,11 @@ class BaseConfig:
     DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD", "owner123")
     DEFAULT_OWNER_EMAIL = os.getenv("DEFAULT_OWNER_EMAIL", "")
 
+    # Approval owner account bootstrap settings
+    APPROVAL_OWNER_USERNAME = os.getenv("APPROVAL_OWNER_USERNAME", "")
+    APPROVAL_OWNER_PASSWORD = os.getenv("APPROVAL_OWNER_PASSWORD", "")
+    APPROVAL_OWNER_EMAIL = os.getenv("APPROVAL_OWNER_EMAIL", "")
+
     # Persistent media storage
     PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or os.path.join(basedir, "database")
     BACKUP_FOLDER = os.getenv("BACKUP_FOLDER") or os.path.join(PERSISTENT_ROOT, "backup")
@@ -194,6 +199,9 @@ class ProductionConfig(BaseConfig):
         self.DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD")
         if not self.DEFAULT_OWNER_PASSWORD:
             raise RuntimeError("DEFAULT_OWNER_PASSWORD must be configured in Production.")
+        self.APPROVAL_OWNER_USERNAME = os.getenv("APPROVAL_OWNER_USERNAME", "")
+        self.APPROVAL_OWNER_PASSWORD = os.getenv("APPROVAL_OWNER_PASSWORD", "")
+        self.APPROVAL_OWNER_EMAIL = os.getenv("APPROVAL_OWNER_EMAIL", "")
         self.APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
 
         self.PERSISTENT_ROOT = os.getenv("PERSISTENT_ROOT") or "/app/database"

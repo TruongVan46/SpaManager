@@ -15,6 +15,9 @@ Checklist:
    - `GOOGLE_CLIENT_SECRET` (set in Railway only)
    - `GOOGLE_REDIRECT_URI` (production callback URL, e.g. `https://<production-domain>/auth/google/callback`)
    - `GOOGLE_ALLOWED_DOMAIN` (optional)
+   - `APPROVAL_OWNER_USERNAME` (system admin username for approvals)
+   - `APPROVAL_OWNER_EMAIL` (system admin email)
+   - `APPROVAL_OWNER_PASSWORD` (strong password, set in Railway only)
 3. Confirm Google Cloud OAuth consent screen and redirect URI.
 4. Confirm approval admin account (role APPROVAL_OWNER) can access `/approval/pending`.
 5. Confirm backup/restore policy is understood.
@@ -30,4 +33,4 @@ Use only placeholder format:
 - Never commit Google client secret.
 - Never paste production DATABASE_URL into docs/chat/logs.
 - Do not enable Google auth without owner approval.
-- Pending users require OWNER approval.
+- Pending users require APPROVAL_OWNER approval.

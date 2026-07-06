@@ -4595,6 +4595,121 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Khoảng thời gian: 04/07/2026 - 04/07/2026", sheet["A2"].value)
         self.assertIn("Ngày xuất báo cáo:", sheet["A3"].value)
 
+    def test_approval_owner_lockdowns_and_bootstrap(self):
+        owner = self.create_user("lockdown-owner", password="owner-pass", full_name="Lockdown Owner", role="OWNER")
+        db.session.commit()
+
+        self.login_as(owner)
+
+        # 1. Role list in form creating user does not contain APPROVAL_OWNER
+        create_page = self.client.get("/users/create")
+        self.assertEqual(create_page.status_code, 200)
+        self.assertNotIn("APPROVAL_OWNER", create_page.get_data(as_text=True))
+        self.assertNotIn("Quản trị duyệt tài khoản", create_page.get_data(as_text=True))
+
+        # 2. POST creating user with role APPROVAL_OWNER is rejected
+        create_response = self.post_with_csrf(
+            "/users/create",
+            path="/users",
+            data={
+                "username": "illegal-approval-owner",
+                "full_name": "Illegal Approval Owner",
+                "email": "illegal.approval@example.com",
+                "role": "APPROVAL_OWNER",
+                "is_active": "1",
+                "password": "valid_password_123",
+                "confirm_password": "valid_password_123",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(create_response.status_code, 400)
+        self.assertFalse(User.query.filter_by(username="illegal-approval-owner").first())
+
+        # 3. POST editing user to APPROVAL_OWNER is rejected
+        target_user = self.create_user("normal-staff-edit", password="staff-pass", role="STAFF")
+        db.session.commit()
+
+        edit_response = self.post_with_csrf(
+            f"/users/{target_user.id}/edit",
+            path=f"/users/{target_user.id}/edit",
+            data={
+                "username": "normal-staff-edit",
+                "full_name": "Normal Staff Edit",
+                "email": "normal.staff@example.com",
+                "role": "APPROVAL_OWNER",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(edit_response.status_code, 400)
+        db.session.refresh(target_user)
+        self.assertEqual(target_user.role, "STAFF")
+
+        # 4. /users listing does not display APPROVAL_OWNER
+        approval_owner = self.create_user("real-approval-owner", password="owner-pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        users_page = self.client.get("/users")
+        self.assertEqual(users_page.status_code, 200)
+        self.assertNotIn("real-approval-owner", users_page.get_data(as_text=True))
+
+        # 5. /users/<id>/edit or /users/<id>/reset-password or /users/<id>/toggle-active returns 403
+        self.assertEqual(self.client.get(f"/users/{approval_owner.id}/edit").status_code, 403)
+        self.assertEqual(self.client.get(f"/users/{approval_owner.id}/reset-password").status_code, 403)
+
+        toggle_response = self.post_with_csrf(
+            f"/users/{approval_owner.id}/toggle-active",
+            path="/users",
+            data={"is_active": "0"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(toggle_response.status_code, 403)
+
+        # 6. Bootstrap approval owner from environment variables works idempotently
+        original_config = dict(app.config)
+        try:
+            with patch.dict(
+                app.config,
+                {
+                    "APPROVAL_OWNER_USERNAME": "bootstrap-approval",
+                    "APPROVAL_OWNER_PASSWORD": "bootstrap-password-123",
+                    "APPROVAL_OWNER_EMAIL": "bootstrap@example.com",
+                },
+                clear=False,
+            ):
+                seeded = AuthService.seed_approval_owner_if_configured()
+                self.assertIsNotNone(seeded)
+                self.assertEqual(seeded.username, "bootstrap-approval")
+                self.assertEqual(seeded.role, "APPROVAL_OWNER")
+                self.assertTrue(seeded.is_active)
+                self.assertEqual(seeded.approval_status, "active")
+
+                # Test idempotency (doesn't duplicate or crash)
+                seeded2 = AuthService.seed_approval_owner_if_configured()
+                self.assertEqual(seeded2.id, seeded.id)
+
+                # Test duplicate prevention / hijacking warning
+                # Try to bootstrap with same username but conflicts with existing owner
+                with patch.dict(
+                    app.config,
+                    {
+                        "APPROVAL_OWNER_USERNAME": "lockdown-owner",  # Existing OWNER
+                        "APPROVAL_OWNER_PASSWORD": "bootstrap-password-123",
+                        "APPROVAL_OWNER_EMAIL": "newowneremail@example.com",
+                    },
+                    clear=False,
+                ):
+                    seeded_conflict = AuthService.seed_approval_owner_if_configured()
+                    self.assertIsNone(seeded_conflict)
+                    # Verify lockdown-owner's role was not changed to APPROVAL_OWNER
+                    db.session.refresh(owner)
+                    self.assertEqual(owner.role, "OWNER")
+
+        finally:
+            app.config.update(original_config)
+
 
 if __name__ == "__main__":
     unittest.main()

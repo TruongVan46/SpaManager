@@ -159,6 +159,8 @@ def create():
 def edit(user_id):
     _require_manager()
     user = UserService._get_user_or_404(user_id)
+    if user.role == 'APPROVAL_OWNER':
+        abort(403)
     errors = {}
     form_data = {
         'username': user.username,
@@ -214,6 +216,8 @@ def edit(user_id):
 def reset_password(user_id):
     _require_manager()
     user = UserService._get_user_or_404(user_id)
+    if user.role == 'APPROVAL_OWNER':
+        abort(403)
     errors = {}
     form_data = {'new_password': '', 'confirm_password': ''}
 
@@ -254,6 +258,9 @@ def reset_password(user_id):
 @user_bp.route('/users/<int:user_id>/toggle-active', methods=['POST'])
 def toggle_active(user_id):
     actor = _require_manager()
+    user = UserService._get_user_or_404(user_id)
+    if user.role == 'APPROVAL_OWNER':
+        abort(403)
     payload = _extract_payload()
     desired_active_raw = payload.get('is_active', '0')
     desired_active = str(desired_active_raw).lower() in ('1', 'true', 'yes', 'on')

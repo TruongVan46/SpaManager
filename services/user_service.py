@@ -120,7 +120,7 @@ class UserService:
 
     @staticmethod
     def search_paginated(query_text="", page=1, per_page=25, sort_by="created_at", sort_dir="desc"):
-        query = User.query
+        query = User.query.filter(User.role != UserRole.APPROVAL_OWNER.value)
         search = (query_text or "").strip()
         if search:
             pattern = f"%{search}%"
@@ -208,6 +208,8 @@ class UserService:
     @staticmethod
     def update_user(actor, user_id, username, full_name, email=None, role=None):
         user = UserService._get_user_or_404(user_id)
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.", field_errors={"role": "Không thể sửa đổi tài khoản phê duyệt hệ thống."})
 
         username = UserService._normalize_username(username)
         full_name = UserService._normalize_full_name(full_name)
@@ -260,6 +262,8 @@ class UserService:
     @staticmethod
     def reset_password(actor, user_id, new_password):
         user = UserService._get_user_or_404(user_id)
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
         if not new_password:
             raise ValidationException("Mật khẩu mới không được để trống.", field_errors={"new_password": "Mật khẩu mới không được để trống."})
 
@@ -292,6 +296,8 @@ class UserService:
     @staticmethod
     def toggle_active(actor, user_id, is_active):
         user = UserService._get_user_or_404(user_id)
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
         desired_active = UserService._normalize_bool(is_active)
 
         if user.id == actor.id and not desired_active:

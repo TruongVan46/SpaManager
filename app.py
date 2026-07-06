@@ -288,6 +288,7 @@ with app.app_context():
     if _baseline_schema_is_ready():
         if not _should_skip_owner_seed_for_cli():
             AuthService.seed_owner_if_empty()
+            AuthService.seed_approval_owner_if_configured()
     else:
         app_logger.warning(
             "Database schema is not initialized. Run 'flask db upgrade' before using the app.",

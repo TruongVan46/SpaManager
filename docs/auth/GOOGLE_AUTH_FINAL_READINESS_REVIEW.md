@@ -13,7 +13,7 @@
 - GOOGLE_AUTH_ENABLED defaults to false.
 - New Google users are created as pending and inactive.
 - Pending users cannot access dashboard.
-- OWNER can approve/reject pending users.
+- APPROVAL_OWNER can approve/reject pending users.
 - Approved linked Google users can login.
 - Rejected/disabled users are blocked.
 - Local/password same-email accounts are not auto-linked.
@@ -25,7 +25,7 @@
 - Production DATABASE_URL was not used.
 
 ## Final smoke/check results
-- **unittest**: PASS (169 tests)
+- **unittest**: PASS
 - **compileall**: PASS
 - **git diff --check**: PASS
 - **local E2E smoke status**: PASS (verified via `test_google_auth_local_e2e_smoke_flow`)
@@ -44,9 +44,12 @@ Before enabling on Railway:
    - `GOOGLE_CLIENT_SECRET` (Railway secret only)
    - `GOOGLE_REDIRECT_URI` (production callback URL)
    - `GOOGLE_ALLOWED_DOMAIN` (optional)
-6. Confirm OWNER can access `/users/pending`.
+   - `APPROVAL_OWNER_USERNAME` (system admin username for approvals)
+   - `APPROVAL_OWNER_EMAIL` (system admin email)
+   - `APPROVAL_OWNER_PASSWORD` (strong password, set in Railway only)
+6. Confirm approval admin account (role APPROVAL_OWNER) can access `/approval/pending`.
 7. Confirm first Google test user becomes pending.
-8. Confirm OWNER approve is required before app access.
+8. Confirm APPROVAL_OWNER approve is required before app access.
 9. Confirm rollback:
    - `GOOGLE_AUTH_ENABLED=false`
 
