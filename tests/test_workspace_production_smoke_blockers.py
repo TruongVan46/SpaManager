@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+import re
 
 # Setup unique database file for smoke tests to avoid lock issues
 TEST_DB_FILE = Path(tempfile.gettempdir()) / "spamanager_blockers_smoke_test.sqlite"
@@ -28,13 +29,18 @@ from extensions import db
 from models.user import User
 from models.workspace import Workspace, WorkspaceMember
 from models.customer import Customer
+from models.service import Service
 from models.activity_log import ActivityLog
+from models.appointment import Appointment
+from models.invoice import Invoice
+from models.invoice_detail import InvoiceDetail
 from services.customer_service import CustomerService
 from services.recycle_bin_service import RecycleBinService
 from services.activity_log_service import ActivityLogService
 from services.auth_service import AuthService
 from core.exceptions import NotFoundException
 from flask import session
+from datetime import datetime, date
 
 class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
     @classmethod
@@ -58,10 +64,14 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
 
     def setUp(self):
         db.session.rollback()
-        # Clear tables
+        # Clear tables in dependency order
         ActivityLog.query.delete()
+        InvoiceDetail.query.delete()
+        Invoice.query.delete()
+        Appointment.query.delete()
         WorkspaceMember.query.delete()
         Customer.query.delete()
+        Service.query.delete()
         User.query.delete()
         Workspace.query.delete()
         db.session.commit()
@@ -71,8 +81,12 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
     def tearDown(self):
         db.session.rollback()
         ActivityLog.query.delete()
+        InvoiceDetail.query.delete()
+        Invoice.query.delete()
+        Appointment.query.delete()
         WorkspaceMember.query.delete()
         Customer.query.delete()
+        Service.query.delete()
         User.query.delete()
         Workspace.query.delete()
         db.session.commit()
@@ -99,7 +113,7 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
             sess["current_workspace_id"] = workspace_id
             sess["_enable_workspace_isolation"] = True
 
-    def test_customer_delete_works_in_workspace(self):
+    def test_customer_delete_success_returns_json(self):
         ws, owner = self._create_workspace_and_owner("ws-a")
         
         # Create customer in workspace A
@@ -112,16 +126,19 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         # 1. Test GET can-delete route with AJAX headers
         resp = self.client.get(
             f"/customers/{customer.id}/can-delete",
-            headers={"X-Requested-With": "XMLHttpRequest"}
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+            }
         )
         self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.is_json)
         data = resp.get_json()
         self.assertTrue(data["success"])
         self.assertTrue(data["can_delete"])
 
         # 2. Get CSRF Token from index page
         resp_index = self.client.get("/customers")
-        import re
         match = re.search(r'name="csrf-token" content="([^"]+)"', resp_index.get_data(as_text=True))
         csrf_token = match.group(1) if match else ""
 
@@ -130,10 +147,12 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
             f"/customers/{customer.id}/delete",
             headers={
                 "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
                 "X-CSRFToken": csrf_token
             }
         )
         self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.is_json)
         data = resp.get_json()
         self.assertTrue(data["success"])
         self.assertEqual(data["message"], "Đã xóa khách hàng thành công.")
@@ -143,7 +162,114 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         self.assertIsNotNone(deleted_cust.deleted_at)
         self.assertEqual(deleted_cust.deleted_by, owner.username)
 
-    def test_cross_workspace_customer_delete_blocked(self):
+    def test_customer_delete_blocked_by_appointment_returns_business_message(self):
+        ws, owner = self._create_workspace_and_owner("ws-a")
+        customer = Customer(name="Customer Appt", workspace_id=ws.id)
+        db.session.add(customer)
+
+        service = Service(name="Test Service", price=100000, duration=30, workspace_id=ws.id)
+        db.session.add(service)
+        db.session.flush()
+
+        appointment = Appointment(
+            customer_id=customer.id,
+            service_id=service.id,
+            appointment_time=datetime(2026, 7, 7, 10, 0),
+            status="pending",
+            workspace_id=ws.id
+        )
+        db.session.add(appointment)
+        db.session.commit()
+
+        self.login_as(owner, ws.id)
+
+        # GET can-delete -> returns can_delete=False
+        resp = self.client.get(
+            f"/customers/{customer.id}/can-delete",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+            }
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertTrue(data["success"])
+        self.assertFalse(data["can_delete"])
+
+        # Get CSRF Token
+        resp_index = self.client.get("/customers")
+        match = re.search(r'name="csrf-token" content="([^"]+)"', resp_index.get_data(as_text=True))
+        csrf_token = match.group(1) if match else ""
+
+        # POST delete -> should fail with 409 Conflict JSON
+        resp = self.client.post(
+            f"/customers/{customer.id}/delete",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
+                "X-CSRFToken": csrf_token
+            }
+        )
+        self.assertEqual(resp.status_code, 409)
+        self.assertTrue(resp.is_json)
+        data = resp.get_json()
+        self.assertFalse(data.get("success", True))
+        self.assertIn("lịch hẹn", data["message"])
+        self.assertIn("hóa đơn", data["message"])
+        self.assertNotIn("Không thể kết nối đến máy chủ", data["message"])
+
+    def test_customer_delete_blocked_by_invoice_returns_business_message(self):
+        ws, owner = self._create_workspace_and_owner("ws-a")
+        customer = Customer(name="Customer Inv", workspace_id=ws.id)
+        db.session.add(customer)
+        db.session.flush()
+
+        invoice = Invoice(
+            customer_id=customer.id,
+            invoice_date=date(2026, 7, 7),
+            payment_method="cash",
+            total_amount=100000,
+            workspace_id=ws.id
+        )
+        db.session.add(invoice)
+        db.session.commit()
+
+        self.login_as(owner, ws.id)
+
+        # GET can-delete
+        resp = self.client.get(
+            f"/customers/{customer.id}/can-delete",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+            }
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertFalse(data["can_delete"])
+
+        # Get CSRF Token
+        resp_index = self.client.get("/customers")
+        match = re.search(r'name="csrf-token" content="([^"]+)"', resp_index.get_data(as_text=True))
+        csrf_token = match.group(1) if match else ""
+
+        # POST delete -> 409
+        resp = self.client.post(
+            f"/customers/{customer.id}/delete",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
+                "X-CSRFToken": csrf_token
+            }
+        )
+        self.assertEqual(resp.status_code, 409)
+        self.assertTrue(resp.is_json)
+        data = resp.get_json()
+        self.assertFalse(data.get("success", True))
+        self.assertIn("lịch hẹn", data["message"])
+        self.assertIn("hóa đơn", data["message"])
+
+    def test_cross_workspace_customer_delete_returns_json_404(self):
         ws_a, owner_a = self._create_workspace_and_owner("ws-a")
         ws_b, owner_b = self._create_workspace_and_owner("ws-b")
 
@@ -152,46 +278,87 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         db.session.add(customer_a)
         db.session.commit()
 
-        # Login as B, try to get info or delete A
+        # Login as B, try to delete A
         self.login_as(owner_b, ws_b.id)
 
-        # GET can-delete -> should raise 404 (NotFoundException) and return JSON
+        # GET can-delete -> 404 JSON
         resp = self.client.get(
             f"/customers/{customer_a.id}/can-delete",
-            headers={"X-Requested-With": "XMLHttpRequest"}
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+            }
         )
-        print("GET can-delete status:", resp.status_code)
-        print("GET can-delete data:", resp.get_data(as_text=True))
         self.assertEqual(resp.status_code, 404)
+        self.assertTrue(resp.is_json)
+        data = resp.get_json()
+        self.assertEqual(data["status"], "error")
+        self.assertEqual(data["error"], "not_found")
+        self.assertEqual(data["message"], "Không tìm thấy khách hàng")
 
-        # Get CSRF Token from index page
+        # Get CSRF Token
         resp_index = self.client.get("/customers")
-        import re
         match = re.search(r'name="csrf-token" content="([^"]+)"', resp_index.get_data(as_text=True))
         csrf_token = match.group(1) if match else ""
 
-        # POST delete -> should also 404
+        # POST delete -> 404 JSON
         resp = self.client.post(
             f"/customers/{customer_a.id}/delete",
             headers={
                 "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
                 "X-CSRFToken": csrf_token
             }
         )
-        print("POST delete status:", resp.status_code)
-        print("POST delete data:", resp.get_data(as_text=True))
         self.assertEqual(resp.status_code, 404)
+        self.assertTrue(resp.is_json)
+        data = resp.get_json()
+        self.assertFalse(data["success"])
+        self.assertEqual(data["message"], "Không tìm thấy khách hàng hoặc khách hàng đã bị xóa.")
 
-        # Verify customer A remains unaffected
-        db.session.expire_all()
-        cust_a_db = Customer.query.get(customer_a.id)
-        self.assertIsNone(cust_a_db.deleted_at)
+    def test_delete_endpoint_never_returns_html_for_ajax_errors(self):
+        ws, owner = self._create_workspace_and_owner("ws-a")
+        self.login_as(owner, ws.id)
+
+        # 1. Invalid CSRF token POST -> returns JSON 400, not HTML
+        resp = self.client.post(
+            f"/customers/999999/delete",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
+                "X-CSRFToken": "invalid_csrf_token"
+            }
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(resp.is_json)
+        data = resp.get_json()
+        self.assertEqual(data["status"], "error")
+        self.assertEqual(data["error"], "csrf_failed")
+
+        # 2. Get valid CSRF token
+        resp_index = self.client.get("/customers")
+        match = re.search(r'name="csrf-token" content="([^"]+)"', resp_index.get_data(as_text=True))
+        csrf_token = match.group(1) if match else ""
+
+        # 3. Valid CSRF, non-existent customer ID -> returns JSON 404, not HTML
+        resp = self.client.post(
+            f"/customers/999999/delete",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
+                "X-CSRFToken": csrf_token
+            }
+        )
+        self.assertEqual(resp.status_code, 404)
+        self.assertTrue(resp.is_json)
+        data = resp.get_json()
+        self.assertFalse(data["success"])
+        self.assertEqual(data["message"], "Không tìm thấy khách hàng hoặc khách hàng đã bị xóa.")
 
     def test_trash_scoped_to_workspace(self):
         ws_a, owner_a = self._create_workspace_and_owner("ws-a")
         ws_b, owner_b = self._create_workspace_and_owner("ws-b")
 
-        # Soft-deleted items
         from utils.timezone_utils import utc_now
         cust_a = Customer(name="Cust A", workspace_id=ws_a.id, deleted_at=utc_now(), deleted_by="owner_ws-a")
         cust_b = Customer(name="Cust B", workspace_id=ws_b.id, deleted_at=utc_now(), deleted_by="owner_ws-b")
@@ -212,7 +379,6 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
             self.assertEqual(len(items), 1)
             self.assertEqual(items[0]["id"], cust_a.id)
 
-            # Restoring B from A should fail (NotFoundException)
             with self.assertRaises(NotFoundException):
                 CustomerService.restore(cust_b.id, actor=owner_a.username)
 
@@ -234,7 +400,6 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         ws_a, owner_a = self._create_workspace_and_owner("ws-a")
         ws_b, owner_b = self._create_workspace_and_owner("ws-b")
 
-        # Create activity log entries
         log_a = ActivityLog(module="CUSTOMER", action="CREATE", description="Log A", user_id=owner_a.id)
         log_b = ActivityLog(module="CUSTOMER", action="CREATE", description="Log B", user_id=owner_b.id)
         db.session.add_all([log_a, log_b])
@@ -265,17 +430,14 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
             self.assertEqual(logs[0].id, log_b.id)
 
     def test_no_current_workspace_fail_closed(self):
-        # Without current_workspace_id
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = None
 
-            # Recycle Bin statistics & items empty
             stats = RecycleBinService.get_statistics()
             self.assertEqual(stats["total"], 0)
             self.assertEqual(len(RecycleBinService.get_deleted_items().items), 0)
 
-            # Activity logs empty
             logs = ActivityLogService.get_filtered_logs().items
             self.assertEqual(len(logs), 0)
             self.assertEqual(len(ActivityLogService.get_actor_options()), 0)

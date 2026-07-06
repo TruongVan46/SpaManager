@@ -186,13 +186,20 @@ def check_can_delete(id):
 
 @customer_bp.route('/customers/<int:id>/delete', methods=['POST'])
 def delete(id):
+    from core.error_handler import ErrorHandler
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.is_json
+        or 'application/json' in request.headers.get('Accept', '')
+        or ErrorHandler.is_json_request()
+    )
     try:
         CustomerService.delete(id, actor=AuthService.require_current_username())
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        if is_ajax:
             return jsonify({'success': True, 'message': 'Đã xóa khách hàng thành công.'})
         NotificationService.flash_success('Đã xóa khách hàng thành công.')
     except BusinessException as e:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        if is_ajax:
             return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
     return redirect(url_for('customer.index'))

@@ -422,11 +422,11 @@ class CustomerService:
         from services.workspace_service import WorkspaceService
         customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
         if not customer or customer.deleted_at is not None:
-            raise NotFoundException("Kh?ng t?m th?y kh?ch h?ng ho?c kh?ch h?ng ?? b? x?a.")
+            raise NotFoundException("Không tìm thấy khách hàng hoặc khách hàng đã bị xóa.")
 
         status = CustomerService.can_delete(customer_id)
         if not status["can_delete"]:
-            raise ConflictException("Kh?ng th? x?a kh?ch h?ng n?y v? ?? ph?t sinh l?ch h?n ho?c h?a ??n li?n quan.")
+            raise ConflictException("Không thể xóa khách hàng vì khách hàng này đã có lịch hẹn/hóa đơn liên quan.")
         try:
             actor_name = actor
             if actor_name is None or not str(actor_name).strip():
@@ -438,11 +438,11 @@ class CustomerService:
             ActivityLogService.write_log(
                 module=ActivityLogService.MODULE_CUSTOMER,
                 action=ActivityLogService.ACTION_DELETE,
-                description=f'{actor_name} chuy?n kh?ch h?ng "{name}" v?o Th?ng r?c',
+                description=f'{actor_name} chuyển khách hàng "{name}" vào Thùng rác',
                 reference_id=customer_id,
                 session_override=db.session,
                 commit=False,
-                user_id_override=current_user.id if current_user and actor_name != "H? th?ng" else None
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
             )
             db.session.commit()
         except Exception:

@@ -161,10 +161,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch(`/customers/${customerId}/can-delete`, {
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
-            .then(response => response.json())
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.indexOf('application/json') !== -1) {
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Có lỗi xảy ra.');
+                        }
+                        return data;
+                    });
+                } else {
+                    throw new Error('Không thể kết nối đến máy chủ.');
+                }
+            })
             .then(data => {
                 if (data.success) {
                     if (data.can_delete) {
@@ -183,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                Notification.error('Không thể kết nối đến máy chủ.');
+                Notification.error(error.message || 'Không thể kết nối đến máy chủ.');
             });
     });
 
@@ -200,10 +213,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.indexOf('application/json') !== -1) {
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Không thể xóa khách hàng.');
+                        }
+                        return data;
+                    });
+                } else {
+                    throw new Error('Không thể kết nối đến máy chủ.');
+                }
+            })
             .then(data => {
                 deleteConfirmModal.hide();
                 submitBtn.disabled = false;
@@ -232,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalHtml;
                 console.error('Error:', error);
-                Notification.error('Không thể kết nối đến máy chủ.');
+                Notification.error(error.message || 'Không thể kết nối đến máy chủ.');
             });
         });
     }
