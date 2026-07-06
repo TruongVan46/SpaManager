@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import tempfile
 import unittest
@@ -610,6 +610,92 @@ class BasicTestCase(unittest.TestCase):
             self.assertIn("/login", response.headers.get("Location", ""))
             self.assertEqual(User.query.count(), before_count)
             self.assertIsNone(self.get_session_user_id())
+
+    def test_google_auth_local_e2e_smoke_flow(self):
+        # 1. Setup Owner
+        owner = self.create_user("e2e-owner", password="owner-pass", full_name="E2E Owner", role="OWNER")
+        db.session.commit()
+
+        # 2. Callback with new identity: creates user pending
+        response = self.run_google_callback_with_identity({
+            "sub": "google-sub-e2e",
+            "email": "e2e.google@example.com",
+            "email_verified": True,
+            "name": "E2E User",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/auth/pending", response.headers.get("Location", ""))
+
+        user = User.query.filter_by(auth_provider="google", oauth_id="google-sub-e2e").first()
+        self.assertIsNotNone(user)
+        self.assertEqual(user.approval_status, User.APPROVAL_PENDING)
+        self.assertFalse(user.is_active)
+        self.assertEqual(self.get_session_user_id(), user.id)
+
+        # 3. Pending user cannot access dashboard
+        dashboard_response = self.client.get("/", follow_redirects=False)
+        self.assertEqual(dashboard_response.status_code, 302)
+        self.assertIn("/auth/pending", dashboard_response.headers.get("Location", ""))
+
+        # 4. Logout pending user session
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/auth/pending")}, follow_redirects=False)
+        self.assertIsNone(self.get_session_user_id())
+
+        # 5. OWNER login (local flow)
+        self.login_as(owner)
+        self.assertEqual(self.get_session_user_id(), owner.id)
+
+        # 6. OWNER opens /users/pending and sees user
+        pending_page = self.client.get("/users/pending")
+        self.assertEqual(pending_page.status_code, 200)
+        html = pending_page.get_data(as_text=True)
+        self.assertIn("e2e.google@example.com", html)
+
+        # 7. OWNER approves user
+        approve_response = self.post_with_csrf(
+            f"/users/{user.id}/approve",
+            path="/users/pending",
+            data={},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        self.assertTrue(approve_response.get_json()["success"])
+
+        db.session.refresh(user)
+        self.assertEqual(user.approval_status, User.APPROVAL_ACTIVE)
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.approved_by_id, owner.id)
+        self.assertIsNotNone(user.approved_at)
+
+        # 8. Logout OWNER
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        self.assertIsNone(self.get_session_user_id())
+
+        # 9. Google callback with same sub logs user in
+        self.assertIsNone(user.last_login)
+        login_response = self.run_google_callback_with_identity({
+            "sub": "google-sub-e2e",
+            "email": "e2e.google@example.com",
+            "email_verified": True,
+            "name": "E2E User",
+        })
+        self.assertEqual(login_response.status_code, 302)
+        self.assertEqual(login_response.headers.get("Location"), "/")
+        self.assertEqual(self.get_session_user_id(), user.id)
+
+        # last_login updated
+        db.session.refresh(user)
+        self.assertIsNotNone(user.last_login)
+
+        # dashboard loads successfully (200)
+        dashboard_load = self.client.get("/", follow_redirects=False)
+        self.assertEqual(dashboard_load.status_code, 200)
+
+        # 10. Logout Google user
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/")}, follow_redirects=False)
+        self.assertIsNone(self.get_session_user_id())
 
     def test_login_post_requires_csrf_token(self):
         self.create_user("login-csrf", password="login-pass", full_name="Login CSRF", role="STAFF")
