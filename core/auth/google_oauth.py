@@ -1,4 +1,12 @@
-from flask import current_app, flash, has_app_context, has_request_context, redirect, url_for
+import hashlib
+import secrets
+
+from flask import current_app, flash, has_app_context, has_request_context, redirect, session, url_for
+
+from core.auth.constants import AUTH_SESSION_KEY
+from core.auth.enums import UserRole
+from extensions import db
+from models.user import User
 
 try:
     from authlib.integrations.flask_client import OAuth
@@ -19,6 +27,10 @@ except ImportError:  # pragma: no cover - dependency may be absent in some local
 
         def create_client(self, name):
             return self._clients.get(name)
+
+
+class GoogleIdentityError(ValueError):
+    pass
 
 
 oauth = OAuth()
@@ -165,6 +177,112 @@ def start_google_authorization(app=None):
         return None
 
 
+def extract_google_identity(token=None, profile=None, app=None):
+    app = _get_app(app)
+    payload = profile or {}
+    if not payload and isinstance(token, dict):
+        for key in ("userinfo", "id_token_claims", "claims"):
+            if isinstance(token.get(key), dict):
+                payload = token[key]
+                break
+        if not payload:
+            payload = token
+
+    subject = str(payload.get("sub") or payload.get("oauth_id") or "").strip()
+    email = str(payload.get("email") or "").strip().lower()
+    email_verified = payload.get("email_verified")
+
+    if not subject:
+        raise GoogleIdentityError("missing_sub")
+    if not email:
+        raise GoogleIdentityError("missing_email")
+    if email_verified is not True:
+        raise GoogleIdentityError("email_not_verified")
+
+    allowed_domain = ""
+    if app is not None:
+        allowed_domain = (app.config.get("GOOGLE_ALLOWED_DOMAIN") or "").strip().lower().lstrip("@")
+    email_domain = email.rsplit("@", 1)[-1].lower() if "@" in email else ""
+    if allowed_domain and email_domain != allowed_domain:
+        raise GoogleIdentityError("domain_not_allowed")
+
+    return {
+        "sub": subject,
+        "email": email,
+        "email_verified": True,
+        "name": str(payload.get("name") or "").strip(),
+        "picture": str(payload.get("picture") or "").strip(),
+        "hd": str(payload.get("hd") or email_domain).strip().lower(),
+    }
+
+
+def _extract_identity_from_callback(client, app):
+    if client is None or not hasattr(client, "authorize_access_token"):
+        raise GoogleIdentityError("client_unavailable")
+
+    token = client.authorize_access_token()
+    profile = None
+    parse_id_token = getattr(client, "parse_id_token", None)
+    if callable(parse_id_token):
+        try:
+            profile = parse_id_token(token)
+        except TypeError:
+            profile = parse_id_token(token, None)
+    return extract_google_identity(token=token, profile=profile, app=app)
+
+
+def _build_google_username(subject):
+    digest = hashlib.sha256(subject.encode("utf-8")).hexdigest()[:24]
+    return f"google_{digest}"
+
+
+def _set_pending_session(user):
+    session[AUTH_SESSION_KEY] = user.id
+    from core.csrf import rotate_csrf_token
+
+    rotate_csrf_token()
+
+
+def create_or_route_google_pending_user(identity):
+    linked_user = User.query.filter_by(auth_provider="google", oauth_id=identity["sub"]).first()
+    if linked_user:
+        if linked_user.is_pending_approval:
+            _set_pending_session(linked_user)
+            return redirect("/auth/pending")
+        if linked_user.is_rejected_approval or linked_user.is_disabled_approval or not linked_user.is_active:
+            flash("Tài khoản Google này không được phép truy cập.", "warning")
+            return redirect(url_for("auth.login", denied=1))
+        flash("Google login cho tài khoản đã duyệt sẽ hoàn tất ở bước sau.", "info")
+        return redirect(url_for("auth.login"))
+
+    existing_email_user = User.query.filter_by(email=identity["email"]).first()
+    if existing_email_user:
+        flash(
+            "Email này đã tồn tại. Vui lòng đăng nhập bằng mật khẩu hoặc liên hệ chủ spa.",
+            "warning",
+        )
+        return redirect(url_for("auth.login"))
+
+    user = User(
+        username=_build_google_username(identity["sub"]),
+        full_name=identity.get("name") or identity["email"].split("@", 1)[0],
+        role=UserRole.STAFF.value,
+        is_active=False,
+        approval_status=User.APPROVAL_PENDING,
+        approved_by_id=None,
+        approved_at=None,
+        email=identity["email"],
+        email_verified=True,
+        auth_provider="google",
+        oauth_id=identity["sub"],
+    )
+    user.set_password(secrets.token_urlsafe(32))
+    db.session.add(user)
+    db.session.commit()
+    _set_pending_session(user)
+    return redirect("/auth/pending")
+
+
 def handle_google_callback_skeleton(error=None, error_description=None, app=None):
     app = _get_app(app)
     if error:
@@ -175,8 +293,11 @@ def handle_google_callback_skeleton(error=None, error_description=None, app=None
         flash("Đăng nhập Google hiện chưa được bật.", "warning")
         return redirect(url_for("auth.login"))
 
-    flash(
-        "Google login đã kết nối nhưng bước tạo tài khoản sẽ được bật ở task sau.",
-        "info",
-    )
-    return redirect(url_for("auth.login"))
+    client = get_google_client(app)
+    try:
+        identity = _extract_identity_from_callback(client, app)
+    except GoogleIdentityError:
+        flash("Không thể xác thực tài khoản Google. Vui lòng thử lại hoặc liên hệ chủ spa.", "warning")
+        return redirect(url_for("auth.login"))
+
+    return create_or_route_google_pending_user(identity)

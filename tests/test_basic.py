@@ -163,6 +163,30 @@ class BasicTestCase(unittest.TestCase):
         with self.client.session_transaction() as sess:
             return [message for _, message in sess.get("_flashes", [])]
 
+    def google_oauth_test_config(self, allowed_domain="example.com"):
+        return {
+            "GOOGLE_AUTH_ENABLED": True,
+            "GOOGLE_CLIENT_ID": "google-client-id",
+            "GOOGLE_CLIENT_SECRET": "google-client-secret",
+            "GOOGLE_REDIRECT_URI": "https://example.com/auth/google/callback",
+            "GOOGLE_ALLOWED_DOMAIN": allowed_domain,
+            "GOOGLE_SCOPES": ["openid", "email", "profile"],
+        }
+
+    def run_google_callback_with_identity(self, identity):
+        class FakeGoogleClient:
+            def authorize_access_token(self):
+                return {"userinfo": identity}
+
+        original_state = dict(app.extensions.get("google_oauth", {}))
+        try:
+            with patch.dict(app.config, self.google_oauth_test_config(), clear=False):
+                init_google_oauth(app)
+                app.extensions["google_oauth"]["client"] = FakeGoogleClient()
+                return self.client.get("/auth/google/callback?code=fake-code&state=fake-state")
+        finally:
+            app.extensions["google_oauth"] = original_state
+
     def get_csrf_token(self, path="/login"):
         response = self.client.get(path, follow_redirects=True)
         html = response.get_data(as_text=True)
@@ -442,35 +466,140 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Đăng nhập Google không hoàn tất.", self.get_flashed_messages_from_session())
         self.assertEqual((User.query.count(), self.get_session_user_id()), before_snapshot)
 
-    def test_google_login_callback_skeleton_does_not_create_or_login_user(self):
-        original_state = dict(app.extensions.get("google_oauth", {}))
-        before_snapshot = (User.query.count(), self.get_session_user_id())
-        try:
-            with patch.dict(
-                app.config,
-                {
-                    "GOOGLE_AUTH_ENABLED": True,
-                    "GOOGLE_CLIENT_ID": "google-client-id",
-                    "GOOGLE_CLIENT_SECRET": "google-client-secret",
-                    "GOOGLE_REDIRECT_URI": "https://example.com/auth/google/callback",
-                    "GOOGLE_ALLOWED_DOMAIN": "example.com",
-                    "GOOGLE_SCOPES": ["openid", "email", "profile"],
-                },
-                clear=False,
-            ):
-                init_google_oauth(app)
-                response = self.client.get("/auth/google/callback?code=fake-code&state=fake-state")
+    def test_google_login_callback_valid_identity_creates_pending_user(self):
+        response = self.run_google_callback_with_identity({
+            "sub": "google-sub-1",
+            "email": "new.google@example.com",
+            "email_verified": True,
+            "name": "Google Pending",
+        })
 
-        finally:
-            app.extensions["google_oauth"] = original_state
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/auth/pending", response.headers.get("Location", ""))
+
+        user = User.query.filter_by(auth_provider="google", oauth_id="google-sub-1").first()
+        self.assertIsNotNone(user)
+        self.assertEqual(user.email, "new.google@example.com")
+        self.assertTrue(user.email_verified)
+        self.assertEqual(user.approval_status, User.APPROVAL_PENDING)
+        self.assertFalse(user.is_active)
+        self.assertEqual(user.role, "STAFF")
+        self.assertIsNone(user.approved_by_id)
+        self.assertIsNone(user.approved_at)
+        self.assertEqual(self.get_session_user_id(), user.id)
+        self.assertFalse(hasattr(user, "access_token"))
+        self.assertFalse(hasattr(user, "refresh_token"))
+
+    def test_google_pending_user_cannot_access_dashboard(self):
+        response = self.run_google_callback_with_identity({
+            "sub": "google-sub-dashboard",
+            "email": "pending.dashboard@example.com",
+            "email_verified": True,
+            "name": "Pending Dashboard",
+        })
+        self.assertIn("/auth/pending", response.headers.get("Location", ""))
+
+        dashboard_response = self.client.get("/", follow_redirects=False)
+
+        self.assertEqual(dashboard_response.status_code, 302)
+        self.assertIn("/auth/pending", dashboard_response.headers.get("Location", ""))
+
+    def test_google_callback_same_sub_does_not_create_duplicate(self):
+        identity = {
+            "sub": "google-sub-repeat",
+            "email": "repeat.google@example.com",
+            "email_verified": True,
+            "name": "Repeat Google",
+        }
+
+        first_response = self.run_google_callback_with_identity(identity)
+        second_response = self.run_google_callback_with_identity(identity)
+
+        self.assertIn("/auth/pending", first_response.headers.get("Location", ""))
+        self.assertIn("/auth/pending", second_response.headers.get("Location", ""))
+        self.assertEqual(User.query.filter_by(auth_provider="google", oauth_id="google-sub-repeat").count(), 1)
+
+    def test_google_callback_existing_rejected_or_disabled_user_is_denied(self):
+        for approval_status in (User.APPROVAL_REJECTED, User.APPROVAL_DISABLED):
+            user = self.create_user(
+                f"google-{approval_status}",
+                full_name=f"Google {approval_status}",
+                is_active=False,
+                approval_status=approval_status,
+            )
+            user.email = f"{approval_status}.google@example.com"
+            user.email_verified = True
+            user.auth_provider = "google"
+            user.oauth_id = f"google-sub-{approval_status}"
+            db.session.commit()
+
+            response = self.run_google_callback_with_identity({
+                "sub": user.oauth_id,
+                "email": user.email,
+                "email_verified": True,
+                "name": user.full_name,
+            })
+
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login", response.headers.get("Location", ""))
+            self.assertNotEqual(self.get_session_user_id(), user.id)
+
+    def test_google_callback_existing_active_linked_user_is_not_logged_in_yet(self):
+        user = self.create_user("google-active", full_name="Google Active", approval_status=User.APPROVAL_ACTIVE)
+        user.email = "active.google@example.com"
+        user.email_verified = True
+        user.auth_provider = "google"
+        user.oauth_id = "google-sub-active"
+        db.session.commit()
+
+        response = self.run_google_callback_with_identity({
+            "sub": "google-sub-active",
+            "email": "active.google@example.com",
+            "email_verified": True,
+            "name": "Google Active",
+        })
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login", response.headers.get("Location", ""))
-        self.assertIn(
-            "Google login đã kết nối nhưng bước tạo tài khoản sẽ được bật ở task sau.",
-            self.get_flashed_messages_from_session(),
-        )
-        self.assertEqual((User.query.count(), self.get_session_user_id()), before_snapshot)
+        self.assertIsNone(self.get_session_user_id())
+        self.assertIn("Google login cho tài khoản đã duyệt sẽ hoàn tất ở bước sau.", self.get_flashed_messages_from_session())
+
+    def test_google_callback_existing_local_email_is_not_auto_linked(self):
+        local_user = self.create_user("local-email", full_name="Local Email")
+        local_user.email = "same.email@example.com"
+        local_user.email_verified = True
+        local_user.auth_provider = "local"
+        db.session.commit()
+
+        response = self.run_google_callback_with_identity({
+            "sub": "google-sub-local-collision",
+            "email": "same.email@example.com",
+            "email_verified": True,
+            "name": "Collision",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+        self.assertIsNone(User.query.filter_by(oauth_id="google-sub-local-collision").first())
+        self.assertEqual(local_user.auth_provider, "local")
+        self.assertIsNone(self.get_session_user_id())
+
+    def test_google_callback_rejects_unverified_missing_or_wrong_domain_identity(self):
+        invalid_identities = [
+            {"sub": "google-sub-unverified", "email": "unverified@example.com", "email_verified": False},
+            {"email": "missing.sub@example.com", "email_verified": True},
+            {"sub": "google-sub-missing-email", "email_verified": True},
+            {"sub": "google-sub-domain", "email": "wrong@other.test", "email_verified": True},
+        ]
+
+        for identity in invalid_identities:
+            before_count = User.query.count()
+            response = self.run_google_callback_with_identity(identity)
+
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login", response.headers.get("Location", ""))
+            self.assertEqual(User.query.count(), before_count)
+            self.assertIsNone(self.get_session_user_id())
 
     def test_login_post_requires_csrf_token(self):
         self.create_user("login-csrf", password="login-pass", full_name="Login CSRF", role="STAFF")
