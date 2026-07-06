@@ -54,6 +54,7 @@ class RecycleBinService:
     @staticmethod
     def get_statistics():
         """Retrieve count of all registered deleted items generically."""
+        from services.workspace_service import WorkspaceService
         stats = {
             'total': 0,
             'customer': 0,
@@ -63,7 +64,7 @@ class RecycleBinService:
         }
         for key, config in RecycleBinRegistry.get_all().items():
             model = config['model_class']
-            count = model.query.filter(model.deleted_at.isnot(None)).count()
+            count = WorkspaceService.scoped_query(model).filter(model.deleted_at.isnot(None)).count()
             stats[key.lower()] = count
             stats['total'] += count
         return stats
@@ -71,6 +72,7 @@ class RecycleBinService:
     @staticmethod
     def get_deleted_items(query='', item_type='', sort_by='newest_deleted', page=1, per_page=10):
         """Retrieve, search, filter, and paginate all soft-deleted records generically."""
+        from services.workspace_service import WorkspaceService
         items = []
         registry = RecycleBinRegistry.get_all()
         types_to_fetch = [item_type] if item_type in registry else list(registry.keys())
@@ -78,7 +80,7 @@ class RecycleBinService:
         for k in types_to_fetch:
             config = registry[k]
             model = config['model_class']
-            deleted_records = model.query.filter(model.deleted_at.isnot(None)).all()
+            deleted_records = WorkspaceService.scoped_query(model).filter(model.deleted_at.isnot(None)).all()
             for rec in deleted_records:
                 items.append({
                     'id': rec.id,
@@ -149,10 +151,10 @@ RecycleBinRegistry.register('Customer', {
     'restore_func': lambda item_id, actor=None: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.restore(item_id, actor=actor),
     'permanent_delete_func': lambda item_id, actor=None: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
-        'name': Customer.query.get(item_id).name if Customer.query.get(item_id) else 'Khách hàng',
+        'name': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Customer).filter(Customer.id == item_id).first().name if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Customer).filter(Customer.id == item_id).first() else 'Khách hàng',
         'details': [
-            {'label': 'lịch hẹn', 'count': Appointment.query.filter_by(customer_id=item_id).count()},
-            {'label': 'hóa đơn', 'count': Invoice.query.filter_by(customer_id=item_id).count()}
+            {'label': 'lịch hẹn', 'count': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Appointment).filter_by(customer_id=item_id).count()},
+            {'label': 'hóa đơn', 'count': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Invoice).filter_by(customer_id=item_id).count()}
         ]
     }
 })
@@ -165,10 +167,10 @@ RecycleBinRegistry.register('Service', {
     'restore_func': lambda item_id, actor=None: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.restore_service(item_id, actor=actor),
     'permanent_delete_func': lambda item_id, actor=None: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.permanent_delete_service(item_id, actor=actor),
     'info_func': lambda item_id: {
-        'name': Service.query.get(item_id).name if Service.query.get(item_id) else 'Dịch vụ',
+        'name': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Service).filter(Service.id == item_id).first().name if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Service).filter(Service.id == item_id).first() else 'Dịch vụ',
         'details': [
-            {'label': 'lịch hẹn', 'count': Appointment.query.filter_by(service_id=item_id).count()},
-            {'label': 'chi tiết hóa đơn', 'count': InvoiceDetail.query.filter_by(service_id=item_id).count()}
+            {'label': 'lịch hẹn', 'count': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Appointment).filter_by(service_id=item_id).count()},
+            {'label': 'chi tiết hóa đơn', 'count': __import__('extensions', fromlist=['db']).db.session.query(InvoiceDetail).join(Invoice).filter(Invoice.workspace_id == __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.get_current_workspace_id(), InvoiceDetail.service_id == item_id).count()}
         ]
     }
 })
@@ -181,7 +183,7 @@ RecycleBinRegistry.register('Appointment', {
     'restore_func': lambda item_id, actor=None: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.restore(item_id, actor=actor),
     'permanent_delete_func': lambda item_id, actor=None: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
-        'name': f"Lịch hẹn #{item_id}",
+        'name': f"Lịch hẹn #{item_id}" if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Appointment).filter(Appointment.id == item_id).first() else 'Lịch hẹn',
         'details': []
     }
 })
@@ -194,9 +196,9 @@ RecycleBinRegistry.register('Invoice', {
     'restore_func': lambda item_id, actor=None: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.restore(item_id, actor=actor),
     'permanent_delete_func': lambda item_id, actor=None: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
-        'name': f"Hóa đơn HD{item_id:06d}",
+        'name': f"Hóa đơn HD{item_id:06d}" if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Invoice).filter(Invoice.id == item_id).first() else 'Hóa đơn',
         'details': [
-            {'label': 'chi tiết hóa đơn', 'count': InvoiceDetail.query.filter_by(invoice_id=item_id).count()}
-        ]
+            {'label': 'chi tiết hóa đơn', 'count': __import__('extensions', fromlist=['db']).db.session.query(InvoiceDetail).join(Invoice).filter(Invoice.workspace_id == __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.get_current_workspace_id(), InvoiceDetail.invoice_id == item_id).count()}
+        ] if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Invoice).filter(Invoice.id == item_id).first() else []
     }
 })

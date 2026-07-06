@@ -152,8 +152,20 @@ class ActivityLogService:
     @staticmethod
     def get_actor_options():
         """Return distinct users that appear in activity logs."""
+        from services.workspace_service import WorkspaceService
+        from models.workspace import WorkspaceMember
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is None:
+            return []
+
+        workspace_user_ids = db.session.query(WorkspaceMember.user_id).filter(
+            WorkspaceMember.workspace_id == wid,
+            WorkspaceMember.status == 'active'
+        )
+
         return (
             User.query.join(ActivityLog, ActivityLog.user_id == User.id)
+            .filter(User.id.in_(workspace_user_ids))
             .distinct()
             .order_by(User.username.asc())
             .all()
@@ -166,7 +178,21 @@ class ActivityLogService:
         """
         Retrieve paginated activity logs with advanced filtering, searching, and sorting.
         """
-        query = ActivityLog.query.outerjoin(User, ActivityLog.user_id == User.id)
+        from services.workspace_service import WorkspaceService
+        from models.workspace import WorkspaceMember
+
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is None:
+            query = ActivityLog.query.filter(ActivityLog.id == -1)
+        else:
+            workspace_user_ids = db.session.query(WorkspaceMember.user_id).filter(
+                WorkspaceMember.workspace_id == wid,
+                WorkspaceMember.status == 'active'
+            )
+
+            query = ActivityLog.query.outerjoin(User, ActivityLog.user_id == User.id).filter(
+                ActivityLog.user_id.in_(workspace_user_ids)
+            )
         
         # Search query (description, module, action)
         if search_query:

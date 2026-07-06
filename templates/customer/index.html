@@ -159,7 +159,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const customerId = deleteBtn.getAttribute('data-id');
         rowToDelete = deleteBtn.closest('tr');
 
-        fetch(`/customers/${customerId}/can-delete`)
+        fetch(`/customers/${customerId}/can-delete`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -174,12 +178,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         deleteWarningModal.show();
                     }
                 } else {
-                    Notification.error(data.message || 'C? l?i x?y ra.');
+                    Notification.error(data.message || 'Có lỗi xảy ra.');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                Notification.error('Kh?ng th? k?t n?i ??n m?y ch?.');
+                Notification.error('Không thể kết nối đến máy chủ.');
             });
     });
 

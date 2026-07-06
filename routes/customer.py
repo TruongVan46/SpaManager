@@ -193,7 +193,7 @@ def delete(id):
         NotificationService.flash_success('Đã xóa khách hàng thành công.')
     except BusinessException as e:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-            return jsonify({'success': False, 'message': e.message})
+            return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
     return redirect(url_for('customer.index'))
 
