@@ -7,3 +7,4 @@
 - [Google auth local E2E smoke](GOOGLE_AUTH_LOCAL_E2E_SMOKE.md)
 - [Google auth production readiness](GOOGLE_AUTH_PRODUCTION_READINESS.md)
 - [Google auth final readiness review](GOOGLE_AUTH_FINAL_READINESS_REVIEW.md)
+- [Google auth UI manual QA](GOOGLE_AUTH_UI_MANUAL_QA.md)

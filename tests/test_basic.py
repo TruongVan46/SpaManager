@@ -340,7 +340,7 @@ class BasicTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
 
         self.assertFalse(is_google_auth_available())
-        self.assertNotIn("Continue with Google", html)
+        self.assertNotIn("Tiếp tục với Google", html)
         self.assertNotIn("/auth/google/start", html)
 
     def test_google_login_button_shows_when_flag_enabled_and_client_initializes(self):
@@ -364,7 +364,7 @@ class BasicTestCase(unittest.TestCase):
                 self.assertTrue(is_google_auth_available())
                 response = self.client.get("/login")
                 html = response.get_data(as_text=True)
-                self.assertIn("Continue with Google", html)
+                self.assertIn("Tiếp tục với Google", html)
                 self.assertIn("/auth/google/start", html)
         finally:
             app.extensions["google_oauth"] = original_state
@@ -409,7 +409,7 @@ class BasicTestCase(unittest.TestCase):
                 self.assertFalse(is_google_auth_available())
 
                 login_response = self.client.get("/login")
-                self.assertNotIn("Continue with Google", login_response.get_data(as_text=True))
+                self.assertNotIn("Tiếp tục với Google", login_response.get_data(as_text=True))
 
                 start_response = self.client.get("/auth/google/start")
                 self.assertEqual(start_response.status_code, 302)
