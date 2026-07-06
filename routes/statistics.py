@@ -54,6 +54,15 @@ def _require_statistics_permission():
         abort(401)
     if not can_manage_settings(current_user):
         abort(403)
+    from flask import current_app, session
+    is_testing = current_app.config.get("TESTING") is True
+    is_isolation_disabled = is_testing and not session.get("_enable_workspace_isolation")
+
+    if not is_isolation_disabled:
+        from services.workspace_service import WorkspaceService
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is None:
+            abort(403)
 
 
 @statistics_bp.route('/reports')
@@ -145,7 +154,8 @@ def customer_detail(customer_id):
     from_date, to_date = _normalize_date_range(from_date, to_date)
 
     stats = StatisticsService.get_customer_invoice_statistics(customer_id, from_date, to_date)
-
+    if not stats:
+        abort(404)
     return render_template(
         "statistics/customer_detail.html",
         customer=stats.get('customer'),

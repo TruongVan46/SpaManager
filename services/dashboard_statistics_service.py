@@ -51,35 +51,31 @@ class DashboardStatisticsService:
         today_start, today_end = local_day_bounds(today)
 
         from services.workspace_service import WorkspaceService
-        w_filter = WorkspaceService._get_current_workspace_id_for_testing_bypass()
 
         # 1. Tổng khách hàng (hoạt động)
-        q1 = db.session.query(func.count(Customer.id)).filter(Customer.deleted_at.is_(None))
-        if w_filter is not None: q1 = q1.filter(Customer.workspace_id == w_filter)
-        customers_count = q1.scalar() or 0
+        customers_count = WorkspaceService.scoped_query(Customer).filter(Customer.deleted_at.is_(None)).count()
 
         # 2. Tổng dịch vụ (hoạt động)
-        q2 = db.session.query(func.count(Service.id)).filter(Service.deleted_at.is_(None))
-        if w_filter is not None: q2 = q2.filter(Service.workspace_id == w_filter)
-        services_count = q2.scalar() or 0
+        services_count = WorkspaceService.scoped_query(Service).filter(Service.deleted_at.is_(None)).count()
 
         # 3. Lịch hẹn hôm nay (hoạt động)
-        q3 = db.session.query(func.count(Appointment.id)).filter(Appointment.deleted_at.is_(None))
-        if w_filter is not None: q3 = q3.filter(Appointment.workspace_id == w_filter)
-        q3 = q3.filter(Appointment.appointment_time >= today_start, Appointment.appointment_time <= today_end)
-        appointments_today_count = q3.scalar() or 0
+        appointments_today_count = WorkspaceService.scoped_query(Appointment).filter(
+            Appointment.deleted_at.is_(None),
+            Appointment.appointment_time >= today_start,
+            Appointment.appointment_time <= today_end
+        ).count()
 
         # 4. Hóa đơn hôm nay (hoạt động)
-        q4 = db.session.query(func.count(Invoice.id)).filter(Invoice.deleted_at.is_(None))
-        if w_filter is not None: q4 = q4.filter(Invoice.workspace_id == w_filter)
-        q4 = q4.filter(Invoice.invoice_date == today)
-        invoices_today_count = q4.scalar() or 0
+        invoices_today_count = WorkspaceService.scoped_query(Invoice).filter(
+            Invoice.deleted_at.is_(None),
+            Invoice.invoice_date == today
+        ).count()
 
         # 5. Doanh thu hôm nay (hoạt động)
-        q5 = db.session.query(func.sum(Invoice.total_amount)).filter(Invoice.deleted_at.is_(None))
-        if w_filter is not None: q5 = q5.filter(Invoice.workspace_id == w_filter)
-        q5 = q5.filter(Invoice.invoice_date == today)
-        revenue_today = q5.scalar() or 0
+        revenue_today = WorkspaceService.scoped_query(Invoice).filter(
+            Invoice.deleted_at.is_(None),
+            Invoice.invoice_date == today
+        ).with_entities(func.sum(Invoice.total_amount)).scalar() or 0
         formatted_revenue_today = f"{int(revenue_today):,}".replace(',', '.') + 'đ'
 
         # 6. Danh sách lịch hẹn hôm nay (hoạt động) - OPTIMIZED with Eager Loading (joinedload) to prevent N+1 queries
@@ -130,7 +126,21 @@ class DashboardStatisticsService:
         ]
 
         # 8. Hoạt động gần đây (Recent Activities) lấy từ ActivityLog
-        recent_logs = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(5).all()
+        from models.workspace import WorkspaceMember
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is not None:
+            workspace_user_ids = db.session.query(WorkspaceMember.user_id).filter(
+                WorkspaceMember.workspace_id == wid,
+                WorkspaceMember.status == 'active'
+            )
+            recent_logs = ActivityLog.query.filter(ActivityLog.user_id.in_(workspace_user_ids)).order_by(ActivityLog.created_at.desc()).limit(5).all()
+        else:
+            from flask import current_app, has_app_context, session, has_request_context
+            is_testing = has_app_context() and current_app.config.get("TESTING") is True
+            if is_testing and (not has_request_context() or not session.get("_enable_workspace_isolation")):
+                recent_logs = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(5).all()
+            else:
+                recent_logs = []
         recent_activities = [
             {
                 'module': log.module,
@@ -179,14 +189,10 @@ class DashboardStatisticsService:
 
             # Tính tổng doanh thu theo invoice_date cho ngày đó
             from services.workspace_service import WorkspaceService
-            w_filter = WorkspaceService._get_current_workspace_id_for_testing_bypass()
-            q_rev = db.session.query(func.sum(Invoice.total_amount)).filter(
+            rev = WorkspaceService.scoped_query(Invoice).filter(
                 Invoice.invoice_date == day,
                 Invoice.deleted_at.is_(None)
-            )
-            if w_filter is not None:
-                q_rev = q_rev.filter(Invoice.workspace_id == w_filter)
-            rev = q_rev.scalar() or 0
+            ).with_entities(func.sum(Invoice.total_amount)).scalar() or 0
             values.append(float(rev))
 
         return {'labels': labels, 'values': values}
@@ -199,50 +205,40 @@ class DashboardStatisticsService:
         to_date = _coerce_date(to_date)
 
         from services.workspace_service import WorkspaceService
-        w_filter = WorkspaceService._get_current_workspace_id_for_testing_bypass()
 
-        rev_query = db.session.query(func.sum(Invoice.total_amount)).filter(
+        revenue_q = WorkspaceService.scoped_query(Invoice).filter(
             Invoice.deleted_at.is_(None)
         )
-        if w_filter is not None:
-            rev_query = rev_query.filter(Invoice.workspace_id == w_filter)
         if from_date:
-            rev_query = rev_query.filter(Invoice.invoice_date >= from_date)
+            revenue_q = revenue_q.filter(Invoice.invoice_date >= from_date)
         if to_date:
-            rev_query = rev_query.filter(Invoice.invoice_date <= to_date)
-        revenue = rev_query.scalar() or 0
+            revenue_q = revenue_q.filter(Invoice.invoice_date <= to_date)
+        revenue = revenue_q.with_entities(func.sum(Invoice.total_amount)).scalar() or 0
 
         # Invoice count calculation (active only)
-        count_query = db.session.query(func.count(Invoice.id)).filter(
+        count_query = WorkspaceService.scoped_query(Invoice).filter(
             Invoice.deleted_at.is_(None)
         )
-        if w_filter is not None:
-            count_query = count_query.filter(Invoice.workspace_id == w_filter)
         if from_date:
             count_query = count_query.filter(Invoice.invoice_date >= from_date)
         if to_date:
             count_query = count_query.filter(Invoice.invoice_date <= to_date)
-        invoice_count = count_query.scalar() or 0
+        invoice_count = count_query.count()
 
         # Customer count calculation (active only)
-        customer_count_q = db.session.query(func.count(Customer.id)).filter(
+        customer_count = WorkspaceService.scoped_query(Customer).filter(
             Customer.deleted_at.is_(None)
-        )
-        if w_filter is not None:
-            customer_count_q = customer_count_q.filter(Customer.workspace_id == w_filter)
-        customer_count = customer_count_q.scalar() or 0
+        ).count()
 
         # Appointment count calculation (active only)
-        app_query = db.session.query(func.count(Appointment.id)).filter(
+        app_query = WorkspaceService.scoped_query(Appointment).filter(
             Appointment.deleted_at.is_(None)
         )
-        if w_filter is not None:
-            app_query = app_query.filter(Appointment.workspace_id == w_filter)
         if from_date:
             app_query = app_query.filter(Appointment.appointment_time >= datetime.combine(from_date, time.min))
         if to_date:
             app_query = app_query.filter(Appointment.appointment_time <= datetime.combine(to_date, time.max))
-        appointment_count = app_query.scalar() or 0
+        appointment_count = app_query.count()
 
         return {
             "revenue": revenue,
@@ -264,12 +260,13 @@ class DashboardStatisticsService:
         from_date = _coerce_date(from_date)
         to_date = _coerce_date(to_date)
 
+        from services.workspace_service import WorkspaceService
         if group_by in ("month", "year"):
             if not to_date:
-                max_date = db.session.query(func.max(Invoice.invoice_date)).filter(Invoice.deleted_at.is_(None)).scalar()
+                max_date = WorkspaceService.scoped_query(Invoice).filter(Invoice.deleted_at.is_(None)).with_entities(func.max(Invoice.invoice_date)).scalar()
                 to_date = max_date if max_date else today
             if not from_date:
-                min_date = db.session.query(func.min(Invoice.invoice_date)).filter(Invoice.deleted_at.is_(None)).scalar()
+                min_date = WorkspaceService.scoped_query(Invoice).filter(Invoice.deleted_at.is_(None)).with_entities(func.min(Invoice.invoice_date)).scalar()
                 from_date = min_date if min_date else today
         else:
             if not to_date:
@@ -278,18 +275,14 @@ class DashboardStatisticsService:
                 from_date = to_date - timedelta(days=29)
 
         # Query total revenue grouped by date within the range
-        from services.workspace_service import WorkspaceService
-        w_filter = WorkspaceService._get_current_workspace_id_for_testing_bypass()
-        q_chart = db.session.query(
-            Invoice.invoice_date,
-            func.sum(Invoice.total_amount)
-        ).filter(
+        q_chart = WorkspaceService.scoped_query(Invoice).filter(
             Invoice.invoice_date >= from_date,
             Invoice.invoice_date <= to_date,
             Invoice.deleted_at.is_(None)
+        ).with_entities(
+            Invoice.invoice_date,
+            func.sum(Invoice.total_amount)
         )
-        if w_filter is not None:
-            q_chart = q_chart.filter(Invoice.workspace_id == w_filter)
         results = q_chart.group_by(Invoice.invoice_date).all()
 
         labels = []
@@ -345,19 +338,16 @@ class DashboardStatisticsService:
     def get_customer_statistics(from_date=None, to_date=None, keyword=None):
         """Retrieve customer sales rankings, excluding soft-deleted customers and invoices."""
         from services.workspace_service import WorkspaceService
-        w_filter = WorkspaceService._get_current_workspace_id_for_testing_bypass()
-        query = db.session.query(
+        query = WorkspaceService.scoped_query(Customer).join(Invoice, Invoice.customer_id == Customer.id).filter(
+            Customer.deleted_at.is_(None),
+            Invoice.deleted_at.is_(None)
+        ).with_entities(
             Customer.id,
             Customer.name,
             Customer.phone,
             func.count(Invoice.id),
             func.sum(Invoice.total_amount)
-        ).join(Invoice, Invoice.customer_id == Customer.id).filter(
-            Customer.deleted_at.is_(None),
-            Invoice.deleted_at.is_(None)
         )
-        if w_filter is not None:
-            query = query.filter(Customer.workspace_id == w_filter, Invoice.workspace_id == w_filter)
 
         if keyword:
             keyword = f"%{keyword.strip()}%"
@@ -393,15 +383,16 @@ class DashboardStatisticsService:
     @staticmethod
     def get_service_statistics(from_date=None, to_date=None, keyword=None):
         """Retrieve service performance stats, excluding soft-deleted services and invoices."""
-        query = db.session.query(
-            Service.id,
-            Service.name,
-            func.sum(InvoiceDetail.quantity),
-            func.sum(InvoiceDetail.price * InvoiceDetail.quantity)
-        ).join(InvoiceDetail, InvoiceDetail.service_id == Service.id) \
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Service).join(InvoiceDetail, InvoiceDetail.service_id == Service.id) \
          .join(Invoice, InvoiceDetail.invoice_id == Invoice.id).filter(
              Service.deleted_at.is_(None),
              Invoice.deleted_at.is_(None)
+         ).with_entities(
+             Service.id,
+             Service.name,
+             func.sum(InvoiceDetail.quantity),
+             func.sum(InvoiceDetail.price * InvoiceDetail.quantity)
          )
 
         if keyword:
@@ -430,19 +421,20 @@ class DashboardStatisticsService:
     @staticmethod
     def get_service_invoice_details(service_id, from_date=None, to_date=None):
         """Get invoice lines for a service, excluding soft-deleted invoices/customers."""
-        query = db.session.query(
-            InvoiceDetail.invoice_id,
-            Invoice.invoice_date,
-            Customer.name.label('customer_name'),
-            InvoiceDetail.quantity,
-            InvoiceDetail.price,
-            Invoice.total_amount.label('invoice_total')
-        ).join(Invoice, InvoiceDetail.invoice_id == Invoice.id) \
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Invoice).join(InvoiceDetail, InvoiceDetail.invoice_id == Invoice.id) \
          .join(Customer, Invoice.customer_id == Customer.id) \
          .filter(
              InvoiceDetail.service_id == service_id,
              Invoice.deleted_at.is_(None),
              Customer.deleted_at.is_(None)
+         ).with_entities(
+             InvoiceDetail.invoice_id,
+             Invoice.invoice_date,
+             Customer.name.label('customer_name'),
+             InvoiceDetail.quantity,
+             InvoiceDetail.price,
+             Invoice.total_amount.label('invoice_total')
          )
 
         if from_date:
@@ -499,21 +491,17 @@ class DashboardStatisticsService:
     @staticmethod
     def get_customer_statistics_paginated(from_date=None, to_date=None, page=1, per_page=25, sort_by='total_spent', order='desc', keyword=None):
         """Retrieve paginated customer sales rankings."""
-
         from services.workspace_service import WorkspaceService
-        w_filter = WorkspaceService._get_current_workspace_id_for_testing_bypass()
-        query = db.session.query(
+        query = WorkspaceService.scoped_query(Customer).join(Invoice, Invoice.customer_id == Customer.id).filter(
+            Customer.deleted_at.is_(None),
+            Invoice.deleted_at.is_(None)
+        ).with_entities(
             Customer.id,
             Customer.name,
             Customer.phone,
             func.count(Invoice.id).label('invoice_count'),
             func.sum(Invoice.total_amount).label('total_spent')
-        ).join(Invoice, Invoice.customer_id == Customer.id).filter(
-            Customer.deleted_at.is_(None),
-            Invoice.deleted_at.is_(None)
         )
-        if w_filter is not None:
-            query = query.filter(Customer.workspace_id == w_filter, Invoice.workspace_id == w_filter)
         if keyword:
             keyword = f"%{keyword.strip()}%"
             query = query.filter(
@@ -558,16 +546,16 @@ class DashboardStatisticsService:
     @staticmethod
     def get_service_statistics_paginated(from_date=None, to_date=None, page=1, per_page=25, sort_by='revenue', order='desc', keyword=None):
         """Retrieve paginated service performance stats."""
-
-        query = db.session.query(
-            Service.id,
-            Service.name,
-            func.sum(InvoiceDetail.quantity).label('quantity_sold'),
-            func.sum(InvoiceDetail.price * InvoiceDetail.quantity).label('revenue')
-        ).join(InvoiceDetail, InvoiceDetail.service_id == Service.id) \
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Service).join(InvoiceDetail, InvoiceDetail.service_id == Service.id) \
          .join(Invoice, InvoiceDetail.invoice_id == Invoice.id).filter(
              Service.deleted_at.is_(None),
              Invoice.deleted_at.is_(None)
+         ).with_entities(
+             Service.id,
+             Service.name,
+             func.sum(InvoiceDetail.quantity).label('quantity_sold'),
+             func.sum(InvoiceDetail.price * InvoiceDetail.quantity).label('revenue')
          )
         if keyword:
             keyword = f"%{keyword.strip()}%"

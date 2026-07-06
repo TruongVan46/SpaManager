@@ -523,6 +523,137 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
         count = Setting.query.filter_by(key="db_version").count()
         self.assertEqual(count, 2, "Must have separate rows for system and tenant")
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # 10. test_statistics_page_is_workspace_scoped
+    # ─────────────────────────────────────────────────────────────────────────
+    def test_statistics_page_is_workspace_scoped(self):
+        """Statistics page UI must isolate A and B data."""
+        ws_a, owner_a = self._create_workspace_and_owner("ws-stat-ui-a")
+        ws_b, owner_b = self._create_workspace_and_owner("ws-stat-ui-b")
+
+        cust_a = self._create_customer(ws_a.id, "Khách Alpha UI", "0901111111")
+        cust_b = self._create_customer(ws_b.id, "Khách Beta UI", "0902222222")
+        svc_a = self._create_service(ws_a.id, "Service Alpha UI", 200_000)
+        svc_b = self._create_service(ws_b.id, "Service Beta UI", 300_000)
+        self._create_invoice(ws_a.id, cust_a, svc_a, 200_000)
+        self._create_invoice(ws_b.id, cust_b, svc_b, 300_000)
+
+        # Access as workspace A
+        self._login_as(owner_a, ws_a.id)
+        resp_a = self.client.get("/statistics")
+        self.assertEqual(resp_a.status_code, 200)
+        html_a = resp_a.get_data(as_text=True)
+
+        self.assertIn("Khách Alpha UI", html_a)
+        self.assertIn("Service Alpha UI", html_a)
+        self.assertNotIn("Khách Beta UI", html_a)
+        self.assertNotIn("Service Beta UI", html_a)
+
+        # Access as workspace B
+        self._login_as(owner_b, ws_b.id)
+        resp_b = self.client.get("/statistics")
+        self.assertEqual(resp_b.status_code, 200)
+        html_b = resp_b.get_data(as_text=True)
+
+        self.assertIn("Khách Beta UI", html_b)
+        self.assertIn("Service Beta UI", html_b)
+        self.assertNotIn("Khách Alpha UI", html_b)
+        self.assertNotIn("Service Alpha UI", html_b)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 11. test_statistics_page_no_current_workspace_fail_closed
+    # ─────────────────────────────────────────────────────────────────────────
+    def test_statistics_page_no_current_workspace_fail_closed(self):
+        """Accessing statistics page without workspace context must be blocked."""
+        ws_a, owner_a = self._create_workspace_and_owner("ws-stat-fc-a")
+
+        # Login without workspace ID
+        with self.client.session_transaction() as sess:
+            sess[AUTH_SESSION_KEY] = owner_a.id
+            sess["_enable_workspace_isolation"] = True
+            # no current_workspace_id
+
+        resp = self.client.get("/statistics")
+        self.assertIn(resp.status_code, (302, 401, 403))
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 12. test_statistics_export_excel_is_workspace_scoped
+    # ─────────────────────────────────────────────────────────────────────────
+    def test_statistics_export_excel_is_workspace_scoped(self):
+        """Excel statistics export must only contain active workspace data."""
+        ws_a, owner_a = self._create_workspace_and_owner("ws-stat-excel-a")
+        ws_b, owner_b = self._create_workspace_and_owner("ws-stat-excel-b")
+
+        cust_a = self._create_customer(ws_a.id, "Excel Cust A", "0901111111")
+        cust_b = self._create_customer(ws_b.id, "Excel Cust B", "0902222222")
+        svc_a = self._create_service(ws_a.id, "Excel Svc A", 120_000)
+        svc_b = self._create_service(ws_b.id, "Excel Svc B", 180_000)
+        self._create_invoice(ws_a.id, cust_a, svc_a, 120_000)
+        self._create_invoice(ws_b.id, cust_b, svc_b, 180_000)
+
+        self._login_as(owner_a, ws_a.id)
+        resp = self.client.get("/statistics/export/excel")
+        self.assertEqual(resp.status_code, 200)
+
+        from io import BytesIO
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(resp.data))
+        all_cell_values = []
+        for sheet in wb.worksheets:
+            for row in sheet.iter_rows():
+                for cell in row:
+                    if cell.value:
+                        all_cell_values.append(str(cell.value))
+        content = " ".join(all_cell_values)
+
+        self.assertIn("Excel Cust A", content)
+        self.assertNotIn("Excel Cust B", content)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 13. test_statistics_detail_routes_are_workspace_scoped
+    # ─────────────────────────────────────────────────────────────────────────
+    def test_statistics_detail_routes_are_workspace_scoped(self):
+        """Detail endpoints must return 404 if referencing another workspace's entity."""
+        ws_a, owner_a = self._create_workspace_and_owner("ws-stat-detail-a")
+        ws_b, owner_b = self._create_workspace_and_owner("ws-stat-detail-b")
+
+        cust_b = self._create_customer(ws_b.id, "Beta Detail Customer", "0902222222")
+        svc_b = self._create_service(ws_b.id, "Beta Detail Service", 150_000)
+
+        # Login to workspace A
+        self._login_as(owner_a, ws_a.id)
+
+        # Try to view customer details of B
+        resp_cust = self.client.get(f"/statistics/customer/{cust_b.id}")
+        self.assertEqual(resp_cust.status_code, 404)
+
+        # Try to view service details of B
+        resp_svc = self.client.get(f"/statistics/service/{svc_b.id}")
+        self.assertEqual(resp_svc.status_code, 404)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 14. test_statistics_export_pdf_is_workspace_scoped
+    # ─────────────────────────────────────────────────────────────────────────
+    def test_statistics_export_pdf_is_workspace_scoped(self):
+        """PDF statistics export must return 200 and not leak raw bytes of another workspace."""
+        ws_a, owner_a = self._create_workspace_and_owner("ws-stat-pdf-a")
+        ws_b, owner_b = self._create_workspace_and_owner("ws-stat-pdf-b")
+
+        cust_a = self._create_customer(ws_a.id, "PDF Cust A", "0901111111")
+        cust_b = self._create_customer(ws_b.id, "PDF Cust B", "0902222222")
+        svc_a = self._create_service(ws_a.id, "PDF Svc A", 120_000)
+        svc_b = self._create_service(ws_b.id, "PDF Svc B", 180_000)
+        self._create_invoice(ws_a.id, cust_a, svc_a, 120_000)
+        self._create_invoice(ws_b.id, cust_b, svc_b, 180_000)
+
+        self._login_as(owner_a, ws_a.id)
+        resp = self.client.get("/statistics/export/pdf")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/pdf", resp.content_type)
+
+        pdf_bytes = resp.data
+        self.assertNotIn(b"PDF Cust B", pdf_bytes)
+
 
 if __name__ == "__main__":
     unittest.main()

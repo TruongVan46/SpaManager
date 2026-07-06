@@ -153,7 +153,8 @@ class TimezoneTestCase(unittest.TestCase):
             created_at=datetime(2026, 7, 3, 17, 0),
             module="System",
             action="TEST",
-            description="Timezone log"
+            description="Timezone log",
+            user_id=self.user.id
         ))
         db.session.commit()
 
