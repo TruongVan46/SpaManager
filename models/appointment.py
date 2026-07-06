@@ -13,6 +13,9 @@ class Appointment(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now)
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by = db.Column(db.String(100), nullable=True)
+    # Workspace isolation — nullable during phase 1 (Task 6.5.2).
+    # Task 6.5.5 will enforce workspace-scoped queries.
+    workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'), nullable=True, index=True)
 
     customer = db.relationship('Customer', backref=db.backref('appointments', lazy=True))
     service = db.relationship('Service', backref=db.backref('appointments', lazy=True))

@@ -11,6 +11,9 @@ class Service(db.Model):
     category = db.Column(db.String(50), nullable=True, default='other')
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by = db.Column(db.String(100), nullable=True)
+    # Workspace isolation — nullable during phase 1 (Task 6.5.2).
+    # Task 6.5.5 will enforce workspace-scoped queries.
+    workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'), nullable=True, index=True)
 
     def __repr__(self):
         return f'<Service {self.name}>'
