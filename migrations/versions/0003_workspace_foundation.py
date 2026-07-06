@@ -331,9 +331,10 @@ def _backfill_default_workspace(connection):
         owner_row = connection.execute(
             text(
                 "SELECT id FROM users"
-                " WHERE role = 'OWNER' AND is_active = 1"
+                " WHERE role = 'OWNER' AND is_active = :active"
                 " ORDER BY id ASC LIMIT 1"
-            )
+            ),
+            {"active": True},
         ).fetchone()
         owner_id = owner_row[0] if owner_row else None
         workspace_id = _insert_workspace_and_get_id(connection, owner_id)
@@ -368,8 +369,9 @@ def _backfill_default_workspace(connection):
     }
     users = connection.execute(
         text(
-            "SELECT id, role FROM users WHERE is_active = 1 ORDER BY id ASC"
-        )
+            "SELECT id, role FROM users WHERE is_active = :active ORDER BY id ASC"
+        ),
+        {"active": True},
     ).fetchall()
     for user_row in users:
         user_id = user_row[0]
