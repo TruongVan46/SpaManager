@@ -17,6 +17,7 @@ This folder collects the early v6.0 planning docs for workspace support.
 - [Current workspace context and session selection plan](WORKSPACE_CURRENT_CONTEXT_PLAN.md)
 - [Workspace data isolation plan](WORKSPACE_DATA_ISOLATION_PLAN.md)
 - [Workspace user management policy](WORKSPACE_USER_MANAGEMENT_POLICY.md)
+- [Workspace isolation readiness & smoke report](WORKSPACE_ISOLATION_READINESS_SMOKE.md)
 - [PostgreSQL rehearsal environment setup](../postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
 - [PostgreSQL rehearsal toolchain decision](WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md)
 - [Workspace migration candidate](migration_candidates/0002_workspace_foundation.py.txt)

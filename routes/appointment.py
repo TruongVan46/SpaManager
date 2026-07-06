@@ -184,8 +184,8 @@ def edit(id):
             appointment = AppointmentService.get_by_id(id)
             if appointment:
                 if customer_id:
-                    from models.customer import Customer
-                    appointment.customer = Customer.query.get(int(customer_id))
+                    from services.customer_service import CustomerService
+                    appointment.customer = CustomerService.get_by_id(int(customer_id))
                     appointment.customer_id = int(customer_id)
                 if service_id:
                     appointment.service_id = int(service_id)

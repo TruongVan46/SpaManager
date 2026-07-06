@@ -26,8 +26,10 @@ class SimpleTTLCache:
 
     def invalidate(self, key):
         with self.lock:
-            if key in self.cache:
-                del self.cache[key]
+            # Delete both the exact key and any workspace-suffixed keys (e.g. key_1)
+            keys_to_delete = [k for k in self.cache.keys() if k == key or k.startswith(f"{key}_")]
+            for k in keys_to_delete:
+                del self.cache[k]
 
     def clear(self):
         with self.lock:

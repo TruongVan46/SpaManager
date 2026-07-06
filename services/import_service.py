@@ -218,13 +218,15 @@ class ImportService:
             })
 
         # Preload database records to check duplicates efficiently
+        from services.workspace_service import WorkspaceService
+        current_workspace_id = WorkspaceService.get_current_workspace_id()
         existing_service_names = {}
         customer_records = []
 
         if import_type == 'customers':
-            customer_records = Customer.query.all()
+            customer_records = WorkspaceService.scoped_query(Customer).all()
         else:
-            services = Service.query.filter(Service.deleted_at.is_(None)).all()
+            services = WorkspaceService.scoped_query(Service).filter(Service.deleted_at.is_(None)).all()
             for s in services:
                 if s.name:
                     existing_service_names[str(s.name).strip().lower()] = s.id
@@ -492,7 +494,7 @@ class ImportService:
                                     if not conflict.get('deleted_at')
                                 ]
                                 for conflict_id in active_conflict_ids:
-                                    existing = Customer.query.get(conflict_id)
+                                    existing = WorkspaceService.scoped_query(Customer).filter(Customer.id == conflict_id).first()
                                     if existing and existing.deleted_at is None:
                                         break
                             if existing:
@@ -508,12 +510,12 @@ class ImportService:
                                 report['skipped'] += 1
                                 report['errors'].append({'row': row_idx, 'message': f'B? qua d?ng do tr?ng v?i kh?ch h?ng trong th?ng r?c (S?T: {phone}, Email: {email})'})
                             else:
-                                customer = Customer(name=name, phone=phone, email=email, address=address)
+                                customer = Customer(name=name, phone=phone, email=email, address=address, workspace_id=current_workspace_id)
                                 db.session.add(customer)
                                 report['success'] += 1
                     else:
                         # New customer
-                        customer = Customer(name=name, phone=phone, email=email, address=address)
+                        customer = Customer(name=name, phone=phone, email=email, address=address, workspace_id=current_workspace_id)
                         db.session.add(customer)
                         report['success'] += 1
                 else:  # services
@@ -537,7 +539,7 @@ class ImportService:
                             report['errors'].append({'row': row_idx, 'message': f'Bỏ qua dòng do trùng tên dịch vụ: "{name}"'})
                             continue
                         elif duplicate_action == 'overwrite':
-                            existing = Service.query.filter(func.lower(Service.name) == name.lower(), Service.deleted_at.is_(None)).first()
+                            existing = WorkspaceService.scoped_query(Service).filter(func.lower(Service.name) == name.lower(), Service.deleted_at.is_(None)).first()
                             if existing:
                                 existing.price = price
                                 if duration is not None:
@@ -547,12 +549,12 @@ class ImportService:
                                 existing.category = category
                                 report['overwritten'] += 1
                             else:
-                                service = Service(name=name, price=price, duration=duration, description=description, category=category)
+                                service = Service(name=name, price=price, duration=duration, description=description, category=category, workspace_id=current_workspace_id)
                                 db.session.add(service)
                                 report['success'] += 1
                     else:
                         # New service
-                        service = Service(name=name, price=price, duration=duration, description=description, category=category)
+                        service = Service(name=name, price=price, duration=duration, description=description, category=category, workspace_id=current_workspace_id)
                         db.session.add(service)
                         report['success'] += 1
 

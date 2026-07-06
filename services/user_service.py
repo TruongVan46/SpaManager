@@ -225,7 +225,12 @@ class UserService:
         if is_testing:
             if not has_request_context() or not session.get("_enable_workspace_isolation"):
                 return None
-            return session.get("current_workspace_id")
+            workspace_id = session.get("current_workspace_id")
+            if not workspace_id:
+                raise ValidationException(
+                    "Không có workspace hiện tại. Vui lòng đăng nhập lại và chọn workspace."
+                )
+            return workspace_id
 
         workspace_id = WorkspaceService.get_current_workspace_id()
         if not workspace_id:

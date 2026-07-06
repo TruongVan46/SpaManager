@@ -164,7 +164,10 @@ def service_detail(service_id):
     to_date = parse_date(request.args.get('to_date'))
     from_date, to_date = _normalize_date_range(from_date, to_date)
 
-    service = Service.query.get_or_404(service_id)
+    from services.service_service import ServiceService
+    service = ServiceService.get_service_by_id(service_id)
+    if not service:
+        abort(404)
 
     service_invoices = StatisticsService.get_service_invoice_details(service_id, from_date, to_date)
 
