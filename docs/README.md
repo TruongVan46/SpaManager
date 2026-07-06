@@ -9,6 +9,7 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 - [Runbook](RUNBOOK.md)
 - [QA checklist](QA_CHECKLIST.md)
 - [PostgreSQL docs index](postgresql/README.md)
+- [Google auth design/security plan](auth/GOOGLE_AUTH_DESIGN_SECURITY_PLAN.md)
 
 ## Nhóm tài liệu
 
