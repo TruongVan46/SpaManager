@@ -3,7 +3,8 @@ import uuid
 from datetime import datetime
 
 from flask import current_app, has_app_context, has_request_context, session
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError, NoSuchTableError
 from werkzeug.utils import secure_filename
 
 from extensions import db
@@ -30,6 +31,15 @@ from services.login_rate_limit_service import (
 
 class AuthService:
     MANAGER_ROLES = {UserRole.OWNER.value, UserRole.ADMIN.value}
+
+    @staticmethod
+    def _user_schema_has_approval_columns():
+        try:
+            inspector = inspect(db.engine)
+            user_columns = {column["name"] for column in inspector.get_columns("users")}
+        except NoSuchTableError:
+            return False
+        return {"approval_status", "approved_by_id", "approved_at"}.issubset(user_columns)
 
     @staticmethod
     def _log_login_attempt(action, description, severity="WARNING"):
@@ -238,6 +248,13 @@ class AuthService:
             owner_username = getattr(active_config, "DEFAULT_OWNER_USERNAME", "owner")
             owner_password = getattr(active_config, "DEFAULT_OWNER_PASSWORD", None)
             owner_email = getattr(active_config, "DEFAULT_OWNER_EMAIL", "") or None
+
+        if not AuthService._user_schema_has_approval_columns():
+            app_logger.warning(
+                "Skipping default owner seed until the user approval schema migration is applied.",
+                module="AUTHENTICATION"
+            )
+            return None
 
         def get_owner():
             return User.query.filter_by(username=owner_username).first()

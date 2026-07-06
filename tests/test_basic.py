@@ -263,10 +263,12 @@ class BasicTestCase(unittest.TestCase):
                     """
                     INSERT INTO users
                         (username, password_hash, full_name, avatar, role, is_active,
+                         approval_status, approved_by_id, approved_at,
                          last_login, email, email_verified, auth_provider, oauth_id,
                          created_at, updated_at)
                     VALUES
                         (:username, :password_hash, :full_name, NULL, :role, :is_active,
+                         :approval_status, NULL, NULL,
                          NULL, NULL, 0, 'local', NULL, :created_at, :updated_at)
                     """
                 ),
@@ -276,6 +278,7 @@ class BasicTestCase(unittest.TestCase):
                     "full_name": "Chá»§ Spa",
                     "role": "OWNER",
                     "is_active": 1,
+                    "approval_status": "active",
                     "created_at": now,
                     "updated_at": now,
                 },
@@ -1552,6 +1555,16 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(User.query.filter_by(username="owner").count(), 1)
         self.assertTrue(User.query.filter_by(username="owner").first().check_password("owner123"))
 
+    def test_new_user_defaults_to_active_approval_state(self):
+        user = self.create_user("approval-default", password="approval-pass", full_name="Approval Default", role="STAFF")
+
+        refreshed_user = User.query.get(user.id)
+        self.assertIsNotNone(refreshed_user)
+        self.assertEqual(refreshed_user.approval_status, "active")
+        self.assertIsNone(refreshed_user.approved_by_id)
+        self.assertIsNone(refreshed_user.approved_at)
+        self.assertTrue(refreshed_user.is_active)
+
     def test_seed_owner_does_not_change_existing_owner(self):
         existing_owner = self.create_user("owner", password="old-password", full_name="Chá»§ Spa", role="OWNER")
         existing_hash = existing_owner.password_hash
@@ -1961,8 +1974,7 @@ class BasicTestCase(unittest.TestCase):
         )
 
         migration_files = [path.name for path in Path("migrations/versions").glob("*.py")]
-        self.assertNotIn("0002_workspace_foundation.py", migration_files)
-        self.assertFalse(any(name.startswith("0002_") for name in migration_files))
+        self.assertIn("0002_google_auth_approval.py", migration_files)
         self.assertFalse(Path("migrations/versions/0002_workspace_foundation.py").exists())
         self.assertFalse(Path("docs/workspace/WORKSPACE_MIGRATION_EXECUTION_APPROVAL.md").exists())
 
@@ -2018,6 +2030,7 @@ class BasicTestCase(unittest.TestCase):
         result = runner.invoke(args=["db", "upgrade"])
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("Applied 0001_baseline", result.output)
+        self.assertIn("Applied 0002_google_auth_approval", result.output)
 
         tables = sa_inspect(db.engine).get_table_names()
         self.assertIn("users", tables)
@@ -2026,7 +2039,7 @@ class BasicTestCase(unittest.TestCase):
 
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
-        self.assertIn("0001_baseline", current_after.output)
+        self.assertIn("0002_google_auth_approval", current_after.output)
 
     def test_version_is_rendered_from_config_in_setting_ui(self):
         owner = AuthService.seed_owner_if_empty()
@@ -2945,7 +2958,7 @@ class BasicTestCase(unittest.TestCase):
 
         result = runner.invoke(args=["db", "stamp", "head"])
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Stamped 0001_baseline", result.output)
+        self.assertIn("Stamped 0002_google_auth_approval", result.output)
 
         tables_after = sorted(sa_inspect(db.engine).get_table_names())
         self.assertIn("alembic_version", tables_after)
@@ -2953,7 +2966,7 @@ class BasicTestCase(unittest.TestCase):
 
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
-        self.assertIn("0001_baseline", current_after.output)
+        self.assertIn("0002_google_auth_approval", current_after.output)
 
     def test_data_consistency_audit_passes_on_clean_database(self):
         report = run_data_consistency_audit()

@@ -14,6 +14,9 @@ class User(db.Model):
     avatar = db.Column(db.String(255), nullable=True)
     role = db.Column(db.String(50), nullable=False, default=UserRole.OWNER.value)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    approval_status = db.Column(db.String(20), nullable=False, default="active", index=True)
+    approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
     last_login = db.Column(db.DateTime, nullable=True)
     
     # New fields for Google OAuth & Multi-provider support
