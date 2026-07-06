@@ -140,7 +140,17 @@ def require_login():
     if request.endpoint is None:
         return
 
-    if request.endpoint in ['static', 'auth.login', 'auth.pending', 'auth.logout', 'favicon', 'media_file', 'health_check'] or request.path.startswith('/health'):
+    if request.endpoint in [
+        'static',
+        'auth.login',
+        'auth.pending',
+        'auth.logout',
+        'auth.google_start',
+        'auth.google_callback',
+        'favicon',
+        'media_file',
+        'health_check',
+    ] or request.path.startswith('/health'):
         return
 
     current_user = AuthService.get_current_user()

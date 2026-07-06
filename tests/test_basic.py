@@ -16,6 +16,7 @@ from contextlib import nullcontext
 from io import BytesIO
 from datetime import datetime, timedelta
 from pathlib import Path
+from flask import redirect
 from unittest.mock import patch
 
 from openpyxl import Workbook
@@ -153,6 +154,14 @@ class BasicTestCase(unittest.TestCase):
     def login_as(self, user):
         with self.client.session_transaction() as sess:
             sess[AUTH_SESSION_KEY] = user.id
+
+    def get_session_user_id(self):
+        with self.client.session_transaction() as sess:
+            return sess.get(AUTH_SESSION_KEY)
+
+    def get_flashed_messages_from_session(self):
+        with self.client.session_transaction() as sess:
+            return [message for _, message in sess.get("_flashes", [])]
 
     def get_csrf_token(self, path="/login"):
         response = self.client.get(path, follow_redirects=True)
@@ -346,8 +355,59 @@ class BasicTestCase(unittest.TestCase):
         follow_up = self.client.get("/login", follow_redirects=True)
         self.assertIn("Đăng nhập Google hiện chưa được bật.", follow_up.get_data(as_text=True))
 
-    def test_google_login_start_redirects_safely_when_enabled_and_ready(self):
+    def test_google_login_callback_redirects_safely_when_disabled(self):
+        before_snapshot = (User.query.count(), self.get_session_user_id())
+
+        response = self.client.get("/auth/google/callback")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+        follow_up = self.client.get("/login", follow_redirects=True)
+        self.assertIn("Đăng nhập Google hiện chưa được bật.", follow_up.get_data(as_text=True))
+        self.assertEqual((User.query.count(), self.get_session_user_id()), before_snapshot)
+
+    def test_google_login_missing_config_is_unavailable_and_safe(self):
         original_state = dict(app.extensions.get("google_oauth", {}))
+        try:
+            with patch.dict(
+                app.config,
+                {
+                    "GOOGLE_AUTH_ENABLED": True,
+                    "GOOGLE_CLIENT_ID": "",
+                    "GOOGLE_CLIENT_SECRET": "",
+                    "GOOGLE_REDIRECT_URI": "https://example.com/auth/google/callback",
+                    "GOOGLE_ALLOWED_DOMAIN": "example.com",
+                    "GOOGLE_SCOPES": ["openid", "email", "profile"],
+                },
+                clear=False,
+            ):
+                init_google_oauth(app)
+                self.assertFalse(is_google_auth_available())
+
+                login_response = self.client.get("/login")
+                self.assertNotIn("Continue with Google", login_response.get_data(as_text=True))
+
+                start_response = self.client.get("/auth/google/start")
+                self.assertEqual(start_response.status_code, 302)
+                self.assertIn("/login", start_response.headers.get("Location", ""))
+
+                callback_response = self.client.get("/auth/google/callback")
+                self.assertEqual(callback_response.status_code, 302)
+                self.assertIn("/login", callback_response.headers.get("Location", ""))
+        finally:
+            app.extensions["google_oauth"] = original_state
+
+    def test_google_login_start_uses_mock_client_redirect_when_enabled(self):
+        class FakeGoogleClient:
+            def __init__(self):
+                self.redirect_uri = None
+
+            def authorize_redirect(self, redirect_uri):
+                self.redirect_uri = redirect_uri
+                return redirect("https://accounts.google.test/oauth")
+
+        original_state = dict(app.extensions.get("google_oauth", {}))
+        fake_client = FakeGoogleClient()
         try:
             with patch.dict(
                 app.config,
@@ -362,15 +422,55 @@ class BasicTestCase(unittest.TestCase):
                 clear=False,
             ):
                 init_google_oauth(app)
+                app.extensions["google_oauth"]["client"] = fake_client
                 response = self.client.get("/auth/google/start")
 
         finally:
             app.extensions["google_oauth"] = original_state
 
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("Location"), "https://accounts.google.test/oauth")
+        self.assertEqual(fake_client.redirect_uri, "https://example.com/auth/google/callback")
+
+    def test_google_login_callback_error_redirects_without_side_effects(self):
+        before_snapshot = (User.query.count(), self.get_session_user_id())
+
+        response = self.client.get("/auth/google/callback?error=access_denied")
+
+        self.assertEqual(response.status_code, 302)
         self.assertIn("/login", response.headers.get("Location", ""))
-        follow_up = self.client.get("/login", follow_redirects=True)
-        self.assertIn("Google login đang được chuẩn bị.", follow_up.get_data(as_text=True))
+        self.assertIn("Đăng nhập Google không hoàn tất.", self.get_flashed_messages_from_session())
+        self.assertEqual((User.query.count(), self.get_session_user_id()), before_snapshot)
+
+    def test_google_login_callback_skeleton_does_not_create_or_login_user(self):
+        original_state = dict(app.extensions.get("google_oauth", {}))
+        before_snapshot = (User.query.count(), self.get_session_user_id())
+        try:
+            with patch.dict(
+                app.config,
+                {
+                    "GOOGLE_AUTH_ENABLED": True,
+                    "GOOGLE_CLIENT_ID": "google-client-id",
+                    "GOOGLE_CLIENT_SECRET": "google-client-secret",
+                    "GOOGLE_REDIRECT_URI": "https://example.com/auth/google/callback",
+                    "GOOGLE_ALLOWED_DOMAIN": "example.com",
+                    "GOOGLE_SCOPES": ["openid", "email", "profile"],
+                },
+                clear=False,
+            ):
+                init_google_oauth(app)
+                response = self.client.get("/auth/google/callback?code=fake-code&state=fake-state")
+
+        finally:
+            app.extensions["google_oauth"] = original_state
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+        self.assertIn(
+            "Google login đã kết nối nhưng bước tạo tài khoản sẽ được bật ở task sau.",
+            self.get_flashed_messages_from_session(),
+        )
+        self.assertEqual((User.query.count(), self.get_session_user_id()), before_snapshot)
 
     def test_login_post_requires_csrf_token(self):
         self.create_user("login-csrf", password="login-pass", full_name="Login CSRF", role="STAFF")

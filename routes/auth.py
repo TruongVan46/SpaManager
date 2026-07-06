@@ -1,14 +1,18 @@
-# routes/auth.py
 from urllib.parse import urlparse, urljoin
 
-from flask import render_template, request, jsonify, redirect, url_for, session, flash
+from flask import flash, jsonify, redirect, render_template, request, session, url_for
+
+from core.auth.constants import AUTH_SESSION_KEY
+from core.auth.google_oauth import (
+    handle_google_callback_skeleton,
+    is_google_auth_available,
+    start_google_authorization,
+)
+from core.csrf import clear_csrf_token
+from core.exceptions import AuthenticationException
 from routes import auth_bp
 from services.auth_service import AuthService
-from core.auth.constants import AUTH_SESSION_KEY
-from core.exceptions import AuthenticationException
 from services.login_rate_limit_service import get_request_ip
-from core.csrf import clear_csrf_token
-from core.auth.google_oauth import is_google_auth_available
 
 
 def _is_safe_next_url(target):
@@ -24,6 +28,7 @@ def _clear_stale_session():
     session.pop(AUTH_SESSION_KEY, None)
     clear_csrf_token()
 
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     denied_notice = request.args.get('denied') == '1'
@@ -36,12 +41,10 @@ def login():
         denied_notice = True
         _clear_stale_session()
 
-    # If already logged in, redirect to index
     if AuthService.is_authenticated():
         return redirect(url_for('dashboard.index'))
 
     if request.method == 'POST':
-        # Accept JSON requests (AJAX)
         data = request.get_json() or {}
         username = data.get('username', '').strip()
         password = data.get('password', '')
@@ -60,7 +63,6 @@ def login():
                 payload["redirect"] = "/auth/pending"
             return jsonify(payload), exc.status_code
         if success:
-            # Safe redirect extraction
             next_target = request.args.get('next')
             next_url = next_target if _is_safe_next_url(next_target) else url_for('dashboard.index')
             return jsonify(
@@ -68,8 +70,7 @@ def login():
                 redirect=next_url,
                 message=f"Xin chào, {user.full_name}"
             )
-        else:
-            return jsonify(success=False, message="Sai tên đăng nhập hoặc mật khẩu."), 401
+        return jsonify(success=False, message="Sai tên đăng nhập hoặc mật khẩu."), 401
 
     return render_template(
         'auth/login.html',
@@ -94,19 +95,32 @@ def pending():
 
     return render_template('auth/pending.html', user=current_user)
 
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     AuthService.logout()
     return redirect(url_for('auth.login', logout=1))
 
+
 @auth_bp.route('/auth/google/start', methods=['GET'])
 def google_start():
+    response = start_google_authorization()
+    if response is not None:
+        return response
+
     if not is_google_auth_available():
         flash("Đăng nhập Google hiện chưa được bật.", "warning")
-        return redirect(url_for('auth.login'))
-
-    flash("Google login đang được chuẩn bị.", "info")
+    else:
+        flash("Google login đang được chuẩn bị.", "info")
     return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/auth/google/callback', methods=['GET'])
+def google_callback():
+    error = request.args.get('error')
+    error_description = request.args.get('error_description')
+    return handle_google_callback_skeleton(error=error, error_description=error_description)
+
 
 @auth_bp.route('/change-password', methods=['POST'])
 def change_password():
@@ -122,9 +136,8 @@ def change_password():
     success, message = AuthService.change_password(user, current_password, new_password, confirm_password)
     if success:
         return jsonify(success=True, message=message)
-    else:
-        # Secure message returned on backend API
-        return jsonify(success=False, message=message), 400
+    return jsonify(success=False, message=message), 400
+
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -133,17 +146,15 @@ def profile():
         return redirect(url_for('auth.login', next=request.full_path))
 
     if request.method == 'POST':
-        # Accept multipart form upload
         full_name = request.form.get('full_name', '').strip()
         avatar_file = request.files.get('avatar')
 
         success, message = AuthService.update_profile(user, full_name, avatar_file)
         if success:
             return jsonify(success=True, message=message)
-        else:
-            return jsonify(success=False, message=message), 400
+        return jsonify(success=False, message=message), 400
 
-    # GET request
     from core.auth.dto import UserDTO
+
     user_dto = UserDTO.from_model(user)
     return render_template('auth/profile.html', user=user_dto)
