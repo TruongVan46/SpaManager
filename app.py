@@ -36,6 +36,7 @@ from core.auth.permissions import (
     is_staff,
 )
 from core.csrf import validate_csrf_request, csrf_token, CSRFError, clear_csrf_token
+from core.auth.google_oauth import init_google_oauth, is_google_auth_available
 from core.auth.constants import AUTH_SESSION_KEY
 from core.migration_cli import register_migration_commands
 from core.data_audit_cli import register_data_audit_commands
@@ -50,6 +51,7 @@ app.config.from_object(get_active_config())
 
 # Kết nối SQLAlchemy với Flask
 db.init_app(app)
+init_google_oauth(app)
 
 # Đăng ký Blueprints
 app.register_blueprint(dashboard_bp)
@@ -229,6 +231,10 @@ def inject_asset_helpers():
 @app.context_processor
 def inject_csrf_helper():
     return dict(csrf_token=csrf_token)
+
+@app.context_processor
+def inject_google_auth_helper():
+    return dict(google_auth_available=is_google_auth_available())
 
 # Ensure the database directory exists before creating the SQLite file (only if using SQLite)
 db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')

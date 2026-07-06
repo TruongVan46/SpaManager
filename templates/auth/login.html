@@ -44,6 +44,18 @@
             <button type="submit" class="btn btn-primary app-btn-primary w-100 py-2 fw-semibold">
                 <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
             </button>
+
+            {% if google_auth_available %}
+            <div class="my-3 d-flex align-items-center gap-2 text-muted">
+                <hr class="flex-grow-1">
+                <span class="small text-uppercase fw-semibold">Hoạc</span>
+                <hr class="flex-grow-1">
+            </div>
+
+            <a href="{{ url_for('auth.google_start') }}" class="btn btn-outline-dark w-100 py-2 fw-semibold" role="button" aria-label="Continue with Google">
+                <i class="bi bi-google me-1"></i> Continue with Google
+            </a>
+            {% endif %}
         </form>
     </div>
 </div>
@@ -136,6 +148,12 @@
 
         if (urlParams.get('logout') === '1') {
             Notification.info("Bạn đã đăng xuất.");
+        }
+        if (urlParams.get('google') === 'disabled') {
+            Notification.warning("Đăng nhập Google hiện chưa được bật.");
+        }
+        if (urlParams.get('google') === 'preparing') {
+            Notification.info("Google login đang được chuẩn bị.");
         }
         if (deniedNotice) {
             Notification.warning("Tài khoản của bạn không được phép truy cập.");

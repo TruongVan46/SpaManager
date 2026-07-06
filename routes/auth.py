@@ -1,13 +1,14 @@
 # routes/auth.py
 from urllib.parse import urlparse, urljoin
 
-from flask import render_template, request, jsonify, redirect, url_for, session
+from flask import render_template, request, jsonify, redirect, url_for, session, flash
 from routes import auth_bp
 from services.auth_service import AuthService
 from core.auth.constants import AUTH_SESSION_KEY
 from core.exceptions import AuthenticationException
 from services.login_rate_limit_service import get_request_ip
 from core.csrf import clear_csrf_token
+from core.auth.google_oauth import is_google_auth_available
 
 
 def _is_safe_next_url(target):
@@ -70,7 +71,11 @@ def login():
         else:
             return jsonify(success=False, message="Sai tên đăng nhập hoặc mật khẩu."), 401
 
-    return render_template('auth/login.html', denied_notice=denied_notice)
+    return render_template(
+        'auth/login.html',
+        denied_notice=denied_notice,
+        google_auth_available=is_google_auth_available(),
+    )
 
 
 @auth_bp.route('/auth/pending', methods=['GET'])
@@ -93,6 +98,15 @@ def pending():
 def logout():
     AuthService.logout()
     return redirect(url_for('auth.login', logout=1))
+
+@auth_bp.route('/auth/google/start', methods=['GET'])
+def google_start():
+    if not is_google_auth_available():
+        flash("Đăng nhập Google hiện chưa được bật.", "warning")
+        return redirect(url_for('auth.login'))
+
+    flash("Google login đang được chuẩn bị.", "info")
+    return redirect(url_for('auth.login'))
 
 @auth_bp.route('/change-password', methods=['POST'])
 def change_password():

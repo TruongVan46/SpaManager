@@ -11,6 +11,8 @@ Google OAuth login/callback routes are not implemented in this task.
 - `GOOGLE_AUTH_ENABLED=false` by default.
 - Google OAuth remains disabled until the feature flag is explicitly enabled.
 - Existing login and owner approval flows continue unchanged.
+- The login page hides the Google button unless the feature flag and config are valid.
+- `GET /auth/google/start` is a safe placeholder and does not perform a real callback flow yet.
 
 ## Required environment variables
 
@@ -38,3 +40,5 @@ Optional values:
 The config layer exposes a validation helper that can report missing Google OAuth credentials when the feature flag is on.
 
 That helper is intended for future readiness checks, not for automatic route activation.
+
+When the feature is enabled with valid config, the OAuth client is initialized safely in app startup.

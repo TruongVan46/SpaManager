@@ -84,6 +84,7 @@ from core.auth.permissions import (
 )
 from core.auth.security import PasswordPolicy
 from core.activity_log_utils import sanitize_activity_log_value, get_activity_actor_display_name, build_activity_log_entry
+from core.auth.google_oauth import init_google_oauth, is_google_auth_available
 import core.csrf as csrf_module
 import utils.export_pdf as export_pdf_utils
 
@@ -300,6 +301,76 @@ class BasicTestCase(unittest.TestCase):
         response = self.client.get("/login")
         self.assertEqual(response.status_code, 200)
         self.assertIn('csrf-token', response.get_data(as_text=True))
+
+    def test_google_login_button_is_hidden_by_default(self):
+        response = self.client.get("/login")
+        html = response.get_data(as_text=True)
+
+        self.assertFalse(is_google_auth_available())
+        self.assertNotIn("Continue with Google", html)
+        self.assertNotIn("/auth/google/start", html)
+
+    def test_google_login_button_shows_when_flag_enabled_and_client_initializes(self):
+        original_available = is_google_auth_available()
+        original_state = dict(app.extensions.get("google_oauth", {}))
+
+        try:
+            with patch.dict(
+                app.config,
+                {
+                    "GOOGLE_AUTH_ENABLED": True,
+                    "GOOGLE_CLIENT_ID": "google-client-id",
+                    "GOOGLE_CLIENT_SECRET": "google-client-secret",
+                    "GOOGLE_REDIRECT_URI": "https://example.com/auth/google/callback",
+                    "GOOGLE_ALLOWED_DOMAIN": "example.com",
+                    "GOOGLE_SCOPES": ["openid", "email", "profile"],
+                },
+                clear=False,
+            ):
+                init_google_oauth(app)
+                self.assertTrue(is_google_auth_available())
+                response = self.client.get("/login")
+                html = response.get_data(as_text=True)
+                self.assertIn("Continue with Google", html)
+                self.assertIn("/auth/google/start", html)
+        finally:
+            app.extensions["google_oauth"] = original_state
+            if not original_available:
+                self.assertFalse(is_google_auth_available())
+
+    def test_google_login_start_redirects_safely_when_disabled(self):
+        response = self.client.get("/auth/google/start")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+        follow_up = self.client.get("/login", follow_redirects=True)
+        self.assertIn("Đăng nhập Google hiện chưa được bật.", follow_up.get_data(as_text=True))
+
+    def test_google_login_start_redirects_safely_when_enabled_and_ready(self):
+        original_state = dict(app.extensions.get("google_oauth", {}))
+        try:
+            with patch.dict(
+                app.config,
+                {
+                    "GOOGLE_AUTH_ENABLED": True,
+                    "GOOGLE_CLIENT_ID": "google-client-id",
+                    "GOOGLE_CLIENT_SECRET": "google-client-secret",
+                    "GOOGLE_REDIRECT_URI": "https://example.com/auth/google/callback",
+                    "GOOGLE_ALLOWED_DOMAIN": "example.com",
+                    "GOOGLE_SCOPES": ["openid", "email", "profile"],
+                },
+                clear=False,
+            ):
+                init_google_oauth(app)
+                response = self.client.get("/auth/google/start")
+
+        finally:
+            app.extensions["google_oauth"] = original_state
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+        follow_up = self.client.get("/login", follow_redirects=True)
+        self.assertIn("Google login đang được chuẩn bị.", follow_up.get_data(as_text=True))
 
     def test_login_post_requires_csrf_token(self):
         self.create_user("login-csrf", password="login-pass", full_name="Login CSRF", role="STAFF")

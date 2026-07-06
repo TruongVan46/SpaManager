@@ -31,6 +31,8 @@
 </head>
 <body>
 
+    {% include 'layout/flash.html' %}
+
     {% block content %}{% endblock %}
 
     <!-- Bootstrap Bundle -->
@@ -38,6 +40,25 @@
     <!-- Notification system -->
     <script src="{{ url_for('static', filename='js/notification.js') }}"></script>
     <script src="{{ url_for('static', filename='js/csrf.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window._flashMessages && window._flashMessages.length > 0) {
+                window._flashMessages.forEach(function (flash) {
+                    const type = flash.category;
+                    const msg = flash.message;
+                    if (type === 'danger' || type === 'error') {
+                        Notification.error(msg);
+                    } else if (type === 'warning') {
+                        Notification.warning(msg);
+                    } else if (type === 'info') {
+                        Notification.info(msg);
+                    } else {
+                        Notification.success(msg);
+                    }
+                });
+            }
+        });
+    </script>
     
     {% block scripts %}{% endblock %}
 </body>
