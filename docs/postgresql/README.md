@@ -15,6 +15,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 
 - [Migration audit](POSTGRESQL_MIGRATION_AUDIT.md)
 - [PostgreSQL Backup Center Audit](POSTGRESQL_BACKUP_CENTER_AUDIT.md)
+- [PostgreSQL Backup Center UI Policy](POSTGRESQL_BACKUP_CENTER_UI_POLICY.md)
 - [PostgreSQL-only product mode audit](POSTGRESQL_ONLY_PRODUCT_MODE_AUDIT.md)
 - [Schema compatibility](POSTGRESQL_SCHEMA_COMPATIBILITY.md)
 - [Backup/restore strategy](POSTGRESQL_BACKUP_RESTORE_STRATEGY.md)
