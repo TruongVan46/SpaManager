@@ -1,4 +1,4 @@
-﻿import os
+import os
 import uuid
 import shutil
 import sqlite3
@@ -153,7 +153,7 @@ class BackupService:
             shutil.copy2(db_path, backup_filepath)
             
             # Retrieve DB version from setting
-            db_version = Setting.get('db_version', 'v1.0')
+            db_version = Setting.get_system('db_version', 'v1.0')
             
             # Generate UUID and metadata
             backup_id = str(uuid.uuid4())
@@ -452,7 +452,7 @@ class BackupService:
             return {'exists': True, 'integrity': 'File Missing', 'compatible': False, 'metadata': meta}
         integrity = BackupService.check_file_integrity(filepath)
         # Check version compatibility â€“ compare backup DB version with current DB version setting
-        current_db_version = Setting.get('db_version', 'v1.0')
+        current_db_version = Setting.get_system('db_version', 'v1.0')
         backup_db_version = meta.get('database_version', 'v1.0')
         compatible = (backup_db_version == current_db_version)
         return {'exists': True, 'integrity': integrity, 'compatible': compatible, 'metadata': meta}

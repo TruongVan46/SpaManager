@@ -201,7 +201,7 @@ def print_invoice(invoice_id):
         flash("Hóa đơn không tồn tại.", "danger")
         return redirect(url_for('invoice.index'))
     
-    settings = {s.key: s.value for s in Setting.query.all()}
+    settings = Setting.get_workspace_settings_dict()
     return_to = _sanitize_return_to(request.args.get('return_to') or request.args.get('return_url'))
     back_url = return_to or url_for('invoice.index')
     return render_template('invoice/print.html', invoice=invoice, settings=settings, back_url=back_url)
