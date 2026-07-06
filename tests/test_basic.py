@@ -335,6 +335,21 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('csrf-token', response.get_data(as_text=True))
 
+    def test_authlib_flask_client_import_available(self):
+        """
+        Regression guard: production Google OAuth requires Authlib Flask client
+        and its implicit dependency `requests`. If this test fails, check that
+        requirements.txt includes both:
+            Authlib>=1.3,<2
+            requests>=2.31,<3
+        Without `requests`, authlib.integrations.flask_client raises
+        ModuleNotFoundError even when Authlib itself is installed.
+        """
+        from authlib.integrations.flask_client import OAuth as _RealOAuth
+        import requests as _requests
+        self.assertIsNotNone(_RealOAuth)
+        self.assertIsNotNone(_requests)
+
     def test_google_login_button_is_hidden_by_default(self):
         response = self.client.get("/login")
         html = response.get_data(as_text=True)

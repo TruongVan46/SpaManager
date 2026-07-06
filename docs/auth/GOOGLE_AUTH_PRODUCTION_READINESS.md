@@ -29,6 +29,24 @@ Checklist:
 Use only placeholder format:
 `https://<production-domain>/auth/google/callback`
 
+## Runtime Dependencies
+Google OAuth requires **both** of these packages to be installed:
+- `Authlib>=1.3,<2` — OAuth2/OIDC client library
+- `requests>=2.31,<3` — HTTP client required by authlib's Flask integration
+
+> **Important**: Railway may install Authlib without `requests` if `requests` is not
+> explicitly listed in `requirements.txt`. When `requests` is missing, the import
+> `from authlib.integrations.flask_client import OAuth` fails with:
+> `ModuleNotFoundError: No module named 'requests'`
+> This causes `is_google_auth_available()` to return `False` even if all env vars are
+> correctly set, and `/auth/google/start` silently falls back to `/login`.
+
+### Diagnostic command (run in Railway Console)
+```bash
+python -c "from authlib.integrations.flask_client import OAuth; print(OAuth)"
+```
+If this fails, `requests` is missing. Redeploy after adding `requests>=2.31,<3` to requirements.txt.
+
 ## Safety
 - Never commit Google client secret.
 - Never paste production DATABASE_URL into docs/chat/logs.
