@@ -245,6 +245,94 @@ class WorkspaceService:
         record.workspace_id = wid
 
     @staticmethod
+    def add_member_for_user(workspace_id, user, global_role, actor=None):
+        """
+        Add a WorkspaceMember record for `user` in `workspace_id`.
+
+        Maps global role to workspace role:
+          OWNER  -> owner
+          ADMIN  -> admin
+          STAFF  -> staff
+
+        Idempotent: if a membership already exists (any status), updates it to
+        `active` and sets the mapped role.  Raises ValueError if workspace_id
+        is None or if the global_role maps to an invalid workspace role.
+
+        This method only flushes (does NOT commit).  The caller is responsible
+        for committing the surrounding transaction.
+        """
+        if not workspace_id:
+            raise ValueError("workspace_id is required to add workspace member.")
+
+        role_map = {
+            "OWNER": "owner",
+            "ADMIN": "admin",
+            "STAFF": "staff",
+        }
+        workspace_role = role_map.get((global_role or "").upper())
+        if not workspace_role:
+            raise ValueError(f"Cannot map global role '{global_role}' to a workspace role.")
+
+        existing = WorkspaceMember.query.filter(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user.id,
+        ).first()
+
+        if existing:
+            existing.role = workspace_role
+            existing.status = "active"
+            existing.updated_at = utc_now()
+        else:
+            membership = WorkspaceMember(
+                workspace_id=workspace_id,
+                user_id=user.id,
+                role=workspace_role,
+                status="active",
+                invited_by_id=actor.id if actor else None,
+                joined_at=utc_now(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
+            )
+            db.session.add(membership)
+
+        db.session.flush()
+
+    @staticmethod
+    def get_workspace_members_query(workspace_id):
+        """
+        Return a base query of User joined with WorkspaceMember for a workspace.
+        Used by UserService to scope the user list.
+        Returns None if workspace_id is falsy.
+        """
+        from models.user import User as UserModel
+
+        if not workspace_id:
+            return None
+
+        return (
+            UserModel.query
+            .join(
+                WorkspaceMember,
+                (WorkspaceMember.user_id == UserModel.id)
+                & (WorkspaceMember.workspace_id == workspace_id)
+                & (WorkspaceMember.status == "active"),
+            )
+        )
+
+    @staticmethod
+    def is_user_in_workspace(user_id, workspace_id):
+        """
+        Check whether user_id has an active membership in workspace_id.
+        """
+        if not workspace_id or not user_id:
+            return False
+        return WorkspaceMember.query.filter(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+            WorkspaceMember.status == "active",
+        ).first() is not None
+
+    @staticmethod
     def _get_current_workspace_id_for_testing_bypass():
         """
         Get current workspace ID, or return None if testing bypass is active.

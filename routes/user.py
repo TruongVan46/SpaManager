@@ -1,6 +1,6 @@
 from flask import jsonify, redirect, render_template, request, url_for, abort
 
-from core.auth.permissions import can_manage_users, is_owner
+from core.auth.permissions import can_manage_users, is_owner, is_admin
 from core.exceptions import BusinessException, ValidationException
 from routes import user_bp
 from services.auth_service import AuthService
@@ -27,6 +27,24 @@ def _extract_payload():
     return request.form.to_dict()
 
 
+def _get_available_roles_for_actor(actor):
+    """
+    Return the list of (value, label) role tuples the actor is allowed to assign.
+    - OWNER can assign ADMIN, STAFF
+    - ADMIN can assign STAFF only
+    - Others: no roles (but they should not reach this point anyway)
+    """
+    if is_owner(actor):
+        # OWNER can only assign ADMIN and STAFF (not OWNER or APPROVAL_OWNER)
+        return [(r, label) for r, label in UserService.get_available_roles()
+                if r not in ("OWNER", "APPROVAL_OWNER")]
+    if is_admin(actor):
+        # ADMIN may only assign STAFF
+        return [(r, label) for r, label in UserService.get_available_roles()
+                if r not in ("OWNER", "ADMIN", "APPROVAL_OWNER")]
+    return []
+
+
 @user_bp.before_request
 def _require_user_management_permission():
     current_user = AuthService.get_current_active_user()
@@ -47,7 +65,7 @@ def _render_or_json_error(template_name, context, errors, status_code=400):
 
 @user_bp.route('/users')
 def index():
-    _require_manager()
+    actor = _require_manager()
     query_text = request.args.get('q', '').strip()
     sort_by = request.args.get('sort_by', 'created_at')
     sort_dir = request.args.get('sort_dir', 'desc')
@@ -67,7 +85,7 @@ def index():
         sort_by=sort_by,
         sort_dir=sort_dir,
         role_labels=UserService.ROLE_LABELS,
-        available_roles=UserService.get_available_roles(),
+        available_roles=_get_available_roles_for_actor(actor),
     )
 
 
@@ -94,8 +112,9 @@ def reject(user_id):
 
 @user_bp.route('/users/create', methods=['GET', 'POST'])
 def create():
-    _require_manager()
+    actor = _require_manager()
     errors = {}
+    available_roles = _get_available_roles_for_actor(actor)
     form_data = {
         'username': '',
         'full_name': '',
@@ -113,6 +132,15 @@ def create():
             'role': (payload.get('role') or 'STAFF').strip().upper(),
             'is_active': str(payload.get('is_active', '0')).lower() in ('1', 'true', 'yes', 'on'),
         }
+
+        # Prevent role elevation: only check if the submitted role is a known valid role.
+        # Unknown/invalid roles are passed through to the validator for proper error messages.
+        allowed_role_values = [r for r, _ in available_roles]
+        all_known_roles = [r for r, _ in UserService.get_available_roles()]
+        if form_data['role'] in all_known_roles and form_data['role'] not in allowed_role_values:
+            errors['role'] = 'Bạn không có quyền gán vai trò này.'
+            return _render_or_json_error('user/create.html', {'form_data': form_data, 'available_roles': available_roles}, errors)
+
         validator = UserValidator()
         validation = validator.validate_create({
             **payload,
@@ -123,10 +151,9 @@ def create():
         })
         if not validation.success:
             errors = validation.field_errors
-            return _render_or_json_error('user/create.html', {'form_data': form_data, 'available_roles': UserService.get_available_roles()}, errors)
+            return _render_or_json_error('user/create.html', {'form_data': form_data, 'available_roles': available_roles}, errors)
 
         try:
-            actor = AuthService.require_manager_user()
             UserService.create_user(
                 actor=actor,
                 username=form_data['username'],
@@ -145,22 +172,23 @@ def create():
             if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'message': e.message, 'fields': errors}), e.status_code
             NotificationService.flash_error(e.message)
-            return render_template('user/create.html', form_data=form_data, errors=errors, available_roles=UserService.get_available_roles())
+            return render_template('user/create.html', form_data=form_data, errors=errors, available_roles=available_roles)
         except BusinessException as e:
             if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'message': e.message}), e.status_code
             NotificationService.flash_error(e.message)
-            return render_template('user/create.html', form_data=form_data, errors={'general': e.message}, available_roles=UserService.get_available_roles())
+            return render_template('user/create.html', form_data=form_data, errors={'general': e.message}, available_roles=available_roles)
 
-    return render_template('user/create.html', form_data=form_data, available_roles=UserService.get_available_roles())
+    return render_template('user/create.html', form_data=form_data, available_roles=available_roles)
 
 
 @user_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 def edit(user_id):
-    _require_manager()
-    user = UserService._get_user_or_404(user_id)
+    actor = _require_manager()
+    user = UserService._get_workspace_scoped_user_or_404(user_id)
     if user.role == 'APPROVAL_OWNER':
         abort(403)
+    available_roles = _get_available_roles_for_actor(actor)
     errors = {}
     form_data = {
         'username': user.username,
@@ -177,14 +205,22 @@ def edit(user_id):
             'email': (payload.get('email') or '').strip(),
             'role': (payload.get('role') or '').strip().upper(),
         }
+
+        # Prevent role elevation: only check if the submitted role is different from the user's current role
+        # and is a known valid role that exceeds the actor's assignment permission.
+        allowed_role_values = [r for r, _ in available_roles]
+        all_known_roles = [r for r, _ in UserService.get_available_roles()]
+        if form_data['role'] != user.role and form_data['role'] in all_known_roles and form_data['role'] not in allowed_role_values:
+            errors['role'] = 'Bạn không có quyền gán vai trò này.'
+            return _render_or_json_error('user/edit.html', {'user': user, 'form_data': form_data, 'available_roles': available_roles}, errors)
+
         validator = UserValidator()
         validation = validator.validate_update(form_data)
         if not validation.success:
             errors = validation.field_errors
-            return _render_or_json_error('user/edit.html', {'user': user, 'form_data': form_data, 'available_roles': UserService.get_available_roles()}, errors)
+            return _render_or_json_error('user/edit.html', {'user': user, 'form_data': form_data, 'available_roles': available_roles}, errors)
 
         try:
-            actor = AuthService.require_manager_user()
             UserService.update_user(
                 actor=actor,
                 user_id=user_id,
@@ -202,20 +238,20 @@ def edit(user_id):
             if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'message': e.message, 'fields': errors}), e.status_code
             NotificationService.flash_error(e.message)
-            return render_template('user/edit.html', user=user, form_data=form_data, errors=errors, available_roles=UserService.get_available_roles())
+            return render_template('user/edit.html', user=user, form_data=form_data, errors=errors, available_roles=available_roles)
         except BusinessException as e:
             if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'message': e.message}), e.status_code
             NotificationService.flash_error(e.message)
-            return render_template('user/edit.html', user=user, form_data=form_data, errors={'general': e.message}, available_roles=UserService.get_available_roles())
+            return render_template('user/edit.html', user=user, form_data=form_data, errors={'general': e.message}, available_roles=available_roles)
 
-    return render_template('user/edit.html', user=user, form_data=form_data, available_roles=UserService.get_available_roles())
+    return render_template('user/edit.html', user=user, form_data=form_data, available_roles=available_roles)
 
 
 @user_bp.route('/users/<int:user_id>/reset-password', methods=['GET', 'POST'])
 def reset_password(user_id):
     _require_manager()
-    user = UserService._get_user_or_404(user_id)
+    user = UserService._get_workspace_scoped_user_or_404(user_id)
     if user.role == 'APPROVAL_OWNER':
         abort(403)
     errors = {}
@@ -258,7 +294,7 @@ def reset_password(user_id):
 @user_bp.route('/users/<int:user_id>/toggle-active', methods=['POST'])
 def toggle_active(user_id):
     actor = _require_manager()
-    user = UserService._get_user_or_404(user_id)
+    user = UserService._get_workspace_scoped_user_or_404(user_id)
     if user.role == 'APPROVAL_OWNER':
         abort(403)
     payload = _extract_payload()

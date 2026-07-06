@@ -7,6 +7,7 @@ from core.auth.security import PasswordPolicy
 from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
 from core.exceptions import ConflictException, NotFoundException, ValidationException
 from models.user import User
+from models.workspace import WorkspaceMember
 from utils.timezone_utils import utc_now
 from services.workspace_service import WorkspaceService
 
@@ -71,9 +72,36 @@ class UserService:
 
     @staticmethod
     def _get_user_or_404(user_id):
+        """Get user by id without workspace scope (used internally)."""
         user = User.query.get(user_id)
         if not user:
             raise NotFoundException("Không tìm thấy người dùng.")
+        return user
+
+    @staticmethod
+    def _get_workspace_scoped_user_or_404(user_id):
+        """
+        Get user by id, ensuring they belong to the current workspace.
+        In production: validates workspace membership; raises 404 if not found or not in workspace.
+        In TESTING without isolation flag: skips workspace check (legacy test compat).
+        """
+        from flask import current_app, has_app_context, has_request_context, session
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+        if is_testing:
+            if not has_request_context() or not session.get("_enable_workspace_isolation"):
+                return user
+            workspace_id = session.get("current_workspace_id")
+        else:
+            workspace_id = WorkspaceService.get_current_workspace_id()
+
+        if workspace_id and not WorkspaceService.is_user_in_workspace(user.id, workspace_id):
+            raise NotFoundException("Không tìm thấy người dùng.")
+
         return user
 
     @staticmethod
@@ -120,8 +148,35 @@ class UserService:
         db.session.add(log_entry)
 
     @staticmethod
+    def _get_workspace_scoped_base_query():
+        """
+        Return a base User query scoped to the current workspace.
+
+        Production: joins WorkspaceMember and filters by current workspace_id.
+        Fail-closed: if no workspace context, returns a query that yields nothing.
+        TESTING without isolation flag: returns unscoped query (legacy compat).
+        """
+        from flask import current_app, has_app_context, has_request_context, session
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+        if is_testing:
+            if not has_request_context() or not session.get("_enable_workspace_isolation"):
+                return User.query
+            workspace_id = session.get("current_workspace_id")
+        else:
+            workspace_id = WorkspaceService.get_current_workspace_id()
+
+        base = WorkspaceService.get_workspace_members_query(workspace_id)
+        if base is None:
+            # Fail-closed: impossible user_id constraint
+            return User.query.filter(User.id == -1)
+        return base
+
+    @staticmethod
     def search_paginated(query_text="", page=1, per_page=25, sort_by="created_at", sort_dir="desc"):
-        query = User.query.filter(User.role != UserRole.APPROVAL_OWNER.value)
+        query = UserService._get_workspace_scoped_base_query().filter(
+            User.role != UserRole.APPROVAL_OWNER.value
+        )
         search = (query_text or "").strip()
         if search:
             pattern = f"%{search}%"
@@ -156,12 +211,50 @@ class UserService:
         return query.paginate(page=page, per_page=per_page, error_out=False)
 
     @staticmethod
+    def _resolve_current_workspace_id_for_create():
+        """
+        Resolve the workspace_id to use when creating a user from the UI.
+        Production: requires a valid workspace context (fail-closed).
+        TESTING with isolation flag: reads from session.
+        TESTING without isolation flag: returns None (skip membership creation).
+        Raises ValidationException if production has no workspace context.
+        """
+        from flask import current_app, has_app_context, has_request_context, session
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+        if is_testing:
+            if not has_request_context() or not session.get("_enable_workspace_isolation"):
+                return None
+            return session.get("current_workspace_id")
+
+        workspace_id = WorkspaceService.get_current_workspace_id()
+        if not workspace_id:
+            raise ValidationException(
+                "Không có workspace hiện tại. Vui lòng đăng nhập lại và chọn workspace."
+            )
+        return workspace_id
+
+    @staticmethod
     def create_user(actor, username, full_name, password, email=None, role=None, is_active=True):
         username = UserService._normalize_username(username)
         full_name = UserService._normalize_full_name(full_name)
         email = UserService._normalize_email(email)
         role = UserService._normalize_role(role)
         errors = {}
+
+        # Roles that cannot be created from UI (system-level only)
+        if role in (UserRole.APPROVAL_OWNER.value, UserRole.OWNER.value):
+            raise ValidationException(
+                "Không thể tạo vai trò này từ giao diện quản lý.",
+                field_errors={"role": "Vai trò không được phép."},
+            )
+
+        # Prevent non-OWNER actors from creating ADMIN users
+        if role == UserRole.ADMIN.value and actor and actor.role != UserRole.OWNER.value:
+            raise ValidationException(
+                "Bạn không có quyền gán vai trò này.",
+                field_errors={"role": "Bạn không có quyền gán vai trò này."},
+            )
 
         if not username:
             errors["username"] = "Tên đăng nhập không được để trống."
@@ -178,6 +271,8 @@ class UserService:
 
         UserService._ensure_unique_fields(username=username, email=email)
 
+        workspace_id = UserService._resolve_current_workspace_id_for_create()
+
         user = User(
             username=username,
             full_name=full_name,
@@ -191,6 +286,16 @@ class UserService:
 
         try:
             db.session.flush()
+
+            # Assign user to current workspace
+            if workspace_id:
+                WorkspaceService.add_member_for_user(
+                    workspace_id=workspace_id,
+                    user=user,
+                    global_role=role,
+                    actor=actor,
+                )
+
             UserService._log_user_action(
                 actor=actor,
                 action="CREATE_USER",
@@ -208,7 +313,7 @@ class UserService:
 
     @staticmethod
     def update_user(actor, user_id, username, full_name, email=None, role=None):
-        user = UserService._get_user_or_404(user_id)
+        user = UserService._get_workspace_scoped_user_or_404(user_id)
         if user.role == UserRole.APPROVAL_OWNER.value:
             raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.", field_errors={"role": "Không thể sửa đổi tài khoản phê duyệt hệ thống."})
 
@@ -216,6 +321,18 @@ class UserService:
         full_name = UserService._normalize_full_name(full_name)
         email = UserService._normalize_email(email)
         role = UserService._normalize_role(role)
+
+        if role == UserRole.OWNER.value and user.role != UserRole.OWNER.value:
+            raise ValidationException(
+                "Không thể thay đổi vai trò thành chủ spa từ giao diện quản lý.",
+                field_errors={"role": "Không thể thay đổi vai trò thành chủ spa."},
+            )
+
+        if role == UserRole.ADMIN.value and user.role != UserRole.ADMIN.value and actor and actor.role != UserRole.OWNER.value:
+            raise ValidationException(
+                "Bạn không có quyền gán vai trò này.",
+                field_errors={"role": "Bạn không có quyền gán vai trò này."},
+            )
 
         errors = {}
         if not username:
@@ -262,7 +379,7 @@ class UserService:
 
     @staticmethod
     def reset_password(actor, user_id, new_password):
-        user = UserService._get_user_or_404(user_id)
+        user = UserService._get_workspace_scoped_user_or_404(user_id)
         if user.role == UserRole.APPROVAL_OWNER.value:
             raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
         if not new_password:
@@ -296,7 +413,7 @@ class UserService:
 
     @staticmethod
     def toggle_active(actor, user_id, is_active):
-        user = UserService._get_user_or_404(user_id)
+        user = UserService._get_workspace_scoped_user_or_404(user_id)
         if user.role == UserRole.APPROVAL_OWNER.value:
             raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
         desired_active = UserService._normalize_bool(is_active)

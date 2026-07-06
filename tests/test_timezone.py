@@ -50,6 +50,13 @@ class TimezoneTestCase(unittest.TestCase):
                 shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
+        # Dynamically set config paths to prevent test pollution
+        app.config["PERSISTENT_ROOT"] = TEST_MEDIA_ROOT.as_posix()
+        app.config["BACKUP_FOLDER"] = (TEST_MEDIA_ROOT / "backup").as_posix()
+        app.config["UPLOAD_ROOT"] = (TEST_MEDIA_ROOT / "uploads").as_posix()
+        app.config["LOGO_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "logos").as_posix()
+        app.config["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").as_posix()
+
         self.app_context = app.app_context()
         self.app_context.push()
         self.client = app.test_client()
