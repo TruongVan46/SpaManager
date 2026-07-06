@@ -91,19 +91,22 @@ class InvoiceService:
     @staticmethod
     def get_by_id(invoice_id):
         """Lấy hóa đơn hoạt động theo ID"""
-        invoice = Invoice.query.filter(Invoice.id == invoice_id, Invoice.deleted_at.is_(None)).first()
+        from services.workspace_service import WorkspaceService
+        invoice = WorkspaceService.scoped_query(Invoice).filter(Invoice.id == invoice_id, Invoice.deleted_at.is_(None)).first()
         return InvoiceService._attach_display_fields(invoice)
 
     @staticmethod
     def get_all():
         """Lấy tất cả hóa đơn hoạt động"""
-        invoices = Invoice.query.options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.asc()).all()
+        from services.workspace_service import WorkspaceService
+        invoices = WorkspaceService.scoped_query(Invoice).options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.asc()).all()
         return InvoiceService._attach_display_fields(invoices)
 
     @staticmethod
     def get_all_paginated(page, per_page=10):
         """Lấy danh sách hóa đơn hoạt động phân trang"""
-        pagination = Invoice.query.options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.desc()).paginate(
+        from services.workspace_service import WorkspaceService
+        pagination = WorkspaceService.scoped_query(Invoice).options(db.joinedload(Invoice.customer)).filter(Invoice.deleted_at.is_(None)).order_by(Invoice.id.desc()).paginate(
             page=page,
             per_page=per_page,
             error_out=False
@@ -113,9 +116,9 @@ class InvoiceService:
 
     @staticmethod
     def _build_filtered_invoices_query(keyword=None, from_date=None, to_date=None, payment_method=None, sort_by=None, order=None):
-        
-        query = Invoice.query.join(Customer).options(db.contains_eager(Invoice.customer)).filter(Invoice.deleted_at.is_(None))
-        
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Invoice).join(Customer).options(db.contains_eager(Invoice.customer)).filter(Invoice.deleted_at.is_(None))
+
         # Apply date filters
         if from_date:
             if isinstance(from_date, str):
@@ -126,7 +129,7 @@ class InvoiceService:
             elif isinstance(from_date, datetime):
                 from_date = from_date.date()
             query = query.filter(Invoice.invoice_date >= from_date)
-            
+
         if to_date:
             if isinstance(to_date, str):
                 try:
@@ -136,7 +139,7 @@ class InvoiceService:
             elif isinstance(to_date, datetime):
                 to_date = to_date.date()
             query = query.filter(Invoice.invoice_date <= to_date)
-            
+
         # Apply payment method filter
         if payment_method and payment_method != "Tất cả":
             aliases = InvoiceService._payment_method_filter_values(payment_method)
@@ -144,14 +147,14 @@ class InvoiceService:
                 query = query.filter(
                     or_(*[func.lower(Invoice.payment_method) == alias for alias in aliases])
                 )
-            
+
         # Apply keyword filters
         if keyword:
             cleaned = keyword.strip()
             conditions = []
             conditions.append(Customer.name.ilike(f"%{cleaned}%"))
             conditions.append(Customer.phone.ilike(f"%{cleaned}%"))
-            
+
             # Invoice ID parsing logic
             if cleaned.lower().startswith('hd'):
                 id_str = cleaned[2:].lstrip('0')
@@ -171,15 +174,15 @@ class InvoiceService:
                 except ValueError:
                     pass
                 conditions.append(cast(Invoice.id, String).ilike(f"%{cleaned}%"))
-                
+
             query = query.filter(or_(*conditions))
-            
+
         # Apply sorting
         if not sort_by:
             sort_by = 'date'
         if not order:
             order = 'desc'
-            
+
         if order == 'asc':
             if sort_by == 'date':
                 query = query.order_by(Invoice.invoice_date.asc(), Invoice.id.asc())
@@ -202,18 +205,23 @@ class InvoiceService:
                 query = query.order_by(Customer.name.desc())
             else:
                 query = query.order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
-                
+
         return query
 
     @staticmethod
     def get_invoice_summary(keyword=None, from_date=None, to_date=None, payment_method=None):
-        
+        from services.workspace_service import WorkspaceService
         query = db.session.query(
             func.count(Invoice.id).label('invoice_count'),
             func.sum(Invoice.total_amount).label('total_revenue'),
             func.sum(Invoice.discount).label('total_discount')
         ).join(Customer).filter(Invoice.deleted_at.is_(None))
-        
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is None:
+            query = query.filter(Invoice.workspace_id == -1)
+        else:
+            query = query.filter(Invoice.workspace_id == wid)
+
         # Apply date filters
         if from_date:
             if isinstance(from_date, str):
@@ -224,7 +232,7 @@ class InvoiceService:
             elif isinstance(from_date, datetime):
                 from_date = from_date.date()
             query = query.filter(Invoice.invoice_date >= from_date)
-            
+
         if to_date:
             if isinstance(to_date, str):
                 try:
@@ -234,7 +242,7 @@ class InvoiceService:
             elif isinstance(to_date, datetime):
                 to_date = to_date.date()
             query = query.filter(Invoice.invoice_date <= to_date)
-            
+
         # Apply payment method filter
         if payment_method and payment_method != "Tất cả":
             aliases = InvoiceService._payment_method_filter_values(payment_method)
@@ -242,14 +250,14 @@ class InvoiceService:
                 query = query.filter(
                     or_(*[func.lower(Invoice.payment_method) == alias for alias in aliases])
                 )
-            
+
         # Apply keyword filters
         if keyword:
             cleaned = keyword.strip()
             conditions = []
             conditions.append(Customer.name.ilike(f"%{cleaned}%"))
             conditions.append(Customer.phone.ilike(f"%{cleaned}%"))
-            
+
             # Invoice ID parsing logic
             if cleaned.lower().startswith('hd'):
                 id_str = cleaned[2:].lstrip('0')
@@ -269,16 +277,16 @@ class InvoiceService:
                 except ValueError:
                     pass
                 conditions.append(cast(Invoice.id, String).ilike(f"%{cleaned}%"))
-                
+
             query = query.filter(or_(*conditions))
-            
+
         row = query.first()
-        
+
         invoice_count = row.invoice_count or 0
         total_revenue = float(row.total_revenue or 0.0)
         total_discount = float(row.total_discount or 0.0)
         average_invoice = total_revenue / invoice_count if invoice_count > 0 else 0.0
-        
+
         return {
             "invoice_count": invoice_count,
             "total_revenue": total_revenue,
@@ -322,30 +330,31 @@ class InvoiceService:
         """
         Tạo hóa đơn mới
         """
-        
+
         items = data.get("items", [])
         discount = float(data.get("discount", 0) or 0)
-        
+
         subtotal = 0.0
         processed_items = []
         for item in items:
             service_id = item.get("service_id")
             if not service_id:
                 raise ValidationException("Thông tin dịch vụ là bắt buộc.")
-            
-            service = Service.query.get(int(service_id))
+
+            from services.service_service import ServiceService
+            service = ServiceService.get_service_by_id(int(service_id))
             if not service:
-                raise ValidationException(f"Dịch vụ ID {service_id} không tồn tại.")
-                
+                raise ValidationException(f"Dịch vụ ID {service_id} không tồn tại hoặc không thuộc Workspace này.")
+
             quantity = int(item.get("quantity", 1))
             try:
                 price = float(item.get("price", service.price))
             except (ValueError, TypeError):
                 price = service.price
-                
+
             if price < 0:
                 raise ValidationException("Đơn giá không được âm.")
-                
+
             item_total = quantity * price
             subtotal += item_total
             processed_items.append({
@@ -353,10 +362,14 @@ class InvoiceService:
                 "quantity": quantity,
                 "price": price
             })
-            
+
         total_amount = subtotal - discount
-        
+
         # 1. Validation
+        from services.customer_service import CustomerService
+        if data.get('customer_id') and not CustomerService.get_by_id(data.get('customer_id')):
+            raise ValidationException("Khách hàng không tồn tại hoặc không thuộc Workspace này.")
+
         validation_data = {
             'customer_id': data.get('customer_id'),
             'services': processed_items,
@@ -365,7 +378,7 @@ class InvoiceService:
         validator = InvoiceValidator()
         validator.validate(validation_data)
         validator.raise_if_invalid("Thông tin hóa đơn không hợp lệ.")
-        
+
         invoice_date_val = data.get("invoice_date")
         if isinstance(invoice_date_val, str) and invoice_date_val:
             try:
@@ -385,7 +398,8 @@ class InvoiceService:
                 discount=discount,
                 total_amount=total_amount
             )
-
+            from services.workspace_service import WorkspaceService
+            WorkspaceService.assign_workspace(invoice)
             db.session.add(invoice)
             db.session.flush()
 
@@ -416,7 +430,8 @@ class InvoiceService:
     @staticmethod
     def delete_invoice(invoice_id, actor=None):
         """Xóa mềm hóa đơn và chuyển vào thùng rác"""
-        invoice = Invoice.query.get(invoice_id)
+        from services.workspace_service import WorkspaceService
+        invoice = WorkspaceService.scoped_query(Invoice).filter(Invoice.id == invoice_id).first()
         if not invoice or invoice.deleted_at is not None:
             return False
 
@@ -449,24 +464,27 @@ class InvoiceService:
     @staticmethod
     def restore(invoice_id, actor=None):
         """Khôi phục hóa đơn từ Thùng rác"""
-        invoice = Invoice.query.get(invoice_id)
+        from services.workspace_service import WorkspaceService
+        invoice = WorkspaceService.scoped_query(Invoice).filter(Invoice.id == invoice_id).first()
         if invoice and invoice.deleted_at is not None:
             try:
                 actor_name = actor
                 if actor_name is None or not str(actor_name).strip():
                     actor_name = AuthService.require_current_username()
                 current_user = AuthService.get_current_user()
-                # Kiểm tra quan hệ dữ liệu: Khách hàng liên quan phải tồn tại
-                customer = Customer.query.get(invoice.customer_id)
-                if not customer:
-                    raise ValueError(f"Không thể khôi phục hóa đơn vì khách hàng liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
-                    
-                # Kiểm tra quan hệ dữ liệu: Tất cả dịch vụ trong chi tiết hóa đơn phải tồn tại
+                # Kiểm tra quan hệ dữ liệu: Khách hàng liên quan phải tồn tại trong workspace
+                from services.customer_service import CustomerService
+                customer = CustomerService.get_by_id(invoice.customer_id) if invoice.customer_id else None
+                if invoice.customer_id and not customer:
+                    raise ValueError(f"Không thể khôi phục hóa đơn vì khách hàng liên quan đã bị xóa vĩnh viễn khỏi hệ thống hoặc thuộc Workspace khác.")
+
+                # Kiểm tra quan hệ dữ liệu: Tất cả dịch vụ trong chi tiết hóa đơn phải tồn tại trong workspace
+                from services.service_service import ServiceService
                 for detail in invoice.details:
-                    service = Service.query.get(detail.service_id)
+                    service = ServiceService.get_service_by_id(detail.service_id)
                     if not service:
                         raise ValueError(f"Không thể khôi phục hóa đơn vì một hoặc nhiều dịch vụ liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
-                        
+
                 invoice.deleted_at = None
                 invoice.deleted_by = None
                 ActivityLogService.write_log(
@@ -493,7 +511,8 @@ class InvoiceService:
     @staticmethod
     def permanent_delete(invoice_id, actor=None):
         """Xóa vĩnh viễn hóa đơn khỏi cơ sở dữ liệu"""
-        invoice = Invoice.query.get(invoice_id)
+        from services.workspace_service import WorkspaceService
+        invoice = WorkspaceService.scoped_query(Invoice).filter(Invoice.id == invoice_id).first()
         if not invoice:
             return False
 
@@ -515,7 +534,7 @@ class InvoiceService:
             )
             for detail in invoice.details:
                 db.session.delete(detail)
-                
+
             db.session.delete(invoice)
             db.session.commit()
             dashboard_cache.invalidate('dashboard_data')

@@ -62,7 +62,7 @@ class WorkspaceService:
         # Fallback order: full_name -> username -> email
         base_name = user.full_name or user.username or user.email or "Spa"
         workspace_name = f"Spa của {base_name}"
-        
+
         slug_base = user.username or user.email or user.full_name or "spa"
         slug = WorkspaceService.generate_unique_slug(slug_base)
 
@@ -94,12 +94,12 @@ class WorkspaceService:
         db.session.flush()
 
         return workspace
-        
+
     @staticmethod
     def ensure_current_workspace_session(user):
         """
         Auto-select workspace for the user after successful login and set session["current_workspace_id"].
-        
+
         Rules:
         - If user is APPROVAL_OWNER, do not set workspace context.
         - If user is pending/rejected/disabled, do not set workspace context.
@@ -108,22 +108,22 @@ class WorkspaceService:
         - If user has no active memberships, do not set workspace context (legacy compatibility).
         """
         from flask import session
-        
+
         if not user or not user.is_active or not user.is_approval_active:
             return None
-            
+
         if user.role == "APPROVAL_OWNER":
             return None
-            
+
         # Get active memberships, ordered deterministically by joined_at asc, id asc
         memberships = WorkspaceMember.query.filter(
             WorkspaceMember.user_id == user.id,
             WorkspaceMember.status == "active"
         ).order_by(WorkspaceMember.joined_at.asc(), WorkspaceMember.id.asc()).all()
-        
+
         if not memberships:
             return None
-            
+
         # Auto-select the first one (oldest joined or lowest ID)
         selected_membership = memberships[0]
         session["current_workspace_id"] = selected_membership.workspace_id
@@ -150,3 +150,113 @@ class WorkspaceService:
         from flask import has_request_context, session
         if has_request_context():
             session.pop("current_workspace_id", None)
+
+    @staticmethod
+    def get_current_workspace_id():
+        """
+        Get current workspace ID from session, validating that the current user has access to it.
+        """
+        from flask import has_request_context, session
+        from services.auth_service import AuthService
+
+        if not has_request_context():
+            return None
+
+        workspace_id = session.get("current_workspace_id")
+        if not workspace_id:
+            return None
+
+        user = AuthService.get_current_user()
+        if not user or not user.is_active or not user.is_approval_active:
+            session.pop("current_workspace_id", None)
+            return None
+
+        # Verify user role is not APPROVAL_OWNER
+        if user.role == "APPROVAL_OWNER":
+            session.pop("current_workspace_id", None)
+            return None
+
+        # Verify active membership exists
+        has_membership = WorkspaceMember.query.filter(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.status == "active"
+        ).first() is not None
+
+        if not has_membership:
+            session.pop("current_workspace_id", None)
+            return None
+
+        return workspace_id
+
+    @staticmethod
+    def require_current_workspace_id():
+        """
+        Get current workspace ID, raising 403 Forbidden if not set or invalid.
+        """
+        from flask import abort
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is None:
+            abort(403)
+        return wid
+
+    @staticmethod
+    def scoped_query(model):
+        """
+        Return a query for the model filtered by the current workspace_id.
+        Fail closed: if there is no current workspace context, filters by workspace_id = -1
+        (returning empty results instead of global data).
+        """
+        from flask import has_request_context, session, current_app, has_app_context
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+
+        if is_testing:
+            # Only enforce workspace isolation in unit tests if explicitly requested
+            if has_request_context() and session.get("_enable_workspace_isolation") == True:
+                wid = session.get("current_workspace_id")
+                if wid is None:
+                    return model.query.filter(model.workspace_id == -1)
+                return model.query.filter(model.workspace_id == wid)
+            else:
+                return model.query
+
+        wid = WorkspaceService.get_current_workspace_id()
+        if wid is None:
+            return model.query.filter(model.workspace_id == -1)
+        return model.query.filter(model.workspace_id == wid)
+
+    @staticmethod
+    def assign_workspace(record):
+        """
+        Assign current_workspace_id to the record's workspace_id attribute.
+        Raises 403 if there is no active workspace context.
+        """
+        from flask import has_request_context, session, current_app, has_app_context
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+
+        if is_testing:
+            if has_request_context() and session.get("_enable_workspace_isolation") == True:
+                record.workspace_id = session.get("current_workspace_id")
+            return
+
+        wid = WorkspaceService.require_current_workspace_id()
+        record.workspace_id = wid
+
+    @staticmethod
+    def _get_current_workspace_id_for_testing_bypass():
+        """
+        Get current workspace ID, or return None if testing bypass is active.
+        If testing bypass is not active and workspace is None, returns -1 to fail-closed.
+        This helper is test-only and ensures production-like fail-closed behavior.
+        """
+        from flask import has_request_context, session, current_app, has_app_context
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+        if is_testing:
+            if not has_request_context() or not session.get("_enable_workspace_isolation"):
+                return None
+
+        wid = WorkspaceService.get_current_workspace_id()
+        return wid if wid is not None else -1

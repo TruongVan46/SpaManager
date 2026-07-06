@@ -22,25 +22,28 @@ class CustomerService:
     @staticmethod
     def get_all():
         """Lấy tất cả khách hàng hoạt động (chưa xóa mềm)"""
-        return Customer.query.filter(Customer.deleted_at.is_(None)).all()
+        from services.workspace_service import WorkspaceService
+        return WorkspaceService.scoped_query(Customer).filter(Customer.deleted_at.is_(None)).all()
 
     @staticmethod
     def search(query):
         """Tìm kiếm khách hàng hoạt động theo tên, số điện thoại hoặc dịch vụ"""
-        db_query = Customer.query.join(Appointment, isouter=True).join(Service, isouter=True).filter(Customer.deleted_at.is_(None))
+        from services.workspace_service import WorkspaceService
+        db_query = WorkspaceService.scoped_query(Customer).join(Appointment, isouter=True).join(Service, isouter=True).filter(Customer.deleted_at.is_(None))
         if query:
             db_query = db_query.filter(
                 (Customer.name.ilike(f'%{query}%')) |
                 (Customer.phone.ilike(f'%{query}%')) |
                 (Service.name.ilike(f'%{query}%'))
             )
-        
+
         return db_query.distinct().all()
 
     @staticmethod
     def search_paginated(query, page=1, per_page=25, sort_by='id', sort_dir='desc'):
         """Tim kiem va phan trang khach hang hoat dong"""
-        db_query = Customer.query.join(Appointment, isouter=True).join(Service, isouter=True).filter(Customer.deleted_at.is_(None))
+        from services.workspace_service import WorkspaceService
+        db_query = WorkspaceService.scoped_query(Customer).join(Appointment, isouter=True).join(Service, isouter=True).filter(Customer.deleted_at.is_(None))
         if query:
             db_query = db_query.filter(
                 (Customer.name.ilike(f'%{query}%')) |
@@ -61,7 +64,8 @@ class CustomerService:
     @staticmethod
     def get_by_id(customer_id):
         """Lấy chi tiết một khách hàng hoạt động theo ID"""
-        return Customer.query.filter(Customer.id == customer_id, Customer.deleted_at.is_(None)).first()
+        from services.workspace_service import WorkspaceService
+        return WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id, Customer.deleted_at.is_(None)).first()
 
     @staticmethod
     def _normalize_phone(phone):
@@ -87,7 +91,8 @@ class CustomerService:
 
     @staticmethod
     def _load_duplicate_candidates(include_deleted=True):
-        query = Customer.query
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Customer)
         if not include_deleted:
             query = query.filter(Customer.deleted_at.is_(None))
         return query.all()
@@ -209,7 +214,8 @@ class CustomerService:
         if not customer:
             return None
 
-        appointments_base_query = Appointment.query.options(
+        from services.workspace_service import WorkspaceService
+        appointments_base_query = WorkspaceService.scoped_query(Appointment).options(
             db.joinedload(Appointment.service)
         ).filter(
             Appointment.customer_id == customer_id,
@@ -219,7 +225,7 @@ class CustomerService:
             Appointment.id.desc()
         )
 
-        invoices_base_query = Invoice.query.filter(
+        invoices_base_query = WorkspaceService.scoped_query(Invoice).filter(
             Invoice.customer_id == customer_id,
             Invoice.deleted_at.is_(None)
         ).order_by(
@@ -227,18 +233,12 @@ class CustomerService:
             Invoice.id.desc()
         )
 
-        appointment_count = db.session.query(func.count(Appointment.id)).filter(
-            Appointment.customer_id == customer_id,
-            Appointment.deleted_at.is_(None)
-        ).scalar() or 0
-        invoice_count = db.session.query(func.count(Invoice.id)).filter(
+        appointment_count = appointments_base_query.count()
+        invoice_count = invoices_base_query.count()
+        total_spent = WorkspaceService.scoped_query(Invoice).filter(
             Invoice.customer_id == customer_id,
             Invoice.deleted_at.is_(None)
-        ).scalar() or 0
-        total_spent = db.session.query(func.coalesce(func.sum(Invoice.total_amount), 0)).filter(
-            Invoice.customer_id == customer_id,
-            Invoice.deleted_at.is_(None)
-        ).scalar() or 0
+        ).with_entities(func.coalesce(func.sum(Invoice.total_amount), 0)).scalar() or 0
 
         appointment_per_page = CustomerService._normalize_per_page(appointment_per_page)
         invoice_per_page = CustomerService._normalize_per_page(invoice_per_page)
@@ -322,7 +322,7 @@ class CustomerService:
 
     @staticmethod
     def create(name, phone=None, email=None, address=None):
-        
+
         # 1. Input Validation
         data = {'name': name, 'phone': phone, 'email': email}
         validator = CustomerValidator()
@@ -331,20 +331,22 @@ class CustomerService:
 
         cleaned_phone = CustomerService.clean_phone(phone)
         cleaned_email = CustomerService.clean_email(email)
-        
+
         errors = CustomerService.check_duplicate(phone=cleaned_phone, email=cleaned_email, include_deleted=True)
         if errors:
             raise ConflictException(", ".join(errors.values()))
-            
+
         new_customer = Customer(
-            name=name.strip(), 
-            phone=cleaned_phone, 
-            email=cleaned_email, 
+            name=name.strip(),
+            phone=cleaned_phone,
+            email=cleaned_email,
             address=address.strip() if address else None
         )
+        from services.workspace_service import WorkspaceService
+        WorkspaceService.assign_workspace(new_customer)
         db.session.add(new_customer)
         db.session.commit()
-        
+
         ActivityLogService.log_create(
             module=ActivityLogService.MODULE_CUSTOMER,
             description=f'Thêm khách hàng "{new_customer.name}"',
@@ -360,7 +362,7 @@ class CustomerService:
         if not customer:
             raise NotFoundException("Không tìm thấy khách hàng!")
 
-        
+
         # 1. Input Validation
         data = {'name': name, 'phone': phone, 'email': email}
         validator = CustomerValidator()
@@ -369,7 +371,7 @@ class CustomerService:
 
         cleaned_phone = CustomerService.clean_phone(phone)
         cleaned_email = CustomerService.clean_email(email)
-        
+
         errors = CustomerService.check_duplicate(
             phone=cleaned_phone,
             email=cleaned_email,
@@ -378,14 +380,14 @@ class CustomerService:
         )
         if errors:
             raise ConflictException(", ".join(errors.values()))
-            
+
         customer.name = name.strip()
         customer.phone = cleaned_phone
         customer.email = cleaned_email
         if address is not None:
             customer.address = address.strip() if address else None
         db.session.commit()
-        
+
         ActivityLogService.log_update(
             module=ActivityLogService.MODULE_CUSTOMER,
             description=f'Cập nhật khách hàng "{customer.name}"',
@@ -401,12 +403,13 @@ class CustomerService:
         Kiểm tra xem khách hàng có thể xóa hay không theo quy tắc nghiệp vụ.
         Chỉ được xóa khi chưa từng có lịch hẹn và hóa đơn nào.
         """
-        
-        appointment_count = Appointment.query.filter_by(customer_id=customer_id).count()
-        invoice_count = Invoice.query.filter_by(customer_id=customer_id).count()
-        
+
+        from services.workspace_service import WorkspaceService
+        appointment_count = WorkspaceService.scoped_query(Appointment).filter_by(customer_id=customer_id).count()
+        invoice_count = WorkspaceService.scoped_query(Invoice).filter_by(customer_id=customer_id).count()
+
         can_del = (appointment_count == 0 and invoice_count == 0)
-        
+
         return {
             "can_delete": can_del,
             "appointment_count": appointment_count,
@@ -416,7 +419,8 @@ class CustomerService:
     @staticmethod
     def delete(customer_id, actor=None):
         """X?a m?m kh?ch h?ng v? chuy?n v?o th?ng r?c"""
-        customer = Customer.query.get(customer_id)
+        from services.workspace_service import WorkspaceService
+        customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
         if not customer or customer.deleted_at is not None:
             raise NotFoundException("Kh?ng t?m th?y kh?ch h?ng ho?c kh?ch h?ng ?? b? x?a.")
 
@@ -452,7 +456,8 @@ class CustomerService:
     @staticmethod
     def restore(customer_id, actor=None):
         """Kh?i ph?c kh?ch h?ng t? th?ng r?c"""
-        customer = Customer.query.get(customer_id)
+        from services.workspace_service import WorkspaceService
+        customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
         if not customer or customer.deleted_at is None:
             raise NotFoundException("Kh?ng t?m th?y kh?ch h?ng trong Th?ng r?c.")
 
@@ -492,7 +497,8 @@ class CustomerService:
     @staticmethod
     def permanent_delete(customer_id, actor=None):
         """Xóa vĩnh viễn khách hàng khỏi cơ sở dữ liệu"""
-        customer = Customer.query.get(customer_id)
+        from services.workspace_service import WorkspaceService
+        customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
         if customer:
             try:
                 status = CustomerService.can_delete(customer_id)

@@ -67,11 +67,12 @@ def index():
     spa_info = Setting.get_all_spa_info()
 
     # Get record counts for data management stats
+    from services.workspace_service import WorkspaceService
     stats = {
-        'customers': Customer.query.count(),
-        'services': Service.query.count(),
-        'appointments': Appointment.query.count(),
-        'invoices': Invoice.query.count(),
+        'customers': WorkspaceService.scoped_query(Customer).count(),
+        'services': WorkspaceService.scoped_query(Service).count(),
+        'appointments': WorkspaceService.scoped_query(Appointment).count(),
+        'invoices': WorkspaceService.scoped_query(Invoice).count(),
     }
 
     # Fetch and sync all backups on disk
@@ -90,18 +91,18 @@ def index():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     total = len(backups)
-    
+
     start = (page - 1) * per_page
     end = start + per_page
     paginated_backups = backups[start:end]
-    
+
     pagination_obj = SimplePagination(paginated_backups, page, per_page, total)
     backup_engine = get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', ''))
 
     return render_template(
-        'setting/index.html', 
-        spa_info=spa_info, 
-        stats=stats, 
+        'setting/index.html',
+        spa_info=spa_info,
+        stats=stats,
         backups=paginated_backups,
         backups_pagination=pagination_obj,
         page=page,
@@ -220,10 +221,10 @@ def backup_database():
 
     notes = request.form.get('notes', '').strip()
     backup_type = request.form.get('backup_type', 'Manual').strip()
-    
+
     bid, filename, filepath = BackupService.create_backup(
-        current_app, 
-        notes=notes, 
+        current_app,
+        notes=notes,
         backup_type=backup_type
     )
 
@@ -256,12 +257,12 @@ def download_backup(backup_id):
     if not meta:
         flash('Không tìm thấy bản sao lưu.', 'danger')
         return redirect(url_for('setting.index'))
-        
+
     filepath = BackupService.get_backup_file_path(current_app, meta.get('filename'))
     if not filepath or not os.path.exists(filepath):
         flash('File sao lưu không còn tồn tại trên đĩa.', 'danger')
         return redirect(url_for('setting.index'))
-        
+
     return send_file(
         filepath,
         as_attachment=True,
@@ -303,16 +304,16 @@ def restore_from_backup(backup_id):
     meta = BackupRepository.get_by_id(current_app, backup_id)
     if not meta:
         return jsonify({'success': False, 'message': 'Không tìm thấy bản sao lưu.'}), 400
-        
+
     filepath = BackupService.get_backup_file_path(current_app, meta.get('filename'))
     if not filepath or not os.path.exists(filepath):
         return jsonify({'success': False, 'message': 'File sao lưu không tồn tại trên đĩa.'}), 400
-        
+
     # Check integrity
     status = BackupService.check_file_integrity(filepath)
     if status != 'Valid':
         return jsonify({'success': False, 'message': 'Bản sao lưu không hợp lệ hoặc đã bị hỏng.'}), 400
-        
+
     try:
         success, message = RestoreService.restore_database(current_app, filepath)
         if success:
@@ -344,24 +345,24 @@ def upload_backup():
         }), 400
     if 'backup_file' not in request.files:
         return jsonify({'success': False, 'message': 'Không tìm thấy tệp tải lên.'}), 400
-        
+
     file = request.files['backup_file']
     notes = request.form.get('notes', '').strip()
-    
+
     if file.filename == '':
         return jsonify({'success': False, 'message': 'Chưa chọn tệp tin.'}), 400
-        
+
     # Check extension
     filename = file.filename
     _, ext = os.path.splitext(filename.lower())
     if ext not in ['.db', '.sqlite', '.sqlite3']:
         return jsonify({'success': False, 'message': 'Định dạng tệp không hợp lệ. Chỉ chấp nhận .db, .sqlite, .sqlite3.'}), 400
-        
+
     # Save to a temporary file in the backup directory
     backup_dir = BackupService.get_backup_dir(current_app)
     temp_filename = f"temp_upload_{uuid.uuid4().hex}{ext}"
     temp_filepath = os.path.join(backup_dir, temp_filename)
-    
+
     try:
         file.save(temp_filepath)
         size = os.path.getsize(temp_filepath)
@@ -369,7 +370,7 @@ def upload_backup():
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
             return jsonify({'success': False, 'message': 'Kích thước tệp vượt quá giới hạn cho phép (Tối đa 100MB).'}), 400
-            
+
         # Verify SQLite signature (first 16 bytes)
         with open(temp_filepath, 'rb') as f:
             header = f.read(16)
@@ -377,18 +378,18 @@ def upload_backup():
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
             return jsonify({'success': False, 'message': 'Tệp tải lên không phải là một cơ sở dữ liệu SQLite hợp lệ.'}), 400
-            
+
         # Inspect database and read metadata
         is_valid, metadata_or_error = BackupService.inspect_external_backup(temp_filepath)
         if not is_valid:
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
             return jsonify({'success': False, 'message': metadata_or_error}), 400
-            
+
         # Check for duplicate SHA256 checksum in existing backup metadata
         checksum = metadata_or_error['checksum']
         existing_backups = BackupRepository.load_all(current_app)
-        
+
         # Check duplicates
         for bid, meta in existing_backups.items():
             meta_checksum = meta.get('checksum')
@@ -400,12 +401,12 @@ def upload_backup():
                     if meta_checksum:
                         meta['checksum'] = meta_checksum
                         BackupRepository.save(current_app, bid, meta)
-            
+
             if meta_checksum == checksum:
                 if os.path.exists(temp_filepath):
                     os.remove(temp_filepath)
                 return jsonify({'success': False, 'message': 'Backup này đã tồn tại trong hệ thống.'}), 400
-                
+
         # Generate final file name and UUID
         backup_id = str(uuid.uuid4())
         timestamp_str = local_now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -413,17 +414,17 @@ def upload_backup():
         safe_db_version = BackupService.sanitize_filename_component(db_version, 'v1.0')
         final_filename = f"SpaManager_Imported_{timestamp_str}_v{safe_db_version}{ext}"
         final_filepath = os.path.join(backup_dir, final_filename)
-        
+
         # Rename temporary file to final path
         shutil.move(temp_filepath, final_filepath)
-        
+
         # Save metadata to registry
         current_user = AuthService.get_current_user()
         created_by_name = current_user.username if current_user else None
-        
+
         display_name = f"Backup Imported {local_now().strftime('%d/%m/%Y %H:%M')}"
         notes_str = notes if notes else f"Nhập từ tệp {filename}"
-        
+
         meta_entry = {
             'id': backup_id,
             'filename': final_filename,
@@ -440,10 +441,10 @@ def upload_backup():
             'checksum': checksum
         }
         BackupRepository.save(current_app, backup_id, meta_entry)
-        
+
         # 1. Application Log
         app_logger.info(f"Imported Backup: {final_filename} successfully registered in system (Size: {size} bytes)", module="BACKUP")
-        
+
         # 2. Activity Log
         ActivityLogService.log_action(
             module=ActivityLogService.MODULE_SETTINGS,
@@ -451,7 +452,7 @@ def upload_backup():
             description=f'Tải lên bản sao lưu từ ngoài: {display_name}',
             severity=ActivityLogService.SEVERITY_SUCCESS
         )
-        
+
         # Prepare backup info for wizard trigger
         dt_created = to_local_datetime(metadata_or_error['created_at'], assume_utc=True)
         backup_info = {
@@ -463,7 +464,7 @@ def upload_backup():
             'version_app': metadata_or_error['app_version'],
             'notes': notes_str
         }
-        
+
         return jsonify({
             'success': True,
             'message': 'Nhập bản sao lưu thành công.',
@@ -596,7 +597,7 @@ def import_analyze():
     """Analyze uploaded Excel file for preview, validation, and duplicates."""
     file = request.files.get('import_file')
     import_type = request.form.get('import_type')  # 'customers' or 'services'
-    
+
     if not file or not file.filename:
         return jsonify({'success': False, 'message': 'Vui lòng chọn file để import.'}), 400
     if import_type not in ('customers', 'services'):
@@ -674,4 +675,3 @@ def download_import_errors(filename):
         download_name=filename,
         mimetype='text/plain'
     )
-

@@ -45,19 +45,19 @@ class AppointmentService:
             if appt:
                 appt.display_status = AppointmentService._status_display_label(appt.status)
             return
-        
+
         now = local_now_naive()
         today = now.date()
         appt.is_today = (appt.appointment_time.date() == today)
         status_key = AppointmentService._normalize_status(appt.status)
         appt.display_status = AppointmentService._status_display_label(appt.status)
-        
+
         if appt.is_today and status_key in ['pending', 'confirmed']:
             time_diff = (appt.appointment_time - now).total_seconds()
             appt.is_upcoming = (0 <= time_diff <= 30 * 60)
         else:
             appt.is_upcoming = False
-            
+
         if appt.is_today and status_key not in ['completed', 'cancelled', 'canceled']:
             appt.is_overdue = (now > appt.appointment_time)
         else:
@@ -65,14 +65,16 @@ class AppointmentService:
 
     @staticmethod
     def get_all():
-        appointments = Appointment.query.filter(Appointment.deleted_at.is_(None)).all()
+        from services.workspace_service import WorkspaceService
+        appointments = WorkspaceService.scoped_query(Appointment).filter(Appointment.deleted_at.is_(None)).all()
         for appt in appointments:
             AppointmentService._attach_flags(appt)
         return appointments
 
     @staticmethod
     def get_by_id(appointment_id):
-        appt = Appointment.query.filter(Appointment.id == appointment_id, Appointment.deleted_at.is_(None)).first()
+        from services.workspace_service import WorkspaceService
+        appt = WorkspaceService.scoped_query(Appointment).filter(Appointment.id == appointment_id, Appointment.deleted_at.is_(None)).first()
         if appt:
             AppointmentService._attach_flags(appt)
         return appt
@@ -96,7 +98,7 @@ class AppointmentService:
             else:
                 appointment_time = ""
 
-        
+
         # 1. Validation
         data = {
             'customer_id': customer_id,
@@ -108,6 +110,13 @@ class AppointmentService:
         validator.validate(data)
         validator.raise_if_invalid("Thông tin lịch hẹn không hợp lệ.")
 
+        from services.customer_service import CustomerService
+        from services.service_service import ServiceService
+        if not CustomerService.get_by_id(customer_id):
+            raise ValidationException("Khách hàng không tồn tại hoặc không thuộc Workspace này.")
+        if not ServiceService.get_service_by_id(service_id):
+            raise ValidationException("Dịch vụ không tồn tại hoặc không thuộc Workspace này.")
+
         # 2. Parse time
         try:
             full_time = datetime.strptime(f"{appointment_date} {appointment_time}", '%Y-%m-%d %H:%M')
@@ -117,7 +126,14 @@ class AppointmentService:
         # 3. Conflict check
         if not AppointmentService.validate(full_time, service_id):
             raise ConflictException("Khung giờ này đã được đặt cho dịch vụ này.")
-        
+
+        from services.customer_service import CustomerService
+        from services.service_service import ServiceService
+        if not CustomerService.get_by_id(customer_id):
+            raise ValidationException("Khách hàng không tồn tại hoặc không thuộc Workspace này.")
+        if not ServiceService.get_service_by_id(service_id):
+            raise ValidationException("Dịch vụ không tồn tại hoặc không thuộc Workspace này.")
+
         new_appointment = Appointment(
             customer_id=customer_id,
             service_id=service_id,
@@ -125,10 +141,12 @@ class AppointmentService:
             notes=notes,
             status=status
         )
+        from services.workspace_service import WorkspaceService
+        WorkspaceService.assign_workspace(new_appointment)
         db.session.add(new_appointment)
         db.session.commit()
         AppointmentService._attach_flags(new_appointment)
-        
+
         customer_name = new_appointment.customer.name if new_appointment.customer else "Khách hàng"
         ActivityLogService.log_create(
             module=ActivityLogService.MODULE_APPOINTMENT,
@@ -146,10 +164,11 @@ class AppointmentService:
 
     @staticmethod
     def search(query):
+        from services.workspace_service import WorkspaceService
         if not query:
-            appointments = Appointment.query.filter(Appointment.deleted_at.is_(None)).all()
+            appointments = WorkspaceService.scoped_query(Appointment).filter(Appointment.deleted_at.is_(None)).all()
         else:
-            appointments = Appointment.query.join(Customer).join(Service).filter(
+            appointments = WorkspaceService.scoped_query(Appointment).join(Customer).join(Service).filter(
                 Appointment.deleted_at.is_(None),
                 or_(
                     Customer.name.ilike(f'%{query}%'),
@@ -163,11 +182,12 @@ class AppointmentService:
 
     @staticmethod
     def _build_filtered_query(search=None, status=None, from_date=None, to_date=None, period=None):
-        query = Appointment.query.join(Customer).join(Service).options(
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Appointment).join(Customer).join(Service).options(
             db.contains_eager(Appointment.customer),
             db.contains_eager(Appointment.service)
         ).filter(Appointment.deleted_at.is_(None))
-        
+
         if search:
             query = query.filter(
                 or_(
@@ -176,7 +196,7 @@ class AppointmentService:
                     Service.name.ilike(f'%{search}%')
                 )
             )
-        
+
         if status:
             query = query.filter(func.lower(Appointment.status) == str(status).strip().lower())
 
@@ -202,7 +222,7 @@ class AppointmentService:
             if not from_date and not to_date:
                 from_date = None
                 to_date = None
-            
+
         if from_date:
             try:
                 if isinstance(from_date, str):
@@ -214,7 +234,7 @@ class AppointmentService:
                 query = query.filter(func.date(Appointment.appointment_time) >= from_date_obj)
             except (ValueError, TypeError):
                 pass
-                
+
         if to_date:
             try:
                 if isinstance(to_date, str):
@@ -226,19 +246,19 @@ class AppointmentService:
                 query = query.filter(func.date(Appointment.appointment_time) <= to_date_obj)
             except (ValueError, TypeError):
                 pass
-                
+
         return query
 
     @staticmethod
     def get_filtered(search=None, status=None, from_date=None, to_date=None, sort_by='date', order='desc', page=1, per_page=10, period=None):
         query = AppointmentService._build_filtered_query(
-            search=search, 
-            status=status, 
-            from_date=from_date, 
+            search=search,
+            status=status,
+            from_date=from_date,
             to_date=to_date,
             period=period
         )
-                
+
         if sort_by == 'customer':
             sort_col = Customer.name
         elif sort_by == 'status':
@@ -252,25 +272,25 @@ class AppointmentService:
             query = query.order_by(sort_col.desc())
 
         paginated = query.paginate(page=page, per_page=per_page, error_out=False)
-        
+
         for item in paginated.items:
             AppointmentService._attach_flags(item)
             item.display_status = AppointmentService._status_display_label(item.status)
-                
+
         return paginated
 
     @staticmethod
     def get_appointment_summary(search=None, status=None, from_date=None, to_date=None, period=None):
         query = AppointmentService._build_filtered_query(
-            search=search, 
-            status=status, 
-            from_date=from_date, 
+            search=search,
+            status=status,
+            from_date=from_date,
             to_date=to_date,
             period=period
         )
-        
+
         results = query.with_entities(Appointment.status).all()
-        
+
         summary = {
             "total": len(results),
             "pending": 0,
@@ -278,7 +298,7 @@ class AppointmentService:
             "completed": 0,
             "cancelled": 0
         }
-        
+
         for (st,) in results:
             status_key = AppointmentService._normalize_status(st)
             if status_key == 'pending':
@@ -289,7 +309,7 @@ class AppointmentService:
                 summary['completed'] += 1
             elif status_key in ('cancelled', 'canceled'):
                 summary['cancelled'] += 1
-                
+
         return summary
 
     @staticmethod
@@ -297,16 +317,16 @@ class AppointmentService:
         appointment = AppointmentService.get_by_id(appointment_id)
         if not appointment:
             raise NotFoundException("Không tìm thấy lịch hẹn!")
-            
+
         old_status = appointment.status
-        
+
         customer_id = kwargs.get('customer_id', appointment.customer_id)
         service_id = kwargs.get('service_id', appointment.service_id)
-        
+
         # Normalize date and time
         appointment_date = kwargs.get('appointment_date')
         appointment_time = kwargs.get('appointment_time')
-        
+
         if appointment_date is None:
             # We didn't receive explicit appointment_date, so try to extract it from appointment_time
             if appointment_time is not None:
@@ -334,7 +354,7 @@ class AppointmentService:
             # We got appointment_date but not appointment_time, so use existing time part
             appointment_time = appointment.appointment_time.strftime('%H:%M')
 
-        
+
         # 1. Validation
         data = {
             'customer_id': customer_id,
@@ -345,7 +365,14 @@ class AppointmentService:
         validator = AppointmentValidator()
         validator.validate(data)
         validator.raise_if_invalid("Thông tin lịch hẹn không hợp lệ.")
-        
+
+        from services.customer_service import CustomerService
+        from services.service_service import ServiceService
+        if not CustomerService.get_by_id(customer_id):
+            raise ValidationException("Khách hàng không tồn tại hoặc không thuộc Workspace này.")
+        if not ServiceService.get_service_by_id(service_id):
+            raise ValidationException("Dịch vụ không tồn tại hoặc không thuộc Workspace này.")
+
         # 2. Parse time
         try:
             full_time = datetime.strptime(f"{appointment_date} {appointment_time}", '%Y-%m-%d %H:%M')
@@ -363,10 +390,10 @@ class AppointmentService:
             appointment.status = kwargs['status']
         if 'notes' in kwargs:
             appointment.notes = kwargs['notes']
-            
+
         db.session.commit()
         AppointmentService._attach_flags(appointment)
-        
+
         new_status = kwargs.get('status')
         if new_status and new_status != old_status:
             new_status_key = AppointmentService._normalize_status(new_status)
@@ -386,7 +413,7 @@ class AppointmentService:
                     reference_id=appointment.id,
                     severity=ActivityLogService.SEVERITY_SUCCESS
                 )
-        
+
         if any(k in kwargs for k in ['appointment_date', 'appointment_time', 'service_id', 'customer_id', 'notes']):
             customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
             ActivityLogService.log_update(
@@ -405,7 +432,8 @@ class AppointmentService:
     @staticmethod
     def delete(appointment_id, actor=None):
         """Xóa mềm lịch hẹn và chuyển vào thùng rác"""
-        appointment = Appointment.query.get(appointment_id)
+        from services.workspace_service import WorkspaceService
+        appointment = WorkspaceService.scoped_query(Appointment).filter(Appointment.id == appointment_id).first()
         if appointment and appointment.deleted_at is None:
             customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
             try:
@@ -438,16 +466,19 @@ class AppointmentService:
     @staticmethod
     def restore(appointment_id, actor=None):
         """Khôi phục lịch hẹn từ Thùng rác"""
-        appointment = Appointment.query.get(appointment_id)
+        from services.workspace_service import WorkspaceService
+        appointment = WorkspaceService.scoped_query(Appointment).filter(Appointment.id == appointment_id).first()
         if appointment and appointment.deleted_at is not None:
-            customer = Customer.query.get(appointment.customer_id)
+            from services.customer_service import CustomerService
+            from services.service_service import ServiceService
+            customer = CustomerService.get_by_id(appointment.customer_id)
             if not customer:
-                raise ValueError("Không thể khôi phục lịch hẹn vì khách hàng liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
-                
-            service = Service.query.get(appointment.service_id)
+                raise ValueError("Không thể khôi phục lịch hẹn vì khách hàng liên quan đã bị xóa vĩnh viễn khỏi hệ thống hoặc thuộc Workspace khác.")
+
+            service = ServiceService.get_service_by_id(appointment.service_id)
             if not service:
                 raise ValueError("Không thể khôi phục lịch hẹn vì dịch vụ liên quan đã bị xóa vĩnh viễn khỏi hệ thống.")
-                
+
             try:
                 actor_name = actor
                 if actor_name is None or not str(actor_name).strip():
@@ -478,7 +509,8 @@ class AppointmentService:
     @staticmethod
     def permanent_delete(appointment_id, actor=None):
         """Xóa vĩnh viễn lịch hẹn khỏi cơ sở dữ liệu"""
-        appointment = Appointment.query.get(appointment_id)
+        from services.workspace_service import WorkspaceService
+        appointment = WorkspaceService.scoped_query(Appointment).filter(Appointment.id == appointment_id).first()
         if appointment:
             customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
             try:
@@ -514,7 +546,8 @@ class AppointmentService:
             except ValueError:
                 return False
 
-        query = Appointment.query.filter(
+        from services.workspace_service import WorkspaceService
+        query = WorkspaceService.scoped_query(Appointment).filter(
             Appointment.appointment_time == appointment_time,
             Appointment.service_id == service_id,
             Appointment.status != 'Cancelled',
@@ -522,6 +555,6 @@ class AppointmentService:
         )
         if exclude_id:
             query = query.filter(Appointment.id != exclude_id)
-        
+
         conflict = query.first()
         return conflict is None
