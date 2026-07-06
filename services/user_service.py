@@ -8,6 +8,7 @@ from core.activity_log_utils import build_activity_log_entry, get_activity_actor
 from core.exceptions import ConflictException, NotFoundException, ValidationException
 from models.user import User
 from utils.timezone_utils import utc_now
+from services.workspace_service import WorkspaceService
 
 
 class UserService:
@@ -341,6 +342,12 @@ class UserService:
         user.approved_by_id = actor.id if actor else None
         user.approved_at = utc_now()
         user.updated_at = utc_now()
+
+        if user.auth_provider == "google":
+            # Upgrade global role to OWNER as they are the new spa owner
+            user.role = UserRole.OWNER.value
+            WorkspaceService.ensure_workspace_for_approved_owner(user, approved_by=actor)
+
         actor_display_name = get_activity_actor_display_name(actor)
 
         try:

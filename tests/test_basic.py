@@ -56,6 +56,7 @@ from services.customer_service import CustomerService
 from services.invoice_service import InvoiceService
 from services.service_service import ServiceService
 from services.auth_service import AuthService
+from services.user_service import UserService
 from services.backup_service import BackupService
 from services.data_audit_service import run_data_consistency_audit
 from services.data_repair_service import run_controlled_repair
@@ -700,6 +701,18 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(user.is_active)
         self.assertEqual(user.approved_by_id, approval_owner.id)
         self.assertIsNotNone(user.approved_at)
+
+        # 7.1. Assert workspace provisioning during approval
+        workspace = Workspace.query.filter_by(created_by_id=user.id).first()
+        self.assertIsNotNone(workspace)
+        self.assertEqual(workspace.name, "Spa của E2E User")
+        self.assertEqual(workspace.status, "active")
+
+        membership = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=user.id).first()
+        self.assertIsNotNone(membership)
+        self.assertEqual(membership.role, "owner")
+        self.assertEqual(membership.status, "active")
+        self.assertEqual(membership.invited_by_id, approval_owner.id)
 
         # 8. Logout APPROVAL_OWNER
         self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/approval/pending")}, follow_redirects=False)
@@ -4941,6 +4954,116 @@ class BasicTestCase(unittest.TestCase):
         # Approval owner is globally redirected to approval portal if authenticated
         self.assertEqual(res.status_code, 302)
         self.assertIn("/approval/pending", res.headers.get("Location", ""))
+
+    def test_approve_pending_google_user_creates_workspace(self):
+        # 1. Create approval owner
+        approval_owner = self.create_user("appr-owner-test", password="pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        # 2. Create pending Google user
+        pending_user = User(
+            username="pending-google-user",
+            full_name="Google User Test",
+            role="STAFF",
+            is_active=False,
+            approval_status=User.APPROVAL_PENDING,
+            email="google-user@example.com",
+            auth_provider="google",
+            oauth_id="oauth-sub-123",
+        )
+        pending_user.set_password("random")
+        db.session.add(pending_user)
+        db.session.commit()
+
+        # 3. Approve via UserService
+        UserService.approve_pending_user(actor=approval_owner, user_id=pending_user.id)
+
+        # 4. Assertions
+        db.session.refresh(pending_user)
+        self.assertEqual(pending_user.approval_status, User.APPROVAL_ACTIVE)
+        self.assertTrue(pending_user.is_active)
+        self.assertEqual(pending_user.role, "OWNER")  # should be OWNER
+        
+        # Workspace assertion
+        workspace = Workspace.query.filter_by(created_by_id=pending_user.id).first()
+        self.assertIsNotNone(workspace)
+        self.assertEqual(workspace.name, "Spa của Google User Test")
+        self.assertEqual(workspace.status, "active")
+
+        # Membership assertion
+        membership = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=pending_user.id).first()
+        self.assertIsNotNone(membership)
+        self.assertEqual(membership.role, "owner")
+        self.assertEqual(membership.status, "active")
+        self.assertEqual(membership.invited_by_id, approval_owner.id)
+
+    def test_workspace_creation_is_idempotent(self):
+        approval_owner = self.create_user("appr-owner-idemp", password="pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        pending_user = User(
+            username="google-idemp",
+            full_name="Idemp Test",
+            role="STAFF",
+            is_active=False,
+            approval_status=User.APPROVAL_PENDING,
+            email="google-idemp@example.com",
+            auth_provider="google",
+            oauth_id="oauth-sub-idemp",
+        )
+        pending_user.set_password("random")
+        db.session.add(pending_user)
+        db.session.commit()
+
+        # Approve once
+        UserService.approve_pending_user(actor=approval_owner, user_id=pending_user.id)
+        
+        # Approve again (idempotent, using the service directly as re-approving via UserService raises validation error)
+        from services.workspace_service import WorkspaceService
+        ws1 = Workspace.query.filter_by(created_by_id=pending_user.id).first()
+        self.assertIsNotNone(ws1)
+
+        ws2 = WorkspaceService.ensure_workspace_for_approved_owner(pending_user, approved_by=approval_owner)
+        self.assertEqual(ws1.id, ws2.id)
+        
+        # Check overall workspace count for this user
+        memberships = WorkspaceMember.query.filter_by(user_id=pending_user.id).all()
+        self.assertEqual(len(memberships), 1)
+
+    def test_reject_does_not_create_workspace(self):
+        approval_owner = self.create_user("appr-owner-reject", password="pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        pending_user = User(
+            username="google-reject",
+            full_name="Reject Test",
+            role="STAFF",
+            is_active=False,
+            approval_status=User.APPROVAL_PENDING,
+            email="google-reject@example.com",
+            auth_provider="google",
+            oauth_id="oauth-sub-reject",
+        )
+        pending_user.set_password("random")
+        db.session.add(pending_user)
+        db.session.commit()
+
+        # Reject
+        UserService.reject_pending_user(actor=approval_owner, user_id=pending_user.id)
+
+        # Assert no workspace or membership created
+        workspace = Workspace.query.filter_by(created_by_id=pending_user.id).first()
+        self.assertIsNone(workspace)
+        membership = WorkspaceMember.query.filter_by(user_id=pending_user.id).first()
+        self.assertIsNone(membership)
+
+    def test_approval_owner_does_not_get_workspace(self):
+        from services.workspace_service import WorkspaceService
+        approval_owner = self.create_user("appr-owner-no-ws", password="pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        ws = WorkspaceService.ensure_workspace_for_approved_owner(approval_owner)
+        self.assertIsNone(ws)
 
 
 if __name__ == "__main__":
