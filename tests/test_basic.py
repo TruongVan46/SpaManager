@@ -772,7 +772,7 @@ class BasicTestCase(unittest.TestCase):
 
     def test_login_blocks_pending_rejected_and_disabled_users(self):
         blocked_users = [
-            ("login-pending", False, "pending", "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ch\u1ee7 spa duy\u1ec7t.", True, "/auth/pending"),
+            ("login-pending", False, "pending", "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd Tr\u01b0\u1eddng V\u0103n ph\u00ea duy\u1ec7t.", True, "/auth/pending"),
             ("login-rejected", False, "rejected", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, None),
             ("login-disabled", False, "disabled", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, None),
         ]
@@ -852,8 +852,16 @@ class BasicTestCase(unittest.TestCase):
 
         pending_page = self.client.get("/auth/pending", follow_redirects=False)
         self.assertEqual(pending_page.status_code, 200)
-        self.assertIn("Tài khoản của bạn đang chờ chủ spa duyệt.", pending_page.get_data(as_text=True))
-        self.assertIn("Đăng xuất", pending_page.get_data(as_text=True))
+        html = pending_page.get_data(as_text=True)
+        # Branding: mới là Trường Văn, không còn "chủ spa"
+        self.assertIn("Trường Văn phê duyệt", html)
+        self.assertNotIn("chủ spa duyệt", html)
+        # UX: không còn nút "Quay lại đăng nhập" gây loop
+        self.assertNotIn("Quay lại đăng nhập", html)
+        # UX: có nút Đăng xuất rõ ràng
+        self.assertIn("Đăng xuất", html)
+        # UX: có text hướng dẫn
+        self.assertIn("đăng xuất trước", html)
 
     def test_pending_user_session_is_redirected_to_pending_page_from_main_app(self):
         pending_user = self.create_user(
@@ -874,6 +882,46 @@ class BasicTestCase(unittest.TestCase):
         login_page = self.client.get("/login", follow_redirects=False)
         self.assertEqual(login_page.status_code, 302)
         self.assertEqual(login_page.headers["Location"], "/auth/pending")
+
+    def test_pending_page_ux_logout_clears_session_and_returns_to_login(self):
+        """
+        Task 6.3.5: Pending page UX regression guard.
+        - Pending page không có link trực tiếp tới /login (gây loop khi session còn).
+        - Pending page có nút Đăng xuất (POST /logout).
+        - Logout từ pending xóa session và redirect về /login.
+        """
+        pending_user = self.create_user(
+            "pending-ux-logout",
+            password="pending-pass",
+            full_name="Pending UX Logout",
+            role="STAFF",
+            is_active=False,
+            approval_status="pending",
+        )
+        self.login_as(pending_user)
+
+        # Pending page không còn link "Quay lại đăng nhập" (trực tiếp /login)
+        pending_page = self.client.get("/auth/pending", follow_redirects=False)
+        self.assertEqual(pending_page.status_code, 200)
+        html = pending_page.get_data(as_text=True)
+        self.assertNotIn("Quay lại đăng nhập", html)
+        self.assertIn("Đăng xuất", html)
+        self.assertIn("đăng xuất trước", html)
+
+        # Logout xóa session
+        csrf_token = self.get_csrf_token("/auth/pending")
+        logout_response = self.client.post(
+            "/logout",
+            headers={"X-CSRFToken": csrf_token},
+            follow_redirects=False,
+        )
+        self.assertEqual(logout_response.status_code, 302)
+        self.assertIsNone(self.get_session_user_id())
+
+        # Sau logout, truy cập /auth/pending redirect về /login (session đã xóa)
+        after_logout = self.client.get("/auth/pending", follow_redirects=False)
+        self.assertEqual(after_logout.status_code, 302)
+        self.assertIn("/login", after_logout.headers.get("Location", ""))
 
     def test_rejected_user_session_is_redirected_to_login_denial(self):
         rejected_user = self.create_user(

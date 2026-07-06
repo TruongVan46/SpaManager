@@ -102,7 +102,7 @@ class AuthService:
                     from core.csrf import rotate_csrf_token
                     rotate_csrf_token()
                     raise AuthenticationException(
-                        "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd ch\u1ee7 spa duy\u1ec7t.",
+                        "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd Tr\u01b0\u1eddng V\u0103n ph\u00ea duy\u1ec7t.",
                         code="AUTH_ACCOUNT_PENDING",
                         status_code=401,
                         severity="WARNING",
