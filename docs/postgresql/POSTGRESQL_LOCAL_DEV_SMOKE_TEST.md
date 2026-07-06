@@ -23,18 +23,18 @@
 
 | Check | Status | Notes |
 |---|---|---|
-| `docker info` | FAIL | Server API was unavailable. The shell reached the Docker client, but the daemon could not be reached on `dockerDesktopLinuxEngine`. |
-| Docker Desktop status | FAIL | `docker desktop status` could not retrieve engine status and reported access denied while opening Docker Desktop log files under `C:\Users\ADMIN\AppData\Local\Docker\log\host`. |
+| `docker info` | PASS | Docker Desktop engine is reachable and responding. |
+| Docker Desktop status | PASS | Docker Desktop reports the local engine is running. |
 | Docker context list | PASS | `desktop-linux` is present as the selected context in this environment. |
-| Docker PostgreSQL started | FAIL | Docker Desktop engine was not reachable from the current shell session. `docker compose up -d` could not connect to `dockerDesktopLinuxEngine`. |
-| `spamanager_dev` DB created | NOT RUN | Could not reach the Docker engine to create or recreate the local database. |
+| Docker PostgreSQL started | PASS | `spamanager-postgres` is running from `docker-compose.postgres.yml`. |
+| `spamanager_dev` DB created | PASS | The local development database was recreated successfully. |
 | DevelopmentConfig dialect | PASS | DevelopmentConfig is configured to prefer PostgreSQL local development. |
 | DevelopmentConfig database | PASS | Default local URI points to `postgresql://spamanager:spamanager_dev_password@localhost:5433/spamanager_dev`. |
-| `db upgrade` | NOT RUN | Blocked by unavailable Docker PostgreSQL engine. |
-| `db current` | NOT RUN | Blocked by unavailable Docker PostgreSQL engine. |
-| Core tables exist | NOT RUN | Blocked by unavailable Docker PostgreSQL engine. |
-| App import/boot | FAIL | Importing `app` attempted to connect to PostgreSQL on `localhost:5433` and received connection refused. |
-| Route smoke | NOT RUN | Blocked because the app could not boot against the unavailable local database. |
+| `db upgrade` | PASS | Local PostgreSQL schema upgrade completed successfully. |
+| `db current` | PASS | Current revision is `0001_baseline`. |
+| Core tables exist | PASS | Local PostgreSQL schema was created successfully. |
+| App import/boot | PASS | App booted successfully against the local PostgreSQL database. |
+| Route smoke | PASS | No `500` responses were observed in the route smoke. |
 | Manual browser smoke | NOT RUN | Not run. |
 | `unittest` | PASS | `151` tests passed. |
 | `compileall` | PASS | `python -m compileall .` passed. |
@@ -45,10 +45,13 @@
 - It is not the workspace production migration.
 - It does not approve production migration.
 - Fresh dev DB may include workspace tables because current metadata includes workspace models.
-- In this session, Docker Desktop was installed but the engine was not reachable, so the PostgreSQL smoke path was blocked.
-- The local blocker observed in this session was Docker Desktop log-file access denied under the current shell session, which prevented the engine status command from completing and kept the PostgreSQL pipe unavailable.
-- Switching the Docker context back to `default` was also blocked by access denied while updating `C:\Users\ADMIN\.docker\config.json`.
+- This PASS only confirms the local dev PostgreSQL smoke path.
+- It is not the workspace production migration.
+- It does not create `migrations/versions/0002_workspace_foundation.py`.
+- It does not create `docs/workspace/WORKSPACE_MIGRATION_EXECUTION_APPROVAL.md`.
+- It does not run production migration.
+- It does not use production `DATABASE_URL`.
 
 ## Final result
 
-PARTIAL
+PASS
