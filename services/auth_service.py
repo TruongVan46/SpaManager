@@ -148,6 +148,7 @@ class AuthService:
         if user:
             AuthService.on_logout(user)
         session.pop(AUTH_SESSION_KEY, None)
+        session.pop("current_workspace_id", None)
         from core.csrf import clear_csrf_token
         clear_csrf_token()
         return True
@@ -166,6 +167,10 @@ class AuthService:
                 user_id=user.id
             ))
             db.session.commit()
+            
+            # Auto-select and set current workspace session
+            from services.workspace_service import WorkspaceService
+            WorkspaceService.ensure_current_workspace_session(user)
         except Exception as e:
             db.session.rollback()
             app_logger.error(f"Error in on_login_success hook: {e}", module="AUTHENTICATION", exc_info=True)
@@ -184,6 +189,10 @@ class AuthService:
                 user_id=user.id
             ))
             db.session.commit()
+            
+            # Clear workspace session context
+            from services.workspace_service import WorkspaceService
+            WorkspaceService.clear_current_workspace_session()
         except Exception as e:
             db.session.rollback()
             app_logger.error(f"Error in on_logout hook: {e}", module="AUTHENTICATION", exc_info=True)

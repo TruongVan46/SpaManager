@@ -5065,6 +5065,159 @@ class BasicTestCase(unittest.TestCase):
         ws = WorkspaceService.ensure_workspace_for_approved_owner(approval_owner)
         self.assertIsNone(ws)
 
+    def test_approved_google_owner_login_sets_current_workspace_id(self):
+        approval_owner = self.create_user("appr-owner-glogin", password="pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        # 1. Create pending Google user
+        pending_user = User(
+            username="google-login-test",
+            full_name="Google Login Test",
+            role="STAFF",
+            is_active=False,
+            approval_status=User.APPROVAL_PENDING,
+            email="google-login-test@example.com",
+            auth_provider="google",
+            oauth_id="oauth-sub-glogin",
+        )
+        pending_user.set_password("random")
+        db.session.add(pending_user)
+        db.session.commit()
+
+        # 2. Approve
+        UserService.approve_pending_user(actor=approval_owner, user_id=pending_user.id)
+        
+        # 3. Simulate Google login callback for active approved user
+        response = self.run_google_callback_with_identity({
+            "sub": "oauth-sub-glogin",
+            "email": "google-login-test@example.com",
+            "email_verified": True,
+            "name": "Google Login Test",
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        # 4. Assert session
+        self.assertEqual(self.get_session_user_id(), pending_user.id)
+        
+        workspace = Workspace.query.filter_by(created_by_id=pending_user.id).first()
+        self.assertIsNotNone(workspace)
+        
+        # Check current_workspace_id in session
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess.get("current_workspace_id"), workspace.id)
+
+    def test_local_owner_login_sets_current_workspace_id(self):
+        # 1. Create a workspace
+        workspace = Workspace(name="Local Spa", slug="local-spa", status="active")
+        db.session.add(workspace)
+        db.session.flush()
+
+        # 2. Create local user and link to workspace
+        local_user = self.create_user("local-owner-login", password="password", role="OWNER")
+        db.session.commit()
+
+        membership = WorkspaceMember(workspace_id=workspace.id, user_id=local_user.id, role="owner", status="active")
+        db.session.add(membership)
+        db.session.commit()
+
+        # 3. Login via POST /login
+        csrf_token = self.get_csrf_token("/login")
+        response = self.client.post(
+            "/login",
+            json={"username": "local-owner-login", "password": "password"},
+            headers={"X-CSRFToken": csrf_token},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["success"])
+        
+        # 4. Assert session
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess.get("current_workspace_id"), workspace.id)
+
+    def test_user_with_no_workspace_does_not_set_session(self):
+        local_user = self.create_user("no-workspace-user", password="password", role="STAFF")
+        db.session.commit()
+
+        # Login via POST /login
+        csrf_token = self.get_csrf_token("/login")
+        response = self.client.post(
+            "/login",
+            json={"username": "no-workspace-user", "password": "password"},
+            headers={"X-CSRFToken": csrf_token},
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # Assert no current_workspace_id
+        with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get("current_workspace_id"))
+
+    def test_approval_owner_does_not_set_workspace_session(self):
+        approval_owner = self.create_user("appr-owner-sess", password="pass", role="APPROVAL_OWNER")
+        db.session.commit()
+
+        csrf_token = self.get_csrf_token("/login")
+        response = self.client.post(
+            "/login",
+            json={"username": "appr-owner-sess", "password": "pass"},
+            headers={"X-CSRFToken": csrf_token},
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get("current_workspace_id"))
+
+    def test_logout_clears_workspace_session(self):
+        workspace = Workspace(name="Logout Spa", slug="logout-spa", status="active")
+        db.session.add(workspace)
+        db.session.flush()
+
+        local_user = self.create_user("logout-user", password="password", role="OWNER")
+        db.session.commit()
+
+        membership = WorkspaceMember(workspace_id=workspace.id, user_id=local_user.id, role="owner", status="active")
+        db.session.add(membership)
+        db.session.commit()
+
+        # Login via POST /login
+        csrf_token = self.get_csrf_token("/login")
+        response = self.client.post(
+            "/login",
+            json={"username": "logout-user", "password": "password"},
+            headers={"X-CSRFToken": csrf_token},
+        )
+        self.assertEqual(response.status_code, 200)
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess.get("current_workspace_id"), workspace.id)
+
+        # Logout
+        csrf_logout = self.get_csrf_token("/dashboard")
+        self.client.post("/logout", headers={"X-CSRFToken": csrf_logout})
+        
+        with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get("current_workspace_id"))
+
+    def test_ensure_current_workspace_session_idempotency(self):
+        from services.workspace_service import WorkspaceService
+        
+        workspace = Workspace(name="Idemp Sess Spa", slug="idemp-sess-spa", status="active")
+        db.session.add(workspace)
+        db.session.flush()
+
+        local_user = self.create_user("idemp-user", password="password", role="OWNER")
+        db.session.commit()
+
+        membership = WorkspaceMember(workspace_id=workspace.id, user_id=local_user.id, role="owner", status="active")
+        db.session.add(membership)
+        db.session.commit()
+
+        # Invoke multiple times directly with request context
+        with app.test_request_context():
+            ws1 = WorkspaceService.ensure_current_workspace_session(local_user)
+            self.assertEqual(ws1.id, workspace.id)
+
+            ws2 = WorkspaceService.ensure_current_workspace_session(local_user)
+            self.assertEqual(ws2.id, workspace.id)
+
 
 if __name__ == "__main__":
     unittest.main()

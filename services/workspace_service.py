@@ -94,3 +94,59 @@ class WorkspaceService:
         db.session.flush()
 
         return workspace
+        
+    @staticmethod
+    def ensure_current_workspace_session(user):
+        """
+        Auto-select workspace for the user after successful login and set session["current_workspace_id"].
+        
+        Rules:
+        - If user is APPROVAL_OWNER, do not set workspace context.
+        - If user is pending/rejected/disabled, do not set workspace context.
+        - If user has exactly one active workspace membership, set it.
+        - If user has multiple active memberships, pick the oldest (deterministic, e.g. ordered by joined_at/id).
+        - If user has no active memberships, do not set workspace context (legacy compatibility).
+        """
+        from flask import session
+        
+        if not user or not user.is_active or not user.is_approval_active:
+            return None
+            
+        if user.role == "APPROVAL_OWNER":
+            return None
+            
+        # Get active memberships, ordered deterministically by joined_at asc, id asc
+        memberships = WorkspaceMember.query.filter(
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.status == "active"
+        ).order_by(WorkspaceMember.joined_at.asc(), WorkspaceMember.id.asc()).all()
+        
+        if not memberships:
+            return None
+            
+        # Auto-select the first one (oldest joined or lowest ID)
+        selected_membership = memberships[0]
+        session["current_workspace_id"] = selected_membership.workspace_id
+        return selected_membership.workspace
+
+    @staticmethod
+    def get_current_workspace_from_session():
+        """
+        Get current Workspace object based on session["current_workspace_id"].
+        """
+        from flask import has_request_context, session
+        if not has_request_context():
+            return None
+        workspace_id = session.get("current_workspace_id")
+        if workspace_id:
+            return db.session.get(Workspace, workspace_id)
+        return None
+
+    @staticmethod
+    def clear_current_workspace_session():
+        """
+        Clear current workspace context from session during logout.
+        """
+        from flask import has_request_context, session
+        if has_request_context():
+            session.pop("current_workspace_id", None)

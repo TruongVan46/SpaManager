@@ -209,6 +209,15 @@ def inject_user():
     return dict(current_user=AuthService.get_current_user())
 
 @app.context_processor
+def inject_workspace():
+    from flask import session
+    from services.workspace_service import WorkspaceService
+    return dict(
+        current_workspace=WorkspaceService.get_current_workspace_from_session(),
+        current_workspace_id=session.get("current_workspace_id"),
+    )
+
+@app.context_processor
 def inject_permission_helpers():
     return dict(
         is_owner=is_owner,

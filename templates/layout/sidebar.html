@@ -6,7 +6,11 @@
             <i class="bi bi-flower1"></i>
         </div>
         <h3>SpaManager</h3>
+        {% if current_workspace %}
+        <p style="font-size: 0.75rem; color: var(--accent-color, #70a1ff); font-weight: 600; text-transform: uppercase; margin-top: 2px;">{{ current_workspace.name }}</p>
+        {% else %}
         <p>Quản lý Spa • Nail • Makeup</p>
+        {% endif %}
     </div>
 
     <!-- Menu -->
