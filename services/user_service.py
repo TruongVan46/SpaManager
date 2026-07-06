@@ -15,6 +15,7 @@ class UserService:
         UserRole.OWNER.value: "Chủ Spa",
         UserRole.ADMIN.value: "Quản trị",
         UserRole.STAFF.value: "Nhân viên",
+        UserRole.APPROVAL_OWNER.value: "Quản trị duyệt tài khoản",
     }
 
     AVAILABLE_ROLES = (

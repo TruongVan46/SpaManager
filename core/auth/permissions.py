@@ -40,6 +40,10 @@ def is_manager(user=None):
     return _normalized_role(user) in MANAGER_ROLES
 
 
+def is_approval_owner(user=None):
+    return _normalized_role(user) == UserRole.APPROVAL_OWNER.value
+
+
 def can_manage_users(user=None):
     return is_manager(user)
 
@@ -57,4 +61,4 @@ def can_manage_backups(user=None):
 
 
 def can_manage_business_data(user=None):
-    return _is_active_user(user)
+    return _is_active_user(user) and not is_approval_owner(user)

@@ -35,6 +35,9 @@ def login():
     current_user = AuthService.get_current_user()
     if current_user:
         if getattr(current_user, "can_access_app", False):
+            from core.auth.permissions import is_approval_owner
+            if is_approval_owner(current_user):
+                return redirect(url_for('approval.pending'))
             return redirect(url_for('dashboard.index'))
         if getattr(current_user, "is_pending_approval", False):
             return redirect('/auth/pending')
@@ -42,6 +45,9 @@ def login():
         _clear_stale_session()
 
     if AuthService.is_authenticated():
+        from core.auth.permissions import is_approval_owner
+        if is_approval_owner(AuthService.get_current_user()):
+            return redirect(url_for('approval.pending'))
         return redirect(url_for('dashboard.index'))
 
     if request.method == 'POST':
@@ -63,8 +69,12 @@ def login():
                 payload["redirect"] = "/auth/pending"
             return jsonify(payload), exc.status_code
         if success:
-            next_target = request.args.get('next')
-            next_url = next_target if _is_safe_next_url(next_target) else url_for('dashboard.index')
+            from core.auth.permissions import is_approval_owner
+            if is_approval_owner(user):
+                next_url = url_for('approval.pending')
+            else:
+                next_target = request.args.get('next')
+                next_url = next_target if _is_safe_next_url(next_target) else url_for('dashboard.index')
             return jsonify(
                 success=True,
                 redirect=next_url,

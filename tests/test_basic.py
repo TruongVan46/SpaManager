@@ -612,8 +612,8 @@ class BasicTestCase(unittest.TestCase):
             self.assertIsNone(self.get_session_user_id())
 
     def test_google_auth_local_e2e_smoke_flow(self):
-        # 1. Setup Owner
-        owner = self.create_user("e2e-owner", password="owner-pass", full_name="E2E Owner", role="OWNER")
+        # 1. Setup Approval Owner
+        approval_owner = self.create_user("e2e-approval-owner", password="owner-pass", full_name="E2E Approval Owner", role="APPROVAL_OWNER")
         db.session.commit()
 
         # 2. Callback with new identity: creates user pending
@@ -642,20 +642,20 @@ class BasicTestCase(unittest.TestCase):
         self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/auth/pending")}, follow_redirects=False)
         self.assertIsNone(self.get_session_user_id())
 
-        # 5. OWNER login (local flow)
-        self.login_as(owner)
-        self.assertEqual(self.get_session_user_id(), owner.id)
+        # 5. APPROVAL_OWNER login (local flow)
+        self.login_as(approval_owner)
+        self.assertEqual(self.get_session_user_id(), approval_owner.id)
 
-        # 6. OWNER opens /users/pending and sees user
-        pending_page = self.client.get("/users/pending")
+        # 6. APPROVAL_OWNER opens /approval/pending and sees user
+        pending_page = self.client.get("/approval/pending")
         self.assertEqual(pending_page.status_code, 200)
         html = pending_page.get_data(as_text=True)
         self.assertIn("e2e.google@example.com", html)
 
-        # 7. OWNER approves user
+        # 7. APPROVAL_OWNER approves user
         approve_response = self.post_with_csrf(
-            f"/users/{user.id}/approve",
-            path="/users/pending",
+            f"/approval/users/{user.id}/approve",
+            path="/approval/pending",
             data={},
             headers={"X-Requested-With": "XMLHttpRequest"},
             follow_redirects=False,
@@ -666,11 +666,11 @@ class BasicTestCase(unittest.TestCase):
         db.session.refresh(user)
         self.assertEqual(user.approval_status, User.APPROVAL_ACTIVE)
         self.assertTrue(user.is_active)
-        self.assertEqual(user.approved_by_id, owner.id)
+        self.assertEqual(user.approved_by_id, approval_owner.id)
         self.assertIsNotNone(user.approved_at)
 
-        # 8. Logout OWNER
-        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        # 8. Logout APPROVAL_OWNER
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/approval/pending")}, follow_redirects=False)
         self.assertIsNone(self.get_session_user_id())
 
         # 9. Google callback with same sub logs user in
@@ -1739,8 +1739,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(toggle_response.status_code, 403)
         self.assertTrue(User.query.get(target.id).is_active)
 
-    def test_owner_pending_users_page_and_approval_actions_work(self):
-        owner = self.create_user("pending-owner", password="owner-pass", full_name="Pending Owner", role="OWNER")
+    def test_approval_owner_pending_users_page_and_approval_actions_work(self):
+        approval_owner = self.create_user("pending-approval-owner", password="owner-pass", full_name="Pending Approval Owner", role="APPROVAL_OWNER")
         admin = self.create_user("pending-admin", password="admin-pass", full_name="Pending Admin", role="ADMIN")
         pending_approve = self.create_user(
             "pending-approve",
@@ -1767,19 +1767,26 @@ class BasicTestCase(unittest.TestCase):
             approval_status="active",
         )
 
-        self.login_as(owner)
-        page = self.client.get("/users/pending")
+        self.login_as(approval_owner)
+        page = self.client.get("/approval/pending")
         self.assertEqual(page.status_code, 200)
         html = page.get_data(as_text=True)
-        self.assertIn("Tài khoản chờ duyệt", html)
+        self.assertIn("Danh sách tài khoản chờ duyệt", html)
         self.assertIn("pending-approve", html)
         self.assertIn("pending-reject", html)
         self.assertNotIn("active-user", html)
-        self.assertIn("Tài khoản chờ duyệt", self.client.get("/users").get_data(as_text=True))
 
+        # OWNER/ADMIN list should not mix in pending approval UI
+        self.assertNotIn("pending-approval-owner", html)
+
+        # Standard users list (/users) should not show "Tài khoản chờ duyệt" button
+        self.login_as(admin)
+        self.assertNotIn("Tài khoản chờ duyệt", self.client.get("/users").get_data(as_text=True))
+
+        self.login_as(approval_owner)
         approve_response = self.post_with_csrf(
-            f"/users/{pending_approve.id}/approve",
-            path="/users/pending",
+            f"/approval/users/{pending_approve.id}/approve",
+            path="/approval/pending",
             data={},
             headers={"X-Requested-With": "XMLHttpRequest"},
             follow_redirects=False,
@@ -1790,10 +1797,10 @@ class BasicTestCase(unittest.TestCase):
         approved_user = User.query.get(pending_approve.id)
         self.assertEqual(approved_user.approval_status, "active")
         self.assertTrue(approved_user.is_active)
-        self.assertEqual(approved_user.approved_by_id, owner.id)
+        self.assertEqual(approved_user.approved_by_id, approval_owner.id)
         self.assertIsNotNone(approved_user.approved_at)
 
-        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/approval/pending")}, follow_redirects=False)
         login_token = self.get_csrf_token("/login")
         approved_login = self.client.post(
             "/login",
@@ -1804,10 +1811,10 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(approved_login.status_code, 200)
         self.assertTrue(approved_login.get_json()["success"])
 
-        self.login_as(owner)
+        self.login_as(approval_owner)
         reject_response = self.post_with_csrf(
-            f"/users/{pending_reject.id}/reject",
-            path="/users/pending",
+            f"/approval/users/{pending_reject.id}/reject",
+            path="/approval/pending",
             data={},
             headers={"X-Requested-With": "XMLHttpRequest"},
             follow_redirects=False,
@@ -1821,7 +1828,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertIsNone(rejected_user.approved_by_id)
         self.assertIsNone(rejected_user.approved_at)
 
-        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/approval/pending")}, follow_redirects=False)
         login_token = self.get_csrf_token("/login")
         rejected_login = self.client.post(
             "/login",
@@ -1832,21 +1839,33 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(rejected_login.status_code, 401)
         self.assertEqual(rejected_login.get_json()["message"], "Tài khoản không được phép đăng nhập.")
 
-    def test_admin_and_staff_cannot_access_owner_pending_users_page(self):
+    def test_non_approval_owners_blocked_from_approval_portal_and_approval_owner_blocked_from_spa(self):
         owner = self.create_user("pending-owner-guard", password="owner-pass", full_name="Pending Owner Guard", role="OWNER")
         admin = self.create_user("pending-admin-guard", password="admin-pass", full_name="Pending Admin Guard", role="ADMIN")
         staff = self.create_user("pending-staff-guard", password="staff-pass", full_name="Pending Staff Guard", role="STAFF")
+        approval_owner = self.create_user("pending-approval-guard", password="owner-pass", full_name="Pending Approval Guard", role="APPROVAL_OWNER")
 
+        # 1. Non-approval owners blocked from /approval/pending (403)
         self.login_as(owner)
-        self.assertEqual(self.client.get("/users/pending").status_code, 200)
-        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users/pending")}, follow_redirects=False)
+        self.assertEqual(self.client.get("/approval/pending").status_code, 403)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
 
         self.login_as(admin)
-        self.assertEqual(self.client.get("/users/pending").status_code, 403)
+        self.assertEqual(self.client.get("/approval/pending").status_code, 403)
         self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
 
         self.login_as(staff)
-        self.assertEqual(self.client.get("/users/pending").status_code, 403)
+        self.assertEqual(self.client.get("/approval/pending").status_code, 403)
+        self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/users")}, follow_redirects=False)
+
+        # 2. Approval Owner is blocked from accessing SpaManager routes (like / or /users/pending)
+        # and redirected back to /approval/pending
+        self.login_as(approval_owner)
+        self.assertEqual(self.client.get("/users/pending").status_code, 302)
+        self.assertEqual(self.client.get("/users/pending").headers.get("Location"), "/approval/pending")
+
+        self.assertEqual(self.client.get("/").status_code, 302)
+        self.assertEqual(self.client.get("/").headers.get("Location"), "/approval/pending")
 
     def test_user_create_route_rejects_invalid_password_and_duplicate_identity(self):
         owner = self.create_user("users-create-owner", password="owner-pass", full_name="Users Create Owner", role="OWNER")

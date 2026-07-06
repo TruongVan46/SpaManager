@@ -254,10 +254,13 @@ def _login_active_google_user(user):
 
     from services.auth_service import AuthService
     from utils.timezone_utils import utc_now
+    from core.auth.permissions import is_approval_owner
 
     user.last_login = utc_now()
     db.session.commit()
     AuthService.on_login_success(user)
+    if is_approval_owner(user):
+        return redirect(url_for("approval.pending"))
     return redirect(url_for("dashboard.index"))
 
 

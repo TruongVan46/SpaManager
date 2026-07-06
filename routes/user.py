@@ -73,55 +73,23 @@ def index():
 
 @user_bp.route('/users/pending')
 def pending():
-    current_user = _require_owner()
-    page, per_page = get_pagination_params()
-    users = UserService.pending_paginated(page=page, per_page=per_page)
-    return render_template(
-        'user/pending.html',
-        users=users,
-        current_user=current_user,
-        role_labels=UserService.ROLE_LABELS,
-    )
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    from core.auth.permissions import is_approval_owner
+    if is_approval_owner(current_user):
+        return redirect(url_for('approval.pending'))
+    abort(403)
 
 
 @user_bp.route('/users/<int:user_id>/approve', methods=['POST'])
 def approve(user_id):
-    actor = _require_owner()
-    try:
-        user = UserService.approve_pending_user(actor=actor, user_id=user_id)
-        message = f"Đã duyệt tài khoản {user.username}."
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True, 'message': message})
-        NotificationService.flash_success(message)
-    except ValidationException as e:
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
-        NotificationService.flash_error(e.message)
-    except BusinessException as e:
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'message': e.message}), e.status_code
-        NotificationService.flash_error(e.message)
-    return redirect(url_for('user.pending'))
+    abort(403)
 
 
 @user_bp.route('/users/<int:user_id>/reject', methods=['POST'])
 def reject(user_id):
-    actor = _require_owner()
-    try:
-        user = UserService.reject_pending_user(actor=actor, user_id=user_id)
-        message = f"Đã từ chối tài khoản {user.username}."
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True, 'message': message})
-        NotificationService.flash_success(message)
-    except ValidationException as e:
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
-        NotificationService.flash_error(e.message)
-    except BusinessException as e:
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'message': e.message}), e.status_code
-        NotificationService.flash_error(e.message)
-    return redirect(url_for('user.pending'))
+    abort(403)
 
 
 @user_bp.route('/users/create', methods=['GET', 'POST'])

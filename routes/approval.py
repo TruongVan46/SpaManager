@@ -1,0 +1,70 @@
+from flask import jsonify, redirect, render_template, request, url_for, abort
+
+from core.auth.permissions import is_approval_owner
+from core.exceptions import BusinessException, ValidationException
+from routes import approval_bp
+from services.auth_service import AuthService
+from services.notification_service import NotificationService
+from services.user_service import UserService
+from utils.pagination import get_pagination_params
+
+
+def _require_approval_owner():
+    current_user = AuthService.get_current_active_user()
+    if not current_user:
+        abort(401)
+    if not is_approval_owner(current_user):
+        abort(403)
+    return current_user
+
+
+@approval_bp.route('/approval/pending')
+def pending():
+    current_user = _require_approval_owner()
+    page, per_page = get_pagination_params()
+    users = UserService.pending_paginated(page=page, per_page=per_page)
+    return render_template(
+        'approval/pending.html',
+        users=users,
+        current_user=current_user,
+    )
+
+
+@approval_bp.route('/approval/users/<int:user_id>/approve', methods=['POST'])
+def approve(user_id):
+    actor = _require_approval_owner()
+    try:
+        user = UserService.approve_pending_user(actor=actor, user_id=user_id)
+        message = f"Đã duyệt tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('approval.pending'))
+
+
+@approval_bp.route('/approval/users/<int:user_id>/reject', methods=['POST'])
+def reject(user_id):
+    actor = _require_approval_owner()
+    try:
+        user = UserService.reject_pending_user(actor=actor, user_id=user_id)
+        message = f"Đã từ chối tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('approval.pending'))

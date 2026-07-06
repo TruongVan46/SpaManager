@@ -5,6 +5,7 @@ class UserRole(enum.Enum):
     OWNER = "OWNER"
     ADMIN = "ADMIN"
     STAFF = "STAFF"
+    APPROVAL_OWNER = "APPROVAL_OWNER"
 
 
 ROLE_ALIASES = {

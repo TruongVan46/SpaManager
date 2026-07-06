@@ -21,7 +21,8 @@ from routes import (
     activity_log_bp,
     recycle_bin_bp,
     auth_bp,
-    user_bp
+    user_bp,
+    approval_bp
 )
 from services.auth_service import AuthService
 from core.auth.permissions import (
@@ -34,6 +35,7 @@ from core.auth.permissions import (
     is_manager,
     is_owner,
     is_staff,
+    is_approval_owner
 )
 from core.csrf import validate_csrf_request, csrf_token, CSRFError, clear_csrf_token
 from core.auth.google_oauth import init_google_oauth, is_google_auth_available
@@ -65,6 +67,7 @@ app.register_blueprint(setting_bp)
 app.register_blueprint(recycle_bin_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(user_bp)
+app.register_blueprint(approval_bp)
 register_migration_commands(app)
 register_data_audit_commands(app)
 register_performance_profile_commands(app)
@@ -166,6 +169,13 @@ def require_login():
         return redirect(url_for('auth.login', next=next_url))
 
     if getattr(current_user, "can_access_app", False):
+        from core.auth.permissions import is_approval_owner
+        if is_approval_owner(current_user):
+            if not (request.endpoint.startswith('approval.') or request.endpoint in ['auth.logout', 'static', 'favicon', 'media_file']):
+                return redirect(url_for('approval.pending'))
+        else:
+            if request.endpoint.startswith('approval.'):
+                abort(403)
         return
 
     from core.error_handler import ErrorHandler
@@ -205,6 +215,7 @@ def inject_permission_helpers():
         is_admin=is_admin,
         is_staff=is_staff,
         is_manager=is_manager,
+        is_approval_owner=is_approval_owner,
         can_manage_users=can_manage_users,
         can_manage_settings=can_manage_settings,
         can_view_activity_logs=can_view_activity_logs,

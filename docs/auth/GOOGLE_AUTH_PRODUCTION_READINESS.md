@@ -16,7 +16,7 @@ Checklist:
    - `GOOGLE_REDIRECT_URI` (production callback URL, e.g. `https://<production-domain>/auth/google/callback`)
    - `GOOGLE_ALLOWED_DOMAIN` (optional)
 3. Confirm Google Cloud OAuth consent screen and redirect URI.
-4. Confirm owner account can access `/users/pending`.
+4. Confirm approval admin account (role APPROVAL_OWNER) can access `/approval/pending`.
 5. Confirm backup/restore policy is understood.
 6. Confirm no Google users auto-activate.
 7. Confirm rollback plan:
