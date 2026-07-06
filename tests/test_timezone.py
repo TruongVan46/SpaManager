@@ -5,6 +5,7 @@ import unittest
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
+from flask import session
 
 TEST_DB_FILE = Path(tempfile.gettempdir()) / "spamanager_timezone_test.sqlite"
 TEST_MEDIA_ROOT = Path(tempfile.gettempdir()) / "spamanager_media_timezone_test"
@@ -27,12 +28,13 @@ from models.appointment import Appointment
 from models.customer import Customer
 from models.invoice import Invoice
 from models.service import Service
+from models.user import User
+from models.workspace import Workspace, WorkspaceMember
 from services.activity_log_service import ActivityLogService
 from services.appointment_service import AppointmentService
 from services.dashboard_statistics_service import DashboardStatisticsService
 from services.invoice_service import InvoiceService
 from utils.timezone_utils import get_app_timezone, local_today, to_local_datetime
-
 
 class TimezoneTestCase(unittest.TestCase):
     @classmethod
@@ -55,14 +57,53 @@ class TimezoneTestCase(unittest.TestCase):
         db.drop_all()
         db.create_all()
 
+        # Clear global dashboard cache to prevent test pollution
+        from core.cache import dashboard_cache
+        dashboard_cache.clear()
+
+        # Create mock workspace and owner user
+        self.workspace = Workspace(name="Timezone Workspace", slug="timezone-workspace", status="active")
+        self.user = User(username="timezone_user", full_name="Timezone User", email="tz@example.com", is_active=True, role="OWNER")
+        self.user.set_password("Password123!")
+        db.session.add(self.workspace)
+        db.session.add(self.user)
+        db.session.flush()
+
+        self.member = WorkspaceMember(workspace_id=self.workspace.id, user_id=self.user.id, role="owner", status="active")
+        db.session.add(self.member)
+        db.session.commit()
+
+        # Push request context and set workspace session
+        self.req_context = app.test_request_context()
+        self.req_context.push()
+        session["auth_user_id"] = self.user.id
+        session["user_id"] = self.user.id
+        session["current_workspace_id"] = self.workspace.id
+        session["_enable_workspace_isolation"] = True
+
     def tearDown(self):
         db.session.rollback()
         db.drop_all()
+        # Clean request context
+        self.req_context.pop()
         self.app_context.pop()
 
     def create_customer_and_service(self):
-        customer = Customer(name="Khách test", phone="0901234567", email="test@example.com", address="HCM")
-        service = Service(name="Massage test", price=150000, duration=60, description="Test service", category="spa")
+        customer = Customer(
+            name="Khách test",
+            phone="0901234567",
+            email="test@example.com",
+            address="HCM",
+            workspace_id=self.workspace.id
+        )
+        service = Service(
+            name="Massage test",
+            price=150000,
+            duration=60,
+            description="Test service",
+            category="spa",
+            workspace_id=self.workspace.id
+        )
         db.session.add(customer)
         db.session.add(service)
         db.session.commit()
@@ -89,6 +130,7 @@ class TimezoneTestCase(unittest.TestCase):
             appointment_time=datetime(2026, 7, 4, 9, 0),
             status="Pending",
             notes="",
+            workspace_id=self.workspace.id,
         ))
         db.session.add(Invoice(
             customer_id=customer.id,
@@ -97,7 +139,8 @@ class TimezoneTestCase(unittest.TestCase):
             discount=0,
             total_amount=150000,
             payment_method="Cash",
-            notes=""
+            notes="",
+            workspace_id=self.workspace.id,
         ))
         db.session.add(ActivityLog(
             created_at=datetime(2026, 7, 3, 17, 0),
@@ -107,8 +150,9 @@ class TimezoneTestCase(unittest.TestCase):
         ))
         db.session.commit()
 
+        # Clear global dashboard cache before retrieving
         from core.cache import dashboard_cache
-        dashboard_cache.invalidate("dashboard_data")
+        dashboard_cache.clear()
 
         with patch("services.dashboard_statistics_service.local_today", return_value=date(2026, 7, 4)):
             data = DashboardStatisticsService.get_dashboard_data()
@@ -127,7 +171,8 @@ class TimezoneTestCase(unittest.TestCase):
             service_id=service.id,
             appointment_time=datetime(2026, 7, 4, 9, 0),
             status="Pending",
-            notes="Original"
+            notes="Original",
+            workspace_id=self.workspace.id,
         )
         db.session.add(appointment)
         db.session.commit()
@@ -168,7 +213,6 @@ class TimezoneTestCase(unittest.TestCase):
     def test_storage_timezone_helpers_round_trip(self):
         local_dt = to_local_datetime(datetime(2026, 7, 3, 17, 30), assume_utc=True)
         self.assertEqual(local_dt.strftime("%Y-%m-%d %H:%M"), "2026-07-04 00:30")
-
 
 if __name__ == "__main__":
     unittest.main()
