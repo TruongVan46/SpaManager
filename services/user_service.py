@@ -470,7 +470,7 @@ class UserService:
             u.owner_name = ""
             u.owner_username = ""
 
-            if u.auth_provider == "google" and u.role == UserRole.OWNER.value:
+            if u.role == UserRole.OWNER.value:
                 u.group_type = "owner_registration"
                 member = WorkspaceMember.query.filter_by(user_id=u.id, role="owner").first()
                 if member:
@@ -501,16 +501,26 @@ class UserService:
         user.approved_at = utc_now()
         user.updated_at = utc_now()
 
+        from models.workspace import WorkspaceMember
+        existing_memberships = WorkspaceMember.query.filter_by(user_id=user.id).all()
+        for m in existing_memberships:
+            m.status = "active"
+            m.updated_at = utc_now()
+
         if user.auth_provider == "google":
             user.role = UserRole.OWNER.value
-            from models.workspace import WorkspaceMember
-            existing = WorkspaceMember.query.filter_by(user_id=user.id).first()
-            if existing:
-                existing.status = "active"
-                existing.role = "owner"
-                existing.updated_at = utc_now()
+            owner_membership = WorkspaceMember.query.filter_by(user_id=user.id, role="owner").first()
+            if owner_membership:
+                owner_membership.status = "active"
+                owner_membership.updated_at = utc_now()
             else:
-                WorkspaceService.ensure_workspace_for_approved_owner(user, approved_by=actor)
+                other_membership = WorkspaceMember.query.filter_by(user_id=user.id).first()
+                if other_membership:
+                    other_membership.status = "active"
+                    other_membership.role = "owner"
+                    other_membership.updated_at = utc_now()
+                else:
+                    WorkspaceService.ensure_workspace_for_approved_owner(user, approved_by=actor)
 
         actor_display_name = get_activity_actor_display_name(actor)
         try:

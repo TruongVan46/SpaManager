@@ -62,7 +62,11 @@ def _require_statistics_permission():
         from services.workspace_service import WorkspaceService
         wid = WorkspaceService.get_current_workspace_id()
         if wid is None:
-            abort(403)
+            if current_user.role == "OWNER":
+                WorkspaceService.ensure_current_workspace_session(current_user)
+                wid = WorkspaceService.get_current_workspace_id()
+            if wid is None:
+                abort(403)
 
 
 @statistics_bp.route('/reports')

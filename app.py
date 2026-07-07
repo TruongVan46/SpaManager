@@ -176,6 +176,10 @@ def require_login():
         else:
             if request.endpoint.startswith('approval.'):
                 abort(403)
+            # Auto-repair/ensure workspace session for active OWNER
+            if current_user.role == "OWNER" and not session.get("current_workspace_id"):
+                from services.workspace_service import WorkspaceService
+                WorkspaceService.ensure_current_workspace_session(current_user)
         return
 
     if not getattr(current_user, "can_access_app", False):

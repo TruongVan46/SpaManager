@@ -55,6 +55,7 @@ from models.invoice_detail import InvoiceDetail
 from models.activity_log import ActivityLog
 from models.appointment import Appointment
 from services.invoice_service import InvoiceService
+from services.workspace_service import WorkspaceService
 
 
 class TestWorkspaceSettingsExports(unittest.TestCase):
@@ -433,10 +434,26 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
         svc_a = self._create_service(ws_a.id, "Global Leak Service", 100_000)
         self._create_invoice(ws_a.id, cust_a, svc_a, 100_000)
 
-        # Login as owner_a but WITHOUT setting current_workspace_id
+        # Create a staff member who cannot auto-provision/repair
+        staff = User(
+            username="staff_noexp",
+            email="staff_noexp@test.com",
+            role="STAFF",
+            full_name="Staff No Exp",
+            is_active=True,
+            approval_status="active"
+        )
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(ws_a.id, staff, "STAFF")
+        db.session.commit()
+
+        # Login as staff but WITHOUT setting current_workspace_id
         # (and with isolation flag active → fail-closed).
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = owner_a.id
+            sess[AUTH_SESSION_KEY] = staff.id
             sess["_enable_workspace_isolation"] = True
             # Deliberately NO current_workspace_id
 
@@ -567,9 +584,25 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
         """Accessing statistics page without workspace context must be blocked."""
         ws_a, owner_a = self._create_workspace_and_owner("ws-stat-fc-a")
 
+        # Create a staff member who cannot auto-provision/repair
+        staff = User(
+            username="staff_stat_fc",
+            email="staff_sf@test.com",
+            role="STAFF",
+            full_name="Staff Stat FC",
+            is_active=True,
+            approval_status="active"
+        )
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(ws_a.id, staff, "STAFF")
+        db.session.commit()
+
         # Login without workspace ID
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = owner_a.id
+            sess[AUTH_SESSION_KEY] = staff.id
             sess["_enable_workspace_isolation"] = True
             # no current_workspace_id
 

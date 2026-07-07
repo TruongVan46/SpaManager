@@ -48,14 +48,17 @@ class WorkspaceService:
         if user.role == "APPROVAL_OWNER":
             return None
 
-        # 1. Idempotency Check: check if user already has an active 'owner' membership
+        # 1. Idempotency Check: check if user already has an 'owner' membership
         existing_membership = WorkspaceMember.query.filter(
             WorkspaceMember.user_id == user.id,
             WorkspaceMember.role == "owner",
-            WorkspaceMember.status == "active",
         ).first()
 
         if existing_membership:
+            if existing_membership.status != "active":
+                existing_membership.status = "active"
+                existing_membership.updated_at = utc_now()
+                db.session.flush()
             return existing_membership.workspace
 
         # 2. Workspace name & slug generation
@@ -122,6 +125,16 @@ class WorkspaceService:
         ).order_by(WorkspaceMember.joined_at.asc(), WorkspaceMember.id.asc()).all()
 
         if not memberships:
+            if user.role == "OWNER":
+                workspace = WorkspaceService.ensure_workspace_for_approved_owner(user)
+                if workspace:
+                    try:
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                        return None
+                    session["current_workspace_id"] = workspace.id
+                    return workspace
             return None
 
         # Auto-select the first one (oldest joined or lowest ID)
