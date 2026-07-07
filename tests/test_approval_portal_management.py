@@ -591,3 +591,47 @@ class TestApprovalPortalManagement(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertIn("word-wrap: break-word", html)
         self.assertIn("word-break: break-word", html)
+
+    def test_approval_accounts_mobile_card_layout_present(self):
+        approver = self._create_approval_owner()
+        # Create an active user to ensure the card layout renders!
+        user = User(username="user_active", full_name="User Active", role=UserRole.STAFF.value, is_active=True, approval_status="active")
+        user.set_password("Password123!")
+        db.session.add(user)
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("approval-mobile-cards", html)
+        self.assertIn("Tên đăng nhập", html)
+
+    def test_approval_accounts_desktop_table_and_mobile_cards_separated(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("approval-desktop-table", html)
+        self.assertIn("approval-mobile-cards", html)
+        self.assertIn("@media (max-width: 991.98px)", html)
+
+    def test_approval_accounts_no_mobile_header_word_break(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertNotIn("word-break: break-all", html)
+        self.assertIn(".app-table th", html)
+        self.assertIn("word-break: normal", html)
+
+    def test_approval_method_badges_use_stack_class(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("approval-method-stack", html)
+        self.assertIn("badge-provider", html)
