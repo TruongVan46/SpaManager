@@ -454,10 +454,18 @@ class UserService:
             raise
 
     @staticmethod
-    def approve_pending_user(actor, user_id):
+    def list_approval_accounts(status=None, page=1, per_page=25):
+        query = User.query.filter(User.role != UserRole.APPROVAL_OWNER.value)
+        if status:
+            query = query.filter(User.approval_status == status)
+        query = query.order_by(User.created_at.desc(), User.id.desc())
+        return query.paginate(page=page, per_page=per_page, error_out=False)
+
+    @staticmethod
+    def approve_user(actor, user_id):
         user = UserService._get_user_or_404(user_id)
-        if user.approval_status != User.APPROVAL_PENDING:
-            raise ValidationException("Chỉ có thể duyệt tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể duyệt tài khoản đang chờ duyệt."})
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể duyệt tài khoản quản trị hệ thống.")
 
         user.approval_status = User.APPROVAL_ACTIVE
         user.is_active = True
@@ -466,17 +474,22 @@ class UserService:
         user.updated_at = utc_now()
 
         if user.auth_provider == "google":
-            # Upgrade global role to OWNER as they are the new spa owner
             user.role = UserRole.OWNER.value
-            WorkspaceService.ensure_workspace_for_approved_owner(user, approved_by=actor)
+            from models.workspace import WorkspaceMember
+            existing = WorkspaceMember.query.filter_by(user_id=user.id).first()
+            if existing:
+                existing.status = "active"
+                existing.role = "owner"
+                existing.updated_at = utc_now()
+            else:
+                WorkspaceService.ensure_workspace_for_approved_owner(user, approved_by=actor)
 
         actor_display_name = get_activity_actor_display_name(actor)
-
         try:
             UserService._log_user_action(
                 actor=actor,
-                action="APPROVE_PENDING_USER",
-                description=f"{actor_display_name} đã duyệt tài khoản {user.username}.",
+                action="APPROVE_USER",
+                description=f"{actor_display_name} đã duyệt/kích hoạt tài khoản {user.username}.",
                 target_user=user,
             )
             db.session.commit()
@@ -486,10 +499,12 @@ class UserService:
             raise
 
     @staticmethod
-    def reject_pending_user(actor, user_id):
+    def reject_user(actor, user_id):
         user = UserService._get_user_or_404(user_id)
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể từ chối tài khoản quản trị hệ thống.")
         if user.approval_status != User.APPROVAL_PENDING:
-            raise ValidationException("Chỉ có thể từ chối tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể từ chối tài khoản đang chờ duyệt."})
+            raise ValidationException("Chỉ có thể từ chối tài khoản đang chờ duyệt.")
 
         user.approval_status = User.APPROVAL_REJECTED
         user.is_active = False
@@ -497,11 +512,10 @@ class UserService:
         user.approved_at = None
         user.updated_at = utc_now()
         actor_display_name = get_activity_actor_display_name(actor)
-
         try:
             UserService._log_user_action(
                 actor=actor,
-                action="REJECT_PENDING_USER",
+                action="REJECT_USER",
                 description=f"{actor_display_name} đã từ chối tài khoản {user.username}.",
                 target_user=user,
             )
@@ -510,3 +524,61 @@ class UserService:
         except Exception:
             db.session.rollback()
             raise
+
+    @staticmethod
+    def disable_user(actor, user_id):
+        user = UserService._get_user_or_404(user_id)
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể vô hiệu hóa tài khoản quản trị hệ thống.")
+        if user.id == actor.id:
+            raise ValidationException("Không thể tự vô hiệu hóa chính mình.")
+        if user.approval_status != User.APPROVAL_ACTIVE:
+            raise ValidationException("Chỉ có thể vô hiệu hóa tài khoản đã duyệt.")
+
+        user.approval_status = User.APPROVAL_DISABLED
+        user.is_active = False
+        user.updated_at = utc_now()
+
+        from models.workspace import WorkspaceMember
+        memberships = WorkspaceMember.query.filter_by(user_id=user.id).all()
+        for membership in memberships:
+            membership.status = "inactive"
+            membership.updated_at = utc_now()
+
+        actor_display_name = get_activity_actor_display_name(actor)
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="DISABLE_USER",
+                description=f"{actor_display_name} đã vô hiệu hóa tài khoản {user.username}.",
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def enable_user(actor, user_id):
+        user = UserService._get_user_or_404(user_id)
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể kích hoạt tài khoản quản trị hệ thống.")
+        if user.approval_status not in (User.APPROVAL_DISABLED, User.APPROVAL_REJECTED):
+            raise ValidationException("Chỉ có thể kích hoạt tài khoản đang bị vô hiệu hóa hoặc bị từ chối.")
+
+        return UserService.approve_user(actor, user_id)
+
+    @staticmethod
+    def approve_pending_user(actor, user_id):
+        user = UserService._get_user_or_404(user_id)
+        if user.approval_status != User.APPROVAL_PENDING:
+            raise ValidationException("Chỉ có thể duyệt tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể duyệt tài khoản đang chờ duyệt."})
+        return UserService.approve_user(actor, user_id)
+
+    @staticmethod
+    def reject_pending_user(actor, user_id):
+        user = UserService._get_user_or_404(user_id)
+        if user.approval_status != User.APPROVAL_PENDING:
+            raise ValidationException("Chỉ có thể từ chối tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể từ chối tài khoản đang chờ duyệt."})
+        return UserService.reject_user(actor, user_id)

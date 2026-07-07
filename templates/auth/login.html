@@ -155,9 +155,7 @@
         if (urlParams.get('google') === 'preparing') {
             Notification.info("Google login đang được chuẩn bị.");
         }
-        if (deniedNotice) {
-            Notification.warning("Tài khoản của bạn không được phép truy cập.");
-        }
+
 
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();

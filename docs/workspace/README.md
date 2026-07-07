@@ -5,6 +5,7 @@ This folder collects the early v6.0 planning docs for workspace support.
 ## Documents
 
 - [Workspace architecture audit](WORKSPACE_ARCHITECTURE_AUDIT.md)
+- [Workspace approval portal account management](WORKSPACE_APPROVAL_PORTAL_MANAGEMENT.md)
 - [Workspace implementation readiness audit](WORKSPACE_IMPLEMENTATION_READINESS_AUDIT.md)
 - [Workspace schema design](WORKSPACE_SCHEMA_DESIGN.md)
 - [Workspace schema migration plan](WORKSPACE_SCHEMA_MIGRATION_PLAN.md)

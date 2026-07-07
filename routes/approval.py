@@ -22,11 +22,29 @@ def _require_approval_owner():
 def pending():
     current_user = _require_approval_owner()
     page, per_page = get_pagination_params()
-    users = UserService.pending_paginated(page=page, per_page=per_page)
+    users = UserService.list_approval_accounts(status='pending', page=page, per_page=per_page)
     return render_template(
-        'approval/pending.html',
+        'approval/accounts.html',
         users=users,
         current_user=current_user,
+        current_status='pending'
+    )
+
+
+@approval_bp.route('/approval/accounts')
+def accounts():
+    current_user = _require_approval_owner()
+    status = request.args.get('status', 'pending')
+    if status not in ('pending', 'active', 'rejected', 'disabled'):
+        status = 'pending'
+
+    page, per_page = get_pagination_params()
+    users = UserService.list_approval_accounts(status=status, page=page, per_page=per_page)
+    return render_template(
+        'approval/accounts.html',
+        users=users,
+        current_user=current_user,
+        current_status=status
     )
 
 
@@ -34,7 +52,7 @@ def pending():
 def approve(user_id):
     actor = _require_approval_owner()
     try:
-        user = UserService.approve_pending_user(actor=actor, user_id=user_id)
+        user = UserService.approve_user(actor=actor, user_id=user_id)
         message = f"Đã duyệt tài khoản {user.username}."
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': True, 'message': message})
@@ -47,14 +65,14 @@ def approve(user_id):
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
-    return redirect(url_for('approval.pending'))
+    return redirect(url_for('approval.accounts', status='active'))
 
 
 @approval_bp.route('/approval/users/<int:user_id>/reject', methods=['POST'])
 def reject(user_id):
     actor = _require_approval_owner()
     try:
-        user = UserService.reject_pending_user(actor=actor, user_id=user_id)
+        user = UserService.reject_user(actor=actor, user_id=user_id)
         message = f"Đã từ chối tài khoản {user.username}."
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': True, 'message': message})
@@ -67,4 +85,44 @@ def reject(user_id):
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
-    return redirect(url_for('approval.pending'))
+    return redirect(url_for('approval.accounts', status='rejected'))
+
+
+@approval_bp.route('/approval/users/<int:user_id>/disable', methods=['POST'])
+def disable(user_id):
+    actor = _require_approval_owner()
+    try:
+        user = UserService.disable_user(actor=actor, user_id=user_id)
+        message = f"Đã vô hiệu hóa tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('approval.accounts', status='disabled'))
+
+
+@approval_bp.route('/approval/users/<int:user_id>/enable', methods=['POST'])
+def enable(user_id):
+    actor = _require_approval_owner()
+    try:
+        user = UserService.enable_user(actor=actor, user_id=user_id)
+        message = f"Đã kích hoạt lại tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('approval.accounts', status='active'))

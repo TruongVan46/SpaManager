@@ -109,7 +109,7 @@ class AuthService:
                     )
                 record_login_failure(normalized_username, request_ip)
                 raise AuthenticationException(
-                    "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.",
+                    "Tài khoản không được phép đăng nhập.",
                     code="AUTH_ACCOUNT_NOT_ALLOWED",
                     status_code=401,
                     severity="WARNING",

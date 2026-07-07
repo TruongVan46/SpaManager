@@ -270,13 +270,16 @@ def create_or_route_google_pending_user(identity):
         if linked_user.is_pending_approval:
             _set_pending_session(linked_user)
             return redirect("/auth/pending")
-        if linked_user.is_rejected_approval or linked_user.is_disabled_approval or not linked_user.is_active:
-            flash("Tài khoản Google này không được phép truy cập.", "warning")
-            return redirect(url_for("auth.login", denied=1))
+        if linked_user.is_rejected_approval:
+            flash("Tài khoản Google này đã bị từ chối. Vui lòng liên hệ quản trị duyệt tài khoản.", "warning")
+            return redirect(url_for("auth.login"))
+        if linked_user.is_disabled_approval or not linked_user.is_active:
+            flash("Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị.", "warning")
+            return redirect(url_for("auth.login"))
         if linked_user.can_access_app:
             return _login_active_google_user(linked_user)
-        flash("Tài khoản Google này không được phép truy cập.", "warning")
-        return redirect(url_for("auth.login", denied=1))
+        flash("Tài khoản của bạn không được phép truy cập.", "warning")
+        return redirect(url_for("auth.login"))
 
     existing_email_user = User.query.filter_by(email=identity["email"]).first()
     if existing_email_user:

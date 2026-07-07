@@ -101,7 +101,8 @@ def pending():
 
     if not getattr(current_user, "is_pending_approval", False):
         _clear_stale_session()
-        return redirect(url_for('auth.login', denied=1))
+        flash("Tài khoản của bạn không được phép truy cập.", "warning")
+        return redirect(url_for('auth.login'))
 
     return render_template('auth/pending.html', user=current_user)
 
