@@ -565,3 +565,29 @@ class TestApprovalPortalManagement(unittest.TestCase):
         
         # Verify total workspace count in DB remains 1
         self.assertEqual(Workspace.query.count(), 1)
+
+    def test_approval_accounts_template_avoids_horizontal_scroll(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("table-layout: fixed", html)
+
+    def test_approval_action_buttons_use_consistent_class(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("approval-action-btn", html)
+        self.assertIn("approval-action-group", html)
+
+    def test_approval_accounts_template_wraps_long_text(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("word-wrap: break-word", html)
+        self.assertIn("word-break: break-word", html)

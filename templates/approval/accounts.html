@@ -4,6 +4,63 @@
 {% block title %}Quản lý tài khoản - SpaManager{% endblock %}
 
 {% block content %}
+<style>
+    /* Responsive layout & Text wrapping rules */
+    .app-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .app-table th, .app-table td {
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        white-space: normal !important;
+    }
+    /* Set specific column width hints for better layout spacing */
+    .col-username { width: 23%; }
+    .col-name { width: 17%; }
+    .col-email { width: 22%; }
+    .col-method { width: 13%; }
+    .col-role { width: 10%; }
+    .col-time { width: 15%; }
+    .col-actions { width: 15%; }
+
+    /* Action Buttons alignment & sizing unification */
+    .approval-action-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+        align-items: center;
+    }
+    .approval-action-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 32px !important;
+        padding: 0 12px !important;
+        font-size: 0.825rem !important;
+        font-weight: 500 !important;
+        min-width: 110px !important;
+        border-radius: 6px !important;
+        white-space: nowrap !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    .approval-action-btn i {
+        margin-right: 4px;
+    }
+
+    /* Responsive styling */
+    @media (max-width: 991.98px) {
+        .app-table {
+            table-layout: auto;
+        }
+        .col-username, .col-name, .col-email, .col-method, .col-role, .col-time, .col-actions {
+            width: auto;
+        }
+    }
+</style>
+
 <div class="app-page-header d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="app-title mb-0">Hệ thống quản lý tài khoản</h2>
@@ -64,43 +121,44 @@
                             <table class="app-table table table-hover align-middle">
                                 <thead class="app-table-header table-light">
                                     <tr>
-                                        <th scope="col">Tên đăng nhập</th>
-                                        <th scope="col">Họ tên</th>
-                                        <th scope="col">Email</th>
-                                        <th scope="col">Phương thức</th>
-                                        <th scope="col">Workspace</th>
-                                        <th scope="col" class="text-center">Đăng ký lúc</th>
-                                        <th scope="col" class="text-center">Thao tác</th>
+                                        <th scope="col" class="col-username">Tên đăng nhập</th>
+                                        <th scope="col" class="col-name">Họ tên</th>
+                                        <th scope="col" class="col-email">Email</th>
+                                        <th scope="col" class="col-method">Phương thức</th>
+                                        <th scope="col" class="col-time text-center">Đăng ký lúc</th>
+                                        <th scope="col" class="col-actions text-center">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for user in owner_users %}
                                         <tr>
-                                            <td><strong>{{ user.username }}</strong></td>
+                                            <td>
+                                                <strong>{{ user.username }}</strong>
+                                                {% if user.workspace_name %}
+                                                    <div class="mt-1">
+                                                        <span class="badge bg-light text-dark border text-wrap" style="max-width: 180px;"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</span>
+                                                    </div>
+                                                {% endif %}
+                                            </td>
                                             <td>{{ user.full_name or 'Chưa có' }}</td>
                                             <td>{{ user.email or 'Chưa có' }}</td>
                                             <td>
                                                 <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
                                                 <span class="badge bg-dark ms-1">OWNER</span>
                                             </td>
-                                            <td>
-                                                {% if user.workspace_name %}
-                                                    <span class="badge bg-light text-dark border"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</span>
-                                                {% else %}
-                                                    <span class="text-muted small">-</span>
-                                                {% endif %}
-                                            </td>
                                             <td class="text-center">
                                                 {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
                                                 {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
                                             </td>
                                             <td class="text-center">
-                                                <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                        <i class="bi bi-slash-circle"></i> Vô hiệu hóa
-                                                    </button>
-                                                </form>
+                                                <div class="approval-action-group">
+                                                    <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="btn btn-outline-warning approval-action-btn">
+                                                            <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -144,13 +202,13 @@
                                         <table class="app-table table table-hover align-middle mb-0">
                                             <thead class="app-table-header table-light">
                                                 <tr>
-                                                    <th scope="col">Tên đăng nhập</th>
-                                                    <th scope="col">Họ tên</th>
-                                                    <th scope="col">Email</th>
-                                                    <th scope="col">Phương thức</th>
-                                                    <th scope="col">Vai trò</th>
-                                                    <th scope="col" class="text-center">Tạo lúc</th>
-                                                    <th scope="col" class="text-center">Thao tác</th>
+                                                    <th scope="col" class="col-username">Tên đăng nhập</th>
+                                                    <th scope="col" class="col-name">Họ tên</th>
+                                                    <th scope="col" class="col-email">Email</th>
+                                                    <th scope="col" class="col-method">Phương thức</th>
+                                                    <th scope="col" class="col-role">Vai trò</th>
+                                                    <th scope="col" class="col-time text-center">Tạo lúc</th>
+                                                    <th scope="col" class="col-actions text-center">Thao tác</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -170,12 +228,14 @@
                                                             {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
                                                         </td>
                                                         <td class="text-center">
-                                                            <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
-                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                                <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                                    <i class="bi bi-slash-circle"></i> Vô hiệu hóa
-                                                                </button>
-                                                            </form>
+                                                            <div class="approval-action-group">
+                                                                <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
+                                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                    <button type="submit" class="btn btn-outline-warning approval-action-btn">
+                                                                        <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                                    </button>
+                                                                </form>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 {% endfor %}
@@ -199,12 +259,12 @@
                             <table class="app-table table table-hover align-middle">
                                 <thead class="app-table-header table-light">
                                     <tr>
-                                        <th scope="col">Tên đăng nhập</th>
-                                        <th scope="col">Họ tên</th>
-                                        <th scope="col">Email</th>
-                                        <th scope="col">Phương thức</th>
-                                        <th scope="col" class="text-center">Tạo lúc</th>
-                                        <th scope="col" class="text-center">Thao tác</th>
+                                        <th scope="col" class="col-username">Tên đăng nhập</th>
+                                        <th scope="col" class="col-name">Họ tên</th>
+                                        <th scope="col" class="col-email">Email</th>
+                                        <th scope="col" class="col-method">Phương thức</th>
+                                        <th scope="col" class="col-time text-center">Tạo lúc</th>
+                                        <th scope="col" class="col-actions text-center">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -221,12 +281,14 @@
                                                 {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
                                             </td>
                                             <td class="text-center">
-                                                <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                        <i class="bi bi-slash-circle"></i> Vô hiệu hóa
-                                                    </button>
-                                                </form>
+                                                <div class="approval-action-group">
+                                                    <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="btn btn-outline-warning approval-action-btn">
+                                                            <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -240,19 +302,26 @@
                     <table class="app-table table table-hover align-middle">
                         <thead class="app-table-header table-light">
                             <tr>
-                                <th scope="col">Tên đăng nhập</th>
-                                <th scope="col">Họ tên</th>
-                                <th scope="col">Email</th>
-                                <th scope="col">Phương thức</th>
-                                <th scope="col">Workspace / Người tạo</th>
-                                <th scope="col" class="text-center">Đăng ký lúc</th>
-                                <th scope="col" class="text-center">Thao tác</th>
+                                <th scope="col" class="col-username">Tên đăng nhập</th>
+                                <th scope="col" class="col-name">Họ tên</th>
+                                <th scope="col" class="col-email">Email</th>
+                                <th scope="col" class="col-method">Phương thức</th>
+                                <th scope="col" class="col-time text-center">Đăng ký lúc</th>
+                                <th scope="col" class="col-actions text-center">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for user in users.items %}
                             <tr>
-                                <td><strong>{{ user.username }}</strong></td>
+                                <td>
+                                    <strong>{{ user.username }}</strong>
+                                    {% if user.workspace_name %}
+                                        <div class="mt-1 small fw-semibold"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</div>
+                                        {% if user.owner_name %}
+                                            <div class="text-muted small">Chủ spa: {{ user.owner_name }}</div>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
                                 <td>{{ user.full_name or 'Chưa có' }}</td>
                                 <td>{{ user.email or 'Chưa có' }}</td>
                                 <td>
@@ -267,46 +336,36 @@
                                     <span class="badge bg-secondary ms-1">Email chưa xác minh</span>
                                     {% endif %}
                                 </td>
-                                <td>
-                                    {% if user.workspace_name %}
-                                        <div class="small fw-semibold"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</div>
-                                        {% if user.owner_name %}
-                                            <div class="text-muted small">Chủ spa: {{ user.owner_name }}</div>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="text-muted small">-</span>
-                                    {% endif %}
-                                </td>
                                 <td class="text-center">
                                     {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
                                     {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
+                                    <div class="approval-action-group">
                                         {% if current_status == 'pending' %}
                                         <form method="post" action="{{ url_for('approval.approve', user_id=user.id) }}" class="d-inline m-0">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                            <button type="submit" class="btn btn-outline-success approval-action-btn">
                                                 <i class="bi bi-check-circle"></i> Duyệt
                                             </button>
                                         </form>
-                                        <form method="post" action="{{ url_for('approval.reject', user_id=user.id) }}" class="d-inline m-0 ms-1">
+                                        <form method="post" action="{{ url_for('approval.reject', user_id=user.id) }}" class="d-inline m-0">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <button type="submit" class="btn btn-outline-danger approval-action-btn">
                                                 <i class="bi bi-x-circle"></i> Từ chối
                                             </button>
                                         </form>
                                         {% elif current_status == 'rejected' %}
                                         <form method="post" action="{{ url_for('approval.enable', user_id=user.id) }}" class="d-inline m-0">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                            <button type="submit" class="btn btn-outline-success approval-action-btn">
                                                 <i class="bi bi-arrow-counterclockwise"></i> Duyệt lại
                                             </button>
                                         </form>
                                         {% elif current_status == 'disabled' %}
                                         <form method="post" action="{{ url_for('approval.enable', user_id=user.id) }}" class="d-inline m-0">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                            <button type="submit" class="btn btn-outline-success approval-action-btn">
                                                 <i class="bi bi-check-circle"></i> Kích hoạt lại
                                             </button>
                                         </form>
