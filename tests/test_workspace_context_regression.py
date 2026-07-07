@@ -26,6 +26,7 @@ os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").a
 from app import app
 from extensions import db
 from models.user import User
+from models.activity_log import ActivityLog
 from models.workspace import Workspace, WorkspaceMember
 from services.user_service import UserService
 from services.workspace_service import WorkspaceService
@@ -59,6 +60,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         WorkspaceMember.query.delete()
         User.query.delete()
         Workspace.query.delete()
+        ActivityLog.query.delete()
         db.session.commit()
 
         # Seed an APPROVAL_OWNER
@@ -252,6 +254,135 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         
         # Retrieve the owner from pagination
         owner_item = [u for u in pagination.items if u.username == "owner_local"][0]
-        
         # Must be grouped under owner_registration (Group 1), not owner_created_member (Group 2)
         self.assertEqual(owner_item.group_type, "owner_registration")
+
+    def test_legacy_owner_created_staff_without_membership_is_repaired_if_creator_known(self):
+        # Create Owner A + Workspace A
+        owner_a = self._create_user("owner_a", "OWNER")
+        workspace_a = WorkspaceService.ensure_workspace_for_approved_owner(owner_a)
+
+        # Create Staff legacy without membership
+        staff = self._create_user("staff_legacy", "STAFF")
+
+        # Verify no membership exists initially
+        m = WorkspaceMember.query.filter_by(user_id=staff.id).first()
+        self.assertIsNone(m)
+
+        # Log trace indicating owner_a created staff
+        from models.activity_log import ActivityLog
+        log = ActivityLog(
+            module="Users",
+            action="CREATE_USER",
+            user_id=owner_a.id,
+            reference_id=staff.id,
+            description="Created user",
+            severity="INFO"
+        )
+        db.session.add(log)
+        db.session.commit()
+
+        # Login as owner_a (which triggers repair in /users)
+        self._login_as(owner_a)
+        resp = self.client.get('/users')
+        self.assertEqual(resp.status_code, 200)
+
+        # Verify WorkspaceMember is created and active
+        m = WorkspaceMember.query.filter_by(user_id=staff.id).first()
+        self.assertIsNotNone(m)
+        self.assertEqual(m.workspace_id, workspace_a.id)
+        self.assertEqual(m.status, "active")
+
+        # Staff logs in -> auto-selects workspace_a
+        self._login_as(staff)
+        with self.client.session_transaction() as sess:
+            # Clear workspace session to check auto-select
+            sess.pop("current_workspace_id", None)
+
+        # Try to ensure current workspace session for staff
+        with app.test_request_context():
+            from flask import session
+            session["auth_user_id"] = staff.id
+            ws = WorkspaceService.ensure_current_workspace_session(staff)
+            self.assertIsNotNone(ws)
+            self.assertEqual(ws.id, workspace_a.id)
+
+    def test_orphan_staff_without_creator_is_not_auto_linked(self):
+        owner_a = self._create_user("owner_a", "OWNER")
+        WorkspaceService.ensure_workspace_for_approved_owner(owner_a)
+
+        staff = self._create_user("staff_orphan", "STAFF")
+        db.session.commit()
+
+        # Repair call
+        WorkspaceService.repair_legacy_owner_created_memberships(owner_a)
+
+        # Verify no membership was created
+        m = WorkspaceMember.query.filter_by(user_id=staff.id).first()
+        self.assertIsNone(m)
+
+    def test_orphan_staff_with_multiple_possible_owners_is_not_auto_linked(self):
+        owner_a = self._create_user("owner_a", "OWNER")
+        WorkspaceService.ensure_workspace_for_approved_owner(owner_a)
+
+        owner_b = self._create_user("owner_b", "OWNER")
+        WorkspaceService.ensure_workspace_for_approved_owner(owner_b)
+
+        staff = self._create_user("staff_ambig", "STAFF")
+        db.session.commit()
+
+        # Only owner_a is the creator according to ActivityLog
+        from models.activity_log import ActivityLog
+        log = ActivityLog(
+            module="Users",
+            action="CREATE_USER",
+            user_id=owner_a.id,
+            reference_id=staff.id,
+            description="Created user",
+            severity="INFO"
+        )
+        db.session.add(log)
+        db.session.commit()
+
+        # Repair call for owner_b
+        WorkspaceService.repair_legacy_owner_created_memberships(owner_b)
+
+        # Verify no membership in owner_b workspace
+        m = WorkspaceMember.query.filter_by(user_id=staff.id).first()
+        self.assertIsNone(m)
+
+    def test_repair_does_not_cross_workspace(self):
+        owner_a = self._create_user("owner_a", "OWNER")
+        workspace_a = WorkspaceService.ensure_workspace_for_approved_owner(owner_a)
+
+        owner_b = self._create_user("owner_b", "OWNER")
+        WorkspaceService.ensure_workspace_for_approved_owner(owner_b)
+
+        staff_a = self._create_user("staff_a", "STAFF")
+
+        from models.activity_log import ActivityLog
+        log = ActivityLog(
+            module="Users",
+            action="CREATE_USER",
+            user_id=owner_a.id,
+            reference_id=staff_a.id,
+            description="Created user",
+            severity="INFO"
+        )
+        db.session.add(log)
+        db.session.commit()
+
+        # Repair call for owner_b
+        WorkspaceService.repair_legacy_owner_created_memberships(owner_b)
+
+        # Verify staff_a is not linked to owner_b
+        m_b = WorkspaceMember.query.filter_by(user_id=staff_a.id).first()
+        self.assertIsNone(m_b)
+
+        # Repair call for owner_a
+        WorkspaceService.repair_legacy_owner_created_memberships(owner_a)
+
+        # Verify staff_a is correctly linked to owner_a
+        m_a = WorkspaceMember.query.filter_by(user_id=staff_a.id).first()
+        self.assertIsNotNone(m_a)
+        self.assertEqual(m_a.workspace_id, workspace_a.id)

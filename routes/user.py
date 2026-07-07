@@ -66,6 +66,13 @@ def _render_or_json_error(template_name, context, errors, status_code=400):
 @user_bp.route('/users')
 def index():
     actor = _require_manager()
+    if actor.role == "OWNER":
+        from services.workspace_service import WorkspaceService
+        repaired = WorkspaceService.repair_legacy_owner_created_memberships(actor)
+        if repaired > 0:
+            from extensions import db
+            db.session.commit()
+
     query_text = request.args.get('q', '').strip()
     sort_by = request.args.get('sort_by', 'created_at')
     sort_dir = request.args.get('sort_dir', 'desc')

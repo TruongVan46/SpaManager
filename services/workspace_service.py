@@ -361,3 +361,88 @@ class WorkspaceService:
 
         wid = WorkspaceService.get_current_workspace_id()
         return wid if wid is not None else -1
+
+    @staticmethod
+    def repair_legacy_owner_created_memberships(owner_user):
+        """
+        Scan and repair legacy staff/admin users created by the given owner_user.
+        If the legacy user has no active WorkspaceMember, but has an ActivityLog entry
+        indicating they were created by this owner_user, we auto-create an active
+        WorkspaceMember for them in this owner's workspace.
+        """
+        if not owner_user or owner_user.role != "OWNER" or not owner_user.is_active or not owner_user.is_approval_active:
+            return 0
+
+        # Get owner's current workspace
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner_user)
+        if not workspace:
+            return 0
+
+        from models.activity_log import ActivityLog
+        from models.user import User as UserModel
+
+        logs = ActivityLog.query.filter(
+            ActivityLog.module == "Users",
+            ActivityLog.action == "CREATE_USER",
+            ActivityLog.user_id == owner_user.id,
+            ActivityLog.reference_id.isnot(None)
+        ).all()
+
+        repaired_count = 0
+        for log in logs:
+            target_user_id = log.reference_id
+            target_user = UserModel.query.get(target_user_id)
+            if not target_user:
+                continue
+
+            # Ensure they are ADMIN or STAFF
+            if target_user.role not in ("ADMIN", "STAFF"):
+                continue
+
+            # Ensure they are active and approved
+            if not target_user.is_active or not target_user.is_approval_active:
+                continue
+
+            # Check if they already have an active WorkspaceMember in any workspace
+            has_active_membership = WorkspaceMember.query.filter(
+                WorkspaceMember.user_id == target_user.id,
+                WorkspaceMember.status == "active"
+            ).first() is not None
+
+            if not has_active_membership:
+                # Repair! Create or update WorkspaceMember
+                role_map = {
+                    "ADMIN": "admin",
+                    "STAFF": "staff"
+                }
+                ws_role = role_map.get(target_user.role, "staff")
+
+                existing = WorkspaceMember.query.filter_by(
+                    workspace_id=workspace.id,
+                    user_id=target_user.id
+                ).first()
+
+                if existing:
+                    existing.status = "active"
+                    existing.role = ws_role
+                    existing.invited_by_id = owner_user.id
+                    existing.updated_at = utc_now()
+                else:
+                    new_member = WorkspaceMember(
+                        workspace_id=workspace.id,
+                        user_id=target_user.id,
+                        role=ws_role,
+                        status="active",
+                        invited_by_id=owner_user.id,
+                        joined_at=utc_now(),
+                        created_at=utc_now(),
+                        updated_at=utc_now()
+                    )
+                    db.session.add(new_member)
+
+                repaired_count += 1
+
+        if repaired_count > 0:
+            db.session.flush()
+
+        return repaired_count
