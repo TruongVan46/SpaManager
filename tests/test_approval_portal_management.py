@@ -96,7 +96,7 @@ class TestApprovalPortalManagement(unittest.TestCase):
 
     def test_approval_owner_sees_pending_active_rejected_disabled_accounts(self):
         approver = self._create_approval_owner()
-        
+
         # Create users for each status
         user_pending = User(username="user_pending", full_name="Pending User", role=UserRole.STAFF.value, is_active=False, approval_status="pending")
         user_pending.set_password("Password123!")
@@ -106,7 +106,7 @@ class TestApprovalPortalManagement(unittest.TestCase):
         user_rejected.set_password("Password123!")
         user_disabled = User(username="user_disabled", full_name="Disabled User", role=UserRole.STAFF.value, is_active=False, approval_status="disabled")
         user_disabled.set_password("Password123!")
-        
+
         db.session.add_all([user_pending, user_active, user_rejected, user_disabled])
         db.session.commit()
 
@@ -538,7 +538,7 @@ class TestApprovalPortalManagement(unittest.TestCase):
         # 1. First approval -> provisions workspace
         self.client.post(f'/approval/users/{user.id}/approve')
         db.session.refresh(user)
-        
+
         # Verify 1 workspace and membership
         m1 = WorkspaceMember.query.filter_by(user_id=user.id).all()
         self.assertEqual(len(m1), 1)
@@ -562,7 +562,7 @@ class TestApprovalPortalManagement(unittest.TestCase):
         self.assertEqual(len(m3), 1)
         self.assertEqual(m3[0].status, 'active')
         self.assertEqual(m3[0].workspace_id, w1_id)
-        
+
         # Verify total workspace count in DB remains 1
         self.assertEqual(Workspace.query.count(), 1)
 
@@ -635,3 +635,235 @@ class TestApprovalPortalManagement(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertIn("approval-method-stack", html)
         self.assertIn("badge-provider", html)
+
+    def test_approval_portal_renders_disable_button_for_owner_created_staff(self):
+        approver = self._create_approval_owner()
+
+        # Create OWNER + active Workspace
+        owner = User(username="owner_a", email="owner_a@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner A")
+        owner.set_password("Password123!")
+        db.session.add(owner)
+        db.session.flush()
+
+        from services.workspace_service import WorkspaceService
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+
+        # Create STAFF under owner A
+        staff = User(username="staff_a", email="staff_a@t.com", role=UserRole.STAFF.value, is_active=True, approval_status="active", full_name="Staff A")
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(workspace.id, staff, "STAFF")
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("staff_a", html)
+        self.assertIn(f'action="/approval/users/{staff.id}/disable"', html)
+
+    def test_approval_portal_renders_disable_button_for_owner_created_admin(self):
+        approver = self._create_approval_owner()
+
+        owner = User(username="owner_b", email="owner_b@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner B")
+        owner.set_password("Password123!")
+        db.session.add(owner)
+        db.session.flush()
+
+        from services.workspace_service import WorkspaceService
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+
+        admin = User(username="admin_b", email="admin_b@t.com", role=UserRole.ADMIN.value, is_active=True, approval_status="active", full_name="Admin B")
+        admin.set_password("Password123!")
+        db.session.add(admin)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(workspace.id, admin, "ADMIN")
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("admin_b", html)
+        self.assertIn(f'action="/approval/users/{admin.id}/disable"', html)
+
+    def test_approval_owner_can_disable_owner_created_staff(self):
+        approver = self._create_approval_owner()
+
+        owner = User(username="owner_c", email="owner_c@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner C")
+        owner.set_password("Password123!")
+        db.session.add(owner)
+        db.session.flush()
+
+        from services.workspace_service import WorkspaceService
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+
+        staff = User(username="staff_c", email="staff_c@t.com", role=UserRole.STAFF.value, is_active=True, approval_status="active", full_name="Staff C")
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(workspace.id, staff, "STAFF")
+
+        staff_other = User(username="staff_other", email="staff_other@t.com", role=UserRole.STAFF.value, is_active=True, approval_status="active", full_name="Staff Other")
+        staff_other.set_password("Password123!")
+        db.session.add(staff_other)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(workspace.id, staff_other, "STAFF")
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.post(f'/approval/users/{staff.id}/disable')
+        self.assertEqual(resp.status_code, 302)
+
+        # Verify disabled state
+        db.session.refresh(staff)
+        self.assertEqual(staff.approval_status, "disabled")
+        self.assertFalse(staff.is_active)
+
+        # Verify only disabled staff WorkspaceMember becomes inactive
+        m = WorkspaceMember.query.filter_by(user_id=staff.id).first()
+        self.assertEqual(m.status, "inactive")
+
+        # Verify owner still active
+        m_owner = WorkspaceMember.query.filter_by(user_id=owner.id).first()
+        self.assertEqual(m_owner.status, "active")
+
+        # Verify workspace still active
+        self.assertEqual(workspace.status, "active")
+
+        # Verify other staff still active
+        m_other = WorkspaceMember.query.filter_by(user_id=staff_other.id).first()
+        self.assertEqual(m_other.status, "active")
+
+    def test_disabled_owner_created_staff_cannot_login_and_sees_disabled_status(self):
+        approver = self._create_approval_owner()
+
+        owner = User(username="owner_d", email="owner_d@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner D")
+        owner.set_password("Password123!")
+        db.session.add(owner)
+        db.session.flush()
+
+        from services.workspace_service import WorkspaceService
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+
+        staff = User(username="staff_d", email="staff_d@t.com", role=UserRole.STAFF.value, is_active=True, approval_status="active", full_name="Staff D")
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.flush()
+
+        WorkspaceService.add_member_for_user(workspace.id, staff, "STAFF")
+        db.session.commit()
+
+        # Disable staff
+        self._login_as(approver)
+        self.client.post(f'/approval/users/{staff.id}/disable')
+
+        # Clear approver session before testing staff login
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+        # Try logging in as disabled staff — must be rejected with 401
+        resp = self.client.post('/login', json={
+            'username': 'staff_d',
+            'password': 'Password123!'
+        })
+        self.assertEqual(resp.status_code, 401)
+        data = resp.get_json()
+        self.assertEqual(data.get('status_page'), True)
+        self.assertEqual(data.get('redirect'), '/auth/pending')
+
+        # Simulate loading /auth/pending as disabled staff (inject session directly)
+        self._login_as(staff)
+        resp = self.client.get('/auth/pending')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("Tài khoản đã bị vô hiệu hóa", html)
+        self.assertIn("Tài khoản của bạn đã bị vô hiệu hóa", html)
+
+
+    def test_approval_owner_can_disable_registered_owner(self):
+        approver = self._create_approval_owner()
+
+        owner = User(username="owner_e", email="owner_e@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner E")
+        owner.set_password("Password123!")
+        db.session.add(owner)
+        db.session.flush()
+
+        from services.workspace_service import WorkspaceService
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.post(f'/approval/users/{owner.id}/disable')
+        self.assertEqual(resp.status_code, 302)
+
+        db.session.refresh(owner)
+        self.assertEqual(owner.approval_status, "disabled")
+        self.assertFalse(owner.is_active)
+
+        # Only owner membership is inactive
+        m = WorkspaceMember.query.filter_by(user_id=owner.id).first()
+        self.assertEqual(m.status, "inactive")
+
+        # Workspace is unaffected
+        self.assertEqual(workspace.status, "active")
+
+    def test_disable_does_not_allow_approval_owner_target(self):
+        approver = self._create_approval_owner()
+
+        target_approver = User(username="approver_target", email="ao_target@t.com", role=UserRole.APPROVAL_OWNER.value, is_active=True, approval_status="active", full_name="Approver Target")
+        target_approver.set_password("Password123!")
+        db.session.add(target_approver)
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.post(f'/approval/users/{target_approver.id}/disable')
+        # Expect validation error from JSON or redirect flash error
+        self.assertIn(resp.status_code, (400, 302))
+
+        db.session.refresh(target_approver)
+        self.assertEqual(target_approver.approval_status, "active")
+        self.assertTrue(target_approver.is_active)
+
+    def test_disable_action_does_not_cross_mutate_unrelated_workspace(self):
+        approver = self._create_approval_owner()
+
+        # Workspace A
+        owner_a = User(username="owner_a", email="owner_a@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner A")
+        owner_a.set_password("Password123!")
+        db.session.add(owner_a)
+        db.session.flush()
+        from services.workspace_service import WorkspaceService
+        workspace_a = WorkspaceService.ensure_workspace_for_approved_owner(owner_a)
+        staff_a = User(username="staff_a", email="staff_a@t.com", role=UserRole.STAFF.value, is_active=True, approval_status="active", full_name="Staff A")
+        staff_a.set_password("Password123!")
+        db.session.add(staff_a)
+        db.session.flush()
+        WorkspaceService.add_member_for_user(workspace_a.id, staff_a, "STAFF")
+
+        # Workspace B
+        owner_b = User(username="owner_b", email="owner_b@t.com", role=UserRole.OWNER.value, is_active=True, approval_status="active", full_name="Owner B")
+        owner_b.set_password("Password123!")
+        db.session.add(owner_b)
+        db.session.flush()
+        workspace_b = WorkspaceService.ensure_workspace_for_approved_owner(owner_b)
+        staff_b = User(username="staff_b", email="staff_b@t.com", role=UserRole.STAFF.value, is_active=True, approval_status="active", full_name="Staff B")
+        staff_b.set_password("Password123!")
+        db.session.add(staff_b)
+        db.session.flush()
+        WorkspaceService.add_member_for_user(workspace_b.id, staff_b, "STAFF")
+        db.session.commit()
+
+        self._login_as(approver)
+        self.client.post(f'/approval/users/{staff_a.id}/disable')
+
+        db.session.refresh(staff_b)
+        self.assertEqual(staff_b.approval_status, "active")
+        self.assertTrue(staff_b.is_active)
+        m_b = WorkspaceMember.query.filter_by(user_id=staff_b.id).first()
+        self.assertEqual(m_b.status, "active")
