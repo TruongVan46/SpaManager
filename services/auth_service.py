@@ -96,28 +96,46 @@ class AuthService:
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             if not getattr(user, "can_access_app", False):
-                if getattr(user, "is_pending_approval", False):
+                from flask import has_request_context
+                if has_request_context():
                     session[AUTH_SESSION_KEY] = user.id
                     session.permanent = remember
                     from core.csrf import rotate_csrf_token
                     rotate_csrf_token()
+                if getattr(user, "is_pending_approval", False):
                     raise AuthenticationException(
-                        "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd Tr\u01b0\u1eddng V\u0103n ph\u00ea duy\u1ec7t.",
+                        "Tài khoản của bạn đang chờ Trường Văn phê duyệt.",
                         code="AUTH_ACCOUNT_PENDING",
                         status_code=401,
                         severity="WARNING",
                     )
-                record_login_failure(normalized_username, request_ip)
-                raise AuthenticationException(
-                    "Tài khoản không được phép đăng nhập.",
-                    code="AUTH_ACCOUNT_NOT_ALLOWED",
-                    status_code=401,
-                    severity="WARNING",
-                )
-            session[AUTH_SESSION_KEY] = user.id
-            session.permanent = remember
-            from core.csrf import rotate_csrf_token
-            rotate_csrf_token()
+                elif getattr(user, "is_rejected_approval", False):
+                    raise AuthenticationException(
+                        "Tài khoản không được phép đăng nhập.",
+                        code="AUTH_ACCOUNT_REJECTED",
+                        status_code=401,
+                        severity="WARNING",
+                    )
+                elif getattr(user, "is_disabled_approval", False):
+                    raise AuthenticationException(
+                        "Tài khoản không được phép đăng nhập.",
+                        code="AUTH_ACCOUNT_DISABLED",
+                        status_code=401,
+                        severity="WARNING",
+                    )
+                else:
+                    raise AuthenticationException(
+                        "Tài khoản không được phép đăng nhập.",
+                        code="AUTH_ACCOUNT_NOT_ALLOWED",
+                        status_code=401,
+                        severity="WARNING",
+                    )
+            from flask import has_request_context
+            if has_request_context():
+                session[AUTH_SESSION_KEY] = user.id
+                session.permanent = remember
+                from core.csrf import rotate_csrf_token
+                rotate_csrf_token()
             user.last_login = utc_now()
             db.session.commit()
             

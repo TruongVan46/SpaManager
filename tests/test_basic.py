@@ -581,8 +581,8 @@ class BasicTestCase(unittest.TestCase):
             })
 
             self.assertEqual(response.status_code, 302)
-            self.assertIn("/login", response.headers.get("Location", ""))
-            self.assertNotEqual(self.get_session_user_id(), user.id)
+            self.assertEqual(response.headers.get("Location", ""), "/auth/pending")
+            self.assertEqual(self.get_session_user_id(), user.id)
 
     def test_google_callback_existing_active_linked_user_can_login(self):
         user = self.create_user("google-active", full_name="Google Active", approval_status=User.APPROVAL_ACTIVE)
@@ -810,8 +810,8 @@ class BasicTestCase(unittest.TestCase):
     def test_login_blocks_pending_rejected_and_disabled_users(self):
         blocked_users = [
             ("login-pending", False, "pending", "T\u00e0i kho\u1ea3n c\u1ee7a b\u1ea1n \u0111ang ch\u1edd Tr\u01b0\u1eddng V\u0103n ph\u00ea duy\u1ec7t.", True, "/auth/pending"),
-            ("login-rejected", False, "rejected", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, None),
-            ("login-disabled", False, "disabled", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, None),
+            ("login-rejected", False, "rejected", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, "/auth/pending"),
+            ("login-disabled", False, "disabled", "T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p \u0111\u0103ng nh\u1eadp.", False, "/auth/pending"),
         ]
 
         for username, is_active, approval_status, expected_message, expected_pending, expected_redirect in blocked_users:
@@ -974,7 +974,7 @@ class BasicTestCase(unittest.TestCase):
         response = self.client.get("/", follow_redirects=False)
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/login?denied=1", response.headers["Location"])
+        self.assertEqual(response.headers["Location"], "/auth/pending")
 
     def test_pending_page_requires_pending_session(self):
         with self.client.session_transaction() as sess:

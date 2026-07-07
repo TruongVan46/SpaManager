@@ -298,7 +298,7 @@ class TestApprovalPortalManagement(unittest.TestCase):
         resp = self.client.get('/approval/accounts')
         self.assertEqual(resp.status_code, 403)
 
-    def test_rejected_google_login_shows_single_message(self):
+    def test_rejected_google_login_renders_rejected_status_page(self):
         user = User(
             username="google_user",
             full_name="Google User",
@@ -321,17 +321,20 @@ class TestApprovalPortalManagement(unittest.TestCase):
         with app.test_request_context():
             resp = create_or_route_google_pending_user(identity)
             self.assertEqual(resp.status_code, 302)
-            # Should redirect to login route
-            self.assertEqual(resp.headers['Location'], '/login')
-            
-            # Check flashed messages
-            from flask import get_flashed_messages
-            flashes = get_flashed_messages(with_categories=True)
-            self.assertEqual(len(flashes), 1)
-            self.assertEqual(flashes[0][0], "warning")
-            self.assertIn("đã bị từ chối", flashes[0][1])
+            self.assertEqual(resp.headers['Location'], '/auth/pending')
 
-    def test_disabled_google_login_shows_single_message(self):
+        self._login_as(user)
+        resp_page = self.client.get('/auth/pending')
+        self.assertEqual(resp_page.status_code, 200)
+        html = resp_page.get_data(as_text=True)
+        self.assertIn("Tài khoản đã bị từ chối", html)
+        self.assertIn("Tài khoản Google này đã bị từ chối", html)
+        # Should not get into dashboard
+        resp_dash = self.client.get('/')
+        self.assertEqual(resp_dash.status_code, 302)
+        self.assertEqual(resp_dash.headers['Location'], '/auth/pending')
+
+    def test_disabled_google_login_renders_disabled_status_page(self):
         user = User(
             username="google_user",
             full_name="Google User",
@@ -354,13 +357,165 @@ class TestApprovalPortalManagement(unittest.TestCase):
         with app.test_request_context():
             resp = create_or_route_google_pending_user(identity)
             self.assertEqual(resp.status_code, 302)
-            self.assertEqual(resp.headers['Location'], '/login')
-            
-            from flask import get_flashed_messages
-            flashes = get_flashed_messages(with_categories=True)
-            self.assertEqual(len(flashes), 1)
-            self.assertEqual(flashes[0][0], "warning")
-            self.assertIn("bị vô hiệu hóa", flashes[0][1])
+            self.assertEqual(resp.headers['Location'], '/auth/pending')
+
+        self._login_as(user)
+        resp_page = self.client.get('/auth/pending')
+        self.assertEqual(resp_page.status_code, 200)
+        html = resp_page.get_data(as_text=True)
+        self.assertIn("Tài khoản đã bị vô hiệu hóa", html)
+
+    def test_pending_google_login_still_renders_pending_page(self):
+        user = User(
+            username="google_user",
+            full_name="Google User",
+            role=UserRole.STAFF.value,
+            is_active=False,
+            approval_status="pending",
+            auth_provider="google",
+            oauth_id="123",
+            email="google@example.com"
+        )
+        user.set_password("Password123!")
+        db.session.add(user)
+        db.session.commit()
+
+        self._login_as(user)
+        resp_page = self.client.get('/auth/pending')
+        self.assertEqual(resp_page.status_code, 200)
+        html = resp_page.get_data(as_text=True)
+        self.assertIn("Tài khoản chờ duyệt", html)
+
+    def test_local_disabled_login_renders_disabled_status_or_single_message(self):
+        user = User(
+            username="local_disabled",
+            full_name="Local Disabled",
+            role=UserRole.STAFF.value,
+            is_active=False,
+            approval_status="disabled",
+            auth_provider="local"
+        )
+        user.set_password("Password123!")
+        db.session.add(user)
+        db.session.commit()
+
+        resp = self.client.post('/login', json={
+            "username": "local_disabled",
+            "password": "Password123!"
+        })
+        self.assertEqual(resp.status_code, 401)
+        data = resp.get_json()
+        self.assertEqual(data.get("redirect"), "/auth/pending")
+        self.assertTrue(data.get("status_page"))
+
+    def test_approved_accounts_group_owner_registered_vs_owner_created_members(self):
+        approver = self._create_approval_owner()
+
+        owner = User(
+            username="google_owner",
+            full_name="Anh Bảy",
+            role=UserRole.OWNER.value,
+            is_active=True,
+            approval_status="active",
+            auth_provider="google",
+            oauth_id="owner_oauth"
+        )
+        owner.set_password("Password123!")
+        db.session.add(owner)
+        db.session.commit()
+
+        from services.workspace_service import WorkspaceService
+        ws = WorkspaceService.ensure_workspace_for_approved_owner(owner, approved_by=approver)
+        ws.name = "Spa Của Anh Bảy"
+        db.session.commit()
+
+        staff = User(
+            username="staff_user",
+            full_name="Bích Trâm",
+            role=UserRole.STAFF.value,
+            is_active=True,
+            approval_status="active",
+            auth_provider="local"
+        )
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.commit()
+
+        from models.workspace import WorkspaceMember
+        member = WorkspaceMember(
+            workspace_id=ws.id,
+            user_id=staff.id,
+            role="staff",
+            status="active",
+            invited_by_id=owner.id
+        )
+        db.session.add(member)
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+
+        self.assertIn("Nhóm 1: Chủ spa / tài khoản đăng ký", html)
+        self.assertIn("google_owner", html)
+        self.assertIn("Anh Bảy", html)
+        self.assertIn("Spa Của Anh Bảy", html)
+
+        self.assertIn("Nhóm 2: Nhân viên/quản lý do Chủ spa tạo", html)
+        self.assertIn("staff_user", html)
+        self.assertIn("Bích Trâm", html)
+
+    def test_owner_created_members_group_by_workspace_owner(self):
+        approver = self._create_approval_owner()
+
+        owner_a = User(username="owner_a", full_name="Owner A", role=UserRole.OWNER.value, is_active=True, approval_status="active", auth_provider="google", oauth_id="oauth_a")
+        owner_a.set_password("Password123!")
+        db.session.add(owner_a)
+        db.session.commit()
+        from services.workspace_service import WorkspaceService
+        ws_a = WorkspaceService.ensure_workspace_for_approved_owner(owner_a, approved_by=approver)
+        ws_a.name = "Spa A"
+
+        owner_b = User(username="owner_b", full_name="Owner B", role=UserRole.OWNER.value, is_active=True, approval_status="active", auth_provider="google", oauth_id="oauth_b")
+        owner_b.set_password("Password123!")
+        db.session.add(owner_b)
+        db.session.commit()
+        ws_b = WorkspaceService.ensure_workspace_for_approved_owner(owner_b, approved_by=approver)
+        ws_b.name = "Spa B"
+        db.session.commit()
+
+        staff_a = User(username="staff_a", full_name="Staff A", role=UserRole.STAFF.value, is_active=True, approval_status="active")
+        staff_a.set_password("Password123!")
+        db.session.add(staff_a)
+        db.session.commit()
+        from models.workspace import WorkspaceMember
+        db.session.add(WorkspaceMember(workspace_id=ws_a.id, user_id=staff_a.id, role="staff", status="active", invited_by_id=owner_a.id))
+
+        staff_b = User(username="staff_b", full_name="Staff B", role=UserRole.STAFF.value, is_active=True, approval_status="active")
+        staff_b.set_password("Password123!")
+        db.session.add(staff_b)
+        db.session.commit()
+        db.session.add(WorkspaceMember(workspace_id=ws_b.id, user_id=staff_b.id, role="staff", status="active", invited_by_id=owner_b.id))
+        db.session.commit()
+
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+
+        self.assertIn("Workspace: Spa A", html)
+        self.assertIn("Chủ spa: Owner A", html)
+        self.assertIn("Workspace: Spa B", html)
+        self.assertIn("Chủ spa: Owner B", html)
+
+    def test_approval_owner_not_in_any_group(self):
+        approver = self._create_approval_owner()
+        self._login_as(approver)
+        resp = self.client.get('/approval/accounts?status=active')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertNotIn(approver.username, html)
 
     def test_approve_rejected_google_does_not_create_duplicate_workspace(self):
         approver = self._create_approval_owner()

@@ -178,26 +178,20 @@ def require_login():
                 abort(403)
         return
 
-    from core.error_handler import ErrorHandler
-    if getattr(current_user, "is_pending_approval", False):
+    if not getattr(current_user, "can_access_app", False):
+        if request.endpoint in ['auth.pending', 'auth.logout', 'static', 'favicon', 'media_file']:
+            return
+        from core.error_handler import ErrorHandler
         if ErrorHandler.is_json_request():
+            err_code = "account_pending" if current_user.is_pending_approval else "forbidden"
+            err_msg = "Tài khoản của bạn đang chờ chủ spa duyệt." if current_user.is_pending_approval else "Tài khoản của bạn không được phép truy cập."
             return jsonify({
                 "status": "error",
-                "error": "account_pending",
-                "message": "Tài khoản của bạn đang chờ chủ spa duyệt.",
+                "error": err_code,
+                "message": err_msg,
                 "redirect": "/auth/pending",
             }), 403
         return redirect("/auth/pending")
-
-    session.pop(AUTH_SESSION_KEY, None)
-    clear_csrf_token()
-    if ErrorHandler.is_json_request():
-        return jsonify({
-            "status": "error",
-            "error": "forbidden",
-            "message": "Tài khoản của bạn không được phép truy cập.",
-        }), 403
-    return redirect(url_for('auth.login', denied=1))
 
 
 @app.before_request

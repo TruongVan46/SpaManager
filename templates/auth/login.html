@@ -197,11 +197,15 @@
             })
             .then(result => {
                 const payload = result.payload || {};
-                if (payload.pending && payload.redirect) {
-                    Notification.warning(payload.message || "Tài khoản của bạn đang chờ chủ spa duyệt.");
-                    setTimeout(() => {
+                if (payload.redirect && (payload.pending || payload.status_page)) {
+                    if (payload.pending) {
+                        Notification.warning(payload.message || "Tài khoản của bạn đang chờ chủ spa duyệt.");
+                        setTimeout(() => {
+                            window.location.href = payload.redirect;
+                        }, 800);
+                    } else {
                         window.location.href = payload.redirect;
-                    }, 800);
+                    }
                     return;
                 }
                 if (result.ok && payload.success) {

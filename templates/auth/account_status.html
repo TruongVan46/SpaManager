@@ -1,0 +1,99 @@
+{% extends 'layout/auth_base.html' %}
+
+{% block title %}{{ title }} - SpaManager{% endblock %}
+
+{% block content %}
+<div class="auth-card-container">
+    <div class="auth-card text-center">
+        <div class="auth-logo-section">
+            <div class="auth-logo-icon">
+                {% if status == 'pending' %}
+                    <i class="bi bi-hourglass-split"></i>
+                {% elif status == 'rejected' %}
+                    <i class="bi bi-x-circle text-danger"></i>
+                {% elif status == 'disabled' %}
+                    <i class="bi bi-slash-circle text-secondary"></i>
+                {% endif %}
+            </div>
+            <h3 class="auth-title mb-2">{{ title }}</h3>
+            {% for line in message_lines %}
+                <p class="auth-subtitle mb-1">{{ line }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="alert {% if status == 'pending' %}alert-warning{% else %}alert-danger{% endif %} border-0 text-start mb-4 mt-3" role="alert">
+            <div class="fw-semibold mb-1">Xin chào{{ ', ' ~ current_user.full_name if current_user and current_user.full_name else '' }}!</div>
+            <div class="small">
+                {% if status == 'pending' %}
+                    Trong lúc chờ duyệt, bạn chưa thể truy cập các khu vực làm việc của SpaManager.
+                {% elif status == 'rejected' %}
+                    Yêu cầu đăng ký của bạn không được chấp thuận. Bạn không thể truy cập các khu vực làm việc.
+                {% elif status == 'disabled' %}
+                    Tài khoản của bạn hiện đang bị khóa/vô hiệu hóa. Bạn không thể truy cập các khu vực làm việc.
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <form method="post" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary app-btn-primary w-100 py-2 fw-semibold">
+                    <i class="bi bi-box-arrow-right me-1"></i> Đăng xuất
+                </button>
+            </form>
+        </div>
+        <p class="text-muted small mt-3 mb-0">
+            Nếu muốn đăng nhập bằng tài khoản khác, vui lòng đăng xuất trước.
+        </p>
+    </div>
+</div>
+
+<style>
+    .auth-card-container {
+        width: 100%;
+        max-width: 480px;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(166, 124, 82, 0.15);
+        border-radius: 16px;
+        padding: 40px 30px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 0 5px 15px rgba(166, 124, 82, 0.03);
+    }
+
+    .auth-logo-icon {
+        width: 70px;
+        height: 70px;
+        margin: 0 auto 15px;
+        border-radius: 18px;
+        background: rgba(166, 124, 82, 0.15);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 32px;
+        color: var(--spa-primary, #a67c52);
+    }
+
+    .auth-title {
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        color: #333;
+        font-size: 1.5rem;
+    }
+
+    .auth-subtitle {
+        color: #666;
+        font-size: 0.95rem;
+        margin-bottom: 0;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}

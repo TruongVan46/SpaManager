@@ -52,92 +52,280 @@
     </div>
     <div class="app-card-body card-body p-4">
         {% if users.items %}
-        <div class="table-responsive">
-            <table class="app-table table table-hover align-middle">
-                <thead class="app-table-header table-light">
-                    <tr>
-                        <th scope="col">Tên đăng nhập</th>
-                        <th scope="col">Họ tên</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Phương thức</th>
-                        <th scope="col" class="text-center">Đăng ký lúc</th>
-                        <th scope="col" class="text-center">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users.items %}
-                    <tr>
-                        <td><strong>{{ user.username }}</strong></td>
-                        <td>{{ user.full_name or 'Chưa có' }}</td>
-                        <td>{{ user.email or 'Chưa có' }}</td>
-                        <td>
-                            {% if user.auth_provider %}
-                            <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
-                            {% else %}
-                            <span class="text-muted small">local</span>
-                            {% endif %}
-                            {% if user.email_verified %}
-                            <span class="badge bg-success ms-1">Email đã xác minh</span>
-                            {% else %}
-                            <span class="badge bg-secondary ms-1">Email chưa xác minh</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
-                            {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                {% if current_status == 'pending' %}
-                                <form method="post" action="{{ url_for('approval.approve', user_id=user.id) }}" class="d-inline m-0">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-check-circle"></i> Duyệt
-                                    </button>
-                                </form>
-                                <form method="post" action="{{ url_for('approval.reject', user_id=user.id) }}" class="d-inline m-0 ms-1">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">
-                                        <i class="bi bi-x-circle"></i> Từ chối
-                                    </button>
-                                </form>
-                                {% elif current_status == 'active' %}
-                                <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-warning btn-sm">
-                                        <i class="bi bi-slash-circle"></i> Vô hiệu hóa
-                                    </button>
-                                </form>
-                                {% elif current_status == 'rejected' %}
-                                <form method="post" action="{{ url_for('approval.enable', user_id=user.id) }}" class="d-inline m-0">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Duyệt lại
-                                    </button>
-                                </form>
-                                {% elif current_status == 'disabled' %}
-                                <form method="post" action="{{ url_for('approval.enable', user_id=user.id) }}" class="d-inline m-0">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-check-circle"></i> Kích hoạt lại
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            {% if current_status == 'active' %}
+                <!-- Group 1: Chủ spa / tài khoản đăng ký -->
+                <div class="mb-5">
+                    <h5 class="text-primary border-bottom pb-2 mb-3">
+                        <i class="bi bi-shield-check me-2"></i> Nhóm 1: Chủ spa / tài khoản đăng ký
+                    </h5>
+                    {% set owner_users = users.items | selectattr('group_type', 'equalto', 'owner_registration') | list %}
+                    {% if owner_users %}
+                        <div class="table-responsive">
+                            <table class="app-table table table-hover align-middle">
+                                <thead class="app-table-header table-light">
+                                    <tr>
+                                        <th scope="col">Tên đăng nhập</th>
+                                        <th scope="col">Họ tên</th>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">Phương thức</th>
+                                        <th scope="col">Workspace</th>
+                                        <th scope="col" class="text-center">Đăng ký lúc</th>
+                                        <th scope="col" class="text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in owner_users %}
+                                        <tr>
+                                            <td><strong>{{ user.username }}</strong></td>
+                                            <td>{{ user.full_name or 'Chưa có' }}</td>
+                                            <td>{{ user.email or 'Chưa có' }}</td>
+                                            <td>
+                                                <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
+                                                <span class="badge bg-dark ms-1">OWNER</span>
+                                            </td>
+                                            <td>
+                                                {% if user.workspace_name %}
+                                                    <span class="badge bg-light text-dark border"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</span>
+                                                {% else %}
+                                                    <span class="text-muted small">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                                            </td>
+                                            <td class="text-center">
+                                                <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted small ps-3">Không có chủ spa đăng ký nào.</p>
+                    {% endif %}
+                </div>
 
-        {{ pagination_widget(users, 'approval.accounts', {'status': current_status}, module_name='user') }}
+                <!-- Group 2: Nhân viên/quản lý do Chủ spa tạo -->
+                <div>
+                    <h5 class="text-primary border-bottom pb-2 mb-3">
+                        <i class="bi bi-people-fill me-2"></i> Nhóm 2: Nhân viên/quản lý do Chủ spa tạo
+                    </h5>
+                    {% set member_users = users.items | selectattr('group_type', 'equalto', 'owner_created_member') | list %}
+                    {% if member_users %}
+                        {% set workspaces_list = [] %}
+                        {% for u in member_users %}
+                            {% if u.workspace_id and u.workspace_id not in workspaces_list %}
+                                {% set _ = workspaces_list.append(u.workspace_id) %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {% for ws_id in workspaces_list %}
+                            {% set ws_users = member_users | selectattr('workspace_id', 'equalto', ws_id) | list %}
+                            {% if ws_users %}
+                                <div class="card mb-4 border-0 shadow-sm bg-light">
+                                    <div class="card-header py-2 px-3 bg-secondary text-white fw-semibold small d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="bi bi-shop me-1"></i> Workspace: {{ ws_users[0].workspace_name }}
+                                        </span>
+                                        {% if ws_users[0].owner_name %}
+                                            <span>
+                                                <i class="bi bi-person me-1"></i> Chủ spa: {{ ws_users[0].owner_name }} ({{ ws_users[0].owner_username }})
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <table class="app-table table table-hover align-middle mb-0">
+                                            <thead class="app-table-header table-light">
+                                                <tr>
+                                                    <th scope="col">Tên đăng nhập</th>
+                                                    <th scope="col">Họ tên</th>
+                                                    <th scope="col">Email</th>
+                                                    <th scope="col">Phương thức</th>
+                                                    <th scope="col">Vai trò</th>
+                                                    <th scope="col" class="text-center">Tạo lúc</th>
+                                                    <th scope="col" class="text-center">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for user in ws_users %}
+                                                    <tr>
+                                                        <td><strong>{{ user.username }}</strong></td>
+                                                        <td>{{ user.full_name or 'Chưa có' }}</td>
+                                                        <td>{{ user.email or 'Chưa có' }}</td>
+                                                        <td>
+                                                            <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-secondary">{{ user.role }}</span>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                                            {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
+                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                                    <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small ps-3">Không có nhân viên/quản lý nào.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Other active users -->
+                {% set other_users = users.items | selectattr('group_type', 'equalto', 'other') | list %}
+                {% if other_users %}
+                    <div class="mt-4 mb-3">
+                        <h5 class="text-muted border-bottom pb-2 mb-3">Tài khoản hoạt động khác</h5>
+                        <div class="table-responsive">
+                            <table class="app-table table table-hover align-middle">
+                                <thead class="app-table-header table-light">
+                                    <tr>
+                                        <th scope="col">Tên đăng nhập</th>
+                                        <th scope="col">Họ tên</th>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">Phương thức</th>
+                                        <th scope="col" class="text-center">Tạo lúc</th>
+                                        <th scope="col" class="text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in other_users %}
+                                        <tr>
+                                            <td><strong>{{ user.username }}</strong></td>
+                                            <td>{{ user.full_name or 'Chưa có' }}</td>
+                                            <td>{{ user.email or 'Chưa có' }}</td>
+                                            <td>
+                                                <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                                            </td>
+                                            <td class="text-center">
+                                                <form method="post" action="{{ url_for('approval.disable', user_id=user.id) }}" class="d-inline m-0">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="table-responsive">
+                    <table class="app-table table table-hover align-middle">
+                        <thead class="app-table-header table-light">
+                            <tr>
+                                <th scope="col">Tên đăng nhập</th>
+                                <th scope="col">Họ tên</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Phương thức</th>
+                                <th scope="col">Workspace / Người tạo</th>
+                                <th scope="col" class="text-center">Đăng ký lúc</th>
+                                <th scope="col" class="text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users.items %}
+                            <tr>
+                                <td><strong>{{ user.username }}</strong></td>
+                                <td>{{ user.full_name or 'Chưa có' }}</td>
+                                <td>{{ user.email or 'Chưa có' }}</td>
+                                <td>
+                                    {% if user.auth_provider %}
+                                    <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
+                                    {% else %}
+                                    <span class="text-muted small">local</span>
+                                    {% endif %}
+                                    {% if user.email_verified %}
+                                    <span class="badge bg-success ms-1">Email đã xác minh</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary ms-1">Email chưa xác minh</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.workspace_name %}
+                                        <div class="small fw-semibold"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</div>
+                                        {% if user.owner_name %}
+                                            <div class="text-muted small">Chủ spa: {{ user.owner_name }}</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
+                                    {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if current_status == 'pending' %}
+                                        <form method="post" action="{{ url_for('approval.approve', user_id=user.id) }}" class="d-inline m-0">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-check-circle"></i> Duyệt
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('approval.reject', user_id=user.id) }}" class="d-inline m-0 ms-1">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="bi bi-x-circle"></i> Từ chối
+                                            </button>
+                                        </form>
+                                        {% elif current_status == 'rejected' %}
+                                        <form method="post" action="{{ url_for('approval.enable', user_id=user.id) }}" class="d-inline m-0">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Duyệt lại
+                                            </button>
+                                        </form>
+                                        {% elif current_status == 'disabled' %}
+                                        <form method="post" action="{{ url_for('approval.enable', user_id=user.id) }}" class="d-inline m-0">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-check-circle"></i> Kích hoạt lại
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {{ pagination_widget(users, 'approval.accounts', {'status': current_status}, module_name='user') }}
         {% else %}
-        <div class="empty-state text-center py-5">
-            <i class="bi bi-inbox display-4 text-muted"></i>
-            <h5 class="mt-3 mb-2">Không có tài khoản nào.</h5>
-            <p class="text-muted mb-0">Trạng thái này hiện tại trống dữ liệu.</p>
-        </div>
+            <div class="empty-state text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted"></i>
+                <h5 class="mt-3 mb-2">Không có tài khoản nào.</h5>
+                <p class="text-muted mb-0">Trạng thái này hiện tại trống dữ liệu.</p>
+            </div>
         {% endif %}
     </div>
 </div>

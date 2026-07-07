@@ -455,11 +455,39 @@ class UserService:
 
     @staticmethod
     def list_approval_accounts(status=None, page=1, per_page=25):
+        from core.auth.enums import UserRole
         query = User.query.filter(User.role != UserRole.APPROVAL_OWNER.value)
         if status:
             query = query.filter(User.approval_status == status)
         query = query.order_by(User.created_at.desc(), User.id.desc())
-        return query.paginate(page=page, per_page=per_page, error_out=False)
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        from models.workspace import WorkspaceMember
+        for u in pagination.items:
+            u.group_type = "other"
+            u.workspace_name = ""
+            u.workspace_id = None
+            u.owner_name = ""
+            u.owner_username = ""
+
+            if u.auth_provider == "google" and u.role == UserRole.OWNER.value:
+                u.group_type = "owner_registration"
+                member = WorkspaceMember.query.filter_by(user_id=u.id, role="owner").first()
+                if member:
+                    u.workspace_id = member.workspace_id
+                    u.workspace_name = member.workspace.name
+            else:
+                member = WorkspaceMember.query.filter_by(user_id=u.id).first()
+                if member:
+                    u.workspace_id = member.workspace_id
+                    u.workspace_name = member.workspace.name
+                    u.group_type = "owner_created_member"
+                    owner_member = WorkspaceMember.query.filter_by(workspace_id=member.workspace_id, role="owner").first()
+                    if owner_member:
+                        u.owner_name = owner_member.user.full_name
+                        u.owner_username = owner_member.user.username
+
+        return pagination
 
     @staticmethod
     def approve_user(actor, user_id):

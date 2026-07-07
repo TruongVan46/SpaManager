@@ -67,6 +67,9 @@ def login():
             if exc.code == "AUTH_ACCOUNT_PENDING":
                 payload["pending"] = True
                 payload["redirect"] = "/auth/pending"
+            elif exc.code in ("AUTH_ACCOUNT_REJECTED", "AUTH_ACCOUNT_DISABLED"):
+                payload["status_page"] = True
+                payload["redirect"] = "/auth/pending"
             return jsonify(payload), exc.status_code
         if success:
             from core.auth.permissions import is_approval_owner
@@ -99,12 +102,24 @@ def pending():
     if getattr(current_user, "can_access_app", False):
         return redirect(url_for('dashboard.index'))
 
-    if not getattr(current_user, "is_pending_approval", False):
+    status = current_user.approval_status or 'pending'
+    if status == 'pending':
+        return render_template('auth/pending.html', user=current_user, current_user=current_user)
+    elif status == 'rejected':
+        title = "Tài khoản đã bị từ chối"
+        if current_user.auth_provider == "google":
+            msg = "Tài khoản Google này đã bị từ chối. Vui lòng liên hệ quản trị duyệt tài khoản nếu cần xem xét lại."
+        else:
+            msg = "Tài khoản của bạn đã bị từ chối. Vui lòng liên hệ quản trị."
+        return render_template('auth/account_status.html', status=status, title=title, message_lines=[msg], user=current_user, current_user=current_user)
+    elif status == 'disabled':
+        title = "Tài khoản đã bị vô hiệu hóa"
+        msg = "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị."
+        return render_template('auth/account_status.html', status=status, title=title, message_lines=[msg], user=current_user, current_user=current_user)
+    else:
         _clear_stale_session()
-        flash("Tài khoản của bạn không được phép truy cập.", "warning")
+        flash("Tài khoản không được phép đăng nhập.", "warning")
         return redirect(url_for('auth.login'))
-
-    return render_template('auth/pending.html', user=current_user)
 
 
 @auth_bp.route('/logout', methods=['POST'])

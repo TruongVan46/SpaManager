@@ -32,13 +32,13 @@ stateDiagram-v2
    - User is allowed full access to the application.
    - `is_active` is `True`.
    - Google owner accounts are automatically provisioned with a dedicated workspace and owner membership.
-   - Shown in the **Đã duyệt** tab.
+   - Shown in the **Đã duyệt** (Hoạt động) tab, grouped by ownership/workspace.
 
 3. **rejected**:
    - Registration request is declined.
    - `is_active` is `False`.
    - Access to the application is blocked.
-   - Accounts are preserved in the system and shown in the **Từ chối** tab for auditing and potential future activation.
+   - Accounts are preserved in the system and shown in the **Từ chối** tab.
 
 4. **disabled**:
    - Accounts that were active but are now locked/deactivated.
@@ -64,17 +64,29 @@ The `APPROVAL_OWNER` can perform the following actions:
 
 - **No overlap**: The Approval Portal is entirely distinct from the main SpaManager business workspace.
 - **Access control**:
-  - `OWNER`, `ADMIN`, and `STAFF` roles are completely blocked from accessing `/approval/*` endpoints (returns `403 Forbidden`).
-  - `APPROVAL_OWNER` is completely blocked from accessing main workspace pages (redirected back to `/approval/pending` or `/approval/accounts`).
+   - `OWNER`, `ADMIN`, and `STAFF` roles are completely blocked from accessing `/approval/*` endpoints (returns `403 Forbidden`).
+   - `APPROVAL_OWNER` is completely blocked from accessing main workspace pages (redirected back to `/approval/accounts`).
 
 ---
 
-## Login Behavior by Status
+## Login and Status Pages Behavior
 
-When users log in:
-- **pending**: Redirected to `/auth/pending` with a notice that their account is pending approval.
-- **rejected**: Blocked from logging in. Shows a single error message: `"Tài khoản Google này đã bị từ chối. Vui lòng liên hệ quản trị duyệt tài khoản."` (for Google users) or `"Tài khoản của bạn đã bị từ chối. Vui lòng liên hệ quản trị."` (for local users).
-- **disabled**: Blocked from logging in. Shows a single error message: `"Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị."`.
+When users log in with restricted status:
+- **Session-Based Status Routing**: All users whose status is not active (`can_access_app == False`) are routed to `/auth/pending` dynamically. The status template is chosen based on their actual database `approval_status`.
+- **Status Page Templates**:
+  - **pending**: Renders `templates/auth/pending.html` with title "Tài khoản chờ duyệt" and body text informing the user that their account is awaiting approval.
+  - **rejected**: Renders `templates/auth/account_status.html` with title "Tài khoản đã bị từ chối" and body: `"Tài khoản Google này đã bị từ chối. Vui lòng liên hệ quản trị duyệt tài khoản nếu cần xem xét lại."`.
+  - **disabled**: Renders `templates/auth/account_status.html` with title "Tài khoản đã bị vô hiệu hóa" and body: `"Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị."`.
+- **Interaction Constraints**: No warning login toast is shown. They cannot bypass the status page or enter the app. A **Đăng xuất / Quay lại đăng nhập** button is provided to cleanly clear the session and return to the login page.
+
+---
+
+## Approved Accounts Grouping
+
+Under the **Đã duyệt** tab, accounts are clearly grouped for readability:
+- **Nhóm 1: Chủ spa / tài khoản đăng ký**: Google OAuth registered users with the role `OWNER`. Displays their workspace name.
+- **Nhóm 2: Nhân viên/quản lý do Chủ spa tạo**: Local/invited accounts with the role `ADMIN` or `STAFF` created by owners. These are grouped by workspace name, showing the workspace owner's name and username.
+- **Exclude APPROVAL_OWNER**: All users with the `APPROVAL_OWNER` role are strictly filtered out and hidden from all tables and groups in the portal.
 
 ---
 
@@ -97,8 +109,10 @@ When a Google user is approved or re-enabled:
 
 1. [ ] Log in as `APPROVAL_OWNER`. Go to `/approval/accounts`.
 2. [ ] Verify tabs show lists for "Chờ duyệt", "Đã duyệt", "Từ chối", "Vô hiệu hóa".
-3. [ ] Click "Duyệt" on a pending user. Verify they move to "Đã duyệt" tab.
-4. [ ] Click "Vô hiệu hóa" on an active user. Verify they move to "Vô hiệu hóa" tab.
-5. [ ] Try to log in as the disabled user. Verify rejection message is displayed.
-6. [ ] Click "Kích hoạt lại" on the disabled user. Verify they move back to "Đã duyệt" tab and can log in successfully.
-7. [ ] Attempt to access `/approval/accounts` as an `OWNER` or `STAFF` user. Verify `403` error.
+3. [ ] Verify active users are separated into "Nhóm 1" (Chủ spa) and "Nhóm 2" (Nhân viên, grouped by workspace).
+4. [ ] Click "Duyệt" on a pending user. Verify they move to "Đã duyệt" tab.
+5. [ ] Click "Vô hiệu hóa" on an active user. Verify they move to "Vô hiệu hóa" tab.
+6. [ ] Try to log in as the disabled user. Verify they are redirected to `/auth/pending` rendering the "Tài khoản đã bị vô hiệu hóa" page.
+7. [ ] Try to log in as a rejected user. Verify they are redirected to `/auth/pending` rendering the "Tài khoản đã bị từ chối" page.
+8. [ ] Click "Đăng xuất" on status pages. Verify session is cleared and redirects to `/login` without errors.
+9. [ ] Attempt to access `/approval/accounts` as an `OWNER` or `STAFF` user. Verify `403` error.
