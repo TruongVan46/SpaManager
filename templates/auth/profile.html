@@ -49,10 +49,18 @@
                         <input type="file" id="avatar-input" name="avatar" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
 
                         <div class="row g-3">
-                            <!-- Username (Readonly) -->
+                            <!-- Username -->
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Tên đăng nhập</label>
-                                <input type="text" class="form-control app-form-control app-bg-main" value="{{ user.username }}" readonly>
+                                <label for="username" class="form-label fw-semibold">Tên đăng nhập <span class="text-danger">*</span></label>
+                                {% if user.role == 'APPROVAL_OWNER' %}
+                                    <input type="text" id="username" name="username" class="form-control app-form-control app-bg-main" value="{{ user.username }}" readonly>
+                                    <div class="form-text text-muted" style="font-size: 0.8rem;">Quản trị duyệt tài khoản không được phép đổi tên đăng nhập.</div>
+                                {% else %}
+                                    <input type="text" id="username" name="username" class="form-control app-form-control" value="{{ user.username }}" required>
+                                    {% if user.auth_provider == 'google' %}
+                                        <div class="form-text text-muted" style="font-size: 0.8rem;">Tài khoản Google: Bạn có thể đổi tên đăng nhập tự sinh này để dễ nhận diện hơn.</div>
+                                    {% endif %}
+                                {% endif %}
                             </div>
 
                             <!-- Role (Readonly) -->
@@ -171,6 +179,8 @@
 
             const fullNameInput = document.getElementById('full_name');
             const fullName = fullNameInput.value.trim();
+            const usernameInput = document.getElementById('username');
+            const username = usernameInput ? usernameInput.value.trim() : '';
 
             // Client-side validations
             if (!fullName) {
@@ -178,10 +188,18 @@
                 fullNameInput.focus();
                 return;
             }
+            if (usernameInput && !username) {
+                Notification.error("Tên đăng nhập không được để trống.");
+                usernameInput.focus();
+                return;
+            }
 
             // Create form data payload supporting files upload
             const formData = new FormData();
             formData.append('full_name', fullName);
+            if (usernameInput) {
+                formData.append('username', username);
+            }
             if (avatarInput.files[0]) {
                 formData.append('avatar', avatarInput.files[0]);
             }

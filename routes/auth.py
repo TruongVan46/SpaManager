@@ -155,14 +155,23 @@ def profile():
     if not user:
         return redirect(url_for('auth.login', next=request.full_path))
 
+    from core.auth.enums import UserRole
+    if user.role == UserRole.APPROVAL_OWNER.value:
+        abort(403)
+
     if request.method == 'POST':
+        from core.exceptions import ValidationException
         full_name = request.form.get('full_name', '').strip()
         avatar_file = request.files.get('avatar')
+        username = request.form.get('username')
 
-        success, message = AuthService.update_profile(user, full_name, avatar_file)
-        if success:
-            return jsonify(success=True, message=message)
-        return jsonify(success=False, message=message), 400
+        try:
+            success, message = AuthService.update_profile(user, full_name, avatar_file=avatar_file, username=username)
+            if success:
+                return jsonify(success=True, message=message)
+            return jsonify(success=False, message=message), 400
+        except ValidationException as e:
+            return jsonify(success=False, message=e.message, fields=e.field_errors), 400
 
     from core.auth.dto import UserDTO
 

@@ -518,15 +518,14 @@ class AuthService:
             app_logger.error(f"Error logging change password failure: {e}", module="SECURITY", exc_info=True)
 
     @staticmethod
-    def update_profile(user, full_name, avatar_file=None):
+    def update_profile(user, full_name, avatar_file=None, username=None):
         """
-        Update user profile (Full Name and Avatar).
+        Update user profile (Full Name, Avatar, and optionally Username).
         Returns: (success_bool, message_str)
         """
         if not user:
             raise ValidationException("Người dùng không hợp lệ.")
 
-        
         # 1. Validation
         data = {
             'full_name': full_name,
@@ -537,6 +536,53 @@ class AuthService:
         validator.raise_if_invalid("Thông tin hồ sơ cá nhân không hợp lệ.")
 
         sanitized_name = full_name.strip()
+
+        # Update username if provided and allowed (not APPROVAL_OWNER)
+        if username is not None:
+            username = username.strip()
+            # 1. Check required
+            if not username:
+                raise ValidationException("Tên đăng nhập không được để trống.", field_errors={"username": "Tên đăng nhập không được để trống."})
+
+            # 2. Check length
+            if not (3 <= len(username) <= 50):
+                raise ValidationException("Tên đăng nhập phải từ 3 đến 50 ký tự.", field_errors={"username": "Tên đăng nhập phải từ 3 đến 50 ký tự."})
+
+            # 3. Check pattern
+            import re
+            if not re.match(r"^[a-zA-Z0-9_.-]+$", username):
+                raise ValidationException(
+                    "Tên đăng nhập chỉ được chứa chữ cái, chữ số, dấu gạch dưới, dấu chấm và dấu gạch ngang.",
+                    field_errors={"username": "Tên đăng nhập chỉ được chứa chữ cái, chữ số, dấu gạch dưới, dấu chấm và dấu gạch ngang."}
+                )
+
+            # 4. Check forbidden names
+            username_lower = username.lower()
+            forbidden = {"approval_owner", "admin", "owner", "staff", "system", "google"}
+            if username_lower in forbidden:
+                raise ValidationException(
+                    "Tên đăng nhập không hợp lệ hoặc thuộc danh sách hạn chế.",
+                    field_errors={"username": "Tên đăng nhập không hợp lệ hoặc thuộc danh sách hạn chế."}
+                )
+
+            # 5. Check role: APPROVAL_OWNER is not allowed to change username
+            from core.auth.enums import UserRole
+            if user.role == UserRole.APPROVAL_OWNER.value:
+                raise ValidationException(
+                    "Tài khoản quản trị duyệt không được phép đổi tên đăng nhập.",
+                    field_errors={"username": "Tài khoản quản trị duyệt không được phép đổi tên đăng nhập."}
+                )
+
+            # 6. Check unique
+            if username != user.username:
+                existing = User.query.filter_by(username=username).first()
+                if existing:
+                    raise ValidationException(
+                        "Tên đăng nhập đã tồn tại.",
+                        field_errors={"username": "Tên đăng nhập đã tồn tại."}
+                    )
+                # Assign new username
+                user.username = username
 
         # 2. Process avatar upload if provided
         old_avatar_path = None
