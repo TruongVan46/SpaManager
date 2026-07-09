@@ -39,6 +39,13 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
+    # Soft delete fields
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deletion_reason = db.Column(db.String(255), nullable=True)
+
+    deleted_by = db.relationship("User", foreign_keys=[deleted_by_id], remote_side=[id], lazy=True)
+
     def _normalized_approval_status(self):
         status = (self.approval_status or self.APPROVAL_ACTIVE).strip().lower()
         return status if status in self.APPROVAL_STATUSES else self.APPROVAL_ACTIVE

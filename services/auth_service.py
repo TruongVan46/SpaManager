@@ -39,7 +39,7 @@ class AuthService:
             user_columns = {column["name"] for column in inspector.get_columns("users")}
         except NoSuchTableError:
             return False
-        return {"approval_status", "approved_by_id", "approved_at"}.issubset(user_columns)
+        return {"approval_status", "approved_by_id", "approved_at", "deleted_at"}.issubset(user_columns)
 
     @staticmethod
     def _log_login_attempt(action, description, severity="WARNING"):

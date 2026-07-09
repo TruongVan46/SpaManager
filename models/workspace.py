@@ -23,6 +23,13 @@ class Workspace(db.Model):
     )
     created_by = db.relationship("User", foreign_keys=[created_by_id], lazy=True)
 
+    # Soft delete fields
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deletion_reason = db.Column(db.String(255), nullable=True)
+
+    deleted_by = db.relationship("User", foreign_keys=[deleted_by_id], lazy=True)
+
     WORKSPACE_STATUSES = ("active", "pending", "suspended", "archived")
 
     def is_active(self):
