@@ -53,14 +53,14 @@ class WorkspaceService:
             WorkspaceMember.user_id == user.id,
             WorkspaceMember.role == "owner",
         ).first()
-
         if existing_membership:
+            if existing_membership.workspace.deleted_at is not None:
+                return None
             if existing_membership.status != "active":
                 existing_membership.status = "active"
                 existing_membership.updated_at = utc_now()
                 db.session.flush()
             return existing_membership.workspace
-
         # 2. Workspace name & slug generation
         # Fallback order: full_name -> username -> email
         base_name = user.full_name or user.username or user.email or "Spa"
@@ -117,13 +117,12 @@ class WorkspaceService:
 
         if user.role == "APPROVAL_OWNER":
             return None
-
         # Get active memberships, ordered deterministically by joined_at asc, id asc
-        memberships = WorkspaceMember.query.filter(
+        memberships = WorkspaceMember.query.join(Workspace).filter(
             WorkspaceMember.user_id == user.id,
-            WorkspaceMember.status == "active"
+            WorkspaceMember.status == "active",
+            Workspace.deleted_at.is_(None)
         ).order_by(WorkspaceMember.joined_at.asc(), WorkspaceMember.id.asc()).all()
-
         if not memberships:
             if user.role == "OWNER":
                 workspace = WorkspaceService.ensure_workspace_for_approved_owner(user)
@@ -152,7 +151,9 @@ class WorkspaceService:
             return None
         workspace_id = session.get("current_workspace_id")
         if workspace_id:
-            return db.session.get(Workspace, workspace_id)
+            workspace = db.session.get(Workspace, workspace_id)
+            if workspace and workspace.deleted_at is None:
+                return workspace
         return None
 
     @staticmethod
@@ -177,6 +178,12 @@ class WorkspaceService:
 
         workspace_id = session.get("current_workspace_id")
         if not workspace_id:
+            return None
+
+        # Verify that workspace is not deleted
+        workspace = db.session.get(Workspace, workspace_id)
+        if not workspace or workspace.deleted_at is not None:
+            session.pop("current_workspace_id", None)
             return None
 
         user = AuthService.get_current_user()
@@ -228,6 +235,10 @@ class WorkspaceService:
             # Only enforce workspace isolation in unit tests if explicitly requested
             if has_request_context() and session.get("_enable_workspace_isolation") == True:
                 wid = session.get("current_workspace_id")
+                if wid is not None:
+                    workspace = db.session.get(Workspace, wid)
+                    if not workspace or workspace.deleted_at is not None:
+                        wid = None
                 if wid is None:
                     return model.query.filter(model.workspace_id == -1)
                 return model.query.filter(model.workspace_id == wid)
@@ -251,7 +262,15 @@ class WorkspaceService:
 
         if is_testing:
             if has_request_context() and session.get("_enable_workspace_isolation") == True:
-                record.workspace_id = session.get("current_workspace_id")
+                wid = session.get("current_workspace_id")
+                if wid is not None:
+                    workspace = db.session.get(Workspace, wid)
+                    if not workspace or workspace.deleted_at is not None:
+                        wid = None
+                if wid is None:
+                    from flask import abort
+                    abort(403)
+                record.workspace_id = wid
             return
 
         wid = WorkspaceService.require_current_workspace_id()
@@ -315,11 +334,16 @@ class WorkspaceService:
         """
         Return a base query of User joined with WorkspaceMember for a workspace.
         Used by UserService to scope the user list.
-        Returns None if workspace_id is falsy.
+        Returns None if workspace_id is falsy or workspace is deleted.
         """
         from models.user import User as UserModel
 
         if not workspace_id:
+            return None
+
+        # Check if workspace is deleted
+        workspace = db.session.get(Workspace, workspace_id)
+        if not workspace or workspace.deleted_at is not None:
             return None
 
         return (
@@ -338,6 +362,10 @@ class WorkspaceService:
         Check whether user_id has an active membership in workspace_id.
         """
         if not workspace_id or not user_id:
+            return False
+        # Check if workspace is deleted
+        workspace = db.session.get(Workspace, workspace_id)
+        if not workspace or workspace.deleted_at is not None:
             return False
         return WorkspaceMember.query.filter(
             WorkspaceMember.workspace_id == workspace_id,

@@ -223,3 +223,14 @@ Cần xin ý kiến quyết định từ Product Owner cho các trường hợp 
 * Không tạo bất kỳ file migration vật lý nào trong dự án tại task này.
 * Không thay đổi dữ liệu thực tế trên môi trường Database Production.
 * Không tích hợp cột `workspace_id` vào bảng `activity_logs` trong giai đoạn này.
+
+---
+
+## 14. Trạng thái thực tế triển khai (Actual Implementation Status)
+* **Task 6.5.19 (DONE):**
+  * Đã triển khai và củng cố toàn bộ các **lớp bảo vệ runtime (guards)** đối với Workspace đã bị xóa mềm (`deleted_at is not None`).
+  * `WorkspaceService.is_user_in_workspace` tự động trả về `False` nếu workspace đích bị xóa mềm.
+  * Tầng session và helper workspace tự động clear context và fail-closed nếu workspace hiện hành bị xóa mềm.
+  * Tầng truy vấn toàn cục `scoped_query` tự động trả về query rỗng (`workspace_id == -1`) khi workspace bị xóa mềm, chặn đứng việc đọc/ghi dữ liệu kinh doanh.
+  * Việc xóa/khôi phục thực tế cho OWNER và Workspace vẫn chưa được kích hoạt ở tầng giao diện và service (để dành cho các task sau).
+  * Việc dọn dẹp dữ liệu vĩnh viễn (purge) chưa được triển khai.
