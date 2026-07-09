@@ -85,9 +85,15 @@ def index():
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
+    removed_users = UserService.search_removed_paginated(
+        query_text=query_text,
+        page=1,
+        per_page=50,
+    )
     return render_template(
         'user/index.html',
         users=users,
+        removed_users=removed_users,
         q=query_text,
         sort_by=sort_by,
         sort_dir=sort_dir,
@@ -322,5 +328,28 @@ def toggle_active(user_id):
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
+    return redirect(url_for('user.index'))
 
+
+@user_bp.route('/users/<int:user_id>/soft-delete', methods=['POST'])
+def soft_delete(user_id):
+    actor = _require_owner()
+    payload = _extract_payload()
+    reason = payload.get('reason', '').strip() or None
+    try:
+        UserService.soft_delete_user(actor=actor, user_id=user_id, reason=reason)
+        NotificationService.flash_success('Đã xóa mềm nhân viên khỏi workspace.')
+    except (ValidationException, NotFoundException, BusinessException) as e:
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('user.index'))
+
+
+@user_bp.route('/users/<int:user_id>/restore', methods=['POST'])
+def restore(user_id):
+    actor = _require_owner()
+    try:
+        UserService.restore_user(actor=actor, user_id=user_id)
+        NotificationService.flash_success('Đã khôi phục nhân viên vào workspace.')
+    except (ValidationException, NotFoundException, BusinessException) as e:
+        NotificationService.flash_error(e.message)
     return redirect(url_for('user.index'))

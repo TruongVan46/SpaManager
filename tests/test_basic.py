@@ -2828,6 +2828,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Applied 0002_google_auth_approval", result.output)
         self.assertIn("Applied 0003_workspace_foundation", result.output)
         self.assertIn("Applied 0004_settings_ws_key", result.output)
+        self.assertIn("Applied 0005_member_soft_delete", result.output)
 
         tables = sa_inspect(db.engine).get_table_names()
         self.assertIn("users", tables)
@@ -2837,7 +2838,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("alembic_version", tables)
 
         current_after = runner.invoke(args=["db", "current"])
-        self.assertIn("0004_settings_ws_key", current_after.output)
+        self.assertIn("0005_member_soft_delete", current_after.output)
 
     def test_version_is_rendered_from_config_in_setting_ui(self):
         owner = AuthService.seed_owner_if_empty()
@@ -2892,7 +2893,7 @@ class BasicTestCase(unittest.TestCase):
     def test_workspace_models_expose_expected_status_and_role_constants(self):
         self.assertEqual(Workspace.WORKSPACE_STATUSES, ("active", "pending", "suspended", "archived"))
         self.assertEqual(WorkspaceMember.WORKSPACE_MEMBER_ROLES, ("owner", "admin", "staff"))
-        self.assertEqual(WorkspaceMember.WORKSPACE_MEMBER_STATUSES, ("active", "invited", "disabled"))
+        self.assertEqual(WorkspaceMember.WORKSPACE_MEMBER_STATUSES, ("active", "invited", "disabled", "removed"))
 
     def test_workspace_model_smoke_create_and_relationships(self):
         owner = self.create_user("workspace-owner", password="owner-pass", full_name="Workspace Owner", role="OWNER")
@@ -3828,8 +3829,8 @@ class BasicTestCase(unittest.TestCase):
 
         result = runner.invoke(args=["db", "stamp", "head"])
         self.assertEqual(result.exit_code, 0, result.output)
-        # Head is now 0004_settings_ws_key after Task 6.5.9b
-        self.assertIn("Stamped 0004_settings_ws_key", result.output)
+        # Head is now 0005_member_soft_delete
+        self.assertIn("Stamped 0005_member_soft_delete", result.output)
 
         tables_after = sorted(sa_inspect(db.engine).get_table_names())
         self.assertIn("alembic_version", tables_after)
@@ -3837,7 +3838,7 @@ class BasicTestCase(unittest.TestCase):
 
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
-        self.assertIn("0004_settings_ws_key", current_after.output)
+        self.assertIn("0005_member_soft_delete", current_after.output)
 
     def test_data_consistency_audit_passes_on_clean_database(self):
         report = run_data_consistency_audit()

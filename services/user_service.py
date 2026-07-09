@@ -620,3 +620,173 @@ class UserService:
         if user.approval_status != User.APPROVAL_PENDING:
             raise ValidationException("Chỉ có thể từ chối tài khoản đang chờ duyệt.", field_errors={"approval_status": "Chỉ có thể từ chối tài khoản đang chờ duyệt."})
         return UserService.reject_user(actor, user_id)
+
+    @staticmethod
+    def search_removed_paginated(query_text="", page=1, per_page=25):
+        from models.workspace import WorkspaceMember
+        from flask import current_app, has_app_context, has_request_context, session
+
+        is_testing = has_app_context() and current_app.config.get("TESTING") is True
+        if is_testing:
+            if not has_request_context() or not session.get("_enable_workspace_isolation"):
+                workspace_id = session.get("current_workspace_id")
+            else:
+                workspace_id = session.get("current_workspace_id")
+        else:
+            workspace_id = WorkspaceService.get_current_workspace_id()
+
+        if not workspace_id:
+            return User.query.filter(User.id == -1).paginate(page=page, per_page=per_page, error_out=False)
+
+        query = (
+            User.query
+            .join(
+                WorkspaceMember,
+                (WorkspaceMember.user_id == User.id)
+                & (WorkspaceMember.workspace_id == workspace_id)
+                & (WorkspaceMember.status == "removed"),
+            )
+        )
+
+        search = (query_text or "").strip()
+        if search:
+            pattern = f"%{search}%"
+            query = query.filter(
+                or_(
+                    User.username.ilike(pattern),
+                    User.full_name.ilike(pattern),
+                    User.email.ilike(pattern),
+                    User.role.ilike(pattern),
+                )
+            )
+
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        for u in pagination.items:
+            m = WorkspaceMember.query.filter_by(workspace_id=workspace_id, user_id=u.id, status="removed").first()
+            if m:
+                u.removed_at = m.removed_at
+                u.removed_by = m.removed_by
+                u.removal_reason = m.removal_reason
+        return pagination
+
+    @staticmethod
+    def soft_delete_user(actor, user_id, reason=None):
+        from models.workspace import WorkspaceMember
+
+        if actor.role != "OWNER":
+            raise ValidationException("Chỉ chủ spa mới có quyền xóa mềm nhân viên.")
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể xóa tài khoản quản trị hệ thống.")
+
+        if user.role == UserRole.OWNER.value:
+            raise ValidationException("Không thể xóa tài khoản chủ spa.")
+
+        if user.id == actor.id:
+            raise ValidationException("Không thể tự xóa chính mình.")
+
+        workspace_id = None
+        try:
+            workspace_id = UserService._resolve_current_workspace_id_for_create()
+        except Exception:
+            pass
+
+        if not workspace_id:
+            member_own = WorkspaceMember.query.filter_by(
+                user_id=actor.id, role="owner", status="active"
+            ).first()
+            if member_own:
+                workspace_id = member_own.workspace_id
+
+        if not workspace_id:
+            raise ValidationException("Không có workspace hiện tại.")
+
+        membership = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id,
+            user_id=user.id,
+            status="active"
+        ).first()
+
+        if not membership:
+            raise ValidationException("Người dùng không thuộc workspace này hoặc đã bị xóa.")
+
+        membership.status = "removed"
+        membership.removed_at = utc_now()
+        membership.removed_by_id = actor.id
+        membership.removal_reason = reason
+        membership.updated_at = utc_now()
+
+        actor_display_name = get_activity_actor_display_name(actor)
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="REMOVE_USER",
+                description=f"{actor_display_name} đã xóa mềm nhân viên {user.username} khỏi workspace.",
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def restore_user(actor, user_id):
+        from models.workspace import WorkspaceMember
+
+        if actor.role != "OWNER":
+            raise ValidationException("Chỉ chủ spa mới có quyền khôi phục nhân viên.")
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        workspace_id = None
+        try:
+            workspace_id = UserService._resolve_current_workspace_id_for_create()
+        except Exception:
+            pass
+
+        if not workspace_id:
+            member_own = WorkspaceMember.query.filter_by(
+                user_id=actor.id, role="owner", status="active"
+            ).first()
+            if member_own:
+                workspace_id = member_own.workspace_id
+
+        if not workspace_id:
+            raise ValidationException("Không có workspace hiện tại.")
+
+        membership = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id,
+            user_id=user.id,
+            status="removed"
+        ).first()
+
+        if not membership:
+            raise ValidationException("Người dùng chưa bị xóa hoặc không thuộc workspace này.")
+
+        membership.status = "active"
+        membership.removed_at = None
+        membership.removed_by_id = None
+        membership.removal_reason = None
+        membership.updated_at = utc_now()
+
+        actor_display_name = get_activity_actor_display_name(actor)
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="RESTORE_USER",
+
+                description=f"{actor_display_name} đã khôi phục nhân viên {user.username} vào workspace.",
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise

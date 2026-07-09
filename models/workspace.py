@@ -42,15 +42,19 @@ class WorkspaceMember(db.Model):
     status = db.Column(db.String(20), nullable=False, default="active", index=True)
     invited_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     joined_at = db.Column(db.DateTime, nullable=True)
+    removed_at = db.Column(db.DateTime, nullable=True)
+    removed_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    removal_reason = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     workspace = db.relationship("Workspace", back_populates="members", lazy=True)
     user = db.relationship("User", foreign_keys=[user_id], lazy=True)
     invited_by = db.relationship("User", foreign_keys=[invited_by_id], lazy=True)
+    removed_by = db.relationship("User", foreign_keys=[removed_by_id], lazy=True)
 
     WORKSPACE_MEMBER_ROLES = ("owner", "admin", "staff")
-    WORKSPACE_MEMBER_STATUSES = ("active", "invited", "disabled")
+    WORKSPACE_MEMBER_STATUSES = ("active", "invited", "disabled", "removed")
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "user_id", name="uq_workspace_members_workspace_user"),
