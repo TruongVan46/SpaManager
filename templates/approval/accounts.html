@@ -616,7 +616,16 @@
                                     <td>{{ user.deletion_reason or '-' }}</td>
                                     <td class="text-center">
                                         <div class="approval-action-group">
-                                            <button class="btn btn-outline-success approval-action-btn" disabled title="Khôi phục (Chưa triển khai)"><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            {% if user.role == 'OWNER' %}
+                                            <button class="btn btn-outline-success approval-action-btn" disabled title="Khôi phục owner sẽ được xử lý ở bước workspace lifecycle riêng."><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            {% else %}
+                                            <form method="post" action="{{ url_for('approval.restore_account', user_id=user.id) }}" class="d-inline m-0" onsubmit="return confirm('Bạn có chắc muốn khôi phục tài khoản này? Tài khoản sẽ hoạt động lại nếu trạng thái duyệt vẫn là active.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-outline-success approval-action-btn">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Khôi phục
+                                                </button>
+                                            </form>
+                                            {% endif %}
                                             <button class="btn btn-outline-secondary approval-action-btn" disabled title="Xóa vĩnh viễn (Chưa triển khai)"><i class="bi bi-trash-fill"></i> Xóa vĩnh viễn</button>
                                         </div>
                                     </td>
@@ -672,7 +681,16 @@
                                     </div>
                                     <div class="approval-action-group w-100">
                                         <div class="d-flex w-100 gap-2">
-                                            <button class="btn btn-outline-success approval-action-btn flex-fill" disabled title="Khôi phục (Chưa triển khai)"><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            {% if user.role == 'OWNER' %}
+                                            <button class="btn btn-outline-success approval-action-btn flex-fill" disabled title="Khôi phục owner sẽ được xử lý ở bước workspace lifecycle riêng."><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            {% else %}
+                                            <form method="post" action="{{ url_for('approval.restore_account', user_id=user.id) }}" class="flex-fill m-0" onsubmit="return confirm('Bạn có chắc muốn khôi phục tài khoản này? Tài khoản sẽ hoạt động lại nếu trạng thái duyệt vẫn là active.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-outline-success approval-action-btn w-100">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Khôi phục
+                                                </button>
+                                            </form>
+                                            {% endif %}
                                             <button class="btn btn-outline-secondary approval-action-btn flex-fill" disabled title="Xóa vĩnh viễn (Chưa triển khai)"><i class="bi bi-trash-fill"></i> Xóa vĩnh viễn</button>
                                         </div>
                                     </div>

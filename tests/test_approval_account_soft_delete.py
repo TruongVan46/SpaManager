@@ -245,3 +245,110 @@ class TestApprovalAccountSoftDelete(unittest.TestCase):
         for st in ["pending", "active", "rejected", "disabled"]:
             r = self.client.get(f"/approval/accounts?status={st}")
             self.assertEqual(r.status_code, 200)
+
+    def test_restore_soft_deleted_staff_and_admin_active(self):
+        approver = self._create_user("approver", UserRole.APPROVAL_OWNER)
+        staff = self._create_user("staff_del", UserRole.STAFF, is_active=True, approval_status="active")
+        admin = self._create_user("admin_del", UserRole.ADMIN, is_active=True, approval_status="active")
+
+        # Soft delete first
+        UserService.soft_delete_account(actor=approver, user_id=staff.id, reason="Reason to delete staff")
+        UserService.soft_delete_account(actor=approver, user_id=admin.id, reason="Reason to delete admin")
+
+        # Restore staff
+        res_staff = UserService.restore_account(actor=approver, user_id=staff.id)
+        self.assertIsNone(res_staff.deleted_at)
+        self.assertIsNone(res_staff.deleted_by_id)
+        self.assertIsNone(res_staff.deletion_reason)
+        self.assertTrue(res_staff.is_active)
+        self.assertEqual(res_staff.approval_status, "active")
+        self.assertTrue(res_staff.can_access_app)
+
+        # Restore admin
+        res_admin = UserService.restore_account(actor=approver, user_id=admin.id)
+        self.assertIsNone(res_admin.deleted_at)
+        self.assertTrue(res_admin.is_active)
+        self.assertTrue(res_admin.can_access_app)
+
+        # Verify no hard deletion occurred
+        db_staff = db.session.get(User, staff.id)
+        self.assertIsNotNone(db_staff)
+
+    def test_restore_does_not_change_approval_status_and_is_active_safety(self):
+        approver = self._create_user("approver", UserRole.APPROVAL_OWNER)
+
+        # Test for other approval statuses (should not set is_active=True)
+        for status in ["pending", "rejected", "disabled"]:
+            user = self._create_user(f"user_{status}", UserRole.STAFF, is_active=True, approval_status=status)
+            UserService.soft_delete_account(actor=approver, user_id=user.id)
+
+            res_user = UserService.restore_account(actor=approver, user_id=user.id)
+            self.assertIsNone(res_user.deleted_at)
+            self.assertFalse(res_user.is_active) # should be False because approval_status is not active
+            self.assertEqual(res_user.approval_status, status) # unchanged
+            self.assertFalse(res_user.can_access_app)
+
+    def test_restore_restrictions(self):
+        approver = self._create_user("approver", UserRole.APPROVAL_OWNER)
+        another_approver = self._create_user("approver2", UserRole.APPROVAL_OWNER)
+        owner = self._create_user("owner_user", UserRole.OWNER)
+        staff_not_deleted = self._create_user("staff_not_del", UserRole.STAFF)
+
+        # 1. Cannot restore approval owner
+        with self.assertRaises(ValidationException) as ctx:
+            UserService.restore_account(actor=approver, user_id=another_approver.id)
+        self.assertIn("Không thể khôi phục tài khoản quản trị hệ thống", ctx.exception.message)
+
+        # 2. Cannot restore owner (raised ValidationException: "Khôi phục owner sẽ được xử lý ở bước workspace lifecycle riêng.")
+        # Let's manually set owner deleted_at to mimic deleted owner
+        owner.deleted_at = datetime.utcnow()
+        db.session.commit()
+        with self.assertRaises(ValidationException) as ctx:
+            UserService.restore_account(actor=approver, user_id=owner.id)
+        self.assertIn("Khôi phục owner sẽ được xử lý ở bước workspace lifecycle riêng.", ctx.exception.message)
+
+        # 3. Cannot restore user who is not soft-deleted
+        with self.assertRaises(ValidationException) as ctx:
+            UserService.restore_account(actor=approver, user_id=staff_not_deleted.id)
+        self.assertIn("Tài khoản này chưa bị xóa mềm", ctx.exception.message)
+
+    def test_non_approval_owner_cannot_call_service_restore(self):
+        staff_actor = self._create_user("staff_actor", UserRole.STAFF)
+        staff_target = self._create_user("staff_target", UserRole.STAFF)
+        approver = self._create_user("approver", UserRole.APPROVAL_OWNER)
+
+        UserService.soft_delete_account(actor=approver, user_id=staff_target.id)
+
+        with self.assertRaises(PermissionDeniedException):
+            UserService.restore_account(actor=staff_actor, user_id=staff_target.id)
+
+    def test_activity_log_recorded_on_restore(self):
+        approver = self._create_user("approver", UserRole.APPROVAL_OWNER)
+        staff = self._create_user("staff_to_del", UserRole.STAFF)
+
+        UserService.soft_delete_account(actor=approver, user_id=staff.id)
+        UserService.restore_account(actor=approver, user_id=staff.id)
+
+        log = ActivityLog.query.filter_by(action="RESTORE_ACCOUNT").first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.user_id, approver.id)
+        self.assertEqual(log.reference_id, staff.id)
+        self.assertIn("đã khôi phục tài khoản staff_to_del", log.description)
+
+    def test_restore_route_and_redirects(self):
+        approver = self._create_user("approver", UserRole.APPROVAL_OWNER)
+        staff = self._create_user("staff_to_del", UserRole.STAFF)
+
+        UserService.soft_delete_account(actor=approver, user_id=staff.id)
+
+        self._login_as(approver)
+        resp = self.client.post(f"/approval/users/{staff.id}/restore")
+        self.assertEqual(resp.status_code, 302)
+        # Should redirect to active list
+        self.assertIn("/approval/accounts?status=active", resp.headers["Location"])
+
+        # Check in DB
+        db_user = User.query.get(staff.id)
+        self.assertIsNone(db_user.deleted_at)
+        self.assertTrue(db_user.is_active)
+        self.assertTrue(db_user.can_access_app)

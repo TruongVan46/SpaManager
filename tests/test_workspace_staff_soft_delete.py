@@ -276,3 +276,50 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             # Verify that user.is_active is STILL False (not automatically unlocked)
             self.assertFalse(staff.is_active)
             self.assertEqual(staff.approval_status, "disabled")
+
+    def test_workspace_soft_delete_and_restore_no_global_active_side_effects(self):
+        owner = self._create_user("owner_1", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+
+        # 1. Staff starting with is_active = False (disabled)
+        staff_inactive = self._create_user("staff_inactive", "STAFF", is_active=False, approval_status="disabled")
+        WorkspaceService.add_member_for_user(workspace.id, staff_inactive, "STAFF")
+        db.session.commit()
+
+        self._login_as(owner, workspace.id)
+        with app.test_request_context():
+            session["auth_user_id"] = owner.id
+            session["_enable_workspace_isolation"] = True
+            session["current_workspace_id"] = workspace.id
+
+            # Soft delete inactive staff
+            UserService.soft_delete_user(actor=owner, user_id=staff_inactive.id)
+            # Global is_active must remain False
+            db_user_inactive = User.query.get(staff_inactive.id)
+            self.assertFalse(db_user_inactive.is_active)
+
+            # Restore inactive staff
+            UserService.restore_user(actor=owner, user_id=staff_inactive.id)
+            # Global is_active must remain False
+            self.assertFalse(db_user_inactive.is_active)
+
+        # 2. Staff starting with is_active = True (active)
+        staff_active = self._create_user("staff_active", "STAFF", is_active=True, approval_status="active")
+        WorkspaceService.add_member_for_user(workspace.id, staff_active, "STAFF")
+        db.session.commit()
+
+        with app.test_request_context():
+            session["auth_user_id"] = owner.id
+            session["_enable_workspace_isolation"] = True
+            session["current_workspace_id"] = workspace.id
+
+            # Soft delete active staff
+            UserService.soft_delete_user(actor=owner, user_id=staff_active.id)
+            # Global is_active must remain True
+            db_user_active = User.query.get(staff_active.id)
+            self.assertTrue(db_user_active.is_active)
+
+            # Restore active staff
+            UserService.restore_user(actor=owner, user_id=staff_active.id)
+            # Global is_active must remain True
+            self.assertTrue(db_user_active.is_active)

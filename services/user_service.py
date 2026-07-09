@@ -837,3 +837,48 @@ class UserService:
         except Exception:
             db.session.rollback()
             raise
+
+    @staticmethod
+    def restore_account(actor, user_id):
+        from core.auth.enums import UserRole
+        from core.exceptions import PermissionDeniedException
+
+        if actor.role != UserRole.APPROVAL_OWNER.value:
+            raise PermissionDeniedException("Chỉ quản trị hệ thống mới có quyền khôi phục tài khoản.")
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể khôi phục tài khoản quản trị hệ thống.")
+
+        if user.role == UserRole.OWNER.value:
+            raise ValidationException("Khôi phục owner sẽ được xử lý ở bước workspace lifecycle riêng.")
+
+        if user.deleted_at is None:
+            raise ValidationException("Tài khoản này chưa bị xóa mềm.")
+
+        user.deleted_at = None
+        user.deleted_by_id = None
+        user.deletion_reason = None
+
+        # Handle is_active safely
+        if user._normalized_approval_status() == User.APPROVAL_ACTIVE:
+            user.is_active = True
+        else:
+            user.is_active = False
+
+        actor_display_name = get_activity_actor_display_name(actor)
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="RESTORE_ACCOUNT",
+                description=f"{actor_display_name} đã khôi phục tài khoản {user.username}.",
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
