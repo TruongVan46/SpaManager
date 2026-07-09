@@ -13,6 +13,7 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 - [Google auth schema/migration plan](auth/GOOGLE_AUTH_SCHEMA_MIGRATION_PLAN.md)
 - [Google auth config setup](auth/GOOGLE_AUTH_CONFIG_SETUP.md)
 - [Auth docs index](auth/README.md)
+- [Account/Workspace soft delete lifecycle plan](approval/ACCOUNT_WORKSPACE_SOFT_DELETE_LIFECYCLE_PLAN.md)
 
 ## Nhóm tài liệu
 
