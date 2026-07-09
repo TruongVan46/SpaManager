@@ -68,7 +68,7 @@ class User(db.Model):
 
     @property
     def can_access_app(self):
-        return bool(self.is_active and self.is_approval_active)
+        return bool(self.is_active and self.is_approval_active and self.deleted_at is None)
 
     def set_password(self, password):
         self.password_hash = PasswordHasher.hash_password(password)

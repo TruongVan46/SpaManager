@@ -130,6 +130,11 @@
             <i class="bi bi-slash-circle me-1"></i> Vô hiệu hóa
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link px-3 py-2 fw-medium {% if current_status == 'deleted' %}active bg-dark text-white{% else %}btn-outline-secondary text-secondary{% endif %}" href="{{ url_for('approval.accounts', status='deleted') }}">
+            <i class="bi bi-person-dash me-1"></i> Đã xóa mềm
+        </a>
+    </li>
 </ul>
 
 <div class="app-card">
@@ -144,6 +149,8 @@
                 Tài khoản bị từ chối
             {% elif current_status == 'disabled' %}
                 Tài khoản bị vô hiệu hóa
+            {% elif current_status == 'deleted' %}
+                Tài khoản đã xóa mềm
             {% endif %}
         </h5>
     </div>
@@ -212,6 +219,9 @@
                                                                 <i class="bi bi-slash-circle"></i> Vô hiệu hóa
                                                             </button>
                                                         </form>
+                                                        <span class="badge bg-light text-muted border py-2" title="Xóa owner sẽ được xử lý ở bước workspace lifecycle riêng.">
+                                                            <i class="bi bi-info-circle"></i> Xử lý ở bước workspace lifecycle
+                                                        </span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -283,6 +293,12 @@
                                                                             <i class="bi bi-slash-circle"></i> Vô hiệu hóa
                                                                         </button>
                                                                     </form>
+                                                                    <form method="post" action="{{ url_for('approval.soft_delete_account', user_id=user.id) }}" class="d-inline m-0" onsubmit="return confirm('Bạn có chắc muốn xóa mềm tài khoản này? Tài khoản sẽ không thể đăng nhập, nhưng dữ liệu vẫn được giữ lại.');">
+                                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                        <button type="submit" class="btn btn-outline-danger approval-action-btn">
+                                                                            <i class="bi bi-trash"></i> Xóa mềm
+                                                                        </button>
+                                                                    </form>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -335,6 +351,12 @@
                                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                             <button type="submit" class="btn btn-outline-warning approval-action-btn">
                                                                 <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+                                                            </button>
+                                                        </form>
+                                                        <form method="post" action="{{ url_for('approval.soft_delete_account', user_id=user.id) }}" class="d-inline m-0" onsubmit="return confirm('Bạn có chắc muốn xóa mềm tài khoản này? Tài khoản sẽ không thể đăng nhập, nhưng dữ liệu vẫn được giữ lại.');">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                            <button type="submit" class="btn btn-outline-danger approval-action-btn">
+                                                                <i class="bi bi-trash"></i> Xóa mềm
                                                             </button>
                                                         </form>
                                                     </div>
@@ -404,6 +426,9 @@
                                                         <i class="bi bi-slash-circle"></i> Vô hiệu hóa
                                                     </button>
                                                 </form>
+                                                <span class="badge bg-light text-muted border w-100 py-2 mt-2" title="Xóa owner sẽ được xử lý ở bước workspace lifecycle riêng.">
+                                                    <i class="bi bi-info-circle"></i> Xử lý ở bước workspace lifecycle
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -475,6 +500,12 @@
                                                                         <i class="bi bi-slash-circle"></i> Vô hiệu hóa
                                                                     </button>
                                                                 </form>
+                                                                <form method="post" action="{{ url_for('approval.soft_delete_account', user_id=user.id) }}" class="w-100 m-0" onsubmit="return confirm('Bạn có chắc muốn xóa mềm tài khoản này? Tài khoản sẽ không thể đăng nhập, nhưng dữ liệu vẫn được giữ lại.');">
+                                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                    <button type="submit" class="btn btn-outline-danger approval-action-btn w-100 mt-2">
+                                                                        <i class="bi bi-trash"></i> Xóa mềm
+                                                                    </button>
+                                                                </form>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -532,6 +563,12 @@
                                                         <i class="bi bi-slash-circle"></i> Vô hiệu hóa
                                                     </button>
                                                 </form>
+                                                <form method="post" action="{{ url_for('approval.soft_delete_account', user_id=user.id) }}" class="w-100 m-0" onsubmit="return confirm('Bạn có chắc muốn xóa mềm tài khoản này? Tài khoản sẽ không thể đăng nhập, nhưng dữ liệu vẫn được giữ lại.');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-outline-danger approval-action-btn w-100 mt-2">
+                                                        <i class="bi bi-trash"></i> Xóa mềm
+                                                    </button>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
@@ -539,6 +576,110 @@
                             </div>
                         </div>
                     {% endif %}
+                </div>
+            {% elif current_status == 'deleted' %}
+                <!-- DESKTOP VIEW (DELETED TABLE) -->
+                <div class="approval-desktop-table">
+                    <div class="table-responsive">
+                        <table class="app-table table table-hover align-middle">
+                            <thead class="app-table-header table-light">
+                                <tr>
+                                    <th scope="col" style="width: 20%;">Tên đăng nhập</th>
+                                    <th scope="col" style="width: 15%;">Họ tên</th>
+                                    <th scope="col" style="width: 15%;">Email</th>
+                                    <th scope="col" style="width: 10%;">Vai trò</th>
+                                    <th scope="col" style="width: 15%;">Xóa lúc</th>
+                                    <th scope="col" style="width: 12%;">Xóa bởi</th>
+                                    <th scope="col" style="width: 13%;">Lý do</th>
+                                    <th scope="col" style="width: 15%;" class="text-center">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users.items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.username }}</strong>
+                                        {% if user.workspace_name %}
+                                            <div class="mt-1 small fw-semibold"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.full_name or 'Chưa có' }}</td>
+                                    <td>{{ user.email or 'Chưa có' }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ user.role }}</span>
+                                    </td>
+                                    <td>
+                                        {% set deleted_local = user.deleted_at | vietnam_time if user.deleted_at else None %}
+                                        {{ deleted_local.strftime('%d/%m/%Y %H:%M') if deleted_local else 'N/A' }}
+                                    </td>
+                                    <td>{{ user.deleted_by.full_name if user.deleted_by else 'Hệ thống' }}</td>
+                                    <td>{{ user.deletion_reason or '-' }}</td>
+                                    <td class="text-center">
+                                        <div class="approval-action-group">
+                                            <button class="btn btn-outline-success approval-action-btn" disabled title="Khôi phục (Chưa triển khai)"><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            <button class="btn btn-outline-secondary approval-action-btn" disabled title="Xóa vĩnh viễn (Chưa triển khai)"><i class="bi bi-trash-fill"></i> Xóa vĩnh viễn</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MOBILE VIEW (DELETED CARDS) -->
+                <div class="approval-mobile-cards">
+                    <div class="row g-3">
+                        {% for user in users.items %}
+                            <div class="col-12 col-md-6">
+                                <div class="card shadow-sm border-0 bg-white p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom">
+                                        <div>
+                                            <span class="small text-muted d-block">Tên đăng nhập</span>
+                                            <span class="fw-bold text-wrap-anywhere">{{ user.username }}</span>
+                                            {% if user.workspace_name %}
+                                                <div class="mt-1 small fw-semibold"><i class="bi bi-shop me-1"></i>{{ user.workspace_name }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-secondary">{{ user.role }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <span class="small text-muted d-block">Họ tên</span>
+                                            <span class="small">{{ user.full_name or 'Chưa có' }}</span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="small text-muted d-block">Email</span>
+                                            <span class="small text-wrap-anywhere">{{ user.email or 'Chưa có' }}</span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="small text-muted d-block">Xóa lúc</span>
+                                            <span class="small">
+                                                {% set deleted_local = user.deleted_at | vietnam_time if user.deleted_at else None %}
+                                                {{ deleted_local.strftime('%d/%m/%Y %H:%M') if deleted_local else 'N/A' }}
+                                            </span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="small text-muted d-block">Xóa bởi</span>
+                                            <span class="small">{{ user.deleted_by.full_name if user.deleted_by else 'Hệ thống' }}</span>
+                                        </div>
+                                        <div class="col-12">
+                                            <span class="small text-muted d-block">Lý do xóa</span>
+                                            <span class="small">{{ user.deletion_reason or '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="approval-action-group w-100">
+                                        <div class="d-flex w-100 gap-2">
+                                            <button class="btn btn-outline-success approval-action-btn flex-fill" disabled title="Khôi phục (Chưa triển khai)"><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            <button class="btn btn-outline-secondary approval-action-btn flex-fill" disabled title="Xóa vĩnh viễn (Chưa triển khai)"><i class="bi bi-trash-fill"></i> Xóa vĩnh viễn</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
             {% else %}
                 <!-- DESKTOP VIEW (NON-ACTIVE TABLE) -->

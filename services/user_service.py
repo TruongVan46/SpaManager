@@ -457,9 +457,13 @@ class UserService:
     def list_approval_accounts(status=None, page=1, per_page=25):
         from core.auth.enums import UserRole
         query = User.query.filter(User.role != UserRole.APPROVAL_OWNER.value)
-        if status:
-            query = query.filter(User.approval_status == status)
-        query = query.order_by(User.created_at.desc(), User.id.desc())
+        if status == 'deleted':
+            query = query.filter(User.deleted_at.isnot(None)).order_by(User.deleted_at.desc(), User.id.desc())
+        else:
+            query = query.filter(User.deleted_at.is_(None))
+            if status:
+                query = query.filter(User.approval_status == status)
+            query = query.order_by(User.created_at.desc(), User.id.desc())
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
         from models.workspace import WorkspaceMember
@@ -783,6 +787,49 @@ class UserService:
                 action="RESTORE_USER",
 
                 description=f"{actor_display_name} đã khôi phục nhân viên {user.username} vào workspace.",
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def soft_delete_account(actor, user_id, reason=None):
+        from core.auth.enums import UserRole
+        from core.exceptions import PermissionDeniedException
+
+        if actor.role != UserRole.APPROVAL_OWNER.value:
+            raise PermissionDeniedException("Chỉ quản trị hệ thống mới có quyền xóa mềm tài khoản.")
+
+        if actor.id == user_id:
+            raise ValidationException("Không thể tự xóa chính mình.")
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể xóa tài khoản quản trị hệ thống.")
+
+        if user.role == UserRole.OWNER.value:
+            raise ValidationException("Xóa owner sẽ được xử lý ở bước workspace lifecycle riêng.")
+
+        if user.deleted_at is not None:
+            raise ValidationException("Tài khoản này đã bị xóa mềm trước đó.")
+
+        user.deleted_at = utc_now()
+        user.deleted_by_id = actor.id
+        user.deletion_reason = reason
+        user.is_active = False
+
+        actor_display_name = get_activity_actor_display_name(actor)
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="SOFT_DELETE_ACCOUNT",
+                description=f"{actor_display_name} đã xóa mềm tài khoản {user.username}.",
                 target_user=user,
             )
             db.session.commit()

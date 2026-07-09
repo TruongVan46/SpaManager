@@ -35,7 +35,7 @@ def pending():
 def accounts():
     current_user = _require_approval_owner()
     status = request.args.get('status', 'pending')
-    if status not in ('pending', 'active', 'rejected', 'disabled'):
+    if status not in ('pending', 'active', 'rejected', 'disabled', 'deleted'):
         status = 'pending'
 
     page, per_page = get_pagination_params()
@@ -126,3 +126,24 @@ def enable(user_id):
             return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
     return redirect(url_for('approval.accounts', status='active'))
+
+
+@approval_bp.route('/approval/users/<int:user_id>/soft-delete', methods=['POST'])
+def soft_delete_account(user_id):
+    actor = _require_approval_owner()
+    reason = request.form.get('reason', '').strip() or "Xóa từ cổng quản trị hệ thống"
+    try:
+        user = UserService.soft_delete_account(actor=actor, user_id=user_id, reason=reason)
+        message = f"Đã xóa mềm tài khoản {user.username}."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('approval.accounts', status='deleted'))
