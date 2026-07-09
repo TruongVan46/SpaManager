@@ -20,6 +20,7 @@ This folder collects the early v6.0 planning docs for workspace support.
 - [Workspace user management policy](WORKSPACE_USER_MANAGEMENT_POLICY.md)
 - [Workspace isolation readiness & smoke report](WORKSPACE_ISOLATION_READINESS_SMOKE.md)
 - [Production workspace readiness checklist](WORKSPACE_PRODUCTION_READINESS_CHECKLIST.md)
+- [Workspace staff soft delete smoke checklist](WORKSPACE_STAFF_SOFT_DELETE_SMOKE.md)
 - [PostgreSQL rehearsal environment setup](../postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
 - [PostgreSQL rehearsal toolchain decision](WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md)
 - [Workspace migration candidate](migration_candidates/0002_workspace_foundation.py.txt)

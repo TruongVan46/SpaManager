@@ -220,6 +220,27 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             with self.assertRaises(Exception):
                 UserService.soft_delete_user(actor=staff_1, user_id=staff_1.id)
 
+            # 6. OWNER cannot restore a user from another workspace (Test 11)
+            # First, owner_2 soft deletes staff_2 in workspace_2
+            with app.test_request_context():
+                session["auth_user_id"] = owner_2.id
+                session["_enable_workspace_isolation"] = True
+                session["current_workspace_id"] = workspace_2.id
+                UserService.soft_delete_user(actor=owner_2, user_id=staff_2.id)
+
+            # Then, owner_1 tries to restore staff_2 in workspace_1 context
+            with self.assertRaises(Exception):
+                UserService.restore_user(actor=owner_1, user_id=staff_2.id)
+
+            # 7. Non-OWNER (STAFF) cannot restore anyone (Test 11)
+            with self.assertRaises(Exception):
+                UserService.restore_user(actor=staff_1, user_id=staff_1.id)
+
+            # 8. Removed users list must be workspace scoped, not leak (Test 12)
+            # owner_1 searching removed users in workspace_1 should NOT see staff_2 (who is removed from workspace_2)
+            removed_ws1 = UserService.search_removed_paginated().items
+            self.assertNotIn(staff_2.id, [u.id for u in removed_ws1])
+
     def test_restore_does_not_activate_disabled_user(self):
         # 1. Create OWNER + workspace + STAFF
         owner = self._create_user("owner_1", "OWNER")
