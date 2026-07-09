@@ -227,10 +227,13 @@ Cần xin ý kiến quyết định từ Product Owner cho các trường hợp 
 ---
 
 ## 14. Trạng thái thực tế triển khai (Actual Implementation Status)
-* **Task 6.5.19 (DONE):**
+* **Task 6.5.19 / 6.5.19a (DONE):**
   * Đã triển khai và củng cố toàn bộ các **lớp bảo vệ runtime (guards)** đối với Workspace đã bị xóa mềm (`deleted_at is not None`).
   * `WorkspaceService.is_user_in_workspace` tự động trả về `False` nếu workspace đích bị xóa mềm.
   * Tầng session và helper workspace tự động clear context và fail-closed nếu workspace hiện hành bị xóa mềm.
-  * Tầng truy vấn toàn cục `scoped_query` tự động trả về query rỗng (`workspace_id == -1`) khi workspace bị xóa mềm, chặn đứng việc đọc/ghi dữ liệu kinh doanh.
-  * Việc xóa/khôi phục thực tế cho OWNER và Workspace vẫn chưa được kích hoạt ở tầng giao diện và service (để dành cho các task sau).
-  * Việc dọn dẹp dữ liệu vĩnh viễn (purge) chưa được triển khai.
+  * Tầng truy vấn toàn cục `scoped_query` và logic `assign_workspace` tự động chặn đứng việc đọc/ghi dữ liệu nghiệp vụ thuộc workspace đã xóa mềm (kể cả trong môi trường unit test).
+* **Task 6.5.20 (DONE):**
+  * Đã triển khai hoàn chỉnh chức năng **Xóa mềm OWNER + Workspace** liên quan từ Approval Portal.
+  * Khi APPROVAL_OWNER thực hiện xóa mềm OWNER: tài khoản OWNER bị set `is_active = False` và gán thông tin xóa mềm. Đồng thời, toàn bộ workspace đang hoạt động do OWNER sở hữu cũng bị gán `deleted_at = datetime.utcnow()`.
+  * OWNER đã bị xóa mềm sẽ xuất hiện trên danh sách "Đã xóa mềm", nút "Khôi phục" đối với OWNER vẫn bị vô hiệu hóa an toàn (chờ triển khai ở giai đoạn sau).
+  * Chức năng **Xóa vĩnh viễn (Purge)** vẫn chưa được triển khai (nút thao tác vẫn bị vô hiệu hóa trên giao diện).

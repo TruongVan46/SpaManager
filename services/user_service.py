@@ -882,3 +882,74 @@ class UserService:
         except Exception:
             db.session.rollback()
             raise
+
+
+    @staticmethod
+    def soft_delete_owner_workspace(actor, user_id, reason=None):
+        from core.auth.enums import UserRole
+        from core.exceptions import PermissionDeniedException
+        from models.workspace import Workspace, WorkspaceMember
+
+        if actor.role != UserRole.APPROVAL_OWNER.value:
+            raise PermissionDeniedException("Chỉ quản trị hệ thống mới có quyền xóa mềm tài khoản.")
+
+        if actor.id == user_id:
+            raise ValidationException("Không thể tự xóa chính mình.")
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể xóa tài khoản quản trị hệ thống.")
+
+        if user.role != UserRole.OWNER.value:
+            raise ValidationException("Tài khoản này không phải là owner.")
+
+        if user.deleted_at is not None:
+            raise ValidationException("Tài khoản này đã bị xóa mềm trước đó.")
+
+        now = utc_now()
+
+        # 1. Soft-delete owner
+        user.deleted_at = now
+        user.deleted_by_id = actor.id
+        user.deletion_reason = reason
+        user.is_active = False
+
+        # 2. Find owned active workspaces
+        owned_workspaces = Workspace.query.join(
+            WorkspaceMember,
+            (WorkspaceMember.workspace_id == Workspace.id)
+            & (WorkspaceMember.user_id == user.id)
+            & (WorkspaceMember.role == "owner")
+            & (WorkspaceMember.status == "active")
+        ).filter(Workspace.deleted_at.is_(None)).all()
+
+        ws_names = []
+        for ws in owned_workspaces:
+            ws.deleted_at = now
+            ws.deleted_by_id = actor.id
+            ws.deletion_reason = reason
+            ws.updated_at = now
+            ws_names.append(ws.name)
+
+        actor_display_name = get_activity_actor_display_name(actor)
+        if owned_workspaces:
+            ws_list_str = ", ".join(ws_names)
+            desc = f"{actor_display_name} đã xóa mềm OWNER {user.username} và các workspace liên quan: {ws_list_str}."
+        else:
+            desc = f"{actor_display_name} đã xóa mềm OWNER {user.username} (Không tìm thấy workspace active liên quan)."
+
+        try:
+            UserService._log_user_action(
+                actor=actor,
+                action="SOFT_DELETE_OWNER_WORKSPACE",
+                description=desc,
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise
