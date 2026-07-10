@@ -1,7 +1,9 @@
 # config.py - SpaManager Project
 import os
+import sys
 from datetime import timedelta
 from dotenv import load_dotenv
+from sqlalchemy.engine import make_url
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -24,6 +26,33 @@ def _parse_bool_env(value, default=False):
     if not normalized_value:
         return False
     return normalized_value in {"1", "true", "yes", "on", "y", "t"}
+
+
+def _is_test_process():
+    return (
+        os.getenv("SPAMANAGER_TEST_PROCESS") == "1"
+        or any("unittest" in str(arg).lower() or "pytest" in str(arg).lower() for arg in sys.argv)
+        or os.getenv("PYTEST_CURRENT_TEST") is not None
+    )
+
+
+def _safe_test_database_url():
+    database_url = _normalize_database_url(os.getenv("TEST_DATABASE_URL"))
+    if not database_url:
+        raise RuntimeError("Test database safety guard: TEST_DATABASE_URL must be configured.")
+    try:
+        parsed_url = make_url(database_url)
+    except Exception as exc:
+        raise RuntimeError("Test database safety guard: TEST_DATABASE_URL is invalid.") from exc
+    dialect = parsed_url.get_backend_name()
+    if dialect == "sqlite":
+        return database_url
+    if dialect == "postgresql":
+        database_name = (parsed_url.database or "").lower()
+        if os.getenv("SPAMANAGER_ALLOW_POSTGRES_TESTS") != "1" or not database_name.endswith("_test"):
+            raise RuntimeError("Test database safety guard: PostgreSQL requires explicit opt-in and a database name ending in _test.")
+        return database_url
+    raise RuntimeError("Test database safety guard: only SQLite is allowed by default.")
 
 class BaseConfig:
     """
@@ -160,11 +189,11 @@ class TestingConfig(BaseConfig):
     CSRF_ENABLED = True
 
     # SQLite in-memory database for fast test isolation
-    SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:"))
+    SQLALCHEMY_DATABASE_URI = None
 
     def __init__(self):
         super().__init__()
-        self.SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:"))
+        self.SQLALCHEMY_DATABASE_URI = _safe_test_database_url()
 
 
 class ProductionConfig(BaseConfig):
@@ -223,7 +252,7 @@ def get_active_config():
     Resolve the active configuration instance based on the APP_ENV environment variable.
     Defaults to DevelopmentConfig instance if not defined.
     """
-    env_name = os.getenv("APP_ENV", "development").lower()
+    env_name = "testing" if _is_test_process() else os.getenv("APP_ENV", "development").lower()
     config_cls = config_by_name.get(env_name, DevelopmentConfig)
     return config_cls()
 

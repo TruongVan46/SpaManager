@@ -2649,6 +2649,7 @@ class BasicTestCase(unittest.TestCase):
             os.environ,
             {
                 "TEST_DATABASE_URL": "postgresql://user:pass@localhost:5432/spamanager_test",
+                "SPAMANAGER_ALLOW_POSTGRES_TESTS": "1",
             },
             clear=True,
         ):
