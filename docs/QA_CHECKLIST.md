@@ -103,8 +103,8 @@ Checklist này dùng để kiểm tra nhanh sau deploy, sau demo, và trước k
 - [ ] Mở được thùng rác.
 - [ ] Empty state hiển thị rõ.
 - [ ] Restore hoạt động trên dữ liệu demo/local.
-- [ ] Permanent delete hiện cảnh báo rõ.
-- [ ] Không test permanent delete trên dữ liệu thật.
+- [ ] Placeholder “Xóa vĩnh viễn” bị disabled và không gửi request mutation.
+- [ ] URL permanent-delete legacy trả 404 và không thay đổi dữ liệu.
 
 ### Settings / Backup Center
 
@@ -249,8 +249,8 @@ Thực hiện toàn bộ nhóm A đến P bên dưới:
 - Mở được thùng rác.
 - Empty state hiển thị rõ.
 - Restore hoạt động trên demo/local.
-- Permanent delete có cảnh báo rõ.
-- Không test permanent delete trên dữ liệu thật.
+- Placeholder “Xóa vĩnh viễn” bị disabled và không gửi request mutation.
+- URL permanent-delete legacy trả 404 và không thay đổi dữ liệu.
 
 ### L. Settings / Backup Center
 

@@ -508,35 +508,8 @@ class AppointmentService:
 
     @staticmethod
     def permanent_delete(appointment_id, actor=None):
-        """Xóa vĩnh viễn lịch hẹn khỏi cơ sở dữ liệu"""
-        from services.workspace_service import WorkspaceService
-        appointment = WorkspaceService.scoped_query(Appointment).filter(Appointment.id == appointment_id).first()
-        if appointment:
-            customer_name = appointment.customer.name if appointment.customer else "Khách hàng"
-            try:
-                actor_name = actor
-                if actor_name is None or not str(actor_name).strip():
-                    actor_name = AuthService.require_current_username()
-                current_user = AuthService.get_current_user()
-                ActivityLogService.write_log(
-                    module=ActivityLogService.MODULE_APPOINTMENT,
-                    action='PERMANENT_DELETE',
-                    description=f'{actor_name} xóa vĩnh viễn lịch hẹn #{appointment_id} của "{customer_name}" khỏi cơ sở dữ liệu',
-                    reference_id=appointment_id,
-                    severity=ActivityLogService.SEVERITY_WARNING,
-                    session_override=db.session,
-                    commit=False,
-                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
-                )
-                db.session.delete(appointment)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                db.session.remove()
-                raise
-            dashboard_cache.invalidate('dashboard_data')
-            return True
-        return False
+        """Fail closed because permanent appointment deletion is not supported."""
+        raise ValidationException("Xóa vĩnh viễn hiện chưa được hỗ trợ.")
 
     @staticmethod
     def validate(appointment_time, service_id, exclude_id=None):

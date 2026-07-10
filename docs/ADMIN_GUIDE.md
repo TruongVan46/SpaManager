@@ -84,8 +84,8 @@ Lưu ý:
 ## 10. Recycle Bin
 
 - Dữ liệu xóa mềm có thể khôi phục nếu còn trong Thùng rác.
-- Permanent delete là thao tác không an toàn nếu làm nhầm.
-- Nên xác nhận kỹ trước khi xóa vĩnh viễn.
+- Permanent delete business data hiện bị vô hiệu hóa vì chưa đáp ứng policy an toàn.
+- Nhãn “Xóa vĩnh viễn” chỉ là placeholder disabled; không có route mutation phía sau.
 
 ## 11. Operational CLI
 

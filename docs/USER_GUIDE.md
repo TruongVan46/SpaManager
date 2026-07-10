@@ -110,7 +110,7 @@ Lưu ý:
 
 - Dữ liệu xóa mềm có thể nằm trong Thùng rác.
 - Khôi phục nếu cần và nếu bạn có quyền.
-- Xóa vĩnh viễn là thao tác nguy hiểm.
+- Xóa vĩnh viễn hiện chưa được hỗ trợ; nút trong Thùng rác chỉ là placeholder disabled.
 
 ## 12. Lỗi thường gặp
 
@@ -129,4 +129,3 @@ Lưu ý:
 - [ ] Tạo hóa đơn cho khách đã sử dụng dịch vụ.
 - [ ] Kiểm tra báo cáo cuối ngày.
 - [ ] Đăng xuất.
-

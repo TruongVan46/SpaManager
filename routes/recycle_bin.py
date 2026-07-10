@@ -76,23 +76,3 @@ def get_info(item_type, item_id):
         return jsonify({'success': True, 'info': info})
     except Exception:
         return jsonify({'success': False, 'message': 'Không thể lấy thông tin dữ liệu.'}), 500
-
-@recycle_bin_bp.route('/recycle-bin/delete/<string:item_type>/<int:item_id>', methods=['POST'])
-def delete_permanent(item_type, item_id):
-    """Permanently delete an item from the database generically."""
-    try:
-        config = RecycleBinRegistry.get(item_type)
-        if not config:
-            return jsonify({'success': False, 'message': 'Loại dữ liệu không hợp lệ.'}), 400
-            
-        success = config['permanent_delete_func'](item_id, actor=AuthService.require_current_username())
-        if success:
-            return jsonify({'success': True, 'message': 'Đã xóa vĩnh viễn.'})
-        else:
-            return jsonify({'success': False, 'message': 'Không thể xóa vĩnh viễn dữ liệu.'}), 400
-    except BusinessException as be:
-        return jsonify({'success': False, 'message': be.message}), be.status_code
-    except ValueError as ve:
-        return jsonify({'success': False, 'message': str(ve)}), 400
-    except Exception:
-        return jsonify({'success': False, 'message': 'Không thể xóa vĩnh viễn dữ liệu.'}), 500

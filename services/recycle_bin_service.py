@@ -4,7 +4,7 @@ from models.appointment import Appointment
 from models.invoice import Invoice
 from models.invoice_detail import InvoiceDetail
 from datetime import datetime
-from utils.timezone_utils import utc_now
+from core.exceptions import ValidationException
 
 class PythonPagination:
     """A pagination helper that mimics Flask-SQLAlchemy's Pagination object."""
@@ -114,30 +114,8 @@ class RecycleBinService:
 
     @staticmethod
     def cleanup_old_records(days=30):
-        """
-        Placeholder architecture for Auto Cleanup logic.
-        This queries all models in the registry for items soft-deleted more than `days` ago,
-        and permanently deletes them safely in a transaction.
-        """
-        from datetime import datetime, timedelta
-        cutoff_date = utc_now() - timedelta(days=days)
-        
-        registry = RecycleBinRegistry.get_all()
-        results = {"success": True, "deleted_count": 0, "errors": []}
-        
-        for k, config in registry.items():
-            model = config['model_class']
-            old_items = model.query.filter(model.deleted_at < cutoff_date).all()
-            for item in old_items:
-                try:
-                    # Execute permanent delete safely
-                    success = config['permanent_delete_func'](item.id, actor="Hệ thống")
-                    if success:
-                        results["deleted_count"] += 1
-                except Exception as e:
-                    results["errors"].append(f"Error deleting {k} #{item.id}: {str(e)}")
-                    
-        return results
+        """Fail closed because automatic permanent deletion is not supported."""
+        raise ValidationException("Tự động xóa vĩnh viễn hiện chưa được hỗ trợ.")
 
 
 # Register all system models into the Recycle Bin Registry
@@ -149,7 +127,6 @@ RecycleBinRegistry.register('Customer', {
     'badge_class': 'badge-type-customer',
     'get_name_func': lambda item: item.name,
     'restore_func': lambda item_id, actor=None: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.restore(item_id, actor=actor),
-    'permanent_delete_func': lambda item_id, actor=None: __import__('services.customer_service', fromlist=['CustomerService']).CustomerService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Customer).filter(Customer.id == item_id).first().name if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Customer).filter(Customer.id == item_id).first() else 'Khách hàng',
         'details': [
@@ -165,7 +142,6 @@ RecycleBinRegistry.register('Service', {
     'badge_class': 'badge-type-service',
     'get_name_func': lambda item: item.name,
     'restore_func': lambda item_id, actor=None: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.restore_service(item_id, actor=actor),
-    'permanent_delete_func': lambda item_id, actor=None: __import__('services.service_service', fromlist=['ServiceService']).ServiceService.permanent_delete_service(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Service).filter(Service.id == item_id).first().name if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Service).filter(Service.id == item_id).first() else 'Dịch vụ',
         'details': [
@@ -181,7 +157,6 @@ RecycleBinRegistry.register('Appointment', {
     'badge_class': 'badge-type-appointment',
     'get_name_func': lambda item: f"Lịch hẹn #{item.id} - {item.customer.name if item.customer else 'Khách hàng'} ({item.appointment_time.strftime('%d/%m/%Y %H:%M') if item.appointment_time else ''})",
     'restore_func': lambda item_id, actor=None: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.restore(item_id, actor=actor),
-    'permanent_delete_func': lambda item_id, actor=None: __import__('services.appointment_service', fromlist=['AppointmentService']).AppointmentService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': f"Lịch hẹn #{item_id}" if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Appointment).filter(Appointment.id == item_id).first() else 'Lịch hẹn',
         'details': []
@@ -194,7 +169,6 @@ RecycleBinRegistry.register('Invoice', {
     'badge_class': 'badge-type-invoice',
     'get_name_func': lambda item: f"Hóa đơn HD{item.id:06d} - {item.customer.name if item.customer else 'Khách hàng'} ({item.invoice_date.strftime('%d/%m/%Y') if item.invoice_date else ''})",
     'restore_func': lambda item_id, actor=None: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.restore(item_id, actor=actor),
-    'permanent_delete_func': lambda item_id, actor=None: __import__('services.invoice_service', fromlist=['InvoiceService']).InvoiceService.permanent_delete(item_id, actor=actor),
     'info_func': lambda item_id: {
         'name': f"Hóa đơn HD{item_id:06d}" if __import__('services.workspace_service', fromlist=['WorkspaceService']).WorkspaceService.scoped_query(Invoice).filter(Invoice.id == item_id).first() else 'Hóa đơn',
         'details': [

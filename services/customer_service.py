@@ -8,7 +8,7 @@ from models.customer import Customer
 from models.appointment import Appointment
 from models.service import Service
 from models.invoice import Invoice
-from core.exceptions import NotFoundException, ConflictException
+from core.exceptions import NotFoundException, ConflictException, ValidationException
 from core.cache import dashboard_cache
 from services.auth_service import AuthService
 from validators.customer_validator import CustomerValidator
@@ -496,35 +496,5 @@ class CustomerService:
 
     @staticmethod
     def permanent_delete(customer_id, actor=None):
-        """Xóa vĩnh viễn khách hàng khỏi cơ sở dữ liệu"""
-        from services.workspace_service import WorkspaceService
-        customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
-        if customer:
-            try:
-                status = CustomerService.can_delete(customer_id)
-                if not status["can_delete"]:
-                    raise ValueError("Không thể xóa vĩnh viễn khách hàng này vì vẫn còn lịch hẹn hoặc hóa đơn liên quan.")
-                name = customer.name
-                actor_name = actor
-                if actor_name is None or not str(actor_name).strip():
-                    actor_name = AuthService.require_current_username()
-                current_user = AuthService.get_current_user()
-                ActivityLogService.write_log(
-                    module=ActivityLogService.MODULE_CUSTOMER,
-                    action='PERMANENT_DELETE',
-                    description=f'{actor_name} xóa vĩnh viễn khách hàng "{name}" khỏi cơ sở dữ liệu',
-                    reference_id=customer_id,
-                    severity=ActivityLogService.SEVERITY_WARNING,
-                    session_override=db.session,
-                    commit=False,
-                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
-                )
-                db.session.delete(customer)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                db.session.remove()
-                raise
-            dashboard_cache.invalidate('dashboard_data')
-            return True
-        return False
+        """Fail closed because permanent customer deletion is not supported."""
+        raise ValidationException("Xóa vĩnh viễn hiện chưa được hỗ trợ.")

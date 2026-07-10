@@ -2,7 +2,7 @@ from extensions import db
 from models.service import Service
 from models.appointment import Appointment
 from models.invoice_detail import InvoiceDetail
-from core.exceptions import NotFoundException, ConflictException
+from core.exceptions import NotFoundException, ConflictException, ValidationException
 from core.cache import dashboard_cache
 from services.auth_service import AuthService
 from validators.service_validator import ServiceValidator
@@ -194,36 +194,5 @@ class ServiceService:
 
     @staticmethod
     def permanent_delete_service(service_id, actor=None):
-        """Xóa vĩnh viễn dịch vụ khỏi cơ sở dữ liệu"""
-        from services.workspace_service import WorkspaceService
-        service = WorkspaceService.scoped_query(Service).filter(Service.id == service_id).first()
-        if service:
-            status = ServiceService.can_delete(service_id)
-            if not status["can_delete"]:
-                raise ValueError("Không thể xóa vĩnh viễn dịch vụ này vì đã phát sinh lịch hẹn hoặc chi tiết hóa đơn liên quan.")
-
-            name = service.name
-            try:
-                actor_name = actor
-                if actor_name is None or not str(actor_name).strip():
-                    actor_name = AuthService.require_current_username()
-                current_user = AuthService.get_current_user()
-                ActivityLogService.write_log(
-                    module=ActivityLogService.MODULE_SERVICE,
-                    action='PERMANENT_DELETE',
-                    description=f'{actor_name} xóa vĩnh viễn dịch vụ "{name}" khỏi cơ sở dữ liệu',
-                    reference_id=service_id,
-                    severity=ActivityLogService.SEVERITY_WARNING,
-                    session_override=db.session,
-                    commit=False,
-                    user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
-                )
-                db.session.delete(service)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                db.session.remove()
-                raise
-            dashboard_cache.invalidate('dashboard_data')
-            return True
-        return False
+        """Fail closed because permanent service deletion is not supported."""
+        raise ValidationException("Xóa vĩnh viễn hiện chưa được hỗ trợ.")

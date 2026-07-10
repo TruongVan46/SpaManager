@@ -510,38 +510,5 @@ class InvoiceService:
 
     @staticmethod
     def permanent_delete(invoice_id, actor=None):
-        """Xóa vĩnh viễn hóa đơn khỏi cơ sở dữ liệu"""
-        from services.workspace_service import WorkspaceService
-        invoice = WorkspaceService.scoped_query(Invoice).filter(Invoice.id == invoice_id).first()
-        if not invoice:
-            return False
-
-        try:
-            # Xóa các chi tiết hóa đơn liên quan trước
-            actor_name = actor
-            if actor_name is None or not str(actor_name).strip():
-                actor_name = AuthService.require_current_username()
-            current_user = AuthService.get_current_user()
-            ActivityLogService.write_log(
-                module=ActivityLogService.MODULE_INVOICE,
-                action='PERMANENT_DELETE',
-                description=f'{actor_name} xóa vĩnh viễn hóa đơn HD{invoice_id:06d} khỏi cơ sở dữ liệu',
-                reference_id=invoice_id,
-                severity=ActivityLogService.SEVERITY_WARNING,
-                session_override=db.session,
-                commit=False,
-                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
-            )
-            for detail in invoice.details:
-                db.session.delete(detail)
-
-            db.session.delete(invoice)
-            db.session.commit()
-            dashboard_cache.invalidate('dashboard_data')
-            return True
-        except AuthenticationException:
-            raise
-        except Exception:
-            db.session.rollback()
-            db.session.remove()
-            raise
+        """Fail closed because permanent invoice deletion is not supported."""
+        raise ValidationException("Xóa vĩnh viễn hiện chưa được hỗ trợ.")

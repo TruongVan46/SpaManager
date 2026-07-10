@@ -168,3 +168,9 @@ Task 6.5.22 không yêu cầu migration hoặc thao tác production database th�
 **PASS WITH LIMITATIONS**
 
 Hai lifecycle/security gap đã được harden bằng metadata hiện có, toàn bộ automated regression pass và không cần migration. Cần review code và nên chạy manual smoke trên workspace test PostgreSQL riêng trước khi coi đây là production smoke hoàn chỉnh.
+
+## 14. Business permanent-delete follow-up
+
+Task 6.5.23a xác nhận Recycle Bin từng có legacy hard-delete runtime cho bốn business entities. Task 6.5.23b đã vô hiệu hóa route/UI/registry và chuyển các public service methods cùng `cleanup_old_records()` sang fail-closed. Thay đổi này không tác động soft-delete hoặc restore OWNER/Workspace đã kiểm chứng trong tài liệu này.
+
+Account/Workspace purge vẫn chưa được triển khai. Chi tiết: [Business Permanent Delete Disablement](BUSINESS_PERMANENT_DELETE_DISABLEMENT.md).

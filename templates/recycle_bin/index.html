@@ -133,7 +133,7 @@
                                     <button type="button" class="btn btn-sm btn-outline-success me-1 d-inline-flex align-items-center btn-restore-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" title="Khôi phục" aria-label="Khôi phục dữ liệu">
                                         <i class="bi bi-arrow-counterclockwise me-1"></i> Khôi phục
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center btn-delete-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn dữ liệu">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center" disabled title="Xóa vĩnh viễn hiện chưa được hỗ trợ" aria-label="Xóa vĩnh viễn hiện chưa được hỗ trợ">
                                         <i class="bi bi-trash me-1"></i> Xóa vĩnh viễn
                                     </button>
                                 </div>
@@ -178,33 +178,6 @@
     </div>
 </div>
 
-<!-- Modal Xác nhận Xóa Vĩnh Viễn -->
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa vĩnh viễn</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body py-4">
-                <div class="text-center mb-3">
-                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
-                    <p class="mb-2 fs-5">Bạn có chắc chắn muốn xóa vĩnh viễn bản ghi này?</p>
-                    <p class="text-danger mb-0"><small>Hành động này không thể hoàn tác và sẽ xóa sạch dữ liệu liên quan.</small></p>
-                </div>
-                <!-- Container cho bản ghi liên quan (nếu có) -->
-                <div id="related-records-container" class="alert alert-warning d-none mt-3 mb-0">
-                    <h6 class="alert-heading fw-bold mb-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Lưu ý các liên kết dữ liệu:</h6>
-                    <div id="related-records-list" style="font-size: 0.85rem;"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-danger" id="btn-confirm-delete">Xóa vĩnh viễn</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -311,122 +284,6 @@
                     confirmRestoreBtn.disabled = false;
                     confirmRestoreBtn.innerHTML = 'Khôi phục';
                     showToast('Không thể khôi phục dữ liệu.', false);
-                });
-            });
-        }
-
-        // Permanent Delete Action Logic
-        const deleteModalEl = document.getElementById('deleteConfirmModal');
-        const confirmDeleteBtn = document.getElementById('btn-confirm-delete');
-        const relatedRecordsContainer = document.getElementById('related-records-container');
-        const relatedRecordsList = document.getElementById('related-records-list');
-        
-        let itemToDelete = null;
-        let rowToDelete = null;
-
-        if (deleteModalEl && confirmDeleteBtn && typeof bootstrap !== 'undefined') {
-            const deleteModal = new bootstrap.Modal(deleteModalEl);
-
-            document.addEventListener('click', function(e) {
-                const deleteBtn = e.target.closest('.btn-delete-item');
-                if (!deleteBtn) return;
-                itemToDelete = {
-                    id: deleteBtn.getAttribute('data-id'),
-                    type: deleteBtn.getAttribute('data-type'),
-                    name: deleteBtn.getAttribute('data-name')
-                };
-                rowToDelete = deleteBtn.closest('tr');
-
-                deleteBtn.disabled = true;
-                const originalHTML = deleteBtn.innerHTML;
-                deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                    
-                    // Reset container
-                    relatedRecordsContainer.classList.add('d-none');
-                    relatedRecordsList.innerHTML = '';
-                    
-                    // Fetch related records count info
-                    fetch(`/recycle-bin/info/${itemToDelete.type}/${itemToDelete.id}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        deleteBtn.disabled = false;
-                        deleteBtn.innerHTML = originalHTML;
-                        
-                        if (data.success && data.info) {
-                            const details = data.info.details || [];
-                            const hasRelated = details.some(d => d.count > 0);
-                            
-                            if (hasRelated) {
-                                relatedRecordsContainer.classList.remove('d-none');
-                                let listHTML = `<ul class="mb-0 ps-3">`;
-                                details.forEach(d => {
-                                    if (d.count > 0) {
-                                        listHTML += `<li>Có <strong>${d.count}</strong> ${d.label} liên quan.</li>`;
-                                    }
-                                });
-                                listHTML += `</ul>`;
-                                relatedRecordsList.innerHTML = listHTML;
-                            }
-                        }
-                        deleteModal.show();
-                    })
-                    .catch(() => {
-                        deleteBtn.disabled = false;
-                        deleteBtn.innerHTML = originalHTML;
-                        deleteModal.show();
-                    });
-                });
-            confirmDeleteBtn.addEventListener('click', function() {
-                if (!itemToDelete) return;
-                
-                confirmDeleteBtn.disabled = true;
-                confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Đang xóa...';
-                
-                csrfFetch(`/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    deleteModal.hide();
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.innerHTML = 'Xóa vĩnh viễn';
-                    
-                    if (data.success) {
-                        showToast(data.message || 'Đã xóa vĩnh viễn.', true);
-                        
-                        if (rowToDelete) {
-                            rowToDelete.style.transition = 'opacity 0.4s ease';
-                            rowToDelete.style.opacity = '0';
-                            setTimeout(() => {
-                                rowToDelete.remove();
-                                
-                                const remainingRows = document.querySelectorAll('.recycle-bin-table tbody tr');
-                                if (remainingRows.length === 0) {
-                                    const urlParams = new URLSearchParams(window.location.search);
-                                    let currentPage = parseInt(urlParams.get('page')) || 1;
-                                    if (currentPage > 1) {
-                                        urlParams.set('page', currentPage - 1);
-                                        window.location.href = window.location.pathname + '?' + urlParams.toString();
-                                    } else {
-                                        window.location.reload();
-                                    }
-                                } else {
-                                    updateStatsBar(itemToDelete.type);
-                                }
-                            }, 400);
-                        }
-                    } else {
-                        showToast(data.message || 'Không thể xóa vĩnh viễn.', false);
-                    }
-                })
-                .catch(() => {
-                    deleteModal.hide();
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.innerHTML = 'Xóa vĩnh viễn';
-                    showToast('Không thể xóa vĩnh viễn.', false);
                 });
             });
         }
