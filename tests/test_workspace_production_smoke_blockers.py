@@ -400,8 +400,8 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         ws_a, owner_a = self._create_workspace_and_owner("ws-a")
         ws_b, owner_b = self._create_workspace_and_owner("ws-b")
 
-        log_a = ActivityLog(module="CUSTOMER", action="CREATE", description="Log A", user_id=owner_a.id)
-        log_b = ActivityLog(module="CUSTOMER", action="CREATE", description="Log B", user_id=owner_b.id)
+        log_a = ActivityLog(module="CUSTOMER", action="CREATE", description="Log A", user_id=owner_a.id, workspace_id=ws_a.id)
+        log_b = ActivityLog(module="CUSTOMER", action="CREATE", description="Log B", user_id=owner_b.id, workspace_id=ws_b.id)
         db.session.add_all([log_a, log_b])
         db.session.commit()
 

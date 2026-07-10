@@ -88,7 +88,7 @@ def sanitize_activity_log_value(value, max_length=2000):
     return text[:max_length]
 
 
-def build_activity_log_entry(module, action, description, reference_id=None, severity="INFO", user_id=None):
+def build_activity_log_entry(module, action, description, reference_id=None, severity="INFO", user_id=None, workspace_id=None):
     return ActivityLog(
         module=module,
         action=normalize_activity_action(action),
@@ -96,4 +96,5 @@ def build_activity_log_entry(module, action, description, reference_id=None, sev
         description=sanitize_activity_log_value(description),
         reference_id=reference_id,
         user_id=user_id,
+        workspace_id=workspace_id,
     )

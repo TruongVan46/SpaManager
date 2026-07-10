@@ -11,6 +11,12 @@ class ActivityLog(db.Model):
     description = db.Column(db.Text, nullable=False)   # Detailed log message
     reference_id = db.Column(db.Integer, nullable=True) # ID of the related object (if applicable)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    workspace_id = db.Column(
+        db.Integer,
+        db.ForeignKey('workspaces.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
     severity = db.Column(db.String(50), nullable=False, default='INFO', index=True) # INFO, SUCCESS, WARNING, ERROR
     user = db.relationship('User', lazy=True)
 

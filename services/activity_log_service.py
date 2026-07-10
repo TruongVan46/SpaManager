@@ -13,6 +13,8 @@ from core.activity_log_utils import (
 )
 from utils.timezone_utils import local_day_bounds_utc, local_today, parse_datetime_value, utc_now
 
+_AUTO_WORKSPACE = object()
+
 
 class ActivityLogService:
     """Service dedicated to managing, writing, and querying activity logs."""
@@ -47,7 +49,7 @@ class ActivityLogService:
     MODULE_SYSTEM = 'System'
 
     @staticmethod
-    def write_log(module, action, description, reference_id=None, severity=SEVERITY_INFO, session_override=None, commit=True, user_id_override=None):
+    def write_log(module, action, description, reference_id=None, severity=SEVERITY_INFO, session_override=None, commit=True, user_id_override=None, workspace_id=_AUTO_WORKSPACE):
         """
         Write a new activity log entry.
         This writes to the database using an independent session to ensure that
@@ -56,13 +58,17 @@ class ActivityLogService:
         """
         try:
             current_user = AuthService.get_current_user()
+            if workspace_id is _AUTO_WORKSPACE:
+                from services.workspace_service import WorkspaceService
+                workspace_id = WorkspaceService.get_current_workspace_id()
             log_entry = build_activity_log_entry(
                 module=module,
                 action=normalize_activity_action(action),
                 description=description,
                 reference_id=reference_id,
                 severity=normalize_activity_severity(severity),
-                user_id=user_id_override if user_id_override is not None else (current_user.id if current_user else None)
+                user_id=user_id_override if user_id_override is not None else (current_user.id if current_user else None),
+                workspace_id=workspace_id,
             )
             log_entry.created_at = utc_now()
             if session_override is not None:
@@ -82,47 +88,51 @@ class ActivityLogService:
             return False
 
     @staticmethod
-    def log_create(module, description, reference_id=None, severity=SEVERITY_SUCCESS):
+    def log_create(module, description, reference_id=None, severity=SEVERITY_SUCCESS, workspace_id=_AUTO_WORKSPACE):
         """Log a creation action."""
         return ActivityLogService.write_log(
             module=module,
             action=ActivityLogService.ACTION_CREATE,
             description=description,
             reference_id=reference_id,
-            severity=severity
+            severity=severity,
+            workspace_id=workspace_id,
         )
 
     @staticmethod
-    def log_update(module, description, reference_id=None, severity=SEVERITY_SUCCESS):
+    def log_update(module, description, reference_id=None, severity=SEVERITY_SUCCESS, workspace_id=_AUTO_WORKSPACE):
         """Log an update action."""
         return ActivityLogService.write_log(
             module=module,
             action=ActivityLogService.ACTION_UPDATE,
             description=description,
             reference_id=reference_id,
-            severity=severity
+            severity=severity,
+            workspace_id=workspace_id,
         )
 
     @staticmethod
-    def log_delete(module, description, reference_id=None, severity=SEVERITY_SUCCESS):
+    def log_delete(module, description, reference_id=None, severity=SEVERITY_SUCCESS, workspace_id=_AUTO_WORKSPACE):
         """Log a deletion action."""
         return ActivityLogService.write_log(
             module=module,
             action=ActivityLogService.ACTION_DELETE,
             description=description,
             reference_id=reference_id,
-            severity=severity
+            severity=severity,
+            workspace_id=workspace_id,
         )
 
     @staticmethod
-    def log_action(module, action, description, reference_id=None, severity=SEVERITY_INFO):
+    def log_action(module, action, description, reference_id=None, severity=SEVERITY_INFO, workspace_id=_AUTO_WORKSPACE):
         """Log a generic action."""
         return ActivityLogService.write_log(
             module=module,
             action=action,
             description=description,
             reference_id=reference_id,
-            severity=severity
+            severity=severity,
+            workspace_id=workspace_id,
         )
 
     # camelCase aliases to provide clear and reusable options for API calls as requested
@@ -158,14 +168,9 @@ class ActivityLogService:
         if wid is None:
             return []
 
-        workspace_user_ids = db.session.query(WorkspaceMember.user_id).filter(
-            WorkspaceMember.workspace_id == wid,
-            WorkspaceMember.status == 'active'
-        )
-
         return (
             User.query.join(ActivityLog, ActivityLog.user_id == User.id)
-            .filter(User.id.in_(workspace_user_ids))
+            .filter(ActivityLog.workspace_id == wid)
             .distinct()
             .order_by(User.username.asc())
             .all()
@@ -179,19 +184,12 @@ class ActivityLogService:
         Retrieve paginated activity logs with advanced filtering, searching, and sorting.
         """
         from services.workspace_service import WorkspaceService
-        from models.workspace import WorkspaceMember
-
         wid = WorkspaceService.get_current_workspace_id()
         if wid is None:
             query = ActivityLog.query.filter(ActivityLog.id == -1)
         else:
-            workspace_user_ids = db.session.query(WorkspaceMember.user_id).filter(
-                WorkspaceMember.workspace_id == wid,
-                WorkspaceMember.status == 'active'
-            )
-
             query = ActivityLog.query.outerjoin(User, ActivityLog.user_id == User.id).filter(
-                ActivityLog.user_id.in_(workspace_user_ids)
+                ActivityLog.workspace_id == wid
             )
         
         # Search query (description, module, action)
