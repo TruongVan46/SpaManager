@@ -241,3 +241,9 @@ Cần xin ý kiến quyết định từ Product Owner cho các trường hợp 
   * Khi khôi phục, hệ thống giữ nguyên `approval_status`, chỉ bật lại `is_active` khi trạng thái duyệt là `active`, đồng thời khôi phục tất cả workspace đã xóa mềm mà OWNER sở hữu qua membership `role = "owner"`.
   * Không thay đổi hàng loạt `WorkspaceMember.status`, không tạo workspace mới và không sửa/xóa dữ liệu nghiệp vụ.
   * Chức năng **Xóa vĩnh viễn (Purge)** vẫn chưa được triển khai (nút thao tác vẫn bị vô hiệu hóa trên giao diện).
+* **Task 6.5.22 (PASS WITH LIMITATIONS):**
+  * Đã harden co-owner policy: xóa một OWNER không xóa mềm workspace còn co-owner hợp lệ; từng workspace được đánh giá độc lập.
+  * Đã harden restore provenance: chỉ workspace có `deleted_at` và `deleted_by_id` khớp sự kiện xóa OWNER mới được khôi phục.
+  * Đã kiểm chứng rollback atomicity, stale session guards, cross-workspace isolation và data-retention bằng automated smoke suite.
+  * Purge và `ActivityLog.workspace_id` vẫn chưa triển khai; manual PostgreSQL smoke vẫn là giới hạn còn lại.
+  * Evidence: [OWNER/Workspace Lifecycle Smoke + Security Audit](OWNER_WORKSPACE_LIFECYCLE_SMOKE_SECURITY_AUDIT.md).

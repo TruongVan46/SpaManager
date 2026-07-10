@@ -361,7 +361,7 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
         self.assertTrue(owner.is_active)
         self.assertEqual(Workspace.query.count(), workspace_count)
         log = ActivityLog.query.filter_by(action="RESTORE_OWNER_WORKSPACE").first()
-        self.assertIn("không tìm thấy workspace deleted liên quan", log.description)
+        self.assertIn("Không có workspace deleted khớp provenance", log.description)
 
     def test_restore_owner_keeps_non_active_approval_status_inactive(self):
         for index, approval_status in enumerate(("pending", "rejected", "disabled"), start=1):

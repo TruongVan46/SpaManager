@@ -909,43 +909,67 @@ class UserService:
         if user.deleted_at is not None:
             raise ValidationException("Tài khoản này đã bị xóa mềm trước đó.")
 
-        now = utc_now()
-
-        # 1. Soft-delete owner
-        user.deleted_at = now
-        user.deleted_by_id = actor.id
-        user.deletion_reason = reason
-        user.is_active = False
-
-        # 2. Find owned active workspaces
-        owned_workspaces = Workspace.query.join(
-            WorkspaceMember,
-            (WorkspaceMember.workspace_id == Workspace.id)
-            & (WorkspaceMember.user_id == user.id)
-            & (WorkspaceMember.role == "owner")
-            & (WorkspaceMember.status == "active")
-        ).filter(Workspace.deleted_at.is_(None)).all()
-
-        ws_names = []
-        for ws in owned_workspaces:
-            ws.deleted_at = now
-            ws.deleted_by_id = actor.id
-            ws.deletion_reason = reason
-            ws.updated_at = now
-            ws_names.append(ws.name)
-
-        actor_display_name = get_activity_actor_display_name(actor)
-        if owned_workspaces:
-            ws_list_str = ", ".join(ws_names)
-            desc = f"{actor_display_name} đã xóa mềm OWNER {user.username} và các workspace liên quan: {ws_list_str}."
-        else:
-            desc = f"{actor_display_name} đã xóa mềm OWNER {user.username} (Không tìm thấy workspace active liên quan)."
-
         try:
+            now = utc_now()
+            user.deleted_at = now
+            user.deleted_by_id = actor.id
+            user.deletion_reason = reason
+            user.is_active = False
+
+            owned_workspaces = Workspace.query.join(
+                WorkspaceMember,
+                (WorkspaceMember.workspace_id == Workspace.id)
+                & (WorkspaceMember.user_id == user.id)
+                & (WorkspaceMember.role == "owner")
+                & (WorkspaceMember.status == "active")
+            ).filter(Workspace.deleted_at.is_(None)).all()
+
+            deleted_workspace_names = []
+            retained_workspace_names = []
+            for workspace in owned_workspaces:
+                has_active_co_owner = db.session.query(WorkspaceMember.id).join(
+                    User,
+                    WorkspaceMember.user_id == User.id,
+                ).filter(
+                    WorkspaceMember.workspace_id == workspace.id,
+                    WorkspaceMember.user_id != user.id,
+                    WorkspaceMember.role == "owner",
+                    WorkspaceMember.status == "active",
+                    User.role == UserRole.OWNER.value,
+                    User.deleted_at.is_(None),
+                    User.is_active.is_(True),
+                    func.lower(User.approval_status) == User.APPROVAL_ACTIVE,
+                ).first() is not None
+
+                if has_active_co_owner:
+                    retained_workspace_names.append(workspace.name)
+                    continue
+
+                workspace.deleted_at = now
+                workspace.deleted_by_id = actor.id
+                workspace.deletion_reason = reason
+                workspace.updated_at = now
+                deleted_workspace_names.append(workspace.name)
+
+            actor_display_name = get_activity_actor_display_name(actor)
+            description_parts = [f"{actor_display_name} đã xóa mềm OWNER {user.username}."]
+            if deleted_workspace_names:
+                description_parts.append(
+                    "Workspace đã xóa mềm: " + ", ".join(deleted_workspace_names) + "."
+                )
+            if retained_workspace_names:
+                description_parts.append(
+                    "Workspace được giữ active vì còn co-owner hợp lệ: "
+                    + ", ".join(retained_workspace_names)
+                    + "."
+                )
+            if not owned_workspaces:
+                description_parts.append("Không tìm thấy workspace active liên quan.")
+
             UserService._log_user_action(
                 actor=actor,
                 action="SOFT_DELETE_OWNER_WORKSPACE",
-                description=desc,
+                description=" ".join(description_parts),
                 target_user=user,
             )
             db.session.commit()
@@ -983,43 +1007,58 @@ class UserService:
 
         try:
             now = utc_now()
+            owner_deleted_at = user.deleted_at
+            owner_deleted_by_id = user.deleted_by_id
             user.deleted_at = None
             user.deleted_by_id = None
             user.deletion_reason = None
             user.is_active = user._normalized_approval_status() == User.APPROVAL_ACTIVE
 
-            owned_workspaces = Workspace.query.join(
+            owned_deleted_workspaces = Workspace.query.join(
                 WorkspaceMember,
                 (WorkspaceMember.workspace_id == Workspace.id)
                 & (WorkspaceMember.user_id == user.id)
                 & (WorkspaceMember.role == "owner")
             ).filter(Workspace.deleted_at.isnot(None)).all()
 
-            workspace_names = []
-            for workspace in owned_workspaces:
+            restored_workspace_names = []
+            skipped_workspace_names = []
+            for workspace in owned_deleted_workspaces:
+                has_matching_provenance = (
+                    workspace.deleted_at == owner_deleted_at
+                    and workspace.deleted_by_id == owner_deleted_by_id
+                )
+                if not has_matching_provenance:
+                    skipped_workspace_names.append(workspace.name)
+                    continue
+
                 workspace.deleted_at = None
                 workspace.deleted_by_id = None
                 workspace.deletion_reason = None
                 workspace.updated_at = now
-                workspace_names.append(workspace.name)
+                restored_workspace_names.append(workspace.name)
 
             actor_display_name = get_activity_actor_display_name(actor)
-            if workspace_names:
-                workspace_list = ", ".join(workspace_names)
-                description = (
-                    f"{actor_display_name} đã khôi phục OWNER {user.username} "
-                    f"và các workspace liên quan: {workspace_list}."
+            description_parts = [f"{actor_display_name} đã khôi phục OWNER {user.username}."]
+            if restored_workspace_names:
+                description_parts.append(
+                    "Workspace đã khôi phục đúng provenance: "
+                    + ", ".join(restored_workspace_names)
+                    + "."
                 )
-            else:
-                description = (
-                    f"{actor_display_name} đã khôi phục OWNER {user.username}; "
-                    "không tìm thấy workspace deleted liên quan."
+            if skipped_workspace_names:
+                description_parts.append(
+                    "Workspace giữ nguyên deleted vì provenance không khớp: "
+                    + ", ".join(skipped_workspace_names)
+                    + "."
                 )
+            if not restored_workspace_names:
+                description_parts.append("Không có workspace deleted khớp provenance để khôi phục.")
 
             UserService._log_user_action(
                 actor=actor,
                 action="RESTORE_OWNER_WORKSPACE",
-                description=description,
+                description=" ".join(description_parts),
                 target_user=user,
             )
             db.session.commit()

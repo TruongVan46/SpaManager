@@ -201,7 +201,7 @@ def restore_owner_workspace(user_id):
     actor = _require_approval_owner()
     try:
         user = UserService.restore_owner_workspace(actor=actor, user_id=user_id)
-        message = f"Đã khôi phục OWNER {user.username} và các workspace liên quan."
+        message = f"Đã khôi phục OWNER {user.username} và xử lý các workspace cùng sự kiện xóa."
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': True, 'message': message})
         NotificationService.flash_success(message)
