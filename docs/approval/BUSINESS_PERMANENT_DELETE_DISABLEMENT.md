@@ -64,3 +64,5 @@ Một thiết kế tương lai chỉ được xem xét sau khi có đầy đủ:
 **PERMANENT DELETE DISABLED / FUTURE IMPLEMENTATION BLOCKED**
 
 Account/Workspace purge vẫn chưa được triển khai. Business permanent-delete là legacy flow từng tồn tại thật và nay đã bị vô hiệu hóa vì không đáp ứng yêu cầu an toàn.
+
+Policy system-wide và các blocker trước khi mở lại bất kỳ purge flow nào: [Permanent Purge Policy and Safe Placeholder](PERMANENT_PURGE_POLICY_AND_PLACEHOLDER.md).

@@ -153,6 +153,8 @@ Khi khôi phục một OWNER và các Workspace bị xóa mềm:
 ---
 
 ## 9. Permanent Delete / Purge Strategy
+
+Trạng thái hiện tại: purge chưa được triển khai và bị blocked. Policy hợp nhất tại [Permanent Purge Policy and Safe Placeholder](PERMANENT_PURGE_POLICY_AND_PLACEHOLDER.md); soft-delete và restore là lifecycle duy nhất đang được hỗ trợ.
 Việc xóa vĩnh viễn (purge) dữ liệu khỏi cơ sở dữ liệu vật lý bắt buộc phải được tách riêng thành một tiến trình độc lập và tuân thủ thứ tự an toàn khóa ngoại như sau:
 
 ### 9.1. Điều kiện tiên quyết (Prerequisites)
