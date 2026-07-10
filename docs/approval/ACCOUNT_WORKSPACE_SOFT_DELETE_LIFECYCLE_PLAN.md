@@ -1,5 +1,13 @@
 # Kế hoạch Thiết kế Vòng đời Xóa mềm Tài khoản & Workspace (Account/Workspace Soft Delete Lifecycle Plan)
 
+> [!NOTE]
+> **TRẠNG THÁI HIỆN TẠI / HÀNH VI THAY THẾ (Superseded Behavior):**
+> Tài liệu này ghi nhận kế hoạch thiết kế lịch sử. Kể từ Version 6.5, các cập nhật sau đã được áp dụng thực tế:
+> 1. Bảng `activity_logs` đã có cột `workspace_id` vật lý từ migration `0003_workspace_foundation.py` và được scope trực tiếp, không cần migration `0007` trong tương lai.
+> 2. Chức năng xóa vĩnh viễn (permanent delete / purge) dữ liệu nghiệp vụ đã bị **vô hiệu hóa hoàn toàn** (nút bấm bị disabled trên UI và API ném ngoại lệ `ValidationException`).
+> 3. Không có UI chuyển đổi workspace (workspace switcher) hay endpoint switch dynamic nào được tạo ra.
+> 4. Chi tiết đóng phiên bản 6.5 xem tại [WORKSPACE_ISOLATION_CLOSURE.md](../workspace/WORKSPACE_ISOLATION_CLOSURE.md) và chính sách xóa tại [PERMANENT_PURGE_POLICY_AND_PLACEHOLDER.md](PERMANENT_PURGE_POLICY_AND_PLACEHOLDER.md).
+
 ## 1. Mục tiêu (Purpose)
 Tài liệu này đề xuất phương án thiết kế hệ thống và vòng đời cho việc **xóa mềm (soft-delete) tài khoản người dùng** và **xóa mềm workspace** trong hệ thống SpaManager.
 Mục tiêu chính:
@@ -25,9 +33,9 @@ Mục tiêu chính:
 * **Cài đặt (Setting):**
   * Được lưu theo cặp `key`-`value` và được lọc theo `workspace_id`. Không có cột xóa mềm riêng.
 * **Nhật ký hoạt động (ActivityLog):**
-  * Chỉ lưu `user_id` thực hiện hành động. Chưa có cột `workspace_id` để phân nhóm log hoạt động theo từng workspace riêng biệt.
+  * Đã có cột `workspace_id` vật lý từ migration `0003_workspace_foundation.py` và đang được lọc trực tiếp.
 * **Thùng rác (Recycle Bin):**
-  * Đang hỗ trợ khôi phục và xóa vĩnh viễn mức tenant đối với 4 thực thể kinh doanh: `Customer`, `Service`, `Appointment`, và `Invoice`.
+  * Đang hỗ trợ khôi phục mức tenant đối với 4 thực thể kinh doanh: `Customer`, `Service`, `Appointment`, và `Invoice`. Chức năng xóa vĩnh viễn (permanent delete) nghiệp vụ đã bị vô hiệu hóa hoàn toàn theo chính sách bảo toàn dữ liệu.
   * Chưa và không nên hỗ trợ hiển thị `User` hoặc `Workspace` bị xóa mềm tại đây (việc quản lý tài khoản/workspace bị xóa thuộc thẩm quyền hệ thống của `APPROVAL_OWNER` thông qua Approval Portal).
 
 ---
@@ -36,7 +44,8 @@ Mục tiêu chính:
 * **Thiếu các cột đánh dấu xóa mềm:** Bảng `users` và `workspaces` chưa có cột `deleted_at`, `deleted_by_id`, `deletion_reason`.
 * **Chưa có cơ chế liên đới xóa mềm (Cascade Soft-delete):** Khi một tài khoản `OWNER` bị xóa mềm, workspace tương ứng và toàn bộ nhân viên trong đó vẫn ở trạng thái hoạt động bình thường, gây mâu thuẫn logic phân quyền.
 * **FK Constraints trong PostgreSQL:** Nếu thực hiện xóa cứng (hard-delete) workspace hoặc user, cơ sở dữ liệu sẽ trả về lỗi vi phạm ràng buộc khóa ngoại (Foreign Key Violation) từ các bảng liên quan như `appointments`, `invoices`, `settings`, `activity_logs`.
-* **Nhật ký hoạt động thiếu Workspace Context:** `ActivityLog` không có `workspace_id` làm cho việc lọc lịch sử hoặc dọn dẹp lịch sử của một workspace bị xóa vĩnh viễn gặp khó khăn và kém tối ưu hiệu năng.
+* **Phân tách Activity Log:** Đã được giải quyết bằng việc scope trực tiếp qua `ActivityLog.workspace_id`.
+
 
 ---
 

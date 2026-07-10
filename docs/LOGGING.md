@@ -15,8 +15,10 @@ Hệ thống SpaManager phân biệt rõ ràng giữa 2 phân hệ nhật ký ho
 
 2. **Activity Log (Nhật ký thao tác)**:
    * **Mục đích**: Ghi lại lịch sử hoạt động có chủ đích của người dùng để phục vụ tra cứu trên giao diện Admin.
-   * **Lưu trữ**: Lưu trong cơ sở dữ liệu SQLite (bảng `activity_logs`).
-   * **Đối tượng đọc**: Chủ Spa (Owner) giám sát hoạt động của nhân viên.
+   * **Lưu trữ**: Lưu trong cơ sở dữ liệu PostgreSQL ở môi trường sản xuất (hoặc SQLite khi chạy kiểm thử cục bộ) trong bảng `activity_logs`.
+   * **Cô lập dữ liệu (Workspace Scoping)**: Mỗi dòng log nghiệp vụ được gán trực tiếp cột `workspace_id`. Khi truy vấn, hệ thống lọc trực tiếp bằng điều kiện `ActivityLog.workspace_id == current_workspace_id`. Các log hệ thống hoặc log cũ có `workspace_id` là NULL sẽ bị ẩn khỏi giao diện quản trị của từng workspace để tránh rò rỉ dữ liệu.
+   * **Đối tượng đọc**: Chủ Spa (Owner) giám sát hoạt động của nhân viên thuộc workspace của mình.
+
 
 ---
 

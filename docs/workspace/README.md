@@ -1,8 +1,12 @@
 # Workspace Docs
 
-This folder collects the early v6.0 planning docs for workspace support.
+This folder collects the planning and validation documents for workspace support.
 
-## Documents
+## Final Release & Closure
+
+- [SpaManager Version 6.5 — Workspace Tenant Isolation Closure](WORKSPACE_ISOLATION_CLOSURE.md) (Production Validated & Closed)
+
+## Planning & Rehearsal Archive
 
 - [Workspace architecture audit](WORKSPACE_ARCHITECTURE_AUDIT.md)
 - [Workspace approval portal account management](WORKSPACE_APPROVAL_PORTAL_MANAGEMENT.md)
@@ -27,13 +31,7 @@ This folder collects the early v6.0 planning docs for workspace support.
 
 ## Notes
 
-- These documents are design-only.
-- Workspace model code was added in 6.0.4 behind safe tests.
-- No workspace migration executable or workspace query logic is implemented yet.
-- The migration candidate is documentation-only and cannot be executed by Railway pre-deploy.
-- The rehearsal plan stays documentation-only and defines the safe path before any executable migration.
-- The execution gate defines when a future executable migration may be introduced and how Railway deploy control is kept safe.
-- The local rehearsal evidence records the checks that were completed without introducing executable migration code.
-- The approval package collects the exact evidence required before a future executable migration can be created.
-- 6.0.11 records a successful Mode A production-like PostgreSQL rehearsal using Docker Desktop local PostgreSQL.
-- The toolchain decision records that Option A is selected.
+- Workspace tenant isolation is fully implemented and active in production as of Version 6.5.
+- The migration `0003_workspace_foundation.py` was successfully applied by Railway.
+- Business data is securely scoped using direct `workspace_id` parameters and session contexts.
+- All historical documents are retained here to record design decisions, rehearsal results, and architecture analysis.

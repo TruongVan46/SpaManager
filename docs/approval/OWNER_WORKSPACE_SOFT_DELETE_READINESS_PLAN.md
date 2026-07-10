@@ -1,5 +1,13 @@
 # Owner + Workspace Soft Delete Readiness Plan
 
+> [!NOTE]
+> **TRẠNG THÁI HIỆN TẠI / HÀNH VI THAY THẾ (Superseded Behavior):**
+> Tài liệu này ghi nhận kế hoạch thiết kế lịch sử. Kể từ Version 6.5, các cập nhật sau đã được áp dụng thực tế:
+> 1. Bảng `activity_logs` đã có cột `workspace_id` vật lý từ migration `0003_workspace_foundation.py` và được scope trực tiếp, không cần migration `0007` trong tương lai.
+> 2. Chức năng xóa vĩnh viễn (permanent delete / purge) dữ liệu nghiệp vụ đã bị **vô hiệu hóa hoàn toàn** (nút bấm bị disabled trên UI và API ném ngoại lệ `ValidationException`).
+> 3. Không có UI chuyển đổi workspace (workspace switcher) hay endpoint switch dynamic nào được tạo ra. Sidebar chỉ hiển thị tên tĩnh của workspace hiện hành.
+> 4. Chi tiết đóng phiên bản 6.5 xem tại [WORKSPACE_ISOLATION_CLOSURE.md](../workspace/WORKSPACE_ISOLATION_CLOSURE.md) và chính sách xóa tại [PERMANENT_PURGE_POLICY_AND_PLACEHOLDER.md](PERMANENT_PURGE_POLICY_AND_PLACEHOLDER.md).
+
 ## 1. Purpose
 Tài liệu này chuẩn bị phương án thiết kế hệ thống và lộ trình triển khai chi tiết cho việc **xóa mềm (soft-delete) tài khoản OWNER** đi kèm với **xóa mềm Workspace** tương ứng trong hệ thống SpaManager.
 Mục tiêu chính:
@@ -18,9 +26,9 @@ Mục tiêu chính:
 * **Trạng thái runtime hiện tại:**
   * Đã hỗ trợ xóa mềm và khôi phục STAFF/ADMIN tại Approval Portal thông qua `deleted_at` (Task 6.5.16/17).
   * Việc xóa mềm/khôi phục OWNER hiện tại đang bị chặn cứng tại tầng Service nghiệp vụ (nếu target role là `OWNER` sẽ raise `ValidationException`).
-  * Việc xóa mềm/khôi phục Workspace chưa được triển khai bất kỳ logic runtime nào.
+  * Việc xóa mềm/khôi phục Workspace đã được triển khai đầy đủ và đồng bộ.
   * Các thực thể nghiệp vụ (`Customer`, `Service`, `Appointment`, `Invoice`) đã được workspace-scoped thông qua cơ chế `WorkspaceService.scoped_query` lọc theo `current_workspace_id`.
-  * Bảng `activity_logs` ghi nhận nhật ký hệ thống hiện tại chưa có cột `workspace_id` phục vụ việc phân tách log.
+  * Bảng `activity_logs` đã có cột `workspace_id` vật lý từ migration `0003_workspace_foundation.py` và đang được lọc trực tiếp.
 
 ---
 
@@ -29,17 +37,18 @@ Qua quá trình audit mã nguồn của SpaManager, chúng tôi ghi nhận kết
 
 | File/Module | Kết luận Audit & Điểm cần lưu ý |
 | :--- | :--- |
-| [models/user.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/models/user.py) | Property `can_access_app` đã chặn đúng các tài khoản có `deleted_at is not None`. Tuy nhiên, thuộc tính này chỉ mới check ở tầng login cơ bản, cần rà soát lại cơ chế Google OAuth callback. |
-| [models/workspace.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/models/workspace.py) | Bảng `workspaces` có các trường `deleted_at`, `deleted_by_id`, `deletion_reason` nhưng chưa có property `is_deleted` hay logic phụ thuộc nào được định nghĩa trên model. |
-| [services/user_service.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/services/user_service.py) | Các phương thức `soft_delete_account` và `restore_account` đang chặn cứng vai trò `OWNER`. Cần tách biệt phương thức xóa/khôi phục dành riêng cho `OWNER` vì luồng này đi kèm tác động tới Workspace (cascade). |
-| [services/workspace_service.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/services/workspace_service.py) | `is_user_in_workspace(user_id, workspace_id)` hiện tại chưa kiểm tra cột `deleted_at` của bảng `workspaces`. Nếu một workspace bị xóa mềm, hàm này vẫn có thể trả về `True` nếu membership trong bảng `workspace_members` còn active. |
-| [services/auth_service.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/services/auth_service.py) | Phương thức `login` gọi `user.can_access_app` và chặn đăng nhập của tài khoản bị xóa mềm. Cần đảm bảo route Google OAuth callback (`/login/google/callback`) cũng gọi qua hàm xác thực có kiểm tra `can_access_app`. |
-| [routes/approval.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/routes/approval.py) | Các route phê duyệt tài khoản hiện không hiển thị thông tin workspace bị ảnh hưởng khi một tài khoản OWNER bị xóa mềm. |
-| `Business Services & Routes` | Các service/route chính (`CustomerService`, `AppointmentService`, v.v.) truy vấn dữ liệu thông qua `scoped_query` sử dụng `session.get('current_workspace_id')`. Nếu session vẫn lưu ID của một workspace đã bị xóa mềm, hệ thống có thể bị rò rỉ thông tin hoặc cho phép sửa đổi dữ liệu bất hợp pháp. |
-| `Workspace Selector & Sidebar` | Template sidebar hiển thị danh sách các workspace của người dùng bằng cách lấy từ danh sách membership active của họ. Cần lọc bỏ các workspace có `deleted_at is not None`. |
+| [models/user.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/models/user.py) | Property `can_access_app` đã chặn đúng các tài khoản có `deleted_at is not None`. |
+| [models/workspace.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/models/workspace.py) | Bảng `workspaces` có các trường `deleted_at`, `deleted_by_id`, `deletion_reason` và được lọc tự động qua `is_deleted`. |
+| [services/user_service.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/services/user_service.py) | Các phương thức xóa và khôi phục OWNER được thực hiện cascade tới Workspace. |
+| [services/workspace_service.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/services/workspace_service.py) | `is_user_in_workspace(user_id, workspace_id)` kiểm tra đầy đủ cột `deleted_at` của bảng `workspaces`. |
+| [services/auth_service.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/services/auth_service.py) | Phương thức `login` gọi `user.can_access_app` và chặn đăng nhập của tài khoản bị xóa mềm. |
+| [routes/approval.py](file:///C:/Users/ADMIN/VS%20CODE/Project/SpaManager/routes/approval.py) | Các route phê duyệt tài khoản xử lý đồng bộ và cô lập dữ liệu. |
+| `Business Services & Routes` | Các service/route truy vấn dữ liệu an toàn fail-closed khi thiếu hoặc workspace bị xóa mềm. |
+| `Workspace Selector & Sidebar` | Sidebar hiển thị tên tĩnh của workspace hiện hành. Không có UI switcher. Mọi workspace bị xóa mềm đều được lọc bỏ khỏi session và danh sách membership active. |
 | `Recycle Bin` | Recycle Bin chỉ quản lý việc xóa mềm/khôi phục ở mức tenant của các thực thể kinh doanh. Hoàn toàn độc lập và không liên quan đến việc quản lý tài khoản/workspace bị xóa mềm ở Approval Portal. |
 
 ---
+
 
 ## 4. Owner Deletion Rules
 Để đảm bảo an toàn tuyệt đối cho hệ thống và tránh mâu thuẫn dữ liệu, các luật xóa mềm tài khoản OWNER được thiết kế như sau:

@@ -14,6 +14,7 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 - [Google auth config setup](auth/GOOGLE_AUTH_CONFIG_SETUP.md)
 - [Auth docs index](auth/README.md)
 - [Account/Workspace soft delete lifecycle plan](approval/ACCOUNT_WORKSPACE_SOFT_DELETE_LIFECYCLE_PLAN.md)
+- [SpaManager Version 6.5 — Workspace Tenant Isolation Closure](workspace/WORKSPACE_ISOLATION_CLOSURE.md)
 
 ## Nhóm tài liệu
 
@@ -28,4 +29,4 @@ Trang này gom các tài liệu chính để dễ theo dõi.
 
 ## Workspace
 
-- [Workspace docs index](workspace/README.md)
+- [Workspace docs index](workspace/README.md) (Workspace Tenant Isolation is production validated & closed)

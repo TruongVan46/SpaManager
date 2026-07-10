@@ -2,10 +2,12 @@
 
 > **Version**: 6.5
 > **Task**: 6.5.8
-> **Status**: READY FOR PRODUCTION MANUAL SMOKE
+> **Status**: COMPLETED / CLOSED
 > **Audit Date**: 2026-07-06
+> **Production Status (2026-07-10)**: Smoke testing has completed successfully. The production environment now retains exactly 4 approved soft-deleted tombstones (2 Customers and 2 Services) to preserve isolation verification. Details are recorded in [WORKSPACE_ISOLATION_CLOSURE.md](WORKSPACE_ISOLATION_CLOSURE.md).
 
 ---
+
 
 ## 1. Current Architecture
 

@@ -212,11 +212,11 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 
 ## Notes
 
-- Google OAuth is not implemented.
-- Google OAuth is disabled by default until the feature flag is enabled and credentials are configured.
-- User management is available with OWNER / ADMIN / STAFF permissions.
+- Google OAuth is implemented. Google OAuth is disabled by default until the feature flag is enabled and credentials are configured.
+- User management is available with OWNER / ADMIN / STAFF / APPROVAL_OWNER permissions.
 - PostgreSQL production cutover is now the deployment path.
 - SpaManager remains a local-first application with Railway production support.
+
 
 ## PostgreSQL migration & production docs
 
@@ -229,3 +229,4 @@ SpaManager production is now running on PostgreSQL as of v5.9.0. Detailed migrat
 ## Workspace docs
 
 - [Workspace docs index](docs/workspace/README.md)
+- [SpaManager Version 6.5 — Workspace Tenant Isolation Closure](docs/workspace/WORKSPACE_ISOLATION_CLOSURE.md) (Production Validated & Closed)
