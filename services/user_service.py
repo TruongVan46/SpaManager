@@ -953,3 +953,77 @@ class UserService:
         except Exception:
             db.session.rollback()
             raise
+
+    @staticmethod
+    def restore_owner_workspace(actor, user_id):
+        from core.auth.enums import UserRole
+        from core.exceptions import PermissionDeniedException
+        from models.workspace import Workspace, WorkspaceMember
+
+        if actor.role != UserRole.APPROVAL_OWNER.value:
+            raise PermissionDeniedException("Chỉ quản trị hệ thống mới có quyền khôi phục owner và workspace.")
+
+        if actor.id == user_id:
+            raise ValidationException("Không thể tự khôi phục chính mình bằng chức năng này.")
+
+        user = User.query.get(user_id)
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        if user.role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể khôi phục tài khoản quản trị hệ thống bằng chức năng này.")
+
+        if user.role != UserRole.OWNER.value:
+            raise ValidationException(
+                "Tài khoản này không phải là owner. Hãy dùng chức năng khôi phục STAFF/ADMIN."
+            )
+
+        if user.deleted_at is None:
+            raise ValidationException("Tài khoản owner này chưa bị xóa mềm.")
+
+        try:
+            now = utc_now()
+            user.deleted_at = None
+            user.deleted_by_id = None
+            user.deletion_reason = None
+            user.is_active = user._normalized_approval_status() == User.APPROVAL_ACTIVE
+
+            owned_workspaces = Workspace.query.join(
+                WorkspaceMember,
+                (WorkspaceMember.workspace_id == Workspace.id)
+                & (WorkspaceMember.user_id == user.id)
+                & (WorkspaceMember.role == "owner")
+            ).filter(Workspace.deleted_at.isnot(None)).all()
+
+            workspace_names = []
+            for workspace in owned_workspaces:
+                workspace.deleted_at = None
+                workspace.deleted_by_id = None
+                workspace.deletion_reason = None
+                workspace.updated_at = now
+                workspace_names.append(workspace.name)
+
+            actor_display_name = get_activity_actor_display_name(actor)
+            if workspace_names:
+                workspace_list = ", ".join(workspace_names)
+                description = (
+                    f"{actor_display_name} đã khôi phục OWNER {user.username} "
+                    f"và các workspace liên quan: {workspace_list}."
+                )
+            else:
+                description = (
+                    f"{actor_display_name} đã khôi phục OWNER {user.username}; "
+                    "không tìm thấy workspace deleted liên quan."
+                )
+
+            UserService._log_user_action(
+                actor=actor,
+                action="RESTORE_OWNER_WORKSPACE",
+                description=description,
+                target_user=user,
+            )
+            db.session.commit()
+            return user
+        except Exception:
+            db.session.rollback()
+            raise

@@ -235,5 +235,9 @@ Cần xin ý kiến quyết định từ Product Owner cho các trường hợp 
 * **Task 6.5.20 (DONE):**
   * Đã triển khai hoàn chỉnh chức năng **Xóa mềm OWNER + Workspace** liên quan từ Approval Portal.
   * Khi APPROVAL_OWNER thực hiện xóa mềm OWNER: tài khoản OWNER bị set `is_active = False` và gán thông tin xóa mềm. Đồng thời, toàn bộ workspace đang hoạt động do OWNER sở hữu cũng bị gán `deleted_at = datetime.utcnow()`.
-  * OWNER đã bị xóa mềm sẽ xuất hiện trên danh sách "Đã xóa mềm", nút "Khôi phục" đối với OWNER vẫn bị vô hiệu hóa an toàn (chờ triển khai ở giai đoạn sau).
+  * OWNER đã bị xóa mềm sẽ xuất hiện trên danh sách "Đã xóa mềm".
+* **Task 6.5.21 (DONE):**
+  * Đã triển khai chức năng **Khôi phục OWNER + Workspace** từ Approval Portal bằng service và route riêng, chỉ dành cho `APPROVAL_OWNER`.
+  * Khi khôi phục, hệ thống giữ nguyên `approval_status`, chỉ bật lại `is_active` khi trạng thái duyệt là `active`, đồng thời khôi phục tất cả workspace đã xóa mềm mà OWNER sở hữu qua membership `role = "owner"`.
+  * Không thay đổi hàng loạt `WorkspaceMember.status`, không tạo workspace mới và không sửa/xóa dữ liệu nghiệp vụ.
   * Chức năng **Xóa vĩnh viễn (Purge)** vẫn chưa được triển khai (nút thao tác vẫn bị vô hiệu hóa trên giao diện).

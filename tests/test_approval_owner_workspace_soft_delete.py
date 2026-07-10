@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from datetime import datetime
 
@@ -61,7 +62,7 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
         cls.app_context.pop()
 
     def setUp(self):
-        db.session.rollback()
+        db.session.remove()
         WorkspaceMember.query.delete()
         User.query.delete()
         Workspace.query.delete()
@@ -254,3 +255,245 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
 
         self.assertNotIn(owner, active_list_after)
         self.assertIn(owner, deleted_list)
+
+    def test_restore_owner_workspace_success_and_business_data_visible_again(self):
+        owner = self._create_user("owner_restore", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        customer = Customer(
+            name="Customer Restore",
+            phone="0912345690",
+            email="restore@test.com",
+            workspace_id=workspace.id,
+        )
+        db.session.add(customer)
+        db.session.commit()
+
+        membership = WorkspaceMember.query.filter_by(
+            workspace_id=workspace.id,
+            user_id=owner.id,
+        ).first()
+        original_approval_status = owner.approval_status
+
+        UserService.soft_delete_owner_workspace(
+            self.approval_owner,
+            owner.id,
+            reason="Kiểm thử khôi phục",
+        )
+        restored_owner = UserService.restore_owner_workspace(self.approval_owner, owner.id)
+
+        self.assertEqual(restored_owner.id, owner.id)
+        self.assertIsNone(owner.deleted_at)
+        self.assertIsNone(owner.deleted_by_id)
+        self.assertIsNone(owner.deletion_reason)
+        self.assertTrue(owner.is_active)
+        self.assertEqual(owner.approval_status, original_approval_status)
+        self.assertIsNone(workspace.deleted_at)
+        self.assertIsNone(workspace.deleted_by_id)
+        self.assertIsNone(workspace.deletion_reason)
+        self.assertEqual(membership.status, "active")
+        self.assertTrue(WorkspaceService.is_user_in_workspace(owner.id, workspace.id))
+
+        with app.test_request_context():
+            session["auth_user_id"] = owner.id
+            session["_enable_workspace_isolation"] = True
+            session["current_workspace_id"] = workspace.id
+            self.assertEqual(WorkspaceService.scoped_query(Customer).all(), [customer])
+
+        self.assertIsNotNone(db.session.get(User, owner.id))
+        self.assertIsNotNone(db.session.get(Workspace, workspace.id))
+        self.assertIsNotNone(db.session.get(Customer, customer.id))
+        self.assertNotIn(owner, UserService.list_approval_accounts(status="deleted").items)
+        self.assertIn(owner, UserService.list_approval_accounts(status="active").items)
+
+        log = ActivityLog.query.filter_by(action="RESTORE_OWNER_WORKSPACE").first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.user_id, self.approval_owner.id)
+        self.assertEqual(log.reference_id, owner.id)
+        self.assertIn(workspace.name, log.description)
+
+    def test_restore_owner_restores_all_deleted_workspaces_without_changing_memberships(self):
+        owner = self._create_user("owner_many_restore", "OWNER")
+        workspace_1 = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        workspace_2 = Workspace(
+            name="Spa Restore 2",
+            slug="spa-restore-2",
+            status="active",
+            created_by_id=owner.id,
+        )
+        db.session.add(workspace_2)
+        db.session.flush()
+        membership_2 = WorkspaceMember(
+            workspace_id=workspace_2.id,
+            user_id=owner.id,
+            role="owner",
+            status="removed",
+        )
+        db.session.add(membership_2)
+        db.session.commit()
+
+        membership_1 = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_1.id,
+            user_id=owner.id,
+        ).first()
+        deleted_at = datetime.utcnow()
+        owner.deleted_at = deleted_at
+        owner.is_active = False
+        workspace_1.deleted_at = deleted_at
+        workspace_2.deleted_at = deleted_at
+        db.session.commit()
+
+        UserService.restore_owner_workspace(self.approval_owner, owner.id)
+
+        self.assertIsNone(workspace_1.deleted_at)
+        self.assertIsNone(workspace_2.deleted_at)
+        self.assertEqual(membership_1.status, "active")
+        self.assertEqual(membership_2.status, "removed")
+
+    def test_restore_owner_without_deleted_workspace_does_not_create_workspace(self):
+        owner = self._create_user("owner_without_ws_restore", "OWNER", is_active=False)
+        owner.deleted_at = datetime.utcnow()
+        db.session.commit()
+        workspace_count = Workspace.query.count()
+
+        UserService.restore_owner_workspace(self.approval_owner, owner.id)
+
+        self.assertIsNone(owner.deleted_at)
+        self.assertTrue(owner.is_active)
+        self.assertEqual(Workspace.query.count(), workspace_count)
+        log = ActivityLog.query.filter_by(action="RESTORE_OWNER_WORKSPACE").first()
+        self.assertIn("không tìm thấy workspace deleted liên quan", log.description)
+
+    def test_restore_owner_keeps_non_active_approval_status_inactive(self):
+        for index, approval_status in enumerate(("pending", "rejected", "disabled"), start=1):
+            owner = self._create_user(
+                f"owner_status_{index}",
+                "OWNER",
+                is_active=False,
+                approval_status=approval_status,
+            )
+            owner.deleted_at = datetime.utcnow()
+            db.session.commit()
+
+            UserService.restore_owner_workspace(self.approval_owner, owner.id)
+
+            self.assertEqual(owner.approval_status, approval_status)
+            self.assertFalse(owner.is_active)
+            self.assertIsNone(owner.deleted_at)
+
+    def test_restore_owner_service_restrictions(self):
+        owner = self._create_user("owner_target_restore", "OWNER")
+        regular_owner = self._create_user("owner_actor_restore", "OWNER")
+        staff = self._create_user("staff_target_restore", "STAFF")
+        another_approval_owner = self._create_user("approval_owner_restore", "APPROVAL_OWNER")
+        owner.deleted_at = datetime.utcnow()
+        staff.deleted_at = datetime.utcnow()
+        another_approval_owner.deleted_at = datetime.utcnow()
+        db.session.commit()
+
+        with self.assertRaises(PermissionDeniedException):
+            UserService.restore_owner_workspace(regular_owner, owner.id)
+        with self.assertRaises(ValidationException):
+            UserService.restore_owner_workspace(self.approval_owner, self.approval_owner.id)
+        with self.assertRaises(ValidationException):
+            UserService.restore_owner_workspace(self.approval_owner, another_approval_owner.id)
+        with self.assertRaises(ValidationException) as non_owner_error:
+            UserService.restore_owner_workspace(self.approval_owner, staff.id)
+        self.assertIn("STAFF/ADMIN", non_owner_error.exception.message)
+
+        owner.deleted_at = None
+        db.session.commit()
+        with self.assertRaises(ValidationException) as not_deleted_error:
+            UserService.restore_owner_workspace(self.approval_owner, owner.id)
+        self.assertEqual(
+            not_deleted_error.exception.message,
+            "Tài khoản owner này chưa bị xóa mềm.",
+        )
+
+    def test_restore_owner_route_redirects_and_deleted_tab_ui(self):
+        owner = self._create_user("owner_route_restore", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        db.session.commit()
+        UserService.soft_delete_owner_workspace(self.approval_owner, owner.id)
+        self._login_as(self.approval_owner)
+
+        deleted_page = self.client.get("/approval/accounts?status=deleted")
+        self.assertEqual(deleted_page.status_code, 200)
+        self.assertIn(b"restore-owner-workspace", deleted_page.data)
+        self.assertIn("Khôi phục owner/workspace".encode("utf-8"), deleted_page.data)
+        self.assertIn("Xóa vĩnh viễn".encode("utf-8"), deleted_page.data)
+
+        response = self.client.post(f"/approval/users/{owner.id}/restore-owner-workspace")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.location.endswith("/approval/accounts?status=active"))
+        db.session.refresh(owner)
+        db.session.refresh(workspace)
+        self.assertIsNone(owner.deleted_at)
+        self.assertIsNone(workspace.deleted_at)
+
+    def test_restore_owner_route_redirects_to_non_active_approval_status(self):
+        owner = self._create_user(
+            "owner_disabled_restore",
+            "OWNER",
+            is_active=False,
+            approval_status="disabled",
+        )
+        owner.deleted_at = datetime.utcnow()
+        db.session.commit()
+        self._login_as(self.approval_owner)
+
+        response = self.client.post(f"/approval/users/{owner.id}/restore-owner-workspace")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.location.endswith("/approval/accounts?status=disabled"))
+        self.assertFalse(owner.is_active)
+
+    def test_non_approval_owner_route_cannot_restore_owner_workspace(self):
+        owner = self._create_user("owner_denied_target", "OWNER")
+        actor = self._create_user("staff_denied_actor", "STAFF")
+        owner.deleted_at = datetime.utcnow()
+        db.session.commit()
+        self._login_as(actor)
+
+        response = self.client.post(f"/approval/users/{owner.id}/restore-owner-workspace")
+
+        self.assertEqual(response.status_code, 403)
+        db.session.refresh(owner)
+        self.assertIsNotNone(owner.deleted_at)
+
+    def test_restore_owner_rolls_back_owner_workspace_and_log_on_error(self):
+        owner = self._create_user("owner_rollback_restore", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        deleted_at = datetime.utcnow()
+        owner.deleted_at = deleted_at
+        owner.deleted_by_id = self.approval_owner.id
+        owner.is_active = False
+        workspace.deleted_at = deleted_at
+        workspace.deleted_by_id = self.approval_owner.id
+        db.session.commit()
+
+        with patch.object(UserService, "_log_user_action", side_effect=RuntimeError("log failed")):
+            with self.assertRaises(RuntimeError):
+                UserService.restore_owner_workspace(self.approval_owner, owner.id)
+
+        db.session.expire_all()
+        persisted_owner = db.session.get(User, owner.id)
+        persisted_workspace = db.session.get(Workspace, workspace.id)
+        self.assertIsNotNone(persisted_owner.deleted_at)
+        self.assertFalse(persisted_owner.is_active)
+        self.assertIsNotNone(persisted_workspace.deleted_at)
+        self.assertIsNone(ActivityLog.query.filter_by(action="RESTORE_OWNER_WORKSPACE").first())
+
+    def test_restore_account_still_handles_staff_and_owner_method_does_not(self):
+        staff = self._create_user("staff_existing_restore", "STAFF")
+        UserService.soft_delete_account(self.approval_owner, staff.id)
+
+        with self.assertRaises(ValidationException):
+            UserService.restore_owner_workspace(self.approval_owner, staff.id)
+
+        UserService.restore_account(self.approval_owner, staff.id)
+        self.assertIsNone(staff.deleted_at)
+        self.assertTrue(staff.is_active)
+
+    def test_permanent_delete_remains_unimplemented(self):
+        rules = {rule.rule for rule in app.url_map.iter_rules()}
+        self.assertFalse(any("permanent" in rule and "/approval/" in rule for rule in rules))

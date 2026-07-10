@@ -194,3 +194,27 @@ def soft_delete_owner_workspace(user_id):
         NotificationService.flash_error(e.message)
         return redirect(url_for('approval.accounts', status='active'))
     return redirect(url_for('approval.accounts', status='deleted'))
+
+
+@approval_bp.route('/approval/users/<int:user_id>/restore-owner-workspace', methods=['POST'])
+def restore_owner_workspace(user_id):
+    actor = _require_approval_owner()
+    try:
+        user = UserService.restore_owner_workspace(actor=actor, user_id=user_id)
+        message = f"Đã khôi phục OWNER {user.username} và các workspace liên quan."
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        NotificationService.flash_success(message)
+        target_status = user._normalized_approval_status()
+        if target_status not in ('pending', 'active', 'rejected', 'disabled'):
+            target_status = 'active'
+        return redirect(url_for('approval.accounts', status=target_status))
+    except ValidationException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message, 'fields': getattr(e, 'field_errors', {}) or {}}), e.status_code
+        NotificationService.flash_error(e.message)
+    except BusinessException as e:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': e.message}), e.status_code
+        NotificationService.flash_error(e.message)
+    return redirect(url_for('approval.accounts', status='deleted'))

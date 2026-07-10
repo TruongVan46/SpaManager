@@ -623,7 +623,12 @@
                                     <td class="text-center">
                                         <div class="approval-action-group">
                                             {% if user.role == 'OWNER' %}
-                                            <button class="btn btn-outline-success approval-action-btn" disabled title="Khôi phục owner/workspace sẽ được xử lý ở task restore riêng."><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            <form method="post" action="{{ url_for('approval.restore_owner_workspace', user_id=user.id) }}" class="d-inline m-0" onsubmit="return confirm('Bạn có chắc muốn khôi phục owner này? Workspace liên quan sẽ được khôi phục và có thể truy cập lại nếu trạng thái duyệt của owner vẫn là active.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-outline-success approval-action-btn" title="Khôi phục owner và các workspace liên quan">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Khôi phục owner/workspace
+                                                </button>
+                                            </form>
                                             {% else %}
                                             <form method="post" action="{{ url_for('approval.restore_account', user_id=user.id) }}" class="d-inline m-0" onsubmit="return confirm('Bạn có chắc muốn khôi phục tài khoản này? Tài khoản sẽ hoạt động lại nếu trạng thái duyệt vẫn là active.');">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -688,7 +693,12 @@
                                     <div class="approval-action-group w-100">
                                         <div class="d-flex w-100 gap-2">
                                             {% if user.role == 'OWNER' %}
-                                            <button class="btn btn-outline-success approval-action-btn flex-fill" disabled title="Khôi phục owner/workspace sẽ được xử lý ở task restore riêng."><i class="bi bi-arrow-counterclockwise"></i> Khôi phục</button>
+                                            <form method="post" action="{{ url_for('approval.restore_owner_workspace', user_id=user.id) }}" class="flex-fill m-0" onsubmit="return confirm('Bạn có chắc muốn khôi phục owner này? Workspace liên quan sẽ được khôi phục và có thể truy cập lại nếu trạng thái duyệt của owner vẫn là active.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-outline-success approval-action-btn w-100" title="Khôi phục owner và các workspace liên quan">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Khôi phục owner/workspace
+                                                </button>
+                                            </form>
                                             {% else %}
                                             <form method="post" action="{{ url_for('approval.restore_account', user_id=user.id) }}" class="flex-fill m-0" onsubmit="return confirm('Bạn có chắc muốn khôi phục tài khoản này? Tài khoản sẽ hoạt động lại nếu trạng thái duyệt vẫn là active.');">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
