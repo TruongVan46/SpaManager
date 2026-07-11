@@ -11,11 +11,14 @@ TEST SUITE PASS
 COMPILEALL PASS
 LOCAL TEST DEPENDENCY CONTRACT ADDED
 READY FOR SOURCE COMMIT
-PRODUCTION MIGRATION NOT APPROVED
+PRODUCTION MIGRATION APPLIED — RAILWAY PRE-DEPLOY PASS
+PRODUCTION PURGE RUNTIME NOT IMPLEMENTED
+VERSION 6.6 NOT CLOSED
 ```
 
-This record documents a workflow/schema foundation migration. Production
-migration execution is **NOT APPROVED**.
+This record documents a workflow/schema foundation migration. It also records
+the later owner-confirmed production deployment outcome. It is not a closure
+of the full Version 6.6 roadmap.
 
 ## Scope and authorization
 
@@ -24,10 +27,12 @@ migration execution is **NOT APPROVED**.
 - No purge request, hold, lifecycle event or schedule is created by the migration.
 - No business rows, business FKs, slug values, InvoiceDetail ORM mapping or runtime code are changed.
 - No model, route, service, UI or test changes are included.
-- No production database, Railway, production migration or deployment command was run.
+- No production database, Railway, production migration or deployment command
+  was run during the local implementation and rehearsal work recorded here.
 
 Task 6.6.3b2c records the completed disposable SQLite and PostgreSQL
-rehearsals. Production execution remains separately unapproved.
+rehearsals. The later production deployment outcome is recorded below without
+rewriting the historical pre-deployment approval state.
 
 ## Production rollback evidence contract
 
@@ -52,6 +57,78 @@ Failed migration transaction rolled back cleanly.
 The production-shaped baseline is valid historical schema evidence, not a
 claim that production is corrupt or requires manual repair. No production FK
 was altered manually.
+
+## Production deployment outcome — 2026-07-11
+
+The following production evidence was confirmed by the Owner and reviewed by
+the coordinator after the history-aware correction was committed:
+
+- Deployment commit:
+  `965dc83bd1d685b9a811b2b22a195f18d323730b`
+- Railway deployment: `ACTIVE / SUCCESS`
+- Railway pre-deploy command:
+  `python -m flask --app app db upgrade`
+- Railway pre-deploy result: `PASS`
+- Production revision: `0007_permanent_purge_workflow`
+
+Production contains the three workflow tables:
+
+- `workspace_purge_requests`
+- `purge_legal_holds`
+- `purge_lifecycle_events`
+
+The `workspaces` table contains the terminal columns:
+
+- `purged_at`
+- `purge_request_id`
+
+The history-aware verifier preserved the exact pre-upgrade workspace FK
+multiset and added exactly one new FK:
+
+`purge_request_id -> workspace_purge_requests.id ON DELETE RESTRICT`
+
+The verified workspace FK baselines were:
+
+- Fresh rebuild baseline:
+  - `created_by_id -> users.id ON DELETE NO ACTION`
+  - `deleted_by_id -> users.id ON DELETE SET NULL`
+- Historical production-shaped baseline:
+  - `created_by_id -> users.id ON DELETE SET NULL`
+  - `deleted_by_id -> users.id ON DELETE SET NULL`
+
+The historical production FK baseline was preserved. No production FK was
+altered manually to force the migration to pass.
+
+The two earlier Railway deployments failed safe and rolled back cleanly to
+revision `0006_user_ws_soft_delete`. After each failure, the workflow tables
+and terminal workspace columns were absent. The final root cause was
+historical production-versus-fresh-rebuild FK divergence, not production
+schema corruption.
+
+Owner-confirmed production smoke passed for the login page, login flow and
+dashboard, with no observed runtime regression. The controlled workspace
+observation also confirmed that each tested workspace saw only its own Recycle
+Bin tombstones. Soft-delete behavior, workspace-scoped Recycle Bin behavior
+and Activity Log history remained intact. Permanent business deletion remains
+disabled.
+
+This migration provides only the permanent-purge schema and workflow
+foundation. It does not implement:
+
+- a purge worker;
+- a runtime purge executor;
+- automatic hard deletion;
+- permanent deletion of `Customer`;
+- permanent deletion of `Service`;
+- permanent deletion of `Appointment`;
+- permanent deletion of `Invoice`.
+
+The root workspace is not hard-deleted by this migration, and legal-hold
+behavior remains fail-closed.
+
+This section records the production outcome of the migration/schema foundation
+only. It does not declare the full Version 6.6 roadmap complete, and it does
+not start or close roadmap Task 6.6.9.
 
 ## Final rehearsal result
 
@@ -462,17 +539,22 @@ Downgrade verifies:
   password hash or production identifier is recorded here.
 - Canonical pytest suite: PASS (`379 passed`, `91 subtests passed`).
 - Compileall: PASS.
-- Commit/push: not performed.
+- At the time of the original local implementation report, commit/push had not
+  yet been performed.
 
-No Railway or production migration was run. Permanent business-data purge
-execution is not implemented by this migration.
+The later correction commit was:
+`965dc83bd1d685b9a811b2b22a195f18d323730b`.
 
-## Remaining approval gate
+The owner-confirmed Railway deployment ran the production migration
+successfully. Permanent business-data purge execution is not implemented by
+this migration.
 
-1. Review and commit the verified source changes.
-2. Approve any production migration execution separately.
-3. Plan runtime integration behind fail-closed guards only after production
-   approval.
+## Remaining runtime approval gates
+
+1. Keep permanent purge execution disabled until the remaining Version 6.6
+   roadmap tasks are separately completed, reviewed and approved.
+2. Implement any future runtime integration behind fail-closed guards and
+   explicit production approval.
 
 ## Pre-commit validation result
 
