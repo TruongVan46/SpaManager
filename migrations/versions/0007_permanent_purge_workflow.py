@@ -15,6 +15,13 @@ branch_labels = None
 depends_on = None
 message = "Add permanent workspace purge workflow schema"
 
+_WORKSPACE_PURGE_REQUEST_FK_SIGNATURE = (
+    "workspace_purge_requests",
+    ("purge_request_id",),
+    ("id",),
+    "RESTRICT",
+)
+
 
 REQUEST_STATUSES = (
     "REQUESTED",
@@ -256,31 +263,36 @@ _STATIC_PG_CHECK_NORMALIZER_VALID = _validate_static_postgres_check_normalizer()
 
 
 def _validate_static_postgres_fk_ordering():
-    actual = (
+    fresh_baseline = (
         ("users", ("created_by_id",), ("id",), "NO ACTION"),
         ("users", ("deleted_by_id",), ("id",), "SET NULL"),
-        ("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),
     )
-    expected = (
-        ("users", ("created_by_id",), ("id",), "NO ACTION"),
+    historical_baseline = (
+        ("users", ("created_by_id",), ("id",), "SET NULL"),
         ("users", ("deleted_by_id",), ("id",), "SET NULL"),
-        ("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),
     )
-    if tuple(sorted(actual)) != tuple(sorted(expected)):
-        raise RuntimeError("0007 PostgreSQL FK ordering self-check failed.")
-    invalid_cases = tuple(
-        tuple(item for item in actual if item != omitted)
-        for omitted in actual
-    ) + (
-        actual + (("users", ("approved_by_id",), ("id",), "SET NULL"),),
-        (("users", ("wrong_column",), ("id",), "NO ACTION"), actual[1], actual[2]),
-        (actual[0], ("workspaces", ("workspace_id",), ("id",), "RESTRICT"), actual[2]),
-        (actual[0], ("users", ("deleted_by_id",), ("id",), "CASCADE"), actual[2]),
-        actual + (actual[0],),
-    )
-    for invalid in invalid_cases:
-        if tuple(sorted(invalid)) == tuple(sorted(expected)):
-            raise RuntimeError("0007 PostgreSQL FK ordering semantic self-check failed.")
+    for baseline in (fresh_baseline, historical_baseline):
+        actual = baseline + (_WORKSPACE_PURGE_REQUEST_FK_SIGNATURE,)
+        expected = baseline + (_WORKSPACE_PURGE_REQUEST_FK_SIGNATURE,)
+        if tuple(sorted(actual)) != tuple(sorted(expected)):
+            raise RuntimeError("0007 PostgreSQL FK ordering self-check failed.")
+        invalid_cases = tuple(
+            tuple(item for item in actual if item != omitted)
+            for omitted in actual
+        ) + (
+            actual + (("users", ("approved_by_id",), ("id",), "SET NULL"),),
+            tuple(
+                ("users", ("created_by_id",), ("id",), "CASCADE")
+                if item == baseline[0]
+                else item
+                for item in actual
+            ),
+            tuple(item for item in actual if item != _WORKSPACE_PURGE_REQUEST_FK_SIGNATURE),
+            actual + (_WORKSPACE_PURGE_REQUEST_FK_SIGNATURE,),
+        )
+        for invalid in invalid_cases:
+            if tuple(sorted(invalid)) == tuple(sorted(expected)):
+                raise RuntimeError("0007 PostgreSQL FK ordering semantic self-check failed.")
     return True
 
 
@@ -685,7 +697,7 @@ def _postgres_foreign_key_signatures(connection, table_name):
         ),
         {"table_name": table_name},
     ).fetchall()
-    return tuple((item[0], tuple(item[1]), tuple(item[2]), item[3]) for item in rows)
+    return tuple(sorted((item[0], tuple(item[1]), tuple(item[2]), item[3]) for item in rows))
 
 
 def _assert_postgres_index(connection, table_name, index_name, columns, unique=False):
@@ -1217,7 +1229,16 @@ def _add_postgres_workspace_columns(connection):
         connection.execute(text("CREATE INDEX ix_workspaces_purged_at ON workspaces (purged_at)"))
 
 
-def _verify_postgres_upgrade(connection):
+def _remove_one_fk_signature(signatures, target):
+    remaining = list(signatures)
+    try:
+        remaining.remove(target)
+    except ValueError as exc:
+        raise RuntimeError("0007 PostgreSQL verification missing the exact purge-request FK.") from exc
+    return tuple(remaining)
+
+
+def _verify_postgres_upgrade(connection, workspace_fk_baseline):
     for table in ("workspace_purge_requests", "purge_legal_holds", "purge_lifecycle_events"):
         if not _has_table(connection, table):
             raise RuntimeError(f"0007 PostgreSQL verification missing table: {table}")
@@ -1284,6 +1305,7 @@ def _verify_postgres_upgrade(connection):
     _assert_postgres_check_semantics(connection, "purge_lifecycle_events", "ck_purge_lifecycle_events_event_type", "status_set", ("event_type", EVENT_TYPES))
     _assert_postgres_check_semantics(connection, "purge_lifecycle_events", "ck_purge_lifecycle_events_metadata_hash", "hash", ("metadata_hash",))
     _assert_postgres_check_semantics(connection, "workspaces", "ck_workspaces_purge_terminal_consistency", "predicates", ("purged_at IS NULL", "purge_request_id IS NULL", "purged_at IS NOT NULL", "purge_request_id IS NOT NULL", "deleted_at IS NOT NULL"))
+    expected_workspaces_fks = tuple(workspace_fk_baseline) + (_WORKSPACE_PURGE_REQUEST_FK_SIGNATURE,)
     expected_foreign_keys = {
         "workspace_purge_requests": (
             ("users", ("approved_by_id",), ("id",), "SET NULL"),
@@ -1305,11 +1327,7 @@ def _verify_postgres_upgrade(connection):
             ("workspaces", ("workspace_id",), ("id",), "RESTRICT"),
             ("workspace_purge_requests", ("request_id",), ("id",), "RESTRICT"),
         ),
-        "workspaces": (
-            ("users", ("created_by_id",), ("id",), "NO ACTION"),
-            ("users", ("deleted_by_id",), ("id",), "SET NULL"),
-            ("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),
-        ),
+        "workspaces": expected_workspaces_fks,
     }
     for table_name, expected in expected_foreign_keys.items():
         actual = _postgres_foreign_key_signatures(connection, table_name)
@@ -1317,13 +1335,20 @@ def _verify_postgres_upgrade(connection):
             raise RuntimeError(f"0007 PostgreSQL verification found an unexpected FK contract on {table_name}.")
 
 
-def _verify_postgres_downgrade(connection):
+def _verify_postgres_downgrade(connection, pre_downgrade_fks):
     for table in ("workspace_purge_requests", "purge_legal_holds", "purge_lifecycle_events"):
         if _has_table(connection, table):
             raise RuntimeError(f"0007 PostgreSQL verification found table after downgrade: {table}")
     for column in ("purged_at", "purge_request_id"):
         if _has_column(connection, "workspaces", column):
             raise RuntimeError(f"0007 PostgreSQL verification found workspace column after downgrade: {column}")
+    expected_baseline = _remove_one_fk_signature(
+        pre_downgrade_fks,
+        _WORKSPACE_PURGE_REQUEST_FK_SIGNATURE,
+    )
+    actual = _postgres_foreign_key_signatures(connection, "workspaces")
+    if tuple(actual) != tuple(expected_baseline):
+        raise RuntimeError("0007 PostgreSQL downgrade did not restore the exact workspace FK baseline.")
 
 
 def upgrade():
@@ -1335,11 +1360,14 @@ def upgrade():
                 raise RuntimeError("0007 requires existing users and workspaces tables.")
             if _has_column(connection, "workspaces", "purged_at") or _has_column(connection, "workspaces", "purge_request_id"):
                 raise RuntimeError("0007 terminal workspace columns already exist; refusing ambiguous upgrade.")
+            workspace_fk_baseline = _postgres_foreign_key_signatures(connection, "workspaces")
+            if _WORKSPACE_PURGE_REQUEST_FK_SIGNATURE in workspace_fk_baseline:
+                raise RuntimeError("0007 workspace baseline already contains the purge-request FK.")
             _create_request_table(connection)
             _create_hold_table(connection)
             _create_event_table(connection)
             _add_postgres_workspace_columns(connection)
-            _verify_postgres_upgrade(connection)
+            _verify_postgres_upgrade(connection, workspace_fk_baseline)
     else:
         with db.engine.connect() as connection:
             if not _has_table(connection, "workspaces") or not _has_table(connection, "users"):
@@ -1393,13 +1421,16 @@ def downgrade():
 
     if db.engine.dialect.name == "postgresql":
         with db.engine.begin() as connection:
-            _verify_postgres_upgrade(connection)
+            pre_downgrade_fks = _postgres_foreign_key_signatures(connection, "workspaces")
+            if pre_downgrade_fks.count(_WORKSPACE_PURGE_REQUEST_FK_SIGNATURE) != 1:
+                raise RuntimeError("0007 downgrade requires exactly one purge-request workspace FK.")
+            _verify_postgres_upgrade(connection, _remove_one_fk_signature(pre_downgrade_fks, _WORKSPACE_PURGE_REQUEST_FK_SIGNATURE))
             assert_empty_and_unmarked(connection)
             _drop_postgres_workspace_columns(connection)
             for table in ("purge_lifecycle_events", "purge_legal_holds", "workspace_purge_requests"):
                 if _has_table(connection, table):
                     connection.execute(text(f"DROP TABLE {table}"))
-            _verify_postgres_downgrade(connection)
+            _verify_postgres_downgrade(connection, pre_downgrade_fks)
     else:
         with db.engine.connect() as connection:
             _verify_sqlite_upgrade(connection)

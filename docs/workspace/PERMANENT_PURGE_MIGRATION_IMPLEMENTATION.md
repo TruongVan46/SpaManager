@@ -24,10 +24,34 @@ migration execution is **NOT APPROVED**.
 - No purge request, hold, lifecycle event or schedule is created by the migration.
 - No business rows, business FKs, slug values, InvoiceDetail ORM mapping or runtime code are changed.
 - No model, route, service, UI or test changes are included.
-- No database, PostgreSQL, Docker, Railway or migration command was run in this task.
+- No production database, Railway, production migration or deployment command was run.
 
 Task 6.6.3b2c records the completed disposable SQLite and PostgreSQL
 rehearsals. Production execution remains separately unapproved.
+
+## Production rollback evidence contract
+
+The read-only production evidence contract remains:
+
+```text
+Production revision: 0006_user_ws_soft_delete
+Production workspaces baseline FKs:
+
+created_by_id -> users.id
+ON DELETE SET NULL
+
+deleted_by_id -> users.id
+ON DELETE SET NULL
+
+No workflow tables.
+No purged_at.
+No purge_request_id.
+Failed migration transaction rolled back cleanly.
+```
+
+The production-shaped baseline is valid historical schema evidence, not a
+claim that production is corrupt or requires manual repair. No production FK
+was altered manually.
 
 ## Final rehearsal result
 
@@ -44,23 +68,26 @@ UNIQUE/CHECK/FK/index verification, legal-hold CHECK verification, sentinel
 preservation, zero `foreign_key_check` violations, controlled downgrade and
 stamp.
 
-PostgreSQL evidence confirms a fresh local Docker PostgreSQL 16 `_test`
-database under `TestingConfig`, exact workspace and workflow contracts,
-exactly three workspace FKs, exactly eight `workspace_purge_requests` FKs,
-sentinel preservation, controlled downgrade and stamp, restored revision 0006,
-and independent cleanup verification. The fresh disposable database was
-dropped; older failure databases and SQLite evidence artifacts were preserved
-outside the repository.
+PostgreSQL evidence confirms fresh and historical production-shaped local
+Docker PostgreSQL 16 `_test` databases under `TestingConfig`, exact workspace
+and workflow contracts, exactly three workspace FKs, exactly eight
+`workspace_purge_requests` FKs, sentinel preservation, controlled downgrade
+and stamp, restored revision 0006, and independent cleanup verification. Both
+fresh disposable databases were dropped; older failure databases and SQLite
+evidence artifacts were preserved outside the repository.
 
 The migration source corrections verified by these rehearsals are:
 
 - SQLite workspace signatures match the actual 0006 schema.
 - SQLite CHECK matching canonicalizes only whitespace inside parentheses.
-- PostgreSQL FK comparison canonical-sorts both actual and expected signatures
-  while retaining duplicate detection.
-- PostgreSQL `workspaces` expects `created_by_id -> users.id` with `NO ACTION`,
-  `deleted_by_id -> users.id` with `SET NULL`, and
-  `purge_request_id -> workspace_purge_requests.id` with `RESTRICT`.
+- PostgreSQL FK comparison canonical-sorts actual signatures while retaining
+  duplicate detection. The `workspaces` baseline is captured before 0007 DDL
+  and the verifier expects that exact FK multiset plus only the new
+  `purge_request_id -> workspace_purge_requests.id` `RESTRICT` FK.
+- This preserves both valid 0006 histories: a fresh baseline with
+  `created_by_id -> users.id` `NO ACTION` and a historical production-shaped
+  baseline with `created_by_id -> users.id` `SET NULL`; in both cases
+  `deleted_by_id -> users.id` remains `SET NULL`.
 
 ## Migration loader audit
 
@@ -268,11 +295,12 @@ The first PostgreSQL disposable rehearsal created eight correct foreign keys on
 lexicographically sorted expected tuple. The verifier now canonical-sorts both
 actual and expected signatures while preserving duplicate detection.
 
-The fresh rehearsal then confirmed that the two existing workspace foreign keys
-from the 0006 schema remain part of the PostgreSQL contract: `created_by_id`
-references `users.id` with `NO ACTION`, and `deleted_by_id` references
-`users.id` with `SET NULL`. The expected `workspaces` map now includes those
-two baseline keys together with the new `purge_request_id` `RESTRICT` key.
+The history-aware correction captures the two existing workspace foreign keys
+from the 0006 schema before 0007 creates any object. The expected `workspaces`
+map is that captured multiset plus exactly one new `purge_request_id`
+`RESTRICT` key, so neither legacy action is hardcoded or changed. Downgrade
+removes exactly one occurrence of the new key and verifies the captured
+baseline, preserving duplicate and action semantics.
 
 Each `PRAGMA index_xinfo` entry is normalized as:
 
