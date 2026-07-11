@@ -27,6 +27,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 - [Workspace executable migration approval package](../workspace/WORKSPACE_EXECUTABLE_MIGRATION_APPROVAL_PACKAGE.md)
 - [PostgreSQL local dev smoke test](POSTGRESQL_LOCAL_DEV_SMOKE_TEST.md)
 - [PostgreSQL-only final readiness audit](POSTGRESQL_ONLY_FINAL_READINESS_AUDIT.md)
+- [PostgreSQL Local Backup Manual Runbook and CLI Decision Record](POSTGRESQL_LOCAL_BACKUP_MANUAL_RUNBOOK.md)
 
 ## Release checkpoints
 
