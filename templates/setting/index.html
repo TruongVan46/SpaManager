@@ -227,6 +227,31 @@
         </div>
         <div class="collapse show" id="collapseBackupCenter">
             <div class="app-card-body" data-backup-engine="{{ backup_engine|default('sqlite') }}">
+                {% if backup_engine == 'postgresql' %}
+                <div class="backup-postgresql-readonly">
+                    <div class="alert alert-warning mb-3">
+                        <i class="bi bi-shield-lock me-1"></i>
+                        {{ backup_guard_message }}
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="fw-bold mb-2">Trạng thái hệ thống</h6>
+                                <p class="mb-1">Cơ sở dữ liệu: <strong>PostgreSQL</strong></p>
+                                <p class="mb-0">Chế độ Backup Center: <strong>Chỉ đọc</strong></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="fw-bold mb-2">Hướng dẫn sao lưu và khôi phục</h6>
+                                <p class="small mb-2">Backup PostgreSQL được quản lý ngoài ứng dụng theo runbook. Giao diện web không tạo, tải lên, tải xuống, xóa hoặc khôi phục backup.</p>
+                                <p class="small mb-0">Khôi phục production cần owner approval và quy trình vận hành riêng.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">Các artifact SQLite cũ không được liệt kê hoặc quản lý từ Backup Center khi runtime dùng PostgreSQL.</p>
+                </div>
+                {% else %}
                 
                 <!-- Toolbar -->
                 <div class="backup-toolbar">
@@ -381,6 +406,8 @@
                 {{ pagination_widget(backups_pagination, 'setting.index', {'_anchor': 'card-backup-center'}, module_name='backup') }}
                 {% endif %}
 
+                {% endif %}
+
             </div>
         </div>
     </div>
@@ -423,7 +450,7 @@
                         </div>
                         <div class="about-row">
                             <span class="about-label"><i class="bi bi-database me-2"></i>Cơ sở dữ liệu</span>
-                            <span class="about-value">SQLite</span>
+                            <span class="about-value">{{ 'PostgreSQL' if backup_engine == 'postgresql' else 'SQLite' }}</span>
                         </div>
                         <div class="about-row">
                             <span class="about-label"><i class="bi bi-calendar-event me-2"></i>Ngày build</span>
@@ -443,6 +470,7 @@
 {% endblock %}
 
 {% block modals %}
+{% if backup_engine != 'postgresql' %}
 <!-- Restore Wizard Modal -->
 <div class="modal fade" id="restoreWizardModal" tabindex="-1" aria-labelledby="restoreWizardModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -746,6 +774,8 @@
     </div>
 </div>
 
+
+{% endif %}
 
 <!-- Smart Import Wizard Modal -->
 <div class="modal fade" id="importWizardModal" tabindex="-1" aria-labelledby="importWizardModalLabel" aria-hidden="true" data-bs-backdrop="static">

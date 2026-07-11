@@ -3042,7 +3042,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Backup Center", get_postgresql_backup_center_message())
         self.assertIn("PostgreSQL", get_postgresql_restore_guard_message())
 
-    def test_settings_backup_center_shows_postgresql_guard_and_disables_actions(self):
+    def test_settings_backup_center_shows_postgresql_read_only_policy(self):
         owner = self.create_user("settings-pg-guard-owner", password="owner-pass", full_name="PG Guard Owner", role="OWNER")
         self.login_as(owner)
         original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
@@ -3057,8 +3057,120 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("Backup Center", html)
         self.assertIn("PostgreSQL", html)
         self.assertIn("data-backup-engine=\"postgresql\"", html)
+        self.assertIn("Chỉ đọc", html)
+        self.assertNotIn("btn-create-backup", html)
+        self.assertNotIn("uploadBackupForm", html)
+        self.assertNotIn("createBackupForm", html)
+        self.assertNotIn("restoreForm", html)
+        self.assertNotIn("restoreBackupModal", html)
+        self.assertNotIn("editBackupNoteModal", html)
+        self.assertNotIn("deleteBackupModal", html)
+        self.assertNotIn("backup.sqlite", html)
+
+    def test_settings_postgresql_download_route_blocked(self):
+        owner = self.create_user("settings-pg-download-owner", password="owner-pass", full_name="PG Download Owner", role="OWNER")
+        self.login_as(owner)
+        original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://user:pass@localhost:5432/spamanager"
+        try:
+            with patch("routes.setting.BackupRepository.get_by_id") as lookup, \
+                    patch("routes.setting.BackupService.get_backup_file_path") as resolve_path, \
+                    patch("routes.setting.send_file") as send_file:
+                response = self.client.get("/settings/backup/download/fake-backup-id")
+            self.assertEqual(response.status_code, 400)
+            self.assertTrue(response.is_json)
+            self.assertTrue(response.get_json()["blocked"])
+            lookup.assert_not_called()
+            resolve_path.assert_not_called()
+            send_file.assert_not_called()
+            self.assertNotIn("fake-backup-id", response.get_data(as_text=True))
+        finally:
+            app.config["SQLALCHEMY_DATABASE_URI"] = original_uri
+
+    def test_settings_postgresql_delete_route_blocked(self):
+        owner = self.create_user("settings-pg-delete-owner", password="owner-pass", full_name="PG Delete Owner", role="OWNER")
+        self.login_as(owner)
+        token = self.get_csrf_token("/settings")
+        original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://user:pass@localhost:5432/spamanager"
+        try:
+            with patch("routes.setting.BackupService.delete_backup") as delete_backup:
+                response = self.client.post(
+                    "/settings/backup/delete/fake-backup-id",
+                    headers={"X-CSRFToken": token, "X-Requested-With": "XMLHttpRequest"},
+                )
+            self.assertEqual(response.status_code, 400)
+            self.assertTrue(response.get_json()["blocked"])
+            delete_backup.assert_not_called()
+        finally:
+            app.config["SQLALCHEMY_DATABASE_URI"] = original_uri
+
+    def test_settings_postgresql_notes_route_blocked(self):
+        owner = self.create_user("settings-pg-notes-owner", password="owner-pass", full_name="PG Notes Owner", role="OWNER")
+        self.login_as(owner)
+        token = self.get_csrf_token("/settings")
+        original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://user:pass@localhost:5432/spamanager"
+        try:
+            with patch("routes.setting.BackupService.update_notes") as update_notes:
+                response = self.client.post(
+                    "/settings/backup/notes/fake-backup-id",
+                    json={"notes": "must not write"},
+                    headers={"X-CSRFToken": token, "X-Requested-With": "XMLHttpRequest"},
+                )
+            self.assertEqual(response.status_code, 400)
+            self.assertTrue(response.get_json()["blocked"])
+            update_notes.assert_not_called()
+        finally:
+            app.config["SQLALCHEMY_DATABASE_URI"] = original_uri
+
+    def test_settings_staff_backup_subroutes_are_forbidden(self):
+        staff = self.create_user("settings-backup-staff", password="staff-pass", full_name="Backup Staff", role="STAFF")
+        self.login_as(staff)
+        csrf_token = self.get_csrf_token("/customers")
+
+        with patch("routes.setting.BackupRepository.get_by_id") as lookup, \
+                patch("routes.setting.BackupService.delete_backup") as delete_backup, \
+                patch("routes.setting.BackupService.update_notes") as update_notes:
+            requests = (
+                ("GET", "/settings/backup/download/fake-backup-id", None),
+                ("POST", "/settings/backup/delete/fake-backup-id", {"X-CSRFToken": csrf_token}),
+                ("POST", "/settings/backup/notes/fake-backup-id", {"X-CSRFToken": csrf_token, "Content-Type": "application/json"}),
+            )
+            for method, url, headers in requests:
+                with self.subTest(method=method, url=url):
+                    if method == "GET":
+                        response = self.client.get(url, follow_redirects=False)
+                    elif url.endswith("/notes/fake-backup-id"):
+                        response = self.client.post(url, json={"notes": "must not write"}, headers=headers, follow_redirects=False)
+                    else:
+                        response = self.client.post(url, headers=headers, follow_redirects=False)
+                    self.assertEqual(response.status_code, 403)
+
+            lookup.assert_not_called()
+            delete_backup.assert_not_called()
+            update_notes.assert_not_called()
+
+    def test_settings_backup_center_preserves_sqlite_legacy_ui(self):
+        owner = self.create_user("settings-sqlite-ui-owner", password="owner-pass", full_name="SQLite UI Owner", role="OWNER")
+        self.login_as(owner)
+        original_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        try:
+            response = self.client.get("/settings", follow_redirects=False)
+            html = response.get_data(as_text=True)
+        finally:
+            app.config["SQLALCHEMY_DATABASE_URI"] = original_uri
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-backup-engine="sqlite"', html)
+        self.assertIn("SQLite", html)
         self.assertIn("btn-create-backup", html)
-        self.assertIn("disabled", html)
+        self.assertIn("createBackupForm", html)
+        self.assertIn("uploadBackupForm", html)
+        self.assertIn("restoreBackupModal", html)
+        self.assertNotIn("backup-postgresql-readonly", html)
+        self.assertNotIn("Chỉ đọc", html)
 
     def test_settings_postgresql_backup_guard_blocks_create_restore_upload_and_validate(self):
         owner = self.create_user("settings-pg-guard-actions-owner", password="owner-pass", full_name="PG Guard Actions Owner", role="OWNER")
@@ -3095,6 +3207,18 @@ class BasicTestCase(unittest.TestCase):
             self.assertEqual(upload_response.status_code, 400)
             self.assertTrue(upload_response.is_json)
             self.assertTrue(upload_response.get_json()["blocked"])
+
+            with patch("routes.setting.RestoreService.restore_database") as restore_database:
+                direct_restore_response = self.post_with_csrf(
+                    "/settings/restore",
+                    path="/settings",
+                    data={},
+                    content_type="multipart/form-data",
+                    headers={"X-Requested-With": "XMLHttpRequest"},
+                )
+            self.assertEqual(direct_restore_response.status_code, 302)
+            self.assertIn("/settings", direct_restore_response.headers["Location"])
+            restore_database.assert_not_called()
 
             validate_response = self.client.get(f"/settings/restore-wizard/validate/{backup_id}")
             self.assertEqual(validate_response.status_code, 200)

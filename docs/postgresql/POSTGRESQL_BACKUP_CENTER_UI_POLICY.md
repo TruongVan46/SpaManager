@@ -99,3 +99,12 @@ Các đoạn văn bản mẫu (Tiếng Việt) khuyến nghị áp dụng trên 
 2. **Task 6.4.4: PostgreSQL-aware UI cleanup:** Thay đổi nhãn "Cơ sở dữ liệu: SQLite" trong Card thông tin phần mềm thành động dựa trên `backup_engine`. Thiết kế lại khối giao diện tab Sao lưu & Khôi phục theo đúng các nguyên tắc thông tin đã mô tả.
 3. **Task 6.4.5: Optional local backup action:** Cân nhắc tích hợp một nút hành động tạo nhanh PostgreSQL dump trên localhost (development environment) bằng cách gọi an toàn lệnh `pg_dump` cục bộ (nếu hệ thống phát hiện chạy trên Docker dev).
 4. **Task 6.4.6: Verification & Integration tests:** Viết thêm các ca kiểm thử tích hợp để đảm bảo các cảnh báo hiển thị đúng, các nút bấm bị chặn đúng và không có bất kỳ rò rỉ bảo mật nào xảy ra.
+## Current binding policy — Task 6.4.4b
+
+When the configured database engine is PostgreSQL, Backup Center is strictly read-only in the web application. The page does not enumerate legacy SQLite backup metadata or expose backup IDs, filenames, paths, download links, delete actions, notes editing, create/upload controls, or restore controls.
+
+This current binding policy supersedes earlier planning examples in this document that described listing, downloading, or deleting legacy SQLite artifacts while PostgreSQL is active.
+
+The routes `/settings/backup/download/<backup_id>`, `/settings/backup/delete/<backup_id>`, and `/settings/backup/notes/<backup_id>` fail closed with a generic HTTP 400 response before repository, filesystem, or metadata operations. This applies to both local PostgreSQL development and PostgreSQL production.
+
+SQLite keeps the existing legacy backup behavior. Optional local PostgreSQL backup actions are deferred to Task 6.4.5. Production PostgreSQL backup and restore remain external, provider/runbook-managed operations requiring owner approval.

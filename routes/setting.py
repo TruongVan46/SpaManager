@@ -75,6 +75,24 @@ def index():
         'invoices': WorkspaceService.scoped_query(Invoice).count(),
     }
 
+    backup_engine = get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+    if backup_engine == 'postgresql':
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        pagination_obj = SimplePagination([], page, per_page, 0)
+        return render_template(
+            'setting/index.html',
+            spa_info=spa_info,
+            stats=stats,
+            backups=[],
+            backups_pagination=pagination_obj,
+            page=page,
+            per_page=per_page,
+            backup_error=None,
+            backup_engine=backup_engine,
+            backup_guard_message=get_postgresql_backup_center_message(),
+        )
+
     # Fetch and sync all backups on disk
     backup_error = None
     try:
@@ -253,6 +271,9 @@ def backup_database():
 @setting_bp.route('/settings/backup/download/<string:backup_id>')
 def download_backup(backup_id):
     """Download a backup file using its UUID."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        return jsonify({'success': False, 'message': get_postgresql_backup_center_message(), 'blocked': True}), 400
+
     meta = BackupRepository.get_by_id(current_app, backup_id)
     if not meta:
         flash('Không tìm thấy bản sao lưu.', 'danger')
@@ -274,6 +295,9 @@ def download_backup(backup_id):
 @setting_bp.route('/settings/backup/delete/<string:backup_id>', methods=['POST'])
 def delete_backup(backup_id):
     """Delete a backup file and its metadata using its UUID."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        return jsonify({'success': False, 'message': get_postgresql_backup_center_message(), 'blocked': True}), 400
+
     success = BackupService.delete_backup(current_app, backup_id)
     if success:
         return jsonify({'success': True, 'message': 'Đã xóa bản sao lưu vĩnh viễn.'})
@@ -283,6 +307,9 @@ def delete_backup(backup_id):
 @setting_bp.route('/settings/backup/notes/<string:backup_id>', methods=['POST'])
 def update_notes(backup_id):
     """Update notes metadata for a backup using its UUID."""
+    if get_database_engine(current_app.config.get('SQLALCHEMY_DATABASE_URI', '')) == 'postgresql':
+        return jsonify({'success': False, 'message': get_postgresql_backup_center_message(), 'blocked': True}), 400
+
     data = request.get_json() or {}
     new_notes = data.get('notes', '').strip()
     success = BackupService.update_notes(current_app, backup_id, new_notes)
