@@ -30,6 +30,7 @@ This folder collects the planning and validation documents for workspace support
 - [Workspace migration candidate](migration_candidates/0002_workspace_foundation.py.txt)
 - [Permanent purge dependency and policy discovery](PERMANENT_PURGE_DEPENDENCY_POLICY_DISCOVERY.md)
 - [Permanent purge security and retention policy](PERMANENT_PURGE_SECURITY_RETENTION_POLICY.md)
+- [Permanent purge schema and migration proposal](PERMANENT_PURGE_SCHEMA_MIGRATION_PROPOSAL.md)
 
 ## Notes
 
