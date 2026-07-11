@@ -33,6 +33,7 @@ Tài liệu tập trung cho quá trình chuyển SpaManager từ SQLite sang Pos
 
 - [v5.8.0 readiness checkpoint](V5_8_0_READINESS_CHECKPOINT.md)
 - [v5.9.0 PostgreSQL production checkpoint](V5_9_0_POSTGRESQL_PRODUCTION_CHECKPOINT.md)
+- [SpaManager Version 6.4 — Backup Center and PostgreSQL Guards Closure](POSTGRESQL_BACKUP_CENTER_VERSION_6_4_CLOSURE.md)
 
 ## v5.9 production migration tasks
 
