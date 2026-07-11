@@ -89,21 +89,21 @@ EVENT_INDEXES = (
 
 def _workspace_column_signature(include_terminal_columns):
     signature = [
-        ("id", "INTEGER", 0, None, 1, 0),
+        ("id", "INTEGER", 1, None, 1, 0),
         ("name", "VARCHAR(150)", 1, None, 0, 0),
         ("slug", "VARCHAR(150)", 1, None, 0, 0),
-        ("status", "VARCHAR(20)", 1, "'ACTIVE'", 0, 0),
+        ("status", "VARCHAR(20)", 1, None, 0, 0),
         ("created_by_id", "INTEGER", 0, None, 0, 0),
         ("notes", "TEXT", 0, None, 0, 0),
-        ("created_at", "TIMESTAMP", 1, "CURRENT_TIMESTAMP", 0, 0),
-        ("updated_at", "TIMESTAMP", 1, "CURRENT_TIMESTAMP", 0, 0),
-        ("deleted_at", "TIMESTAMP", 0, None, 0, 0),
+        ("created_at", "DATETIME", 1, None, 0, 0),
+        ("updated_at", "DATETIME", 1, None, 0, 0),
+        ("deleted_at", "DATETIME", 0, None, 0, 0),
         ("deleted_by_id", "INTEGER", 0, None, 0, 0),
         ("deletion_reason", "VARCHAR(255)", 0, None, 0, 0),
     ]
     if include_terminal_columns:
         signature.extend([
-            ("purged_at", "TIMESTAMP", 0, None, 0, 0),
+            ("purged_at", "DATETIME", 0, None, 0, 0),
             ("purge_request_id", "INTEGER", 0, None, 0, 0),
         ])
     return tuple(signature)
@@ -116,6 +116,48 @@ def _normalize_sql_fragment(value):
     while normalized.startswith("(") and normalized.endswith(")"):
         normalized = normalized[1:-1].strip()
     return normalized
+
+
+def _normalize_sqlite_check_fragment(value):
+    normalized = _normalize_sql_fragment(value)
+    if normalized is None:
+        return None
+    normalized = re.sub(r"\(\s+", "(", normalized)
+    normalized = re.sub(r"\s+\)", ")", normalized)
+    return normalized
+
+
+def _validate_static_sqlite_check_normalizer():
+    actual = """
+    CONSTRAINT ck_purge_legal_holds_release_fields CHECK (
+        (status = 'ACTIVE' AND released_at IS NULL)
+        OR
+        (status = 'RELEASED' AND released_at IS NOT NULL)
+    )
+    """
+    expected = """
+    CONSTRAINT ck_purge_legal_holds_release_fields CHECK (
+    (status = 'ACTIVE' AND released_at IS NULL)
+    OR
+    (status = 'RELEASED' AND released_at IS NOT NULL)
+    )
+    """
+    normalized_actual = _normalize_sqlite_check_fragment(actual)
+    normalized_expected = _normalize_sqlite_check_fragment(expected)
+    if normalized_actual != normalized_expected:
+        raise RuntimeError("0007 SQLite CHECK normalizer whitespace self-check failed.")
+    for invalid in (
+        expected.replace("ck_purge_legal_holds_release_fields", "ck_other_constraint"),
+        expected.replace("OR", "AND"),
+        expected.replace("IS NOT NULL", "IS NULL"),
+        expected.replace("OR\n    (status = 'RELEASED' AND released_at IS NOT NULL)", ""),
+    ):
+        if _normalize_sqlite_check_fragment(invalid) == normalized_expected:
+            raise RuntimeError("0007 SQLite CHECK normalizer semantic self-check failed.")
+    return True
+
+
+_STATIC_SQLITE_CHECK_NORMALIZER_VALID = _validate_static_sqlite_check_normalizer()
 
 
 def _normalize_postgres_check_text(value):
@@ -213,6 +255,38 @@ def _validate_static_postgres_check_normalizer():
 _STATIC_PG_CHECK_NORMALIZER_VALID = _validate_static_postgres_check_normalizer()
 
 
+def _validate_static_postgres_fk_ordering():
+    actual = (
+        ("users", ("created_by_id",), ("id",), "NO ACTION"),
+        ("users", ("deleted_by_id",), ("id",), "SET NULL"),
+        ("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),
+    )
+    expected = (
+        ("users", ("created_by_id",), ("id",), "NO ACTION"),
+        ("users", ("deleted_by_id",), ("id",), "SET NULL"),
+        ("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),
+    )
+    if tuple(sorted(actual)) != tuple(sorted(expected)):
+        raise RuntimeError("0007 PostgreSQL FK ordering self-check failed.")
+    invalid_cases = tuple(
+        tuple(item for item in actual if item != omitted)
+        for omitted in actual
+    ) + (
+        actual + (("users", ("approved_by_id",), ("id",), "SET NULL"),),
+        (("users", ("wrong_column",), ("id",), "NO ACTION"), actual[1], actual[2]),
+        (actual[0], ("workspaces", ("workspace_id",), ("id",), "RESTRICT"), actual[2]),
+        (actual[0], ("users", ("deleted_by_id",), ("id",), "CASCADE"), actual[2]),
+        actual + (actual[0],),
+    )
+    for invalid in invalid_cases:
+        if tuple(sorted(invalid)) == tuple(sorted(expected)):
+            raise RuntimeError("0007 PostgreSQL FK ordering semantic self-check failed.")
+    return True
+
+
+_STATIC_POSTGRES_FK_ORDERING_VALID = _validate_static_postgres_fk_ordering()
+
+
 def _sqlite_column_signature(connection, table_name):
     rows = connection.execute(text(f"PRAGMA table_xinfo({table_name})")).fetchall()
     return tuple(
@@ -264,7 +338,7 @@ def _assert_sqlite_index(connection, table_name, index_name, columns, unique=Fal
 def _expected_workspace_index_signatures(include_terminal_columns):
     auxiliary_row = (1, -1, None, 0, "BINARY", 0)
     signatures = {
-        "ix_workspaces_slug": ("workspaces", 0, "c", 0, ((0, 2, "slug", 0, "BINARY", 1), auxiliary_row)),
+        "ix_workspaces_slug": ("workspaces", 1, "c", 0, ((0, 2, "slug", 0, "BINARY", 1), auxiliary_row)),
         "ix_workspaces_status": ("workspaces", 0, "c", 0, ((0, 3, "status", 0, "BINARY", 1), auxiliary_row)),
         "ix_workspaces_created_at": ("workspaces", 0, "c", 0, ((0, 6, "created_at", 0, "BINARY", 1), auxiliary_row)),
         "ix_workspaces_created_by_id": ("workspaces", 0, "c", 0, ((0, 4, "created_by_id", 0, "BINARY", 1), auxiliary_row)),
@@ -452,14 +526,14 @@ def _assert_sqlite_check_constraints(connection):
         },
     }
     for table_name, definitions in check_definitions.items():
-        table_sql = _normalize_sql_fragment(
+        table_sql = _normalize_sqlite_check_fragment(
             connection.execute(
                 text("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :name"),
                 {"name": table_name},
             ).scalar_one()
         )
         for constraint_name, expression in definitions.items():
-            expected = _normalize_sql_fragment(f"CONSTRAINT {constraint_name} CHECK ({expression})")
+            expected = _normalize_sqlite_check_fragment(f"CONSTRAINT {constraint_name} CHECK ({expression})")
             if expected not in table_sql:
                 raise RuntimeError(f"0007 SQLite CHECK definition mismatch: {table_name}.{constraint_name}")
 
@@ -500,8 +574,8 @@ def _sqlite_foreign_keys(connection, table_name):
 
 def _workspace_expected_foreign_keys(connection, include_terminal_columns):
     expected = {
-        ("users", ("created_by_id",), ("id",), "NO ACTION", "SET NULL", "NONE"),
-        ("users", ("deleted_by_id",), ("id",), "NO ACTION", "SET NULL" if _is_pg(connection) else "NO ACTION", "NONE"),
+        ("users", ("created_by_id",), ("id",), "NO ACTION", "NO ACTION", "NONE"),
+        ("users", ("deleted_by_id",), ("id",), "NO ACTION", "SET NULL", "NONE"),
     }
     if include_terminal_columns:
         expected.add(("workspace_purge_requests", ("purge_request_id",), ("id",), "NO ACTION", "RESTRICT", "NONE"))
@@ -521,7 +595,7 @@ def _assert_sqlite_workspace_schema(connection, include_terminal_columns):
     actual_fks = _sqlite_foreign_keys(connection, "workspaces")
     if actual_fks != expected_fks:
         raise RuntimeError("0007 SQLite workspace schema foreign keys differ from the expected exact set.")
-    expected_unique = [("u", 0, ("slug",), ("BINARY",), (0,))]
+    expected_unique = [("c", 0, ("slug",), ("BINARY",), (0,))]
     if include_terminal_columns:
         expected_unique.append(("u", 0, ("purge_request_id",), ("BINARY",), (0,)))
     _assert_sqlite_unique_signatures(connection, "workspaces", expected_unique)
@@ -885,7 +959,7 @@ def _rebuild_sqlite_workspaces(connection, include_terminal_columns):
     if _has_table(connection, new_table) or _has_table(connection, "_workspaces_0007_old"):
         raise RuntimeError("Temporary 0007 SQLite workspace table already exists.")
     terminal_columns = (
-        ", purged_at TIMESTAMP, purge_request_id INTEGER"
+        ", purged_at DATETIME, purge_request_id INTEGER"
         if include_terminal_columns
         else ""
     )
@@ -897,7 +971,6 @@ def _rebuild_sqlite_workspaces(connection, include_terminal_columns):
         if include_terminal_columns
         else ""
     )
-    deleted_by_fk = " REFERENCES users(id) ON DELETE SET NULL" if _is_pg(connection) else " REFERENCES users(id)"
     request_fk = (
         ", FOREIGN KEY (purge_request_id) REFERENCES workspace_purge_requests(id) ON DELETE RESTRICT"
         if include_terminal_columns
@@ -907,17 +980,20 @@ def _rebuild_sqlite_workspaces(connection, include_terminal_columns):
         text(
             f"""
             CREATE TABLE {new_table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER NOT NULL,
                 name VARCHAR(150) NOT NULL,
-                slug VARCHAR(150) NOT NULL UNIQUE,
-                status VARCHAR(20) NOT NULL DEFAULT 'active',
-                created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                slug VARCHAR(150) NOT NULL,
+                status VARCHAR(20) NOT NULL,
+                created_by_id INTEGER,
                 notes TEXT,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                deleted_at TIMESTAMP,
-                deleted_by_id INTEGER{deleted_by_fk},
-                deletion_reason VARCHAR(255){terminal_columns}{terminal_constraints}{request_fk}
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                deleted_at DATETIME,
+                deleted_by_id INTEGER,
+                deletion_reason VARCHAR(255){terminal_columns},
+                PRIMARY KEY (id),
+                FOREIGN KEY (created_by_id) REFERENCES users(id),
+                FOREIGN KEY (deleted_by_id) REFERENCES users(id) ON DELETE SET NULL{terminal_constraints}{request_fk}
             )
             """
         )
@@ -930,7 +1006,7 @@ def _rebuild_sqlite_workspaces(connection, include_terminal_columns):
     )
     connection.execute(text("DROP TABLE workspaces"))
     connection.execute(text(f"ALTER TABLE {new_table} RENAME TO workspaces"))
-    connection.execute(text("CREATE INDEX ix_workspaces_slug ON workspaces (slug)"))
+    connection.execute(text("CREATE UNIQUE INDEX ix_workspaces_slug ON workspaces (slug)"))
     connection.execute(text("CREATE INDEX ix_workspaces_status ON workspaces (status)"))
     connection.execute(text("CREATE INDEX ix_workspaces_created_at ON workspaces (created_at)"))
     connection.execute(text("CREATE INDEX ix_workspaces_created_by_id ON workspaces (created_by_id)"))
@@ -1229,10 +1305,15 @@ def _verify_postgres_upgrade(connection):
             ("workspaces", ("workspace_id",), ("id",), "RESTRICT"),
             ("workspace_purge_requests", ("request_id",), ("id",), "RESTRICT"),
         ),
-        "workspaces": (("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),),
+        "workspaces": (
+            ("users", ("created_by_id",), ("id",), "NO ACTION"),
+            ("users", ("deleted_by_id",), ("id",), "SET NULL"),
+            ("workspace_purge_requests", ("purge_request_id",), ("id",), "RESTRICT"),
+        ),
     }
     for table_name, expected in expected_foreign_keys.items():
-        if _postgres_foreign_key_signatures(connection, table_name) != tuple(sorted(expected)):
+        actual = _postgres_foreign_key_signatures(connection, table_name)
+        if tuple(sorted(actual)) != tuple(sorted(expected)):
             raise RuntimeError(f"0007 PostgreSQL verification found an unexpected FK contract on {table_name}.")
 
 

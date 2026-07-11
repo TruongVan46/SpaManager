@@ -58,7 +58,14 @@ class TestDatabaseIsolationGuardTestCase(unittest.TestCase):
         blocked = self._run_config_import({"TEST_DATABASE_URL": "mysql://user:hidden@127.0.0.1/spamanager_test"})
         self.assertNotEqual(blocked.returncode, 0)
         environment = os.environ.copy()
-        environment.pop("SPAMANAGER_TEST_PROCESS", None)
+        for key in (
+            "SPAMANAGER_TEST_PROCESS",
+            "PYTEST_CURRENT_TEST",
+            "TEST_DATABASE_URL",
+            "DATABASE_URL",
+            "SPAMANAGER_ALLOW_POSTGRES_TESTS",
+        ):
+            environment.pop(key, None)
         environment["APP_ENV"] = "development"
         result = subprocess.run([sys.executable, "-c", "import config; print(type(config.Config).__name__)"], cwd=PROJECT_ROOT, env=environment, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)

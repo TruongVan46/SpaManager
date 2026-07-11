@@ -40,6 +40,7 @@ from app import app
 from config import DevelopmentConfig, ProductionConfig, TestingConfig, _parse_bool_env
 from extensions import db
 from core.auth.constants import AUTH_SESSION_KEY
+from core.migration_cli import _head_revision
 from core.exceptions import AuthenticationException, ConflictException
 from models.activity_log import ActivityLog
 from models.appointment import Appointment
@@ -2838,9 +2839,17 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("workspaces", tables)
         self.assertIn("workspace_members", tables)
         self.assertIn("alembic_version", tables)
+        self.assertIn("workspace_purge_requests", tables)
+        self.assertIn("purge_legal_holds", tables)
+        self.assertIn("purge_lifecycle_events", tables)
 
         current_after = runner.invoke(args=["db", "current"])
-        self.assertIn("0006_user_ws_soft_delete", current_after.output)
+        expected_head = _head_revision()
+        self.assertEqual(expected_head, "0007_permanent_purge_workflow")
+        self.assertIn(expected_head, current_after.output)
+        workspace_columns = {column["name"] for column in sa_inspect(db.engine).get_columns("workspaces")}
+        self.assertIn("purged_at", workspace_columns)
+        self.assertIn("purge_request_id", workspace_columns)
 
     def test_version_is_rendered_from_config_in_setting_ui(self):
         owner = AuthService.seed_owner_if_empty()
@@ -3966,8 +3975,9 @@ class BasicTestCase(unittest.TestCase):
 
         result = runner.invoke(args=["db", "stamp", "head"])
         self.assertEqual(result.exit_code, 0, result.output)
-        # Head is now 0006_user_ws_soft_delete
-        self.assertIn("Stamped 0006_user_ws_soft_delete", result.output)
+        expected_head = _head_revision()
+        self.assertEqual(expected_head, "0007_permanent_purge_workflow")
+        self.assertIn(f"Stamped {expected_head}", result.output)
 
         tables_after = sorted(sa_inspect(db.engine).get_table_names())
         self.assertIn("alembic_version", tables_after)
@@ -3975,7 +3985,7 @@ class BasicTestCase(unittest.TestCase):
 
         current_after = runner.invoke(args=["db", "current"])
         self.assertEqual(current_after.exit_code, 0, current_after.output)
-        self.assertIn("0006_user_ws_soft_delete", current_after.output)
+        self.assertIn(expected_head, current_after.output)
 
     def test_data_consistency_audit_passes_on_clean_database(self):
         report = run_data_consistency_audit()

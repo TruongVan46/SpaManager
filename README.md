@@ -188,6 +188,22 @@ For the production smoke checklist, backup and restore safety, internal CLI comm
 
 ## Testing
 
+For local development and tests, install the tracked development dependency
+contract in the project virtual environment:
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+```
+
+Run the canonical test suite with:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest -q
+```
+
+`requirements.txt` contains application/runtime dependencies. The separate
+`requirements-dev.txt` file adds local development and test tooling.
+
 ```bash
 .\\venv\\Scripts\\python.exe -m unittest discover -s tests -p "test*.py" -v
 .\\venv\\Scripts\\python.exe -m compileall .

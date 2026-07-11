@@ -1,14 +1,21 @@
-# Version 6.6 - Task 6.6.3a
+# Version 6.6 - Task 6.6.3b2c
 # Permanent Purge Migration Implementation Record
 
 ## Status
 
 ```text
-MIGRATION FILE REVISED / FINAL STATIC RE-REVIEW REQUIRED
+MIGRATION SOURCE REHEARSAL VERIFIED
+SQLITE PASS
+POSTGRESQL PASS
+TEST SUITE PASS
+COMPILEALL PASS
+LOCAL TEST DEPENDENCY CONTRACT ADDED
+READY FOR SOURCE COMMIT
+PRODUCTION MIGRATION NOT APPROVED
 ```
 
-This record documents a provisional workflow-only migration. Migration
-execution is **NOT APPROVED**.
+This record documents a workflow/schema foundation migration. Production
+migration execution is **NOT APPROVED**.
 
 ## Scope and authorization
 
@@ -19,8 +26,41 @@ execution is **NOT APPROVED**.
 - No model, route, service, UI or test changes are included.
 - No database, PostgreSQL, Docker, Railway or migration command was run in this task.
 
-Task 6.6.3a is limited to creating and statically reviewing the migration source.
-Execution remains not approved.
+Task 6.6.3b2c records the completed disposable SQLite and PostgreSQL
+rehearsals. Production execution remains separately unapproved.
+
+## Final rehearsal result
+
+SQLite and PostgreSQL both passed the controlled sequence:
+
+```text
+0006_user_ws_soft_delete
+-> 0007_permanent_purge_workflow
+-> 0006_user_ws_soft_delete
+```
+
+SQLite evidence confirms exact workspace schema preservation, workflow
+UNIQUE/CHECK/FK/index verification, legal-hold CHECK verification, sentinel
+preservation, zero `foreign_key_check` violations, controlled downgrade and
+stamp.
+
+PostgreSQL evidence confirms a fresh local Docker PostgreSQL 16 `_test`
+database under `TestingConfig`, exact workspace and workflow contracts,
+exactly three workspace FKs, exactly eight `workspace_purge_requests` FKs,
+sentinel preservation, controlled downgrade and stamp, restored revision 0006,
+and independent cleanup verification. The fresh disposable database was
+dropped; older failure databases and SQLite evidence artifacts were preserved
+outside the repository.
+
+The migration source corrections verified by these rehearsals are:
+
+- SQLite workspace signatures match the actual 0006 schema.
+- SQLite CHECK matching canonicalizes only whitespace inside parentheses.
+- PostgreSQL FK comparison canonical-sorts both actual and expected signatures
+  while retaining duplicate detection.
+- PostgreSQL `workspaces` expects `created_by_id -> users.id` with `NO ACTION`,
+  `deleted_by_id -> users.id` with `SET NULL`, and
+  `purge_request_id -> workspace_purge_requests.id` with `RESTRICT`.
 
 ## Migration loader audit
 
@@ -132,6 +172,19 @@ The new workspace table is then created with its terminal FK, rows are copied wi
 null terminal values, the old table is dropped, and the new table is renamed to the
 canonical name. The final foreign-key check must return zero rows.
 
+The actual revision-0006 SQLite workspace schema was captured from the disposable
+rehearsal database. Its canonical contract is `DATETIME` for all datetime
+columns, no database defaults for status or timestamps, `id INTEGER NOT NULL`
+with table-level `PRIMARY KEY (id)`, `created_by_id -> users.id ON DELETE NO
+ACTION`, and `deleted_by_id -> users.id ON DELETE SET NULL`. The `slug`
+uniqueness contract is the named unique index `ix_workspaces_slug` (origin `c`),
+not a table `UNIQUE` clause or SQLite autoindex.
+
+The revised SQLite rebuild reproduces that actual contract and adds only
+`purged_at DATETIME`, `purge_request_id INTEGER`, the terminal UNIQUE/CHECK/FK
+objects and `ix_workspaces_purged_at` for 0007. Downgrade restores the captured
+0006 contract exactly.
+
 ## Full SQLite schema-preservation gate
 
 Before rebuilding, the source checks:
@@ -192,6 +245,13 @@ UNIQUE constraints are verified through autoindex metadata and ordered columns;
 partial or duplicate non-unique index. CHECK verification matches normalized
 constraint expressions, not names alone.
 
+SQLite CHECK verification uses a SQLite-specific whitespace normalization step
+that canonicalizes whitespace immediately inside parentheses. This prevents a
+formatting-only false-negative such as `CHECK ( (` versus `CHECK ((` without
+changing the CHECK DDL or relaxing predicate, branch, literal, `AND`, or `OR`
+semantics. A pure-Python self-check rejects changed constraint names, operators,
+nullability predicates, and missing branches.
+
 The deterministic `PRAGMA index_xinfo` tuple is:
 
 ```text
@@ -200,7 +260,19 @@ The deterministic `PRAGMA index_xinfo` tuple is:
 
 Auxiliary `key=0` entries are retained but excluded from the ordered indexed-key
 column list. Static import self-checks validate representative workspace index
-metadata and the PostgreSQL CHECK normalizer without opening a database.
+metadata, the SQLite CHECK whitespace normalizer, the PostgreSQL CHECK normalizer,
+and canonical PostgreSQL FK ordering without opening a database.
+
+The first PostgreSQL disposable rehearsal created eight correct foreign keys on
+`workspace_purge_requests`, but PostgreSQL catalog OID order differed from the
+lexicographically sorted expected tuple. The verifier now canonical-sorts both
+actual and expected signatures while preserving duplicate detection.
+
+The fresh rehearsal then confirmed that the two existing workspace foreign keys
+from the 0006 schema remain part of the PostgreSQL contract: `created_by_id`
+references `users.id` with `NO ACTION`, and `deleted_by_id` references
+`users.id` with `SET NULL`. The expected `workspaces` map now includes those
+two baseline keys together with the new `purge_request_id` `RESTRICT` key.
 
 Each `PRAGMA index_xinfo` entry is normalized as:
 
@@ -354,19 +426,33 @@ Downgrade verifies:
 - Existing workspaces receive nullable terminal columns with `NULL` values.
 - Runtime restore guards, purge service, approval routes and UI are later work and are not implemented here.
 
-## Static review gates
+## Final validation gates
 
-- AST parse of the migration source: required.
-- `git diff --check`: required.
-- Migration execution: not run.
-- Tests/compileall: not run by this task.
-- Database/PostgreSQL/Docker/Railway: not run by this task.
+- AST parse of the migration source: PASS.
+- Static import self-check: PASS.
+- Secret/path scan: PASS; no password, full PostgreSQL URL, machine path,
+  password hash or production identifier is recorded here.
+- Canonical pytest suite: PASS (`379 passed`, `91 subtests passed`).
+- Compileall: PASS.
 - Commit/push: not performed.
 
-## Known next review gates
+No Railway or production migration was run. Permanent business-data purge
+execution is not implemented by this migration.
 
-1. Review the actual migration diff.
-2. Review SQLite rebuild on an isolated disposable database.
-3. Review PostgreSQL DDL on a disposable local rehearsal database.
-4. Approve migration execution separately.
-5. Only after execution/rehearsal approval, plan runtime integration behind fail-closed guards.
+## Remaining approval gate
+
+1. Review and commit the verified source changes.
+2. Approve any production migration execution separately.
+3. Plan runtime integration behind fail-closed guards only after production
+   approval.
+
+## Pre-commit validation result
+
+The tracked development dependency contract provides `pytest==9.1.1`.
+The canonical suite passed with `379 passed`, `91 subtests passed`, and `1559
+warnings` in 119.73 seconds. The three stale contracts were corrected without
+changing runtime or migration source behavior: migration tests now discover the
+canonical head, assert the 0007 workflow schema, and the config isolation test
+clears inherited pytest/test database environment state before checking
+`DevelopmentConfig`. Compileall passed over the application, migration, model,
+route, service and test source trees.
