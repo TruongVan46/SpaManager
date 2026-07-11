@@ -31,6 +31,7 @@ This folder collects the planning and validation documents for workspace support
 - [Permanent purge dependency and policy discovery](PERMANENT_PURGE_DEPENDENCY_POLICY_DISCOVERY.md)
 - [Permanent purge security and retention policy](PERMANENT_PURGE_SECURITY_RETENTION_POLICY.md)
 - [Permanent purge schema and migration proposal](PERMANENT_PURGE_SCHEMA_MIGRATION_PROPOSAL.md)
+- [Permanent purge migration implementation record](PERMANENT_PURGE_MIGRATION_IMPLEMENTATION.md)
 
 ## Notes
 
