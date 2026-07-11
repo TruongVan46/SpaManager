@@ -28,6 +28,7 @@ This folder collects the planning and validation documents for workspace support
 - [PostgreSQL rehearsal environment setup](../postgresql/POSTGRESQL_REHEARSAL_ENVIRONMENT_SETUP.md)
 - [PostgreSQL rehearsal toolchain decision](WORKSPACE_POSTGRESQL_REHEARSAL_TOOLCHAIN_DECISION.md)
 - [Workspace migration candidate](migration_candidates/0002_workspace_foundation.py.txt)
+- [Permanent purge dependency and policy discovery](PERMANENT_PURGE_DEPENDENCY_POLICY_DISCOVERY.md)
 
 ## Notes
 
