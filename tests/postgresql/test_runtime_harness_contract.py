@@ -480,3 +480,251 @@ def test_ast_session_closure_ordering():
 
     second_try_index = func_node.body.index(tries[1])
     assert second_try_index > approve_stmt_index, "final verification block must be after approve_purge_request."
+
+
+
+def _verify_core_query_structure(func_node, func_name):
+    # Traversal to prove in the same expression chain:
+    # - assignment target is Name("terminal");
+    # - outer call is `.one()`;
+    # - its receiver is a `.mappings()` call;
+    # - mappings receiver is `verification.execute(...)`;
+    # - execute has one query argument;
+    # - that query contains a call to `select`;
+    # - the select references `workspace_terminal_state_table`.
+    found = False
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Assign):
+            # 1. Target has Name(id="terminal")
+            has_terminal_target = any(
+                isinstance(t, ast.Name) and t.id == "terminal"
+                for t in node.targets
+            )
+            if not has_terminal_target:
+                continue
+
+            # 2. Outer call is .one()
+            val = node.value
+            if not (isinstance(val, ast.Call) and
+                    isinstance(val.func, ast.Attribute) and
+                    val.func.attr == "one"):
+                continue
+
+            # 3. Its receiver is .mappings() call
+            one_receiver = val.func.value
+            if not (isinstance(one_receiver, ast.Call) and
+                    isinstance(one_receiver.func, ast.Attribute) and
+                    one_receiver.func.attr == "mappings"):
+                continue
+
+            # 4. mappings receiver is verification.execute(...)
+            mappings_receiver = one_receiver.func.value
+            if not (isinstance(mappings_receiver, ast.Call) and
+                    isinstance(mappings_receiver.func, ast.Attribute) and
+                    mappings_receiver.func.attr == "execute" and
+                    isinstance(mappings_receiver.func.value, ast.Name) and
+                    mappings_receiver.func.value.id == "verification"):
+                continue
+
+            # 5. execute has exactly one query argument
+            if len(mappings_receiver.args) != 1:
+                continue
+
+            query_arg = mappings_receiver.args[0]
+
+            # 6. that query contains a call to select
+            select_calls = [
+                n for n in ast.walk(query_arg)
+                if isinstance(n, ast.Call) and
+                isinstance(n.func, ast.Name) and n.func.id == "select"
+            ]
+            if not select_calls:
+                continue
+
+            # 7. the select references workspace_terminal_state_table
+            has_table_ref = False
+            for sc in select_calls:
+                for sub in ast.walk(sc):
+                    if isinstance(sub, ast.Name) and sub.id == "workspace_terminal_state_table":
+                        has_table_ref = True
+                        break
+                if has_table_ref:
+                    break
+
+            if has_table_ref:
+                found = True
+                break
+
+    assert found, (
+        f"Function {func_name} does not meet the Core query structure contract for 'terminal': "
+        "terminal = verification.execute(select(workspace_terminal_state_table).where(...)).mappings().one()"
+    )
+
+
+def test_ast_terminal_state_orm_contract():
+    import ast
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    target_funcs = {
+        "test_active_legal_hold_blocks_approval",
+        "test_execution_success_preserves_audit_and_terminal_tombstone",
+        "test_execution_rolls_back_after_mutation",
+    }
+    found_funcs = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in target_funcs:
+            found_funcs[node.name] = node
+
+    assert len(found_funcs) == 3, f"Expected 3 target funcs, found {list(found_funcs)}"
+
+    for name, func_node in found_funcs.items():
+        for subnode in ast.walk(func_node):
+            # Reject every ast.Attribute whose attr is purged_at or purge_request_id (no matter what variable name)
+            if isinstance(subnode, ast.Attribute) and subnode.attr in ("purged_at", "purge_request_id"):
+                raise AssertionError(
+                    f"Function {name} line {subnode.lineno}: "
+                    f"direct ORM access to {subnode.attr} forbidden — "
+                    f"use workspace_terminal_state_table Core query subscript"
+                )
+
+
+def test_ast_terminal_state_core_table_contract():
+    import ast
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    target_funcs = {
+        "test_active_legal_hold_blocks_approval",
+        "test_execution_success_preserves_audit_and_terminal_tombstone",
+        "test_execution_rolls_back_after_mutation",
+    }
+    found_funcs = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in target_funcs:
+            found_funcs[node.name] = node
+
+    assert len(found_funcs) == 3
+
+    for name, func_node in found_funcs.items():
+        _verify_core_query_structure(func_node, name)
+
+
+def test_ast_terminal_state_success_assertions():
+    import ast
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    func_node = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "test_execution_success_preserves_audit_and_terminal_tombstone":
+            func_node = node
+            break
+
+    assert func_node is not None
+
+    found_purged_at_eq = False
+    found_request_id_eq = False
+    for subnode in ast.walk(func_node):
+        # Prove exact comparisons:
+        # terminal["purged_at"] == execution_time
+        # terminal["purge_request_id"] == request_id
+        if (isinstance(subnode, ast.Compare) and
+                len(subnode.ops) == 1 and isinstance(subnode.ops[0], ast.Eq) and
+                len(subnode.comparators) == 1):
+            left = subnode.left
+            if (isinstance(left, ast.Subscript) and
+                    isinstance(left.value, ast.Name) and left.value.id == "terminal" and
+                    isinstance(left.slice, ast.Constant)):
+                key = left.slice.value
+                right = subnode.comparators[0]
+                if key == "purged_at":
+                    if isinstance(right, ast.Name) and right.id == "execution_time":
+                        found_purged_at_eq = True
+                elif key == "purge_request_id":
+                    if isinstance(right, ast.Name) and right.id == "request_id":
+                        found_request_id_eq = True
+
+    assert found_purged_at_eq, "Success test must assert terminal['purged_at'] == execution_time"
+    assert found_request_id_eq, "Success test must assert terminal['purge_request_id'] == request_id"
+
+
+def test_ast_terminal_state_none_assertions():
+    import ast
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    none_funcs = {
+        "test_active_legal_hold_blocks_approval",
+        "test_execution_rolls_back_after_mutation",
+    }
+    found_funcs = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in none_funcs:
+            found_funcs[node.name] = node
+
+    assert len(found_funcs) == 2
+
+    for name, func_node in found_funcs.items():
+        found_purged_at_none = False
+        found_request_id_none = False
+        for subnode in ast.walk(func_node):
+            if isinstance(subnode, ast.Compare) and len(subnode.ops) == 1 and isinstance(subnode.ops[0], ast.Is):
+                left = subnode.left
+                comparators = subnode.comparators
+                if (isinstance(left, ast.Subscript) and
+                        isinstance(left.value, ast.Name) and left.value.id == "terminal" and
+                        len(comparators) == 1 and isinstance(comparators[0], ast.Constant) and
+                        comparators[0].value is None):
+                    slice_val = left.slice
+                    if isinstance(slice_val, ast.Constant):
+                        if slice_val.value == "purged_at":
+                            found_purged_at_none = True
+                        elif slice_val.value == "purge_request_id":
+                            found_request_id_none = True
+
+        assert found_purged_at_none, f"{name} must assert terminal['purged_at'] is None"
+        assert found_request_id_none, f"{name} must assert terminal['purge_request_id'] is None"
+
+
+def test_changed_files_encoding_and_formatting():
+    files = [
+        ROOT.parent.parent / "docs" / "workspace" / "PERMANENT_PURGE_POSTGRESQL_FUNCTIONAL_REHEARSAL.md",
+        ROOT / "test_purge_runtime_postgresql.py",
+        ROOT / "test_runtime_harness_contract.py"
+    ]
+
+    for path in files:
+        assert path.exists(), f"File {path.name} does not exist"
+        raw = path.read_bytes()
+
+        # do not start with UTF-8 BOM bytes EF BB BF
+        assert not raw.startswith(b"\xef\xbb\xbf"), f"File {path.name} contains UTF-8 BOM"
+
+        # decode strictly as UTF-8
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise AssertionError(f"File {path.name} failed strict UTF-8 decode: {e}")
+
+        # do not contain known mojibake tokens
+        # Constructed at runtime via chr() codepoints — no literal mojibake characters in source.
+        mojibake_tokens = (
+            "".join(chr(cp) for cp in (0x00E2, 0x20AC, 0x201D)),
+            "".join(chr(cp) for cp in (0x00E2, 0x2020, 0x2019)),
+            "".join(chr(cp) for cp in (0x00EF, 0x00BB, 0x00BF)),
+        )
+        # self-validate: each token must be the real 3-char string, not a literal escape
+        for token in mojibake_tokens:
+            assert "\\u" not in token
+            assert len(token) == 3
+        for token in mojibake_tokens:
+            assert token not in text, f"File {path.name} contains mojibake token: {repr(token)}"
+
+        # end with exactly one final newline (normalized)
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+        trailing_linebreak_count = len(normalized) - len(normalized.rstrip("\n"))
+        assert trailing_linebreak_count == 1, (
+            f"File {path.name} must end with exactly one newline, "
+            f"found {trailing_linebreak_count}"
+        )

@@ -175,3 +175,65 @@ With opt-in environment variables absent, skip occurs before:
 
 Contract tests verify the conftest-local references are patched and no runtime
 module import occurs during the skip path.
+
+### Terminal-Column ORM/Core Contract
+
+Migration `0007_permanent_purge_workflow` adds two terminal columns to the
+`workspaces` table:
+
+- `purged_at` (TIMESTAMP);
+- `purge_request_id` (INTEGER FK to `workspace_purge_requests`).
+
+These columns are **not mapped on the `Workspace` ORM class**. Attempting to
+access `workspace.purged_at` or `workspace.purge_request_id` via SQLAlchemy
+ORM raises `AttributeError: 'Workspace' object has no attribute 'purged_at'`.
+
+The runtime service (`PurgeService`) writes these terminal markers using the
+SQLAlchemy Core table object:
+
+```python
+models.purge.workspace_terminal_state_table
+```
+
+The harness must therefore verify terminal state using a Core `select()` query:
+
+```python
+from sqlalchemy import select
+from models.purge import workspace_terminal_state_table
+
+terminal = verification.execute(
+    select(workspace_terminal_state_table).where(
+        workspace_terminal_state_table.c.id == workspace_id
+    )
+).mappings().one()
+
+assert terminal["purged_at"] == execution_time
+assert terminal["purge_request_id"] == request_id
+```
+
+For non-purged scenarios (legal-hold block, rollback), assertions are:
+
+```python
+assert terminal["purged_at"] is None
+assert terminal["purge_request_id"] is None
+```
+
+### Task 6.6.7e4 Controlled Rerun — Result
+
+The second controlled rehearsal (Task 6.6.7e4) reached:
+
+- 4 tests passed (harness foundation + schema identity + request creation +
+  approval event ordering);
+- `test_active_legal_hold_blocks_approval` failed with:
+  `AttributeError: 'Workspace' object has no attribute 'purged_at'`
+  at post-approval verification, after the service's legal-hold guard had
+  correctly raised `PurgeRequestConflictError` (i.e., the block mechanism
+  itself functioned correctly);
+- post-failure cleanup invariant **PASS**: all application tables returned to 0.
+
+This was a harness ORM/Core contract defect, not an application runtime defect.
+The functional rehearsal is **not** declared PASS from Task 6.6.7e4.
+
+Task 6.6.7e5 corrects the harness by replacing all direct ORM terminal
+attribute access with Core `workspace_terminal_state_table` queries in the
+three affected test functions.

@@ -229,6 +229,9 @@ def test_approval_event_ordering_and_manifest_immutability(postgres_case):
 
 
 def test_active_legal_hold_blocks_approval(postgres_case):
+    from sqlalchemy import select
+    from models.purge import workspace_terminal_state_table
+
     fixture = _base_fixture(postgres_case)
     service = fixture["services"].PurgeRequestService
     request = service.create_purge_request(
@@ -257,10 +260,14 @@ def test_active_legal_hold_blocks_approval(postgres_case):
     verification = postgres_case.new_session()
     try:
         stored = verification.get(fixture["models"].WorkspacePurgeRequest, request_id)
-        workspace = verification.get(fixture["models"].Workspace, fixture["workspace_id"])
         assert stored.status != "APPROVED"
-        assert workspace.purged_at is None
-        assert workspace.purge_request_id is None
+        terminal = verification.execute(
+            select(workspace_terminal_state_table).where(
+                workspace_terminal_state_table.c.id == fixture["workspace_id"]
+            )
+        ).mappings().one()
+        assert terminal["purged_at"] is None
+        assert terminal["purge_request_id"] is None
         assert verification.query(fixture["models"].Customer).filter_by(workspace_id=fixture["workspace_id"]).count() == 1
         assert verification.query(fixture["models"].Service).filter_by(workspace_id=fixture["workspace_id"]).count() == 1
         assert verification.query(fixture["models"].Appointment).filter_by(workspace_id=fixture["workspace_id"]).count() == 1
@@ -392,6 +399,9 @@ def test_restore_invalidates_request(postgres_case):
 
 
 def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case):
+    from sqlalchemy import select
+    from models.purge import workspace_terminal_state_table
+
     fixture = _base_fixture(postgres_case)
     request_service = fixture["services"].PurgeRequestService
     purge_service = fixture["services"].PurgeService
@@ -437,10 +447,15 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
         workspace = verification.get(fixture["models"].Workspace, fixture["workspace_id"])
         assert stored.status == "COMPLETED"
         assert stored.completed_at == execution_time
-        assert workspace.purged_at == execution_time
-        assert workspace.purge_request_id == request_id
         assert workspace.deleted_at == datetime(2026, 1, 1)
         assert workspace.deleted_by_id == fixture["actor_id"]
+        terminal = verification.execute(
+            select(workspace_terminal_state_table).where(
+                workspace_terminal_state_table.c.id == fixture["workspace_id"]
+            )
+        ).mappings().one()
+        assert terminal["purged_at"] == execution_time
+        assert terminal["purge_request_id"] == request_id
         assert verification.query(fixture["models"].PurgeLifecycleEvent).filter_by(
             request_id=request_id, event_type="completed"
         ).count() == 1
@@ -453,7 +468,8 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
 
 
 def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
-    from sqlalchemy import text
+    from sqlalchemy import select, text
+    from models.purge import workspace_terminal_state_table
 
     fixture = _base_fixture(postgres_case)
     request_service = fixture["services"].PurgeRequestService
@@ -498,11 +514,15 @@ def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
             description=fixture["audit_description"]
         ).all()
         assert len(original_audits) == 1
-        workspace = verification.get(fixture["models"].Workspace, fixture["workspace_id"])
         stored = verification.get(fixture["models"].WorkspacePurgeRequest, request_id)
-        assert workspace.purged_at is None
-        assert workspace.purge_request_id is None
         assert stored.status == "FAILED"
+        terminal = verification.execute(
+            select(workspace_terminal_state_table).where(
+                workspace_terminal_state_table.c.id == fixture["workspace_id"]
+            )
+        ).mappings().one()
+        assert terminal["purged_at"] is None
+        assert terminal["purge_request_id"] is None
         assert verification.query(fixture["models"].PurgeLifecycleEvent).filter_by(
             request_id=request_id, event_type="completed"
         ).count() == 0
