@@ -1,4 +1,5 @@
 import os
+import ast
 import hashlib
 import json
 import tempfile
@@ -110,6 +111,50 @@ class PurgeRequestServiceTestCase(unittest.TestCase):
             )
         self.assertEqual(error.exception.code, "DUPLICATE_LIFECYCLE")
         self.assertEqual(db.session.query(WorkspacePurgeRequest).count(), 1)
+
+    def test_create_request_duplicate_lookup_does_not_lock_request_row(self):
+        source = Path(PurgeRequestService.__module__.replace('.', os.sep) + '.py')
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        method = next(
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == "create_purge_request"
+        )
+        method_text = ast.get_source_segment(source.read_text(encoding="utf-8"), method)
+        self.assertIsNotNone(method_text)
+        method_calls = list(ast.walk(method))
+
+        workspace_assignment = next(
+            node for node in ast.walk(method)
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "workspace" for target in node.targets)
+        )
+        workspace_lock_calls = [
+            node for node in ast.walk(workspace_assignment.value)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "with_for_update"
+        ]
+        self.assertTrue(workspace_lock_calls)
+
+        existing_assignments = [
+            node for node in ast.walk(method)
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "existing" for target in node.targets)
+        ]
+        self.assertGreaterEqual(len(existing_assignments), 2)
+        for assignment in existing_assignments:
+            self.assertFalse(any(
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "with_for_update"
+                for node in ast.walk(assignment.value)
+            ))
+
+        self.assertIn("WorkspacePurgeRequest", method_text)
+        self.assertIn("IntegrityError", method_text)
+        self.assertIn("DUPLICATE_LIFECYCLE", method_text)
+        self.assertIn("PERSISTENCE_ERROR", method_text)
 
     def test_approval_requires_other_actor_and_exact_phrase(self):
         requester, approver, workspace = self._fixture()

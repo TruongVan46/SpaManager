@@ -262,10 +262,13 @@ class PurgeRequestService:
                 raise PurgeRequestConflictError("Workspace deletion provenance is incomplete.", "PROVENANCE_INVALID")
             if PurgeRequestService._logo_present(session, workspace.id):
                 raise PurgeRequestConflictError("Workspace logo reference must be empty before requesting purge.", "WORKSPACE_LOGO_PRESENT")
+            # The workspace row is the create serialization anchor. Keep the
+            # existing-request lookup non-locking so it cannot invert the
+            # request -> workspace order used by approval, execution, and restore.
             existing = session.query(WorkspacePurgeRequest).filter(
                 WorkspacePurgeRequest.workspace_id == workspace.id,
                 WorkspacePurgeRequest.target_deleted_at == workspace.deleted_at,
-            ).with_for_update().one_or_none()
+            ).one_or_none()
             if existing is not None:
                 raise PurgeRequestConflictError(f"A request already exists: {existing.id}.", "DUPLICATE_LIFECYCLE")
             lifecycle_id = str(uuid.uuid4())
