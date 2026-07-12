@@ -28,6 +28,10 @@ def _parse_bool_env(value, default=False):
     return normalized_value in {"1", "true", "yes", "on", "y", "t"}
 
 
+def is_permanent_purge_ui_enabled(value):
+    return value is True
+
+
 def _is_test_process():
     return (
         os.getenv("SPAMANAGER_TEST_PROCESS") == "1"
@@ -62,6 +66,7 @@ class BaseConfig:
     APP_NAME = os.getenv("APP_NAME", "SpaManager")
     APP_VERSION = os.getenv("APP_VERSION", "5.9.0")
     APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
+    PERMANENT_PURGE_UI_ENABLED = _parse_bool_env(os.getenv("PERMANENT_PURGE_UI_ENABLED"), False)
 
     # SQLAlchemy Configurations
     SQLALCHEMY_TRACK_MODIFICATIONS = False

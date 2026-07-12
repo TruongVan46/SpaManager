@@ -517,7 +517,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertNotIn(owner, UserService.list_approval_accounts(status="deleted").items)
 
         approval_routes = {rule.rule for rule in app.url_map.iter_rules() if rule.rule.startswith("/approval/")}
-        self.assertFalse(any("purge" in rule or "permanent" in rule for rule in approval_routes))
+        self.assertFalse(any("purge" in rule and ("execute" in rule or "confirm" in rule) for rule in approval_routes))
 
     def test_staff_admin_account_lifecycle_remains_separate(self):
         staff = self._create_user("separate_staff", "STAFF")

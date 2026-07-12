@@ -1,0 +1,42 @@
+{% extends 'layout/approval_base.html' %}
+{% block title %}Purge requests - SpaManager{% endblock %}
+{% block content %}
+<section class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h1 class="h4 mb-1">Purge requests</h1>
+        <p class="text-muted mb-0">Review-only workflow. Không có execution trong Task 6.6.5.</p>
+      </div>
+      <span class="badge text-bg-warning">Execution unavailable</span>
+    </div>
+    {% if workspace_target and not workspace_target.existing_request_id and not workspace_target.purged %}
+    <div class="alert alert-danger" role="alert">
+      <strong>Cảnh báo thao tác không thể hoàn tác.</strong>
+      <div>Target: {{ workspace_target.name }} ({{ workspace_target.slug }})</div>
+      <form method="post" action="{{ url_for('approval.create_purge_request', workspace_id=workspace_target.id) }}" class="mt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="request-confirmation">Nhập chính xác: <code>REQUEST PURGE {{ workspace_target.slug }}</code></label>
+        <input id="request-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>
+        <button class="btn btn-danger mt-2" type="submit">Tạo purge request</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if summaries %}
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>Workspace</th><th>Status</th><th>Requester</th><th>Eligible</th><th>Action</th></tr></thead>
+        <tbody>{% for item in summaries %}<tr>
+          <td><strong>{{ item.workspace_name }}</strong><div class="small text-muted">{{ item.workspace_slug }}</div></td>
+          <td><span class="badge text-bg-secondary">{{ item.status }}</span></td>
+          <td>{{ item.requested_by_snapshot }}</td>
+          <td>{{ item.eligible_at }}</td>
+          <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('approval.purge_request_detail', request_id=item.id) }}">Xem chi tiết</a></td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted mb-0">Chưa có purge request.</p>{% endif %}
+    {% if pagination.pages > 1 %}<nav class="mt-3" aria-label="Purge request pagination"><a class="btn btn-sm btn-outline-secondary {% if not pagination.has_prev %}disabled{% endif %}" href="{{ url_for('approval.purge_requests', page=pagination.prev_num) }}">Trước</a> <span class="mx-2">Trang {{ pagination.page }}/{{ pagination.pages }}</span><a class="btn btn-sm btn-outline-secondary {% if not pagination.has_next %}disabled{% endif %}" href="{{ url_for('approval.purge_requests', page=pagination.next_num) }}">Sau</a></nav>{% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -637,6 +637,7 @@
                                                 </button>
                                             </form>
                                             {% endif %}
+                                            {% if config.get('PERMANENT_PURGE_UI_ENABLED') is sameas true and user.workspace_id %}<a class="btn btn-outline-warning approval-action-btn" href="{{ url_for('approval.purge_requests', workspace_id=user.workspace_id) }}" title="Tạo purge request">Purge request</a>{% endif %}
                                             <button class="btn btn-outline-secondary approval-action-btn" disabled title="Xóa vĩnh viễn (Chưa triển khai)"><i class="bi bi-trash-fill"></i> Xóa vĩnh viễn</button>
                                         </div>
                                     </td>
@@ -707,6 +708,7 @@
                                                 </button>
                                             </form>
                                             {% endif %}
+                                            {% if config.get('PERMANENT_PURGE_UI_ENABLED') is sameas true and user.workspace_id %}<a class="btn btn-outline-warning approval-action-btn flex-fill" href="{{ url_for('approval.purge_requests', workspace_id=user.workspace_id) }}" title="Tạo purge request">Purge request</a>{% endif %}
                                             <button class="btn btn-outline-secondary approval-action-btn flex-fill" disabled title="Xóa vĩnh viễn (Chưa triển khai)"><i class="bi bi-trash-fill"></i> Xóa vĩnh viễn</button>
                                         </div>
                                     </div>

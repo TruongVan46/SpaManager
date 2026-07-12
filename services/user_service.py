@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_
+from sqlalchemy import func, inspect, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -1009,34 +1009,105 @@ class UserService:
             now = utc_now()
             owner_deleted_at = user.deleted_at
             owner_deleted_by_id = user.deleted_by_id
-            user.deleted_at = None
-            user.deleted_by_id = None
-            user.deletion_reason = None
-            user.is_active = user._normalized_approval_status() == User.APPROVAL_ACTIVE
-
-            owned_deleted_workspaces = Workspace.query.join(
-                WorkspaceMember,
-                (WorkspaceMember.workspace_id == Workspace.id)
-                & (WorkspaceMember.user_id == user.id)
-                & (WorkspaceMember.role == "owner")
-            ).filter(Workspace.deleted_at.isnot(None)).all()
+            owned_deleted_workspaces = sorted(
+                Workspace.query.join(
+                    WorkspaceMember,
+                    (WorkspaceMember.workspace_id == Workspace.id)
+                    & (WorkspaceMember.user_id == user.id)
+                    & (WorkspaceMember.role == "owner")
+                ).filter(Workspace.deleted_at.isnot(None)).all(),
+                key=lambda workspace: workspace.id,
+            )
+            restore_candidates = [
+                workspace for workspace in owned_deleted_workspaces
+                if workspace.deleted_at == owner_deleted_at and workspace.deleted_by_id == owner_deleted_by_id
+            ]
+            skipped_workspace_names = [
+                workspace.name for workspace in owned_deleted_workspaces if workspace not in restore_candidates
+            ]
 
             restored_workspace_names = []
-            skipped_workspace_names = []
-            for workspace in owned_deleted_workspaces:
-                has_matching_provenance = (
-                    workspace.deleted_at == owner_deleted_at
-                    and workspace.deleted_by_id == owner_deleted_by_id
-                )
-                if not has_matching_provenance:
-                    skipped_workspace_names.append(workspace.name)
-                    continue
+            restored_workspace_ids = []
+            workspace_columns = {column["name"] for column in inspect(db.engine).get_columns("workspaces")}
+            purge_enabled_schema = (
+                inspect(db.engine).has_table("workspace_purge_requests")
+                and {"purged_at", "purge_request_id"}.issubset(workspace_columns)
+            )
+            if purge_enabled_schema:
+                from models.purge import WorkspacePurgeRequest, workspace_terminal_state_table
+                from services.purge_request_service import PurgeRequestService
+                with db.session.no_autoflush:
+                    for workspace in restore_candidates:
+                        requests = db.session.query(WorkspacePurgeRequest).filter(
+                            WorkspacePurgeRequest.workspace_id == workspace.id,
+                            WorkspacePurgeRequest.target_deleted_at == owner_deleted_at,
+                        ).order_by(WorkspacePurgeRequest.id).with_for_update().all()
 
-                workspace.deleted_at = None
-                workspace.deleted_by_id = None
-                workspace.deletion_reason = None
-                workspace.updated_at = now
-                restored_workspace_names.append(workspace.name)
+                    locked_workspaces = {}
+                    for workspace in restore_candidates:
+                        locked_workspaces[workspace.id] = db.session.query(Workspace).populate_existing().filter(Workspace.id == workspace.id).with_for_update().one()
+
+                    terminal_states = {}
+                    for workspace in restore_candidates:
+                        terminal_states[workspace.id] = db.session.execute(
+                            select(workspace_terminal_state_table).where(workspace_terminal_state_table.c.id == workspace.id).with_for_update()
+                        ).mappings().one_or_none()
+
+                    for workspace in restore_candidates:
+                        locked_workspace = locked_workspaces[workspace.id]
+                        requests = db.session.query(WorkspacePurgeRequest).filter(
+                            WorkspacePurgeRequest.workspace_id == workspace.id,
+                            WorkspacePurgeRequest.target_deleted_at == owner_deleted_at,
+                        ).order_by(WorkspacePurgeRequest.id).with_for_update().all()
+                        terminal = terminal_states[workspace.id]
+                        if terminal is None:
+                            raise ValidationException("Workspace terminal state không tồn tại; không thể khôi phục an toàn.")
+                        if terminal and (terminal["purged_at"] is not None or terminal["purge_request_id"] is not None):
+                            raise ValidationException("Workspace đã có terminal purge marker và không thể khôi phục.")
+                        preserved_statuses = {"CANCELLED", "REJECTED", "EXPIRED", "FAILED"}
+                        invalidatable_statuses = {"REQUESTED", "PENDING_RETENTION", "PENDING_APPROVAL", "APPROVED", "BLOCKED", "RETRY_PENDING"}
+                        if any(
+                            request.outcome_unknown
+                            or request.status in {"EXECUTING", "COMPLETED"}
+                            or request.status not in invalidatable_statuses | preserved_statuses
+                            for request in requests
+                        ):
+                            raise ValidationException("Workspace có purge request đang thực thi hoặc outcome chưa xác định; không thể khôi phục.")
+                    user.deleted_at = None
+                    user.deleted_by_id = None
+                    user.deletion_reason = None
+                    user.is_active = user._normalized_approval_status() == User.APPROVAL_ACTIVE
+                    for workspace in restore_candidates:
+                        locked_workspace = locked_workspaces[workspace.id]
+                        if locked_workspace.deleted_at != owner_deleted_at or locked_workspace.deleted_by_id != owner_deleted_by_id:
+                            skipped_workspace_names.append(locked_workspace.name)
+                            continue
+                        locked_workspace.deleted_at = None
+                        locked_workspace.deleted_by_id = None
+                        locked_workspace.deletion_reason = None
+                        locked_workspace.updated_at = now
+                        restored_workspace_names.append(locked_workspace.name)
+                        restored_workspace_ids.append(locked_workspace.id)
+                    if purge_enabled_schema:
+                        for restored_workspace_id in restored_workspace_ids:
+                            PurgeRequestService.invalidate_requests_for_workspace_restore(
+                                db.session, restored_workspace_id, owner_deleted_at, actor.id, now=now
+                            )
+            else:
+                user.deleted_at = None
+                user.deleted_by_id = None
+                user.deletion_reason = None
+                user.is_active = user._normalized_approval_status() == User.APPROVAL_ACTIVE
+                for workspace in restore_candidates:
+                    if workspace.deleted_at != owner_deleted_at or workspace.deleted_by_id != owner_deleted_by_id:
+                        skipped_workspace_names.append(workspace.name)
+                        continue
+                    workspace.deleted_at = None
+                    workspace.deleted_by_id = None
+                    workspace.deletion_reason = None
+                    workspace.updated_at = now
+                    restored_workspace_names.append(workspace.name)
+                    restored_workspace_ids.append(workspace.id)
 
             actor_display_name = get_activity_actor_display_name(actor)
             description_parts = [f"{actor_display_name} đã khôi phục OWNER {user.username}."]

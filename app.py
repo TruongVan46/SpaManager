@@ -5,7 +5,7 @@ import time
 from flask import Flask, abort, jsonify, request, redirect, url_for, send_from_directory, session
 from werkzeug.exceptions import HTTPException
 from extensions import db
-from config import get_active_config
+from config import get_active_config, is_permanent_purge_ui_enabled
 from utils.timezone_utils import to_local_datetime
 from utils.media_storage import normalize_media_reference, resolve_media_file_path
 from sqlalchemy import inspect, text
@@ -142,6 +142,12 @@ def require_login():
     # Skip check for static assets, login route, and favicon
     if request.endpoint is None:
         return
+
+    purge_ui_path = request.path.startswith('/approval/purge-requests') or (
+        request.path.startswith('/approval/workspaces/') and request.path.endswith('/purge-request')
+    )
+    if purge_ui_path and not is_permanent_purge_ui_enabled(app.config.get('PERMANENT_PURGE_UI_ENABLED')):
+        abort(404)
 
     if request.endpoint in [
         'static',

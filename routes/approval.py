@@ -1,4 +1,4 @@
-from flask import jsonify, redirect, render_template, request, url_for, abort
+from flask import current_app, jsonify, make_response, redirect, render_template, request, url_for, abort
 
 from core.auth.permissions import is_approval_owner
 from core.exceptions import BusinessException, ValidationException
@@ -6,6 +6,11 @@ from routes import approval_bp
 from services.auth_service import AuthService
 from services.notification_service import NotificationService
 from services.user_service import UserService
+from services.purge_request_service import (
+    PurgeRequestService,
+    PurgeRequestServiceError,
+)
+from config import is_permanent_purge_ui_enabled
 from utils.pagination import get_pagination_params
 
 
@@ -16,6 +21,24 @@ def _require_approval_owner():
     if not is_approval_owner(current_user):
         abort(403)
     return current_user
+
+
+def _require_purge_ui():
+    if not is_permanent_purge_ui_enabled(current_app.config.get("PERMANENT_PURGE_UI_ENABLED")):
+        abort(404)
+    return _require_approval_owner()
+
+
+def _no_cache(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
+def _purge_error(error):
+    NotificationService.flash_error(error.message)
+    return redirect(url_for("approval.purge_requests"))
 
 
 @approval_bp.route('/approval/pending')
@@ -218,3 +241,95 @@ def restore_owner_workspace(user_id):
             return jsonify({'success': False, 'message': e.message}), e.status_code
         NotificationService.flash_error(e.message)
     return redirect(url_for('approval.accounts', status='deleted'))
+
+
+@approval_bp.route('/approval/purge-requests')
+def purge_requests():
+    actor = _require_purge_ui()
+    page, per_page = get_pagination_params()
+    page_obj = PurgeRequestService.list_summaries(page=page, per_page=per_page)
+    target = None
+    workspace_id = request.args.get("workspace_id", type=int)
+    if workspace_id:
+        try:
+            target = PurgeRequestService.get_workspace_target(workspace_id)
+        except PurgeRequestServiceError:
+            target = None
+    response = make_response(render_template(
+        "approval/purge_requests.html",
+        current_user=actor,
+        pagination=page_obj,
+        summaries=page_obj.items,
+        workspace_target=target,
+    ))
+    return _no_cache(response)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>')
+def purge_request_detail(request_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.get_summary(request_id)
+    except PurgeRequestServiceError as error:
+        abort(404 if error.code == "NOT_FOUND" else 409)
+    response = make_response(render_template(
+        "approval/purge_request_detail.html", current_user=actor, summary=summary,
+    ))
+    return _no_cache(response)
+
+
+@approval_bp.route('/approval/workspaces/<int:workspace_id>/purge-request', methods=['POST'])
+def create_purge_request(workspace_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.create_purge_request(
+            workspace_id=workspace_id,
+            requester_user_id=actor.id,
+            confirmation_phrase=request.form.get("confirmation_phrase"),
+        )
+        NotificationService.flash_success("Purge request đã được tạo và chờ review.")
+        return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
+    except PurgeRequestServiceError as error:
+        return _purge_error(error)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/approve', methods=['POST'])
+def approve_purge_request(request_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.approve_purge_request(
+            request_id=request_id, approver_user_id=actor.id,
+            confirmation_phrase=request.form.get("confirmation_phrase"),
+        )
+        NotificationService.flash_success("Purge request đã được approve; execution chưa được mở.")
+        return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
+    except PurgeRequestServiceError as error:
+        return _purge_error(error)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/reject', methods=['POST'])
+def reject_purge_request(request_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.reject_purge_request(
+            request_id=request_id, rejector_user_id=actor.id,
+            reason=request.form.get("reason"),
+        )
+        NotificationService.flash_success("Purge request đã bị reject và được lưu audit.")
+        return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
+    except PurgeRequestServiceError as error:
+        return _purge_error(error)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/cancel', methods=['POST'])
+def cancel_purge_request(request_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.cancel_purge_request(
+            request_id=request_id, requester_user_id=actor.id,
+            reason=request.form.get("reason"),
+        )
+        NotificationService.flash_success("Purge request đã được cancel.")
+        return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
+    except PurgeRequestServiceError as error:
+        return _purge_error(error)
