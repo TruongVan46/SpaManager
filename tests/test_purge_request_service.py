@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from sqlalchemy import inspect, update
+from sqlalchemy import inspect, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -18,15 +18,19 @@ os.environ["TEST_DATABASE_URL"] = f"sqlite:///{TEST_DB_FILE.as_posix()}"
 os.environ["SPAMANAGER_TEST_PROCESS"] = "1"
 
 from app import app
+from core.exceptions import ValidationException
 from extensions import db
-from models.purge import PurgeLifecycleEvent, WorkspacePurgeRequest
+from models.activity_log import ActivityLog
+from models.purge import PurgeLegalHold, PurgeLifecycleEvent, WorkspacePurgeRequest
 from models.purge import workspace_terminal_state_table
+from models.setting import Setting
 from models.user import User
 from models.workspace import Workspace, WorkspaceMember
 from services.user_service import UserService
 from services.purge_request_service import (
     PurgeRequestAuthorizationError,
     PurgeRequestConflictError,
+    PurgeRequestNotFoundError,
     PurgeRequestService,
 )
 
@@ -53,7 +57,7 @@ class PurgeRequestServiceTestCase(unittest.TestCase):
 
     def setUp(self):
         db.session.remove()
-        for model in (PurgeLifecycleEvent, WorkspacePurgeRequest, WorkspaceMember, Workspace, User):
+        for model in (ActivityLog, PurgeLifecycleEvent, PurgeLegalHold, WorkspacePurgeRequest, Setting, WorkspaceMember, Workspace, User):
             db.session.query(model).delete(synchronize_session=False)
         db.session.commit()
 
@@ -128,6 +132,169 @@ class PurgeRequestServiceTestCase(unittest.TestCase):
             confirmation_phrase=f"APPROVE PURGE {workspace.slug} {summary.lifecycle_id}", now=datetime(2026, 2, 1),
         )
         self.assertEqual(approved.status, "APPROVED")
+
+    def test_approval_event_sequence_is_complete_and_unique(self):
+        requester, approver, workspace = self._fixture()
+        summary = PurgeRequestService.create_purge_request(
+            workspace_id=workspace.id, requester_user_id=requester.id,
+            confirmation_phrase=f"REQUEST PURGE {workspace.slug}", now=datetime(2026, 1, 1),
+        )
+        manifest_before = db.session.get(WorkspacePurgeRequest, summary.id).manifest_canonical_text
+        hash_before = db.session.get(WorkspacePurgeRequest, summary.id).manifest_hash
+        approved = PurgeRequestService.approve_purge_request(
+            request_id=summary.id, approver_user_id=approver.id,
+            confirmation_phrase=f"APPROVE PURGE {workspace.slug} {summary.lifecycle_id}", now=datetime(2026, 1, 31),
+        )
+        self.assertEqual(approved.status, "APPROVED")
+        events = db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).order_by(PurgeLifecycleEvent.event_sequence).all()
+        self.assertEqual([event.event_sequence for event in events], list(range(1, len(events) + 1)))
+        self.assertEqual(
+            [event.event_type for event in events],
+            ["request_created", "retention_pending", "retention_reached", "pending_approval", "request_approved"],
+        )
+        self.assertEqual(events[-1].actor_id, approver.id)
+        self.assertEqual(events[-1].status_before, "PENDING_APPROVAL")
+        self.assertEqual(events[-1].status_after, "APPROVED")
+        self.assertEqual(events[0].lifecycle_id_snapshot, summary.lifecycle_id)
+        self.assertEqual(events[0].workspace_id, workspace.id)
+        self.assertEqual(events[0].workspace_name_snapshot, workspace.name)
+        self.assertEqual(events[0].actor_snapshot, requester.username)
+        self.assertEqual(events[-1].actor_snapshot, approver.username)
+        self.assertEqual(events[-1].reason_code, "REQUEST_APPROVED")
+        stored = db.session.get(WorkspacePurgeRequest, summary.id)
+        self.assertEqual(stored.manifest_canonical_text, manifest_before)
+        self.assertEqual(stored.manifest_hash, hash_before)
+        before_retry_events = len(events)
+        with self.assertRaises(PurgeRequestConflictError):
+            PurgeRequestService.approve_purge_request(
+                request_id=summary.id, approver_user_id=approver.id,
+                confirmation_phrase=f"APPROVE PURGE {workspace.slug} {summary.lifecycle_id}", now=datetime(2026, 2, 1),
+            )
+        self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count(), before_retry_events)
+
+    def test_invalid_approval_owner_states_block_all_request_mutations(self):
+        requester, approver, workspace = self._fixture()
+        summary = PurgeRequestService.create_purge_request(
+            workspace_id=workspace.id, requester_user_id=requester.id,
+            confirmation_phrase=f"REQUEST PURGE {workspace.slug}", now=datetime(2026, 2, 1),
+        )
+        cases = (
+            ("pending", {"approval_status": "pending", "is_active": True, "deleted_at": None}),
+            ("rejected", {"approval_status": "rejected", "is_active": True, "deleted_at": None}),
+            ("disabled", {"approval_status": "active", "is_active": False, "deleted_at": None}),
+            ("inactive", {"approval_status": "active", "is_active": False, "deleted_at": None}),
+            ("soft_deleted", {"approval_status": "active", "is_active": True, "deleted_at": datetime(2026, 1, 2)}),
+        )
+        for name, values in cases:
+            with self.subTest(name=name):
+                approver.approval_status = values["approval_status"]
+                approver.is_active = values["is_active"]
+                approver.deleted_at = values["deleted_at"]
+                db.session.commit()
+                before = db.session.get(WorkspacePurgeRequest, summary.id)
+                before_status = before.status
+                before_events = db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count()
+                for operation in (
+                    lambda: PurgeRequestService.approve_purge_request(
+                        request_id=summary.id, approver_user_id=approver.id,
+                        confirmation_phrase=f"APPROVE PURGE {workspace.slug} {summary.lifecycle_id}", now=datetime(2026, 2, 1),
+                    ),
+                    lambda: PurgeRequestService.reject_purge_request(
+                        request_id=summary.id, rejector_user_id=approver.id, reason="blocked", now=datetime(2026, 2, 1),
+                    ),
+                    lambda: PurgeRequestService.cancel_purge_request(
+                        request_id=summary.id, requester_user_id=approver.id, reason="blocked", now=datetime(2026, 2, 1),
+                    ),
+                ):
+                    with self.assertRaises(PurgeRequestAuthorizationError):
+                        operation()
+                db.session.expire_all()
+                after = db.session.get(WorkspacePurgeRequest, summary.id)
+                self.assertEqual(after.status, before_status)
+                self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count(), before_events)
+        approver.approval_status = "active"
+        approver.is_active = True
+        approver.deleted_at = None
+        db.session.commit()
+
+    def test_reject_and_cancel_normalize_reason_and_are_idempotent(self):
+        requester, approver, workspace = self._fixture()
+        summary = PurgeRequestService.create_purge_request(
+            workspace_id=workspace.id, requester_user_id=requester.id,
+            confirmation_phrase=f"REQUEST PURGE {workspace.slug}", now=datetime(2026, 2, 1),
+        )
+        rejected = PurgeRequestService.reject_purge_request(
+            request_id=summary.id, rejector_user_id=approver.id, reason="  " + ("x" * 1200) + "  ", now=datetime(2026, 2, 2),
+        )
+        self.assertEqual(rejected.status, "REJECTED")
+        stored = db.session.get(WorkspacePurgeRequest, summary.id)
+        self.assertEqual(stored.rejected_by_id, approver.id)
+        self.assertEqual(len(stored.rejection_reason), 1000)
+        before_events = db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count()
+        with self.assertRaises(PurgeRequestConflictError):
+            PurgeRequestService.reject_purge_request(
+                request_id=summary.id, rejector_user_id=approver.id, reason="again", now=datetime(2026, 2, 3),
+            )
+        self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count(), before_events)
+
+        cancel_workspace = Workspace(
+            name="Cancel Target", slug=f"cancel-{uuid.uuid4().hex}", status="active",
+            deleted_at=datetime(2026, 2, 1), deleted_by_id=requester.id,
+        )
+        db.session.add(cancel_workspace)
+        db.session.commit()
+        cancel_summary = PurgeRequestService.create_purge_request(
+            workspace_id=cancel_workspace.id, requester_user_id=requester.id,
+            confirmation_phrase=f"REQUEST PURGE {cancel_workspace.slug}", now=datetime(2026, 2, 2),
+        )
+        cancelled = PurgeRequestService.cancel_purge_request(
+            request_id=cancel_summary.id, requester_user_id=requester.id, reason=None, now=datetime(2026, 2, 3),
+        )
+        self.assertEqual(cancelled.status, "CANCELLED")
+        cancelled_row = db.session.get(WorkspacePurgeRequest, cancel_summary.id)
+        self.assertEqual(cancelled_row.cancelled_by_id, requester.id)
+        self.assertEqual(cancelled_row.cancellation_reason, "Cancelled by requester.")
+        cancel_events = db.session.query(PurgeLifecycleEvent).filter_by(request_id=cancel_summary.id).count()
+        with self.assertRaises(PurgeRequestConflictError):
+            PurgeRequestService.cancel_purge_request(
+                request_id=cancel_summary.id, requester_user_id=requester.id, reason="again", now=datetime(2026, 2, 4),
+            )
+        self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=cancel_summary.id).count(), cancel_events)
+
+    def test_request_guards_fail_closed_and_roll_back_manifest_or_event_failure(self):
+        requester, approver, workspace = self._fixture()
+        workspace_id = workspace.id
+        workspace_slug = workspace.slug
+        requester_id = requester.id
+        with patch("services.purge_request_service.PurgeRequestService._terminal", return_value=None):
+            with self.assertRaises(PurgeRequestNotFoundError):
+                PurgeRequestService.create_purge_request(
+                    workspace_id=workspace_id, requester_user_id=requester_id,
+                    confirmation_phrase=f"REQUEST PURGE {workspace_slug}", now=datetime(2026, 2, 1),
+                )
+        self.assertEqual(db.session.query(WorkspacePurgeRequest).count(), 0)
+        for marker in ({"purged_at": datetime(2026, 2, 1), "purge_request_id": None}, {"purged_at": None, "purge_request_id": 999}):
+            with patch("services.purge_request_service.PurgeRequestService._terminal", return_value=marker):
+                with self.assertRaises(PurgeRequestConflictError) as marker_error:
+                    PurgeRequestService.create_purge_request(
+                        workspace_id=workspace_id, requester_user_id=requester_id,
+                        confirmation_phrase=f"REQUEST PURGE {workspace_slug}", now=datetime(2026, 2, 1),
+                    )
+            self.assertEqual(marker_error.exception.code, "ALREADY_PURGED")
+        with patch("services.purge_request_service.build_manifest", side_effect=RuntimeError("manifest failure")):
+            with self.assertRaises(RuntimeError):
+                PurgeRequestService.create_purge_request(
+                    workspace_id=workspace_id, requester_user_id=requester_id,
+                    confirmation_phrase=f"REQUEST PURGE {workspace_slug}", now=datetime(2026, 2, 1),
+                )
+        self.assertEqual(db.session.query(WorkspacePurgeRequest).count(), 0)
+        with patch("services.purge_request_service.PurgeRequestService._event", side_effect=RuntimeError("event failure")):
+            with self.assertRaises(RuntimeError):
+                PurgeRequestService.create_purge_request(
+                    workspace_id=workspace.id, requester_user_id=requester.id,
+                    confirmation_phrase=f"REQUEST PURGE {workspace.slug}", now=datetime(2026, 2, 1),
+                )
+        self.assertEqual(db.session.query(WorkspacePurgeRequest).count(), 0)
 
     def test_terminal_marker_blocks_approval_without_mutating_request_or_events(self):
         requester, approver, workspace = self._fixture()
@@ -355,6 +522,105 @@ class PurgeRequestServiceTestCase(unittest.TestCase):
         self.assertIsNotNone(stored.invalidated_at)
         self.assertTrue(stored.invalidated_by_restore)
         self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(event_type="manifest_invalidated").count(), 1)
+
+    def test_restore_invalidation_helper_mutates_only_invalidatable_statuses(self):
+        requester, approver, _ = self._fixture()
+        invalidatable = ("REQUESTED", "PENDING_RETENTION", "PENDING_APPROVAL", "APPROVED", "BLOCKED", "RETRY_PENDING")
+        preserved = ("CANCELLED", "REJECTED", "EXPIRED", "FAILED", "EXECUTING", "COMPLETED")
+        for index, status in enumerate(invalidatable + preserved):
+            with self.subTest(status=status):
+                workspace = Workspace(
+                    name=f"Status {status}", slug=f"status-{index}-{uuid.uuid4().hex}", status="active",
+                    deleted_at=datetime(2026, 1, 1), deleted_by_id=requester.id,
+                )
+                db.session.add(workspace)
+                db.session.commit()
+                summary = PurgeRequestService.create_purge_request(
+                    workspace_id=workspace.id, requester_user_id=requester.id,
+                    confirmation_phrase=f"REQUEST PURGE {workspace.slug}", now=datetime(2026, 2, 1),
+                )
+                values = {"status": status, "outcome_unknown": False}
+                if status == "COMPLETED":
+                    values["completed_at"] = datetime(2026, 2, 1)
+                db.session.query(WorkspacePurgeRequest).filter_by(id=summary.id).update(values)
+                db.session.commit()
+                stored_before = db.session.get(WorkspacePurgeRequest, summary.id)
+                manifest_before = stored_before.manifest_canonical_text
+                hash_before = stored_before.manifest_hash
+                events_before = db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count()
+                count = PurgeRequestService.invalidate_requests_for_workspace_restore(
+                    db.session, workspace.id, datetime(2026, 1, 1), approver.id, now=datetime(2026, 2, 2),
+                )
+                db.session.commit()
+                stored = db.session.get(WorkspacePurgeRequest, summary.id)
+                if status in invalidatable:
+                    self.assertEqual(count, 1)
+                    self.assertIsNotNone(stored.invalidated_at)
+                    self.assertTrue(stored.invalidated_by_restore)
+                    self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id, event_type="manifest_invalidated").count(), 1)
+                    self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count(), events_before + 1)
+                else:
+                    self.assertEqual(count, 0)
+                    self.assertIsNone(stored.invalidated_at)
+                    self.assertFalse(stored.invalidated_by_restore)
+                    self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count(), events_before)
+                self.assertEqual(stored.manifest_canonical_text, manifest_before)
+                self.assertEqual(stored.manifest_hash, hash_before)
+
+    def test_restore_owner_workspace_blocks_matching_terminal_and_unknown_outcomes(self):
+        actor = User(username=f"restore_actor_{uuid.uuid4().hex[:8]}", full_name="Restore Actor", role="APPROVAL_OWNER", approval_status="active", is_active=True)
+        actor.set_password("RestorePassword123!")
+        db.session.add(actor)
+        db.session.flush()
+        cases = ("EXECUTING", "COMPLETED", "OUTCOME_UNKNOWN", "PURGED_AT", "PURGE_REQUEST_ID")
+        for case in cases:
+            with self.subTest(case=case):
+                lifecycle_time = datetime(2026, 1, 1)
+                owner = User(username=f"restore_owner_{case.lower()}_{uuid.uuid4().hex[:8]}", full_name="Restore Owner", role="OWNER", approval_status="active", is_active=False, deleted_at=lifecycle_time, deleted_by_id=actor.id)
+                owner.set_password("OwnerPassword123!")
+                workspace = Workspace(name=f"Blocked {case}", slug=f"blocked-{case.lower()}-{uuid.uuid4().hex}", status="active", deleted_at=lifecycle_time, deleted_by_id=actor.id)
+                db.session.add_all([owner, workspace])
+                db.session.flush()
+                db.session.add(WorkspaceMember(workspace_id=workspace.id, user_id=owner.id, role="owner", status="active"))
+                db.session.commit()
+                summary = PurgeRequestService.create_purge_request(
+                    workspace_id=workspace.id, requester_user_id=actor.id,
+                    confirmation_phrase=f"REQUEST PURGE {workspace.slug}", now=datetime(2026, 2, 1),
+                )
+                values = {}
+                if case in ("EXECUTING", "COMPLETED"):
+                    values["status"] = case
+                elif case == "OUTCOME_UNKNOWN":
+                    values["outcome_unknown"] = True
+                else:
+                    values["status"] = "APPROVED"
+                    values["purged_at"] = lifecycle_time
+                    values["purge_request_id"] = summary.id
+                if case == "COMPLETED":
+                    values["completed_at"] = datetime(2026, 2, 1)
+                if case == "OUTCOME_UNKNOWN":
+                    values["status"] = "APPROVED"
+                terminal_values = {key: value for key, value in values.items() if key in ("purged_at", "purge_request_id")}
+                if terminal_values:
+                    db.session.execute(update(workspace_terminal_state_table).where(workspace_terminal_state_table.c.id == workspace.id).values(**terminal_values))
+                db.session.query(WorkspacePurgeRequest).filter_by(id=summary.id).update({key: value for key, value in values.items() if key not in ("purged_at", "purge_request_id")})
+                db.session.commit()
+                before_events = db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count()
+                before_hash = db.session.get(WorkspacePurgeRequest, summary.id).manifest_hash
+                before_text = db.session.get(WorkspacePurgeRequest, summary.id).manifest_canonical_text
+                with self.assertRaises(ValidationException):
+                    UserService.restore_owner_workspace(actor, owner.id)
+                db.session.expire_all()
+                self.assertIsNotNone(db.session.get(User, owner.id).deleted_at)
+                self.assertFalse(db.session.get(User, owner.id).is_active)
+                self.assertIsNotNone(db.session.get(Workspace, workspace.id).deleted_at)
+                blocked_request = db.session.get(WorkspacePurgeRequest, summary.id)
+                self.assertEqual(blocked_request.status, "APPROVED" if case in ("PURGED_AT", "PURGE_REQUEST_ID", "OUTCOME_UNKNOWN") else case)
+                self.assertEqual(blocked_request.manifest_hash, before_hash)
+                self.assertEqual(blocked_request.manifest_canonical_text, before_text)
+                self.assertIsNone(blocked_request.invalidated_at)
+                self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(request_id=summary.id).count(), before_events)
+                self.assertEqual(ActivityLog.query.filter_by(action="RESTORE_OWNER_WORKSPACE", reference_id=owner.id).count(), 0)
 
 
 if __name__ == "__main__":
