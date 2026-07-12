@@ -190,15 +190,23 @@ def test_approval_event_ordering_and_manifest_immutability(postgres_case):
     )
     request_id = request.id
     lifecycle_id = request.lifecycle_id
-    manifest_hash = request.manifest_hash
-    manifest_canonical_text = request.manifest_canonical_text
+
+    # Load canonical text and hash from database in a bounded independent session
+    fixture["db"].session.remove()
+    verification = postgres_case.new_session()
+    try:
+        stored = verification.get(fixture["models"].WorkspacePurgeRequest, request_id)
+        manifest_hash = stored.manifest_hash
+        manifest_canonical_text = stored.manifest_canonical_text
+    finally:
+        verification.close()
 
     service.approve_purge_request(
         request_id=request_id, approver_user_id=fixture["executor_id"],
         confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}",
         now=datetime(2026, 2, 1),
     )
-    fixture["db"].session.remove()
+
     verification = postgres_case.new_session()
     try:
         stored_req = verification.get(fixture["models"].WorkspacePurgeRequest, request_id)
@@ -283,7 +291,15 @@ def test_manifest_drift_fails_closed(postgres_case):
     request_id = request.id
     lifecycle_id = request.lifecycle_id
     manifest_hash = request.manifest_hash
-    manifest_canonical_text = request.manifest_canonical_text
+
+    # Fetch manifest_canonical_text using an independent session
+    fixture["db"].session.remove()
+    verification = postgres_case.new_session()
+    try:
+        stored = verification.get(fixture["models"].WorkspacePurgeRequest, request_id)
+        manifest_canonical_text = stored.manifest_canonical_text
+    finally:
+        verification.close()
 
     session = postgres_case.new_session()
     try:

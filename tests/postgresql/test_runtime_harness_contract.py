@@ -420,3 +420,63 @@ def test_ast_duplicate_scenario_uses_independent_sessions_only():
             if isinstance(curr, ast.Attribute) and curr.attr == "session":
                 is_db_session = True
             assert not is_db_session, f"Unarmed Flask db.session.{subnode.attr} found in duplicate test scenario!"
+
+
+def test_ast_approval_and_drift_dto_contract():
+    import ast
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    target_funcs = {"test_approval_event_ordering_and_manifest_immutability", "test_manifest_drift_fails_closed"}
+    found_funcs = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in target_funcs:
+            found_funcs[node.name] = node
+
+    assert len(found_funcs) == 2
+
+    for name, func_node in found_funcs.items():
+        # Assert no request.manifest_canonical_text is used
+        for subnode in ast.walk(func_node):
+            if isinstance(subnode, ast.Attribute) and subnode.attr == "manifest_canonical_text":
+                val = subnode.value
+                if isinstance(val, ast.Name) and val.id == "request":
+                    raise AssertionError(f"Function {name} directly accesses request.manifest_canonical_text")
+
+
+def test_ast_session_closure_ordering():
+    import ast
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    func_node = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "test_approval_event_ordering_and_manifest_immutability":
+            func_node = node
+            break
+
+    assert func_node is not None
+
+    tries = [node for node in func_node.body if isinstance(node, ast.Try)]
+    assert len(tries) == 2
+
+    # Let's find approve_purge_request call
+    approve_call = None
+    for subnode in ast.walk(func_node):
+        if isinstance(subnode, ast.Call) and isinstance(subnode.func, ast.Attribute) and subnode.func.attr == "approve_purge_request":
+            approve_call = subnode
+            break
+
+    assert approve_call is not None
+
+    approve_stmt_index = -1
+    for idx, stmt in enumerate(func_node.body):
+        if approve_call in ast.walk(stmt):
+            approve_stmt_index = idx
+            break
+
+    first_try_index = func_node.body.index(tries[0])
+    assert approve_stmt_index > first_try_index, "approve_purge_request must be called after the first verification block closes."
+
+    second_try_index = func_node.body.index(tries[1])
+    assert second_try_index > approve_stmt_index, "final verification block must be after approve_purge_request."

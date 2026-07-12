@@ -161,12 +161,10 @@ to ensure that original timeout exceptions are propagated without alteration.
 ### Post-Service Verification and Duplicate Scenarios
 
 Post-service verification is executed using bounded independent sessions (via `new_session()`).
-Specifically, in `test_request_creation_manifest_and_duplicate`, the thread-local scoped session
-is removed (`fixture["db"].session.remove()`) immediately after service creation, and a short-lived
-independent verification session is used to check the initial state. This verification session
-is fully closed before the duplicate request service call is run, guaranteeing that no scoped
-read transaction remains open or active during the duplicate service execution. Final state check
-is similarly performed inside another dedicated short-lived verification session.
+Specifically:
+- Service summaries (`PurgeRequestSummary` DTO) and persisted database models (`WorkspacePurgeRequest`) have different contracts. Fields like `manifest_canonical_text`, `target_deleted_at`, and `target_deleted_by_id` are not exposed by the summary DTO and are instead loaded from the persisted database model via independent sessions.
+- In `test_request_creation_manifest_and_duplicate` and `test_approval_event_ordering_and_manifest_immutability`, verification sessions are closed before service mutations or duplicate service execution are triggered, preventing open read transactions.
+- During a prior controlled rehearsal, the first 3 tests passed successfully. However, `test_approval_event_ordering_and_manifest_immutability` failed due to a harness DTO-contract mismatch (`AttributeError` when attempting to read `manifest_canonical_text` directly from `PurgeRequestSummary`). Importantly, the database cleanup invariant successfully executed and returned all application tables (including workspaces) to zero.
 
 ### No-Opt-In Behavior
 
