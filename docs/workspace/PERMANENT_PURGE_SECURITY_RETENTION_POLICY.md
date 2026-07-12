@@ -419,6 +419,51 @@ Migration mandatory for every safe minimal synchronous implementation: `NO`.
 
 Migration requirement for a production-grade persisted workflow: `POLICY-DEPENDENT`.
 
+## Task 6.6.4 Owner-approved implementation amendment
+
+This amendment records the internal-only synchronous implementation boundary. It
+does not authorize production execution.
+
+### Approved disposition
+
+- Hard-delete only target-workspace rows from `invoice_details`, `appointments`,
+  `invoices`, `customers`, `services`, `settings`, and `workspace_members`.
+- Preserve `users`, `activity_logs`, `workspace_purge_requests`,
+  `purge_legal_holds`, `purge_lifecycle_events`, and the terminal `workspaces`
+  tombstone.
+- Do not delete filesystem assets from the purge transaction.
+- A target workspace is blocked while any `spa_logo` setting reference is
+  non-null, non-empty, malformed, or unresolved.
+- User avatars, global backups, and operational logs are preserved. PDF/Excel
+  response streams and import/restore temporary files are not persistent purge
+  assets.
+
+### Approved `purge-manifest-v1` contract
+
+- `request_id` is database input only and is excluded from canonical JSON.
+- `lifecycle_id` is the canonical manifest identity.
+- Provenance uses `target_deleted_at` and `target_deleted_by_id` snapshots.
+- Retention contains exactly `eligible_at` and `policy_version`.
+- Naive persisted timestamps are interpreted as UTC; output is
+  `YYYY-MM-DDTHH:MM:SS.ffffffZ`.
+- Canonical JSON uses `ensure_ascii=True`, `allow_nan=False`,
+  `separators=(",", ":")`, `sort_keys=False`, UTF-8, no BOM, and no trailing
+  newline.
+- Row-set fingerprints use positive integer primary keys, numeric ascending
+  order, LF separators without a trailing LF, and lowercase SHA-256 hex.
+- Stored canonical text and hash are recomputed and compared before approval
+  and execution. No silent refresh is permitted.
+
+### Implementation boundary
+
+- The service is internal-only and has no route, UI, worker, scheduler, or
+  startup hook.
+- Legal hold, authorization, retention, status, provenance, workspace, logo,
+  and manifest gates fail closed.
+- Existing migration `0007_permanent_purge_workflow` is sufficient; no new
+  migration is created.
+- Production purge execution is not authorized. Version 6.6 is not closed.
+
 Nếu Owner phê duyệt toàn bộ recommendation production-grade gồm persisted retention, two-person approval, actor separation, global legal hold, immutable manifest, lifecycle ID, cancellation, durable retry/idempotency và retained audit identity, thì **Task 6.6.3 migration proposal becomes required before implementation**. Đây là policy consequence, không phải migration approval.
 
 Task 6.6.3 migration proposal: **AUTHORIZED TO OPEN**.
