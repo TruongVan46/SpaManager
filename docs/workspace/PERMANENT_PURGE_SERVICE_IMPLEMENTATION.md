@@ -125,9 +125,10 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 - Migration `0008_durable_purge_reauth_state` is the approved schema
   foundation for Task 6.6.8d3b. It creates only the two documented durable
   re-auth tables and starts them empty.
-- No password re-authentication, nonce issuance/claim, fresh-session runtime,
-  route flow, or destructive execution integration is implemented; Tasks
-  6.6.8d3c and 6.6.8d3d remain required.
+- No password re-authentication, nonce issuance/claim, or fresh-session runtime
+  is introduced by d3c itself. The d3d Approval Portal integration and logout
+  cleanup are separately scoped; Google re-auth and production execution
+  remain gated follow-up work.
 - No production purge.
 
 The execution gate and browser boundary do not authorize production purge.
@@ -184,8 +185,14 @@ the service-started transition. Successful completion becomes
 `CONSUMED_SUCCESS`; a known pre-start rejection becomes `REVOKED`, while an
 unexpected pre-start failure becomes `CLAIMED_UNRESOLVED`.
 
-Direct service calls fail closed with `REAUTH_REQUIRED`. No browser form,
-route, session transport, logout/password-change wiring, Google re-auth, or
-production execution is introduced in this task. PostgreSQL concurrency proof,
-transport integration, and later lifecycle invalidation work remain deferred
-to their approved follow-up tasks. Feature flags remain disabled by default.
+Direct service calls fail closed with `REAUTH_REQUIRED`. The Approval Portal now
+uses a two-step browser flow: current local password in the re-auth POST, then
+exact typed confirmation in a separate destructive POST. The raw nonce is a
+short-lived transport in the signed Flask session only; it is never rendered,
+logged, audited, or persisted. The transport is bound to request, workspace,
+actor, and generation, is removed before the public service call, and is not
+automatically retried. The database claim remains authoritative. Logout clears
+the transport and best-effort revokes active authorizations. Google re-auth and
+broader password/lifecycle invalidation hooks remain deferred. PostgreSQL
+concurrency proof remains pending d3e. Feature flags remain disabled by
+default, and production execution remains NOT AUTHORIZED.

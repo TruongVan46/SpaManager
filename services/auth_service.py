@@ -163,8 +163,14 @@ class AuthService:
         Returns: True
         """
         user = AuthService.get_current_user()
+        session.pop("purge_reauth_transport_v1", None)
         if user:
             AuthService.on_logout(user)
+            try:
+                from services.purge_reauth_service import PurgeReauthService
+                PurgeReauthService.revoke_active_authorizations_for_actor(user.id, "LOGOUT")
+            except Exception as exc:
+                app_logger.error("Purge re-auth logout revocation failed safely.", module="AUTHENTICATION", exc_info=False)
         session.pop(AUTH_SESSION_KEY, None)
         session.pop("current_workspace_id", None)
         from core.csrf import clear_csrf_token

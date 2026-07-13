@@ -1,5 +1,6 @@
 import os
 import unittest
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import DEFAULT, patch
 
@@ -9,6 +10,7 @@ os.environ["SPAMANAGER_TEST_PROCESS"] = "1"
 
 from app import app
 from config import _parse_bool_env, is_permanent_purge_ui_enabled
+from services.purge_reauth_service import PurgeReauthIssuance, PurgeReauthRateLimitedError
 
 
 class ApprovalPurgeRoutesTestCase(unittest.TestCase):
@@ -63,6 +65,22 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
             deleted_at=None, approval_status="active", auth_provider=auth_provider,
             can_access_app=True,
         )
+
+    @staticmethod
+    def _set_transport(client, request_id=45, workspace_id=12, actor_id=9, generation=1, nonce="test-nonce"):
+        now = datetime.utcnow()
+        with client.session_transaction() as session_data:
+            session_data["purge_reauth_transport_v1"] = {
+                "version": 1,
+                "authorization_id": 99,
+                "purge_request_id": request_id,
+                "workspace_id": workspace_id,
+                "actor_user_id": actor_id,
+                "generation": generation,
+                "raw_nonce": nonce,
+                "authenticated_at": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=4)).isoformat(),
+            }
 
     def test_flag_disabled_returns_not_found_before_auth_or_query(self):
         for value in (None, False, "", "false", "malformed"):
@@ -278,7 +296,35 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         ):
             response = self.client.get("/approval/purge-requests/45/execute/confirm")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("PURGE WORKSPACE 12 REQUEST 45", response.get_data(as_text=True))
+        self.assertIn("current_password", response.get_data(as_text=True))
+        self.assertNotIn("PURGE WORKSPACE 12 REQUEST 45", response.get_data(as_text=True))
+
+    def test_execution_flag_disabled_blocks_reauth_and_execute_before_services(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = False
+        actor = self._actor()
+        client = app.test_client()
+        client.get("/login")
+        with client.session_transaction() as session_data:
+            csrf_token = session_data.get("_csrf_token")
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch("routes.approval.PurgeRequestService.get_summary") as get_summary, patch(
+            "routes.approval.PurgeReauthService.issue_local_authorization"
+        ) as issue, patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
+            reauth = client.post(
+                "/approval/purge-requests/45/reauth",
+                data={"csrf_token": csrf_token, "current_password": "Password123!"},
+            )
+            destructive = client.post(
+                "/approval/purge-requests/45/execute",
+                data={"csrf_token": csrf_token, "confirmation_phrase": "PURGE WORKSPACE 12 REQUEST 45"},
+            )
+        self.assertEqual(reauth.status_code, 404)
+        self.assertEqual(destructive.status_code, 404)
+        get_summary.assert_not_called()
+        issue.assert_not_called()
+        execute.assert_not_called()
 
     def test_execution_methods_are_strictly_confirmation_get_and_execution_post(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
@@ -374,6 +420,7 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
             "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
         ), patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
             execute.return_value = SimpleNamespace(request_id=45)
+            self._set_transport(valid_client)
             for phrase in ("", "purge workspace 12 request 45", "PURGE WORKSPACE 12"):
                 with self.subTest(phrase=phrase):
                     response = valid_client.post(
@@ -387,13 +434,16 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
                 "/approval/purge-requests/45/execute",
                 data={
                     "csrf_token": csrf_token,
-                    "confirmation_phrase": "  PURGE WORKSPACE 12 REQUEST 45  ",
+                    "confirmation_phrase": "PURGE WORKSPACE 12 REQUEST 45",
                     "actor_id": "8",
                     "auth_provider": "google",
                 },
             )
         self.assertEqual(response.status_code, 302)
-        execute.assert_called_once_with(request_id=45, workspace_id=12, executor_user_id=9)
+        execute.assert_called_once_with(
+            request_id=45, workspace_id=12, executor_user_id=9,
+            authorization_generation=1, authorization_nonce="test-nonce",
+        )
 
     def test_execution_post_maps_outcome_unknown_without_retry_or_success(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
@@ -413,6 +463,7 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
             "routes.approval.PurgeService.execute_workspace_purge",
             side_effect=__import__("services.purge_service", fromlist=["PurgeCommitOutcomeUnknownError"]).PurgeCommitOutcomeUnknownError(),
         ) as execute:
+            self._set_transport(valid_client)
             response = valid_client.post(
                 "/approval/purge-requests/45/execute",
                 data={"csrf_token": csrf_token, "confirmation_phrase": "PURGE WORKSPACE 12 REQUEST 45"},
@@ -429,6 +480,171 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         self.assertIn("production authorization remains separate", template)
         self.assertNotIn("DATABASE_URL", template)
         self.assertNotIn("execute_workspace_purge", template)
+        self.assertNotIn("raw_nonce", template)
+        self.assertNotIn("nonce_hash", template)
+        self.assertNotIn("authorization_id", template)
+        self.assertNotIn("generation", template)
+
+    def test_reauth_post_requires_csrf_and_stores_only_durable_issuance_transport(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+        actor = self._actor()
+        issuance = PurgeReauthIssuance(
+            authorization_id=99, purge_request_id=45, actor_user_id=9, generation=1,
+            authenticated_at=datetime.utcnow(), expires_at=datetime.utcnow() + timedelta(minutes=4),
+            raw_nonce="recognizable-test-nonce",
+        )
+        client = app.test_client()
+        client.get("/login")
+        with client.session_transaction() as session_data:
+            csrf_token = session_data.get("_csrf_token")
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch(
+            "routes.approval.PurgeRequestService.get_summary", return_value=self._execution_summary()
+        ), patch(
+            "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
+        ), patch(
+            "routes.approval.PurgeReauthService.issue_local_authorization", return_value=issuance
+        ) as issue:
+            response = self.client.post(
+                "/approval/purge-requests/45/reauth",
+                data={"current_password": "Password123!"},
+            )
+            self.assertEqual(response.status_code, 400)
+            issue.assert_not_called()
+
+            response = client.post(
+                "/approval/purge-requests/45/reauth",
+                data={"csrf_token": csrf_token, "current_password": "Password123!"},
+            )
+            self.assertEqual(response.status_code, 302)
+            issue.assert_called_once_with(45, 9, "Password123!")
+            self.assertNotIn("recognizable-test-nonce", response.get_data(as_text=True))
+            with client.session_transaction() as session_data:
+                transport = session_data["purge_reauth_transport_v1"]
+                self.assertEqual(transport["raw_nonce"], "recognizable-test-nonce")
+                self.assertNotIn("current_password", session_data)
+                self.assertNotIn("nonce_hash", session_data)
+
+    def test_reauth_post_maps_rate_limit_without_issuing_transport(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+        actor = self._actor()
+        client = app.test_client()
+        client.get("/login")
+        with client.session_transaction() as session_data:
+            csrf_token = session_data.get("_csrf_token")
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch(
+            "routes.approval.PurgeRequestService.get_summary", return_value=self._execution_summary()
+        ), patch(
+            "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
+        ), patch(
+            "routes.approval.PurgeReauthService.issue_local_authorization",
+            side_effect=PurgeReauthRateLimitedError(),
+        ):
+            response = client.post(
+                "/approval/purge-requests/45/reauth",
+                data={"csrf_token": csrf_token, "current_password": "Password123!"},
+            )
+        self.assertEqual(response.status_code, 302)
+        with client.session_transaction() as session_data:
+            self.assertNotIn("purge_reauth_transport_v1", session_data)
+
+    def test_execute_transport_is_cleared_before_single_public_service_call_and_replay_fails(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+        actor = self._actor()
+        client = app.test_client()
+        client.get("/login")
+        with client.session_transaction() as session_data:
+            csrf_token = session_data.get("_csrf_token")
+        self._set_transport(client)
+        observed = []
+
+        def execute_once(**_kwargs):
+            from flask import session
+            observed.append("purge_reauth_transport_v1" not in session)
+            return SimpleNamespace(request_id=45)
+
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch(
+            "routes.approval.PurgeRequestService.get_summary", return_value=self._execution_summary()
+        ), patch(
+            "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
+        ), patch(
+            "routes.approval.PurgeService.execute_workspace_purge", side_effect=execute_once
+        ) as execute:
+            response = client.post(
+                "/approval/purge-requests/45/execute",
+                data={"csrf_token": csrf_token, "confirmation_phrase": "PURGE WORKSPACE 12 REQUEST 45"},
+            )
+            self.assertEqual(response.status_code, 302)
+            replay = client.post(
+                "/approval/purge-requests/45/execute",
+                data={"csrf_token": csrf_token, "confirmation_phrase": "PURGE WORKSPACE 12 REQUEST 45"},
+            )
+        self.assertEqual(replay.status_code, 302)
+        self.assertEqual(observed, [True])
+        execute.assert_called_once()
+
+    def test_execute_rejects_expired_or_mismatched_session_transport_before_service(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+        actor = self._actor()
+        client = app.test_client()
+        client.get("/login")
+        with client.session_transaction() as session_data:
+            csrf_token = session_data.get("_csrf_token")
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch(
+            "routes.approval.PurgeRequestService.get_summary", return_value=self._execution_summary()
+        ), patch(
+            "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
+        ), patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
+            for overrides in (
+                {"expires_at": (datetime.utcnow() - timedelta(minutes=1)).isoformat()},
+                {"purge_request_id": 46},
+                {"workspace_id": 13},
+                {"actor_user_id": 10},
+            ):
+                self._set_transport(client)
+                with client.session_transaction() as session_data:
+                    transport = dict(session_data["purge_reauth_transport_v1"])
+                    transport.update(overrides)
+                    session_data["purge_reauth_transport_v1"] = transport
+                response = client.post(
+                    "/approval/purge-requests/45/execute",
+                    data={"csrf_token": csrf_token, "confirmation_phrase": "PURGE WORKSPACE 12 REQUEST 45"},
+                )
+                self.assertEqual(response.status_code, 302)
+                with client.session_transaction() as session_data:
+                    self.assertNotIn("purge_reauth_transport_v1", session_data)
+        execute.assert_not_called()
+
+    def test_logout_clears_transport_and_best_effort_revoke_does_not_block_logout(self):
+        actor = self._actor()
+        client = app.test_client()
+        client.get("/login")
+        with client.session_transaction() as session_data:
+            session_data["purge_reauth_transport_v1"] = {"raw_nonce": "logout-test-nonce"}
+            csrf_token = session_data.get("_csrf_token")
+        with patch("routes.auth.AuthService.get_current_user", return_value=actor), patch(
+            "routes.auth.AuthService.on_logout"
+        ), patch(
+            "services.purge_reauth_service.PurgeReauthService.revoke_active_authorizations_for_actor",
+            side_effect=RuntimeError("synthetic revoke failure"),
+        ) as revoke:
+            response = client.post("/logout", data={"csrf_token": csrf_token})
+        self.assertEqual(response.status_code, 302)
+        revoke.assert_called_once_with(9, "LOGOUT")
+        self.assertNotIn("logout-test-nonce", response.get_data(as_text=True))
+        with client.session_transaction() as session_data:
+            self.assertNotIn("purge_reauth_transport_v1", session_data)
 
 
 if __name__ == "__main__":

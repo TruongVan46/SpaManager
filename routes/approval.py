@@ -23,7 +23,18 @@ from services.purge_service import (
     PurgeExecutionError,
     PurgeService,
 )
-from services.purge_reauth_service import PurgeReauthError
+from services.purge_reauth_service import (
+    PurgeReauthError,
+    PurgeReauthService,
+    PurgeReauthIssuanceOutcomeUnknownError,
+)
+from services.purge_reauth_transport import (
+    clear_transport,
+    consume_transport,
+    peek_transport,
+    store_transport,
+    transport_matches,
+)
 
 
 def _require_approval_owner():
@@ -343,14 +354,62 @@ def confirm_purge_request(request_id):
         if summary.approved_by_id == actor.id or getattr(actor, "auth_provider", None) != "local":
             abort(403)
         abort(409)
+    transport = peek_transport()
+    if transport is None:
+        clear_transport()
+    elif not transport_matches(
+        transport, request_id=request_id, workspace_id=summary.workspace_id, actor_user_id=actor.id
+    ):
+        clear_transport()
+        transport = None
+    state = PurgeReauthService.inspect_current_state(request_id, actor.id) if transport else None
+    transport_fresh = transport_matches(
+        transport, request_id=request_id, workspace_id=summary.workspace_id, actor_user_id=actor.id
+    ) and state is not None and state.fresh_active_for_actor \
+        and transport["generation"] == state.generation \
+        and transport["authorization_id"] == state.authorization_id
     response = make_response(render_template(
         "approval/purge_request_execute.html",
         current_user=actor,
         summary=summary,
         workspace_target=workspace_target,
         confirmation_phrase=f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}",
+        reauth_fresh=transport_fresh,
+        reauth_expires_at=transport.get("expires_at") if transport_fresh else None,
     ))
     return _no_cache(response)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/reauth', methods=['POST'])
+def reauth_purge_request(request_id):
+    actor = _require_purge_execution()
+    summary, workspace_target = _load_execution_summary(request_id)
+    if not _execution_is_basic_candidate(summary, workspace_target, actor):
+        abort(403 if summary.approved_by_id == actor.id or actor.auth_provider != "local" else 409)
+    password = request.form.get("current_password")
+    if not isinstance(password, str) or len(password) > 512 or not password:
+        NotificationService.flash_error("Re-authentication could not be accepted.")
+        return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
+    try:
+        issuance = PurgeReauthService.issue_local_authorization(request_id, actor.id, password)
+        try:
+            store_transport(issuance, summary.workspace_id)
+        except Exception as transport_error:
+            clear_transport()
+            try:
+                PurgeReauthService.revoke_authorization_for_request(request_id, "MANUAL_RECONCILIATION")
+            except PurgeReauthError:
+                pass
+            raise PurgeReauthIssuanceOutcomeUnknownError() from transport_error
+    except PurgeReauthError as error:
+        messages = {
+            "REAUTH_RATE_LIMITED": "Re-authentication is temporarily unavailable.",
+            "REAUTH_PROVIDER_UNSUPPORTED": "Phase 1 execution requires a local-password Approval Owner.",
+        }
+        NotificationService.flash_error(messages.get(error.code, "Re-authentication could not be accepted."))
+        return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
+    NotificationService.flash_success("Identity verified. Continue with the exact typed confirmation.")
+    return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
 
 
 @approval_bp.route('/approval/purge-requests/<int:request_id>/execute', methods=['POST'])
@@ -367,15 +426,24 @@ def execute_purge_request(request_id):
 
     expected_phrase = f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}"
     supplied_phrase = request.form.get("confirmation_phrase")
-    if not isinstance(supplied_phrase, str) or supplied_phrase.strip() != expected_phrase:
+    if not isinstance(supplied_phrase, str) or supplied_phrase != expected_phrase:
         NotificationService.flash_error("Typed confirmation is invalid.")
         return redirect(url_for("approval.purge_request_detail", request_id=request_id))
+
+    transport = consume_transport(
+        request_id=summary.id, workspace_id=summary.workspace_id, actor_user_id=actor.id
+    )
+    if transport is None:
+        NotificationService.flash_error("Fresh purge re-authentication is required before execution.")
+        return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
 
     try:
         result = PurgeService.execute_workspace_purge(
             request_id=summary.id,
             workspace_id=summary.workspace_id,
             executor_user_id=actor.id,
+            authorization_generation=transport["generation"],
+            authorization_nonce=transport["raw_nonce"],
         )
     except PurgeReauthError:
         NotificationService.flash_error("Fresh purge re-authentication is required before execution.")

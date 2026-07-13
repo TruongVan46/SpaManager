@@ -22,12 +22,23 @@
     <ul>{% for item in summary.preserved %}<li>{{ item }}</li>{% else %}<li>Preservation summary unavailable.</li>{% endfor %}</ul>
     <p class="small text-muted">Filesystem files are not deleted. Backup does not make this purge instantly reversible.</p>
     <p class="small text-muted">The existence of this route does not authorize production purge. Both purge gates are currently required and production authorization remains separate.</p>
+    {% if not reauth_fresh %}
+    <div class="alert alert-warning">Verify your current local password before the destructive confirmation step.</div>
+    <form method="post" action="{{ url_for('approval.reauth_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="form-label" for="current-password">Current local password</label>
+      <input id="current-password" name="current_password" type="password" class="form-control" autocomplete="current-password" required maxlength="512">
+      <button class="btn btn-primary mt-3" type="submit">Verify identity</button>
+    </form>
+    {% else %}
+    <div class="alert alert-success">Identity verified. The authorization is short-lived and one-time.</div>
     <form method="post" action="{{ url_for('approval.execute_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="form-label" for="execute-confirmation">Type exactly: <code>{{ confirmation_phrase }}</code></label>
       <input id="execute-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>
       <button class="btn btn-danger mt-3" type="submit">Execute permanent purge</button>
     </form>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
