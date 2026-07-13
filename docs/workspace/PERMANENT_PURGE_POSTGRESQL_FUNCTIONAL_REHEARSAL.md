@@ -61,7 +61,7 @@ customer row, approval verification uses fresh session state to verify manifest 
 immutability, and rollback checks every fixture table (including settings and workspace members)
 and terminal marker. The duplicate lifecycle verification checks that exactly one request and one
 event are preserved with unchanged provenance, while restore invalidation asserts the exact
-expected status (REQUESTED) and associated events. Restore audit preservation is verified by
+expected status (`PENDING_APPROVAL`) and associated events. Restore audit preservation is verified by
 matching the unique synthetic audit description, and restore activity is validated separately.
 The invalid database target is blocked by the actual fixture helper before any runtime module
 import or engine creation occurs. Failed runtime initialization properly cleans up session,
@@ -248,4 +248,19 @@ bundle namespace is required. The post-failure cleanup invariant passed: all 13
 application tables returned to 0, with the expected schema identity and
 revision `0007_permanent_purge_workflow` intact. No application runtime defect
 was established by this failure, and the functional rehearsal is still not
+declared PASS.
+
+### Task 6.6.7e8 Controlled Rerun — Result
+
+The controlled PostgreSQL suite collected 9 tests. The first 5 passed and the
+real restore service executed; the workspace `deleted_at` and `deleted_by_id`
+fields were successfully cleared. The restore scenario then failed because the
+harness expected persisted status `REQUESTED`, while the actual status was
+`PENDING_APPROVAL`. Source, schema, and unit-test audit established that
+`PENDING_APPROVAL` is the authoritative initial status after the retention
+window, and restore invalidation intentionally preserves it while recording
+`invalidated_by_restore`, `invalidated_at`, and a `manifest_invalidated` event
+with unchanged status-before/status-after values. The post-failure cleanup
+invariant passed: all 13 application tables returned to zero. No application
+runtime defect was established, and the functional rehearsal is still not
 declared PASS.

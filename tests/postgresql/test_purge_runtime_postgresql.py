@@ -362,7 +362,7 @@ def test_restore_invalidates_request(postgres_case):
         stored = verification.get(fixture["models"].WorkspacePurgeRequest, request_id)
         assert restored_workspace.deleted_at is None
         assert restored_workspace.deleted_by_id is None
-        assert stored.status == "REQUESTED"
+        assert stored.status == "PENDING_APPROVAL"
         assert stored.invalidated_by_restore is True
         assert stored.invalidated_at is not None
         terminal = verification.execute(
@@ -392,8 +392,8 @@ def test_restore_invalidates_request(postgres_case):
         assert len(events) == 2
         assert events[0].event_type == "request_created"
         assert events[1].event_type == "manifest_invalidated"
-        assert events[1].status_before == "REQUESTED"
-        assert events[1].status_after == "REQUESTED"
+        assert events[1].status_before == "PENDING_APPROVAL"
+        assert events[1].status_after == "PENDING_APPROVAL"
     finally:
         verification.close()
 

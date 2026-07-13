@@ -455,6 +455,52 @@ def test_ast_restore_scenario_uses_direct_user_service_namespace_and_ordering():
     assert create_calls
     assert all(isinstance(node.func.value, ast.Name) and node.func.value.id == "request_service" for node in create_calls)
 
+    status_assertions = [
+        node
+        for node in ast.walk(func_node)
+        if isinstance(node, ast.Compare)
+        and isinstance(node.left, ast.Attribute)
+        and node.left.attr in {"status", "status_before", "status_after"}
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.Eq)
+        and len(node.comparators) == 1
+        and isinstance(node.comparators[0], ast.Constant)
+    ]
+    assert [(node.left.attr, node.comparators[0].value) for node in status_assertions] == [
+        ("status", "PENDING_APPROVAL"),
+        ("status_before", "PENDING_APPROVAL"),
+        ("status_after", "PENDING_APPROVAL"),
+    ]
+
+    event_type_assertions = {
+        node.comparators[0].value
+        for node in ast.walk(func_node)
+        if isinstance(node, ast.Compare)
+        and isinstance(node.left, ast.Attribute)
+        and node.left.attr == "event_type"
+        and len(node.comparators) == 1
+        and isinstance(node.comparators[0], ast.Constant)
+    }
+    assert event_type_assertions == {"request_created", "manifest_invalidated"}
+    assert any(
+        isinstance(node, ast.Compare)
+        and isinstance(node.left, ast.Attribute)
+        and node.left.attr == "invalidated_by_restore"
+        and isinstance(node.comparators[0], ast.Constant)
+        and node.comparators[0].value is True
+        for node in ast.walk(func_node)
+    )
+    assert any(
+        isinstance(node, ast.Compare)
+        and isinstance(node.left, ast.Attribute)
+        and node.left.attr == "invalidated_at"
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.IsNot)
+        and isinstance(node.comparators[0], ast.Constant)
+        and node.comparators[0].value is None
+        for node in ast.walk(func_node)
+    )
+
 
 def test_rollback_audit_uses_unique_description():
     source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
