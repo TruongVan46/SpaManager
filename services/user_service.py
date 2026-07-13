@@ -385,6 +385,9 @@ class UserService:
     @staticmethod
     def reset_password(actor, user_id, new_password):
         user = UserService._get_workspace_scoped_user_or_404(user_id)
+        user = db.session.query(User).filter(User.id == user.id).with_for_update().one_or_none()
+        if user is None:
+            raise NotFoundException("User not found.")
         if user.role == UserRole.APPROVAL_OWNER.value:
             raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
         if not new_password:
@@ -399,11 +402,14 @@ class UserService:
         if not policy_result.valid:
             raise ValidationException(policy_result.message, field_errors=policy_result.errors)
 
-        user.set_password(new_password)
-        user.updated_at = utc_now()
-        actor_display_name = get_activity_actor_display_name(actor)
-
         try:
+            user.set_password(new_password)
+            user.updated_at = utc_now()
+            from services.purge_reauth_service import PurgeReauthService
+            PurgeReauthService._revoke_active_authorizations_for_actor_in_session(
+                db.session, user.id, "PASSWORD_RESET"
+            )
+            actor_display_name = get_activity_actor_display_name(actor)
             UserService._log_user_action(
                 actor=actor,
                 action="RESET_USER_PASSWORD",

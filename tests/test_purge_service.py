@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from sqlalchemy import inspect, select, update
 from sqlalchemy.orm import Session
+from core.exceptions import ValidationException
 
 
 TEST_DB_FILE = Path(tempfile.gettempdir()) / f"spamanager_purge_service_{uuid.uuid4().hex}.sqlite"
@@ -26,7 +27,7 @@ from models.invoice_detail import InvoiceDetail
 from models.service import Service
 from models.setting import Setting
 from models.user import User
-from models.purge import workspace_terminal_state_table
+from models.purge import workspace_terminal_state_table, workspace_purge_execution_authorizations_table
 from models.workspace import Workspace, WorkspaceMember
 from services.purge_manifest import build_manifest, build_purge_plan, manifest_hash
 from services.purge_service import (
@@ -43,6 +44,8 @@ from services.purge_reauth_service import (
     PurgeReauthRequiredError,
     PurgeReauthService,
 )
+from services.auth_service import AuthService
+from services.user_service import UserService
 
 
 class PurgeServiceTestCase(unittest.TestCase):
@@ -172,6 +175,29 @@ class PurgeServiceTestCase(unittest.TestCase):
             issuance.generation, issuance.raw_nonce,
         )
         return issuance, claim
+
+    def _active_authorization(self, actor, request, raw_nonce=None, generation=1):
+        raw_nonce = raw_nonce or f"nonce-{uuid.uuid4().hex}"
+        now = datetime(2026, 1, 5)
+        db.session.execute(
+            workspace_purge_execution_authorizations_table.insert().values(
+                purge_request_id=request.id,
+                actor_user_id=actor.id,
+                method="local_password",
+                generation=generation,
+                state="ACTIVE",
+                nonce_hash=hashlib.sha256(raw_nonce.encode("utf-8")).hexdigest(),
+                authenticated_at=now,
+                expires_at=now + timedelta(minutes=5),
+            )
+        )
+        db.session.commit()
+        authorization = (
+            db.session.query(WorkspacePurgeExecutionAuthorization)
+            .filter_by(purge_request_id=request.id, actor_user_id=actor.id)
+            .one()
+        )
+        return authorization, raw_nonce
 
     def test_disabled_execution_gate_blocks_before_destructive_mutation(self):
         requester, executor, workspace, request = self._fixture(execution_enabled=False)
@@ -739,3 +765,167 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.assertEqual(authorization.state, "CONSUMED_SUCCESS")
         self.assertIsNone(authorization.nonce_hash)
         self.assertIsNotNone(authorization.execution_started_event_id)
+
+    def test_password_change_revokes_authorization_atomically_when_flags_disabled(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        authorization, raw_nonce = self._active_authorization(executor, request)
+
+        result = AuthService.change_password(
+            executor, "TestPassword123!", "NewPassword456!", "NewPassword456!"
+        )
+
+        self.assertTrue(result[0])
+        db.session.expire_all()
+        executor = db.session.get(User, executor.id)
+        authorization = db.session.get(WorkspacePurgeExecutionAuthorization, authorization.id)
+        self.assertTrue(executor.check_password("NewPassword456!"))
+        self.assertFalse(executor.check_password("TestPassword123!"))
+        self.assertEqual(authorization.state, "REVOKED")
+        self.assertEqual(authorization.revocation_reason, "PASSWORD_CHANGED")
+        self.assertIsNone(authorization.nonce_hash)
+        with self.assertRaises(PurgeReauthError):
+            PurgeReauthService.claim_for_execution(
+                request.id, workspace.id, executor.id, authorization.generation, raw_nonce
+            )
+
+    def test_password_reset_revokes_target_authorization_not_admin(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        manager = User(username=f"manager_{uuid.uuid4().hex[:8]}", full_name="Manager", role="OWNER")
+        manager.set_password("ManagerPassword123!")
+        target = User(username=f"target_{uuid.uuid4().hex[:8]}", full_name="Target", role="STAFF")
+        target.set_password("TargetPassword123!")
+        db.session.add_all([manager, target])
+        db.session.commit()
+        target_auth, raw_nonce = self._active_authorization(target, request)
+
+        UserService.reset_password(manager, target.id, "ResetPassword456!")
+
+        db.session.expire_all()
+        target = db.session.get(User, target.id)
+        target_auth = db.session.get(WorkspacePurgeExecutionAuthorization, target_auth.id)
+        self.assertTrue(target.check_password("ResetPassword456!"))
+        self.assertFalse(target.check_password("TargetPassword123!"))
+        self.assertEqual(target_auth.state, "REVOKED")
+        self.assertEqual(target_auth.revocation_reason, "PASSWORD_RESET")
+        self.assertIsNone(target_auth.nonce_hash)
+        with self.assertRaises(PurgeReauthError):
+            PurgeReauthService.claim_for_execution(
+                request.id, workspace.id, target.id, target_auth.generation, raw_nonce
+            )
+
+    def test_password_mutation_revocation_failure_rolls_back_change(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        authorization, _raw_nonce = self._active_authorization(executor, request)
+
+        with patch(
+            "services.purge_reauth_service.PurgeReauthService._revoke_active_authorizations_for_actor_in_session",
+            side_effect=RuntimeError("synthetic revocation failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                AuthService.change_password(
+                    executor, "TestPassword123!", "NewPassword456!", "NewPassword456!"
+                )
+
+        db.session.expire_all()
+        executor = db.session.get(User, executor.id)
+        authorization = db.session.get(WorkspacePurgeExecutionAuthorization, authorization.id)
+        self.assertTrue(executor.check_password("TestPassword123!"))
+        self.assertFalse(executor.check_password("NewPassword456!"))
+        self.assertEqual(authorization.state, "ACTIVE")
+
+    def test_invalid_password_change_does_not_revoke_authorization(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        authorization, _raw_nonce = self._active_authorization(executor, request)
+
+        with self.assertRaises(ValidationException):
+            AuthService.change_password(
+                executor, "wrong-password", "NewPassword456!", "NewPassword456!"
+            )
+
+        db.session.expire_all()
+        authorization = db.session.get(WorkspacePurgeExecutionAuthorization, authorization.id)
+        self.assertEqual(authorization.state, "ACTIVE")
+        self.assertIsNone(authorization.revocation_reason)
+
+    def test_password_mutations_succeed_without_authorization_rows(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        result = AuthService.change_password(
+            executor, "TestPassword123!", "NewPassword456!", "NewPassword456!"
+        )
+        self.assertTrue(result[0])
+
+        target = User(username=f"target_{uuid.uuid4().hex[:8]}", full_name="Target", role="STAFF")
+        target.set_password("TargetPassword123!")
+        manager = User(username=f"manager_{uuid.uuid4().hex[:8]}", full_name="Manager", role="OWNER")
+        manager.set_password("ManagerPassword123!")
+        db.session.add_all([target, manager])
+        db.session.commit()
+        self.assertIsNotNone(UserService.reset_password(manager, target.id, "ResetPassword456!"))
+
+    def test_password_reset_revocation_failure_rolls_back_change(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        target = User(username=f"target_{uuid.uuid4().hex[:8]}", full_name="Target", role="STAFF")
+        target.set_password("TargetPassword123!")
+        manager = User(username=f"manager_{uuid.uuid4().hex[:8]}", full_name="Manager", role="OWNER")
+        manager.set_password("ManagerPassword123!")
+        db.session.add_all([target, manager])
+        db.session.commit()
+        authorization, _raw_nonce = self._active_authorization(target, request)
+
+        with patch(
+            "services.purge_reauth_service.PurgeReauthService._revoke_active_authorizations_for_actor_in_session",
+            side_effect=RuntimeError("synthetic revocation failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                UserService.reset_password(manager, target.id, "ResetPassword456!")
+
+        db.session.expire_all()
+        target = db.session.get(User, target.id)
+        authorization = db.session.get(WorkspacePurgeExecutionAuthorization, authorization.id)
+        self.assertTrue(target.check_password("TargetPassword123!"))
+        self.assertFalse(target.check_password("ResetPassword456!"))
+        self.assertEqual(authorization.state, "ACTIVE")
+
+    def test_password_change_revokes_only_the_affected_actor(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        own_authorization, _raw_nonce = self._active_authorization(executor, request)
+        other_workspace = Workspace(
+            name="Other Purge Target",
+            slug=f"other-purge-{uuid.uuid4().hex}",
+            status="active",
+            deleted_at=datetime(2026, 1, 1),
+            deleted_by_id=requester.id,
+        )
+        db.session.add(other_workspace)
+        db.session.commit()
+        request_values = {
+            column.name: getattr(request, column.name)
+            for column in WorkspacePurgeRequest.__table__.columns
+            if column.name not in {"id", "lifecycle_id", "idempotency_key"}
+        }
+        request_values.update(
+            workspace_id=other_workspace.id,
+            target_workspace_name=other_workspace.name,
+            target_workspace_slug=other_workspace.slug,
+            lifecycle_id=str(uuid.uuid4()),
+            idempotency_key=f"purge-{uuid.uuid4().hex}",
+        )
+        db.session.execute(WorkspacePurgeRequest.__table__.insert().values(**request_values))
+        db.session.commit()
+        other_request = (
+            db.session.query(WorkspacePurgeRequest)
+            .filter(WorkspacePurgeRequest.lifecycle_id == request_values["lifecycle_id"])
+            .one()
+        )
+        other_authorization, _other_nonce = self._active_authorization(requester, other_request)
+
+        AuthService.change_password(
+            executor, "TestPassword123!", "NewPassword456!", "NewPassword456!"
+        )
+
+        db.session.expire_all()
+        own_authorization = db.session.get(WorkspacePurgeExecutionAuthorization, own_authorization.id)
+        other_authorization = db.session.get(WorkspacePurgeExecutionAuthorization, other_authorization.id)
+        self.assertEqual(own_authorization.state, "REVOKED")
+        self.assertEqual(own_authorization.revocation_reason, "PASSWORD_CHANGED")
+        self.assertEqual(other_authorization.state, "ACTIVE")

@@ -469,6 +469,10 @@ class AuthService:
 
         
         confirm_password = confirm_password or new_password
+
+        locked_user = db.session.query(User).filter(User.id == user.id).with_for_update().one_or_none()
+        if locked_user is None:
+            raise ValidationException("Invalid user.")
         
         # 1. Validation
         data = {
@@ -484,7 +488,7 @@ class AuthService:
             new_password,
             confirm_password=confirm_password,
             current_password=current_password,
-            current_password_hash=user.password_hash,
+            current_password_hash=locked_user.password_hash,
             require_confirm=True,
             prevent_reuse=True,
         )
@@ -492,21 +496,29 @@ class AuthService:
             raise ValidationException(policy_result.message, field_errors=policy_result.errors)
 
         # 2. Check current password correctness
-        if not user.check_password(current_password):
+        if not locked_user.check_password(current_password):
             AuthService.on_change_password_failed(user, "Mật khẩu cũ không chính xác.")
             raise ValidationException("Không thể đổi mật khẩu.")
 
         # 3. Update password
-        user.set_password(new_password)
-        user.updated_at = utc_now()
-        db.session.commit()
+        try:
+            from services.purge_reauth_service import PurgeReauthService
+            locked_user.set_password(new_password)
+            locked_user.updated_at = utc_now()
+            PurgeReauthService._revoke_active_authorizations_for_actor_in_session(
+                db.session, locked_user.id, "PASSWORD_CHANGED"
+            )
+            AuthService.on_change_password_success(locked_user, commit=False)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         # Trigger hook
-        AuthService.on_change_password_success(user)
         return True, "Đổi mật khẩu thành công."
 
     @staticmethod
-    def on_change_password_success(user):
+    def on_change_password_success(user, commit=True):
         """Hook called when change password succeeds."""
         try:
             actor_display_name = get_activity_actor_display_name(user)
@@ -518,10 +530,13 @@ class AuthService:
                 description=f"{actor_display_name} đổi mật khẩu thành công.",
                 user_id=user.id
             ))
-            db.session.commit()
+            if commit:
+                db.session.commit()
         except Exception as e:
             db.session.rollback()
             app_logger.error(f"Error logging change password success: {e}", module="SECURITY", exc_info=True)
+            if not commit:
+                raise
 
     @staticmethod
     def on_change_password_failed(user, reason):

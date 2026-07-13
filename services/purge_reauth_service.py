@@ -11,7 +11,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, inspect, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
@@ -722,12 +722,14 @@ class PurgeReauthService:
                 continue
             if authorization.state not in {AUTHORIZATION_ACTIVE, AUTHORIZATION_CLAIMED}:
                 continue
-            session.execute(
+            changed = session.execute(
                 workspace_purge_execution_authorizations_table.update()
                 .where(workspace_purge_execution_authorizations_table.c.id == authorization.id)
                 .values(state=AUTHORIZATION_REVOKED, nonce_hash=None,
                         revoked_at=now, revocation_reason=reason_code, updated_at=now)
-            )
+            ).rowcount
+            if changed != 1:
+                raise PurgeReauthClaimOutcomeUnknownError()
             PurgeReauthService._audit(
                 session,
                 action="REVOKE",
@@ -740,17 +742,29 @@ class PurgeReauthService:
         return count
 
     @staticmethod
+    def _revoke_active_authorizations_for_actor_in_session(session, actor_user_id, reason_code):
+        """Revoke outstanding actor authorizations in the caller's transaction."""
+        if not inspect(session.get_bind()).has_table("workspace_purge_execution_authorizations"):
+            return 0
+        rows = (
+            session.query(WorkspacePurgeExecutionAuthorization)
+            .filter(
+                WorkspacePurgeExecutionAuthorization.actor_user_id == actor_user_id,
+                WorkspacePurgeExecutionAuthorization.state.in_((AUTHORIZATION_ACTIVE, AUTHORIZATION_CLAIMED)),
+            )
+            .with_for_update()
+            .all()
+        )
+        return PurgeReauthService._revoke_rows(session, rows, reason_code)
+
+    @staticmethod
     def revoke_active_authorizations_for_actor(actor_user_id, reason_code):
         session = PurgeReauthService._new_session()
         try:
             session.begin()
-            rows = (
-                session.query(WorkspacePurgeExecutionAuthorization)
-                .filter_by(actor_user_id=actor_user_id, state=AUTHORIZATION_ACTIVE)
-                .with_for_update()
-                .all()
+            count = PurgeReauthService._revoke_active_authorizations_for_actor_in_session(
+                session, actor_user_id, reason_code
             )
-            count = PurgeReauthService._revoke_rows(session, rows, reason_code)
             session.commit()
             return count
         finally:
