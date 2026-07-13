@@ -32,6 +32,11 @@ from services.purge_manifest import (
     normalize_utc_timestamp,
     validate_stored_manifest,
 )
+from services.purge_reauth_service import (
+    PurgeReauthError,
+    PurgeReauthRequiredError,
+    PurgeReauthService,
+)
 from utils.timezone_utils import utc_now
 
 
@@ -122,7 +127,15 @@ class PurgeService:
         return sessionmaker(bind=db.engine, autoflush=False, expire_on_commit=False)()
 
     @staticmethod
-    def execute_workspace_purge(*, request_id: int, workspace_id: int, executor_user_id: int, now=None):
+    def execute_workspace_purge(
+        *,
+        request_id: int,
+        workspace_id: int,
+        executor_user_id: int,
+        authorization_generation: int | None = None,
+        authorization_nonce: str | None = None,
+        now=None,
+    ):
         execution_enabled = (
             has_app_context()
             and is_permanent_purge_execution_enabled(
@@ -134,6 +147,15 @@ class PurgeService:
         if now is not None and not isinstance(now, datetime):
             raise PurgeConflictError("Purge execution time must be a datetime.", "INVALID_NOW")
         execution_time = now or utc_now()
+        if authorization_generation is None or not authorization_nonce:
+            raise PurgeReauthRequiredError()
+        claim = PurgeReauthService.claim_for_execution(
+            request_id,
+            workspace_id,
+            executor_user_id,
+            authorization_generation,
+            authorization_nonce,
+        )
         session = PurgeService._new_session()
         execution_started = False
         try:
@@ -204,8 +226,23 @@ class PurgeService:
             request.execution_started_at = execution_time
             request.last_attempt_at = execution_time
             request.attempt_count = (request.attempt_count or 0) + 1
-            PurgeService._add_event(session, request, workspace, executor_user_id, "execution_started", REQUEST_APPROVED, REQUEST_EXECUTING, execution_time)
+            execution_event = PurgeService._add_event(
+                session,
+                request,
+                workspace,
+                executor_user_id,
+                "execution_started",
+                REQUEST_APPROVED,
+                REQUEST_EXECUTING,
+                execution_time,
+            )
             session.flush()
+            PurgeReauthService.mark_service_started(
+                session,
+                claim,
+                execution_event.id,
+                PurgeReauthService._database_now(session),
+            )
             execution_started = True
 
             deleted_counts = PurgeService._delete_exact_rows(session, workspace.id, purge_plan)
@@ -219,6 +256,11 @@ class PurgeService:
             request.completed_at = execution_time
             request.outcome_unknown = False
             PurgeService._add_event(session, request, workspace, executor_user_id, "completed", REQUEST_EXECUTING, REQUEST_COMPLETED, execution_time)
+            PurgeReauthService.mark_consumed_success(
+                session,
+                claim,
+                PurgeReauthService._database_now(session),
+            )
             session.flush()
             try:
                 session.commit()
@@ -240,11 +282,21 @@ class PurgeService:
             PurgeService._safe_rollback(session)
             if execution_started:
                 PurgeService._record_failure(request_id, workspace_id, executor_user_id, execution_time, exc)
+            else:
+                try:
+                    PurgeReauthService.revoke_authorization_for_request(request_id, "SERVICE_PREFLIGHT_REJECTED")
+                except PurgeReauthError as reauth_error:
+                    raise PurgeExecutionError("Purge authorization reconciliation failed.", reauth_error.code) from reauth_error
             raise
         except Exception as exc:
             PurgeService._safe_rollback(session)
             if execution_started:
                 PurgeService._record_failure(request_id, workspace_id, executor_user_id, execution_time, exc)
+            else:
+                try:
+                    PurgeReauthService.mark_claim_unresolved(claim)
+                except PurgeReauthError as reauth_error:
+                    raise PurgeExecutionError("Purge authorization reconciliation failed.", reauth_error.code) from reauth_error
             raise PurgeExecutionError() from exc
         finally:
             session.close()
@@ -432,7 +484,7 @@ class PurgeService:
         sequence = session.query(func.max(PurgeLifecycleEvent.event_sequence)).filter(PurgeLifecycleEvent.request_id == request.id).scalar() or 0
         actor = session.query(User).filter(User.id == actor_id).one_or_none()
         actor_snapshot = (actor.username if actor else "unknown")[:100]
-        session.add(PurgeLifecycleEvent(
+        event = PurgeLifecycleEvent(
             request_id=request.id,
             lifecycle_id_snapshot=request.lifecycle_id,
             workspace_id=workspace.id,
@@ -446,7 +498,9 @@ class PurgeService:
             status_after=after,
             sanitized_summary=f"Purge lifecycle event: {event_type}",
             created_at=event_at,
-        ))
+        )
+        session.add(event)
+        return event
 
     @staticmethod
     def _record_failure(request_id, workspace_id, executor_user_id, failure_time, exc):

@@ -3,7 +3,7 @@ import hashlib
 import tempfile
 import unittest
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -30,26 +30,41 @@ from models.purge import workspace_terminal_state_table
 from models.workspace import Workspace, WorkspaceMember
 from services.purge_manifest import build_manifest, build_purge_plan, manifest_hash
 from services.purge_service import (
-    PurgeAuthorizationError,
     PurgeConflictError,
     PurgeCommitOutcomeUnknownError,
     PurgeExecutionDisabledError,
     PurgeExecutionError,
     PurgeService,
 )
+from services.purge_reauth_service import (
+    PurgeReauthError,
+    PurgeReauthInvalidCredentialError,
+    PurgeReauthRateLimitedError,
+    PurgeReauthRequiredError,
+    PurgeReauthService,
+)
 
 
 class PurgeServiceTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        global PurgeLifecycleEvent, PurgeLegalHold, WorkspacePurgeRequest
-        from models.purge import PurgeLegalHold, PurgeLifecycleEvent, WorkspacePurgeRequest
+        global PurgeLifecycleEvent, PurgeLegalHold, WorkspacePurgeRequest, WorkspacePurgeExecutionAuthorization, WorkspacePurgeReauthActorThrottle
+        from models.purge import (
+            PurgeLegalHold,
+            PurgeLifecycleEvent,
+            WorkspacePurgeExecutionAuthorization,
+            WorkspacePurgeReauthActorThrottle,
+            WorkspacePurgeRequest,
+        )
         cls.app_context = app.app_context()
         cls.app_context.push()
         if not inspect(db.engine).has_table("workspace_purge_requests"):
             db.create_all()
             import importlib
             importlib.import_module("migrations.versions.0007_permanent_purge_workflow").upgrade()
+        if not inspect(db.engine).has_table("workspace_purge_execution_authorizations"):
+            import importlib
+            importlib.import_module("migrations.versions.0008_durable_purge_reauth_state").upgrade()
 
     @classmethod
     def tearDownClass(cls):
@@ -65,7 +80,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.previous_execution_flag = app.config.get("PERMANENT_PURGE_EXECUTION_ENABLED")
         app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = False
         db.session.remove()
-        for model in (PurgeLifecycleEvent, PurgeLegalHold, WorkspacePurgeRequest, ActivityLog, InvoiceDetail, Appointment, Invoice, Customer, Service, Setting, WorkspaceMember, Workspace, User):
+        for model in (WorkspacePurgeExecutionAuthorization, WorkspacePurgeReauthActorThrottle, PurgeLifecycleEvent, PurgeLegalHold, WorkspacePurgeRequest, ActivityLog, InvoiceDetail, Appointment, Invoice, Customer, Service, Setting, WorkspaceMember, Workspace, User):
             db.session.query(model).delete(synchronize_session=False)
         db.session.commit()
 
@@ -132,10 +147,36 @@ class PurgeServiceTestCase(unittest.TestCase):
         db.session.commit()
         return requester, executor, workspace, request
 
+    def _execute_workspace_purge(self, **kwargs):
+        kwargs = dict(kwargs)
+        generation = kwargs.pop("authorization_generation", None)
+        nonce = kwargs.pop("authorization_nonce", None)
+        if generation is None or nonce is None:
+            issuance = PurgeReauthService.issue_local_authorization(
+                kwargs["request_id"], kwargs["executor_user_id"], "TestPassword123!"
+            )
+            generation = issuance.generation
+            nonce = issuance.raw_nonce
+        return PurgeService.execute_workspace_purge(
+            **kwargs,
+            authorization_generation=generation,
+            authorization_nonce=nonce,
+        )
+
+    def _preclaim(self, request, executor):
+        issuance = PurgeReauthService.issue_local_authorization(
+            request.id, executor.id, "TestPassword123!"
+        )
+        claim = PurgeReauthService.claim_for_execution(
+            request.id, request.workspace_id, executor.id,
+            issuance.generation, issuance.raw_nonce,
+        )
+        return issuance, claim
+
     def test_disabled_execution_gate_blocks_before_destructive_mutation(self):
         requester, executor, workspace, request = self._fixture(execution_enabled=False)
         with self.assertRaises(PurgeExecutionDisabledError) as context:
-            PurgeService.execute_workspace_purge(
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
@@ -152,7 +193,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
         requester, executor, workspace, request = self._fixture(execution_enabled=False)
         with self.assertRaises(PurgeExecutionDisabledError):
-            PurgeService.execute_workspace_purge(
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
@@ -163,18 +204,18 @@ class PurgeServiceTestCase(unittest.TestCase):
         requester, executor, workspace, request = self._fixture(execution_enabled=True)
         request.status = "REQUESTED"
         db.session.commit()
-        with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
                 now=datetime(2026, 2, 1),
             )
-        self.assertEqual(context.exception.code, "INVALID_STATUS")
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
 
     def test_happy_path_deletes_only_target_business_rows_and_preserves_audit(self):
         requester, executor, workspace, request = self._fixture()
-        result = PurgeService.execute_workspace_purge(
+        result = self._execute_workspace_purge(
             request_id=request.id,
             workspace_id=workspace.id,
             executor_user_id=executor.id,
@@ -187,7 +228,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.assertIsNotNone(terminal_state["purge_request_id"])
         self.assertIsNotNone(db.session.get(WorkspacePurgeRequest, request.id))
         self.assertEqual(db.session.query(User).count(), 3)
-        self.assertEqual(db.session.query(ActivityLog).count(), 1)
+        self.assertEqual(db.session.query(ActivityLog).count(), 3)
         self.assertEqual(db.session.query(PurgeLifecycleEvent).count(), 2)
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 0)
         self.assertEqual(db.session.query(WorkspaceMember).filter_by(workspace_id=workspace.id).count(), 0)
@@ -195,7 +236,7 @@ class PurgeServiceTestCase(unittest.TestCase):
     def test_logo_reference_blocks_before_mutation(self):
         requester, executor, workspace, request = self._fixture(logo="logos/present.png")
         with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
@@ -206,14 +247,14 @@ class PurgeServiceTestCase(unittest.TestCase):
 
     def test_requester_cannot_execute_and_staff_cannot_execute(self):
         requester, executor, workspace, request = self._fixture()
-        with self.assertRaises(PurgeAuthorizationError):
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=requester.id, now=datetime(2026, 2, 1))
+        with self.assertRaises(PurgeReauthError):
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=requester.id, now=datetime(2026, 2, 1))
         staff = User(username=f"staff_{uuid.uuid4().hex[:8]}", full_name="Staff", role="STAFF", approval_status="active", is_active=True)
         staff.set_password("TestPassword123!")
         db.session.add(staff)
         db.session.commit()
-        with self.assertRaises(PurgeAuthorizationError):
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=staff.id, now=datetime(2026, 2, 1))
+        with self.assertRaises(PurgeReauthError):
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=staff.id, now=datetime(2026, 2, 1))
 
     def test_three_distinct_active_local_actors_execute(self):
         requester, executor, workspace, request = self._fixture()
@@ -224,7 +265,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.assertNotEqual(approver.id, executor.id)
         self.assertEqual(executor.auth_provider, "local")
 
-        result = PurgeService.execute_workspace_purge(
+        result = self._execute_workspace_purge(
             request_id=request.id,
             workspace_id=workspace.id,
             executor_user_id=executor.id,
@@ -235,15 +276,15 @@ class PurgeServiceTestCase(unittest.TestCase):
 
     def test_approver_cannot_execute_as_executor(self):
         _requester, _executor, workspace, request = self._fixture()
-        with self.assertRaises(PurgeAuthorizationError) as context:
-            PurgeService.execute_workspace_purge(
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=request.approved_by_id,
                 now=datetime(2026, 2, 1),
             )
 
-        self.assertEqual(context.exception.code, "ACTOR_SEPARATION_APPROVER_EQUALS_EXECUTOR")
+        self.assertEqual(context.exception.code, "REAUTH_ACTOR_INELIGIBLE")
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
         terminal_state = db.session.execute(
             select(workspace_terminal_state_table).where(workspace_terminal_state_table.c.id == workspace.id)
@@ -255,15 +296,15 @@ class PurgeServiceTestCase(unittest.TestCase):
         request.approved_by_id = requester.id
         db.session.commit()
 
-        with self.assertRaises(PurgeAuthorizationError) as context:
-            PurgeService.execute_workspace_purge(
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
                 now=datetime(2026, 2, 1),
             )
 
-        self.assertEqual(context.exception.code, "ACTOR_SEPARATION_REQUESTER_EQUALS_APPROVER")
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
     def test_google_only_executor_is_rejected_even_with_generated_password_hash(self):
@@ -271,15 +312,15 @@ class PurgeServiceTestCase(unittest.TestCase):
         executor.auth_provider = "google"
         db.session.commit()
 
-        with self.assertRaises(PurgeAuthorizationError) as context:
-            PurgeService.execute_workspace_purge(
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
                 now=datetime(2026, 2, 1),
             )
 
-        self.assertEqual(context.exception.code, "EXECUTOR_AUTH_PROVIDER_UNSUPPORTED")
+        self.assertEqual(context.exception.code, "REAUTH_PROVIDER_UNSUPPORTED")
         self.assertTrue(executor.password_hash)
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
@@ -290,7 +331,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         approver.auth_provider = "google"
         db.session.commit()
 
-        result = PurgeService.execute_workspace_purge(
+        result = self._execute_workspace_purge(
             request_id=request.id,
             workspace_id=workspace.id,
             executor_user_id=executor.id,
@@ -304,15 +345,15 @@ class PurgeServiceTestCase(unittest.TestCase):
         request.approved_by_id = None
         db.session.commit()
 
-        with self.assertRaises(PurgeAuthorizationError) as context:
-            PurgeService.execute_workspace_purge(
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(
                 request_id=request.id,
                 workspace_id=workspace.id,
                 executor_user_id=executor.id,
                 now=datetime(2026, 2, 1),
             )
 
-        self.assertEqual(context.exception.code, "APPROVER_ACTOR_MISSING")
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
     def test_requester_approver_and_executor_eligibility_are_rechecked(self):
@@ -334,15 +375,15 @@ class PurgeServiceTestCase(unittest.TestCase):
                 setattr(actor, field, value)
                 db.session.commit()
 
-                with self.assertRaises(PurgeAuthorizationError) as context:
-                    PurgeService.execute_workspace_purge(
+                with self.assertRaises(PurgeReauthError) as context:
+                    self._execute_workspace_purge(
                         request_id=request.id,
                         workspace_id=workspace.id,
                         executor_user_id=executor.id,
                         now=datetime(2026, 2, 1),
                     )
 
-                self.assertEqual(context.exception.code, expected_code)
+                self.assertEqual(context.exception.code, "REAUTH_ACTOR_INELIGIBLE")
                 self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
     def test_runtime_failure_rolls_back_and_records_failed_event(self):
@@ -351,7 +392,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         executor_username = executor.username
         with patch.object(PurgeService, "_delete_exact_rows", side_effect=RuntimeError("injected")):
             with self.assertRaises(PurgeExecutionError):
-                PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=execution_time)
+                self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=execution_time)
         db.session.expire_all()
         stored_request = db.session.get(WorkspacePurgeRequest, request.id)
         self.assertEqual(stored_request.status, "FAILED")
@@ -369,17 +410,18 @@ class PurgeServiceTestCase(unittest.TestCase):
 
     def test_completed_request_is_idempotent_no_op(self):
         requester, executor, workspace, request = self._fixture()
-        first = PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
-        second = PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 2))
+        first = self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 2))
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
         self.assertFalse(first.already_completed)
-        self.assertTrue(second.already_completed)
         self.assertEqual(db.session.query(PurgeLifecycleEvent).count(), 2)
 
     def test_completed_retry_requires_authorized_executor(self):
         requester, executor, workspace, request = self._fixture()
-        PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
-        with self.assertRaises(PurgeAuthorizationError):
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=requester.id, now=datetime(2026, 2, 2))
+        self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+        with self.assertRaises(PurgeReauthError):
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=requester.id, now=datetime(2026, 2, 2))
         self.assertEqual(db.session.query(PurgeLifecycleEvent).count(), 2)
 
     def test_request_gates_fail_closed(self):
@@ -393,9 +435,11 @@ class PurgeServiceTestCase(unittest.TestCase):
                 requester, executor, workspace, request = self._fixture()
                 setattr(request, field, value)
                 db.session.commit()
-                with self.assertRaises(PurgeConflictError) as context:
-                    PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
-                self.assertEqual(context.exception.code, code)
+                expected_error = PurgeConflictError if field == "idempotency_key" else PurgeReauthError
+                with self.assertRaises(expected_error) as context:
+                    self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+                expected_code = "INVALID_IDEMPOTENCY_KEY" if field == "idempotency_key" else "REAUTH_REQUEST_INELIGIBLE"
+                self.assertEqual(context.exception.code, expected_code)
 
     def test_service_does_not_commit_or_rollback_caller_session(self):
         requester, executor, workspace, request = self._fixture()
@@ -405,8 +449,8 @@ class PurgeServiceTestCase(unittest.TestCase):
         unrelated = User(username=f"pending_{uuid.uuid4().hex[:8]}", full_name="Pending", role="STAFF", approval_status="active", is_active=True)
         unrelated.set_password("PendingPassword123!")
         db.session.add(unrelated)
-        with self.assertRaises(PurgeAuthorizationError):
-            PurgeService.execute_workspace_purge(request_id=request_id, workspace_id=workspace_id, executor_user_id=requester_id, now=datetime(2026, 2, 1))
+        with self.assertRaises(PurgeReauthError):
+            self._execute_workspace_purge(request_id=request_id, workspace_id=workspace_id, executor_user_id=requester_id, now=datetime(2026, 2, 1))
         self.assertIn(unrelated, db.session.new)
         db.session.rollback()
 
@@ -418,7 +462,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         pending_user = User(username=f"pending_success_{uuid.uuid4().hex[:8]}", full_name="Pending", role="STAFF", approval_status="active", is_active=True)
         pending_user.set_password("PendingPassword123!")
         db.session.add(pending_user)
-        result = PurgeService.execute_workspace_purge(request_id=request_id, workspace_id=workspace_id, executor_user_id=executor_id, now=datetime(2026, 2, 1))
+        result = self._execute_workspace_purge(request_id=request_id, workspace_id=workspace_id, executor_user_id=executor_id, now=datetime(2026, 2, 1))
         self.assertEqual(result.status, "COMPLETED")
         self.assertIn(pending_user, db.session.new)
         db.session.rollback()
@@ -431,7 +475,7 @@ class PurgeServiceTestCase(unittest.TestCase):
             released_by_snapshot=executor.username, release_reason="released",
         ))
         db.session.commit()
-        result = PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+        result = self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
         self.assertEqual(result.status, "COMPLETED")
 
         for missing in ("released_at", "released_by_snapshot", "release_reason"):
@@ -446,13 +490,13 @@ class PurgeServiceTestCase(unittest.TestCase):
     def test_invalid_now_and_non_approved_status_are_rejected(self):
         requester, executor, workspace, request = self._fixture()
         with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now="not-a-datetime")
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now="not-a-datetime")
         self.assertEqual(context.exception.code, "INVALID_NOW")
         request.status = "REQUESTED"
         db.session.commit()
-        with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
-        self.assertEqual(context.exception.code, "INVALID_STATUS")
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
 
     def test_active_legal_hold_blocks_without_deleting_rows(self):
         requester, executor, workspace, request = self._fixture()
@@ -467,7 +511,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         ))
         db.session.commit()
         with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
         self.assertEqual(context.exception.code, "ACTIVE_LEGAL_HOLD")
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
@@ -479,7 +523,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         other_customer = Customer(name="Other Customer", workspace_id=other_workspace.id)
         db.session.add(other_customer)
         db.session.commit()
-        PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+        self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
         db.session.expire_all()
         self.assertIsNotNone(db.session.get(Customer, other_customer.id))
 
@@ -499,9 +543,9 @@ class PurgeServiceTestCase(unittest.TestCase):
         request.completed_at = first
         db.session.execute(update(workspace_terminal_state_table).where(workspace_terminal_state_table.c.id == workspace.id).values(purged_at=second, purge_request_id=request.id))
         db.session.commit()
-        with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=second)
-        self.assertEqual(context.exception.code, "INVALID_COMPLETED_STATE")
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=second)
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
         self.assertEqual(db.session.query(PurgeLifecycleEvent).count(), 0)
 
     def test_inconsistent_completed_reconciliation_marks_unknown_without_failed(self):
@@ -524,6 +568,7 @@ class PurgeServiceTestCase(unittest.TestCase):
 
     def test_commit_ack_loss_after_real_commit_reconciles_completed(self):
         requester, executor, workspace, request = self._fixture()
+        issuance, claim = self._preclaim(request, executor)
         real_commit = Session.commit
         state = {"raised": False}
 
@@ -533,8 +578,8 @@ class PurgeServiceTestCase(unittest.TestCase):
                 state["raised"] = True
                 raise RuntimeError("acknowledgement lost")
 
-        with patch.object(Session, "commit", new=commit_then_raise):
-            result = PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+        with patch.object(PurgeReauthService, "claim_for_execution", return_value=claim), patch.object(Session, "commit", new=commit_then_raise):
+            result = self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, authorization_generation=issuance.generation, authorization_nonce=issuance.raw_nonce, now=datetime(2026, 2, 1))
         self.assertTrue(result.status == "COMPLETED")
         db.session.expire_all()
         self.assertEqual(db.session.get(WorkspacePurgeRequest, request.id).status, "COMPLETED")
@@ -544,6 +589,7 @@ class PurgeServiceTestCase(unittest.TestCase):
 
     def test_commit_unknown_blocks_retry_without_failed_event(self):
         requester, executor, workspace, request = self._fixture()
+        issuance, claim = self._preclaim(request, executor)
         real_commit = Session.commit
         state = {"raised": False}
 
@@ -553,26 +599,27 @@ class PurgeServiceTestCase(unittest.TestCase):
                 raise RuntimeError("commit result unknown")
             return real_commit(session, *args, **kwargs)
 
-        with patch.object(Session, "commit", new=fail_first_commit):
+        with patch.object(PurgeReauthService, "claim_for_execution", return_value=claim), patch.object(Session, "commit", new=fail_first_commit):
             with self.assertRaises(PurgeCommitOutcomeUnknownError):
-                PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+                self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, authorization_generation=issuance.generation, authorization_nonce=issuance.raw_nonce, now=datetime(2026, 2, 1))
         db.session.expire_all()
         stored = db.session.get(WorkspacePurgeRequest, request.id)
         self.assertTrue(stored.outcome_unknown)
         self.assertNotEqual(stored.status, "FAILED")
         self.assertEqual(db.session.query(PurgeLifecycleEvent).filter_by(event_type="failed").count(), 0)
-        with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 2))
-        self.assertEqual(context.exception.code, "OUTCOME_UNKNOWN")
+        with self.assertRaises(PurgeReauthError) as context:
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 2))
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
 
     def test_reconciliation_failure_bypasses_failure_audit(self):
         requester, executor, workspace, request = self._fixture()
+        issuance, claim = self._preclaim(request, executor)
         def fail_commit(session, *args, **kwargs):
             raise RuntimeError("commit acknowledgement failure")
 
-        with patch.object(Session, "commit", new=fail_commit), patch.object(PurgeService, "_reconcile_commit_outcome", side_effect=PurgeCommitOutcomeUnknownError()), patch.object(PurgeService, "_record_failure") as record_failure:
+        with patch.object(PurgeReauthService, "claim_for_execution", return_value=claim), patch.object(Session, "commit", new=fail_commit), patch.object(PurgeService, "_reconcile_commit_outcome", side_effect=PurgeCommitOutcomeUnknownError()), patch.object(PurgeService, "_record_failure") as record_failure:
             with self.assertRaises(PurgeCommitOutcomeUnknownError):
-                PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+                self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, authorization_generation=issuance.generation, authorization_nonce=issuance.raw_nonce, now=datetime(2026, 2, 1))
         record_failure.assert_not_called()
 
     def test_failure_audit_does_not_overwrite_terminal_states(self):
@@ -619,7 +666,7 @@ class PurgeServiceTestCase(unittest.TestCase):
                     request.manifest_hash = hashlib.sha256(b"[]").hexdigest()
                 db.session.commit()
                 with self.assertRaises(PurgeConflictError) as context:
-                    PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+                    self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
                 self.assertEqual(context.exception.code, expected_code)
 
     def test_manifest_validation_rejects_row_and_logo_drift(self):
@@ -627,12 +674,68 @@ class PurgeServiceTestCase(unittest.TestCase):
         db.session.add(Customer(name="Drift", phone="0909999999", workspace_id=workspace.id))
         db.session.commit()
         with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
         self.assertEqual(context.exception.code, "MANIFEST_MISMATCH")
 
         requester, executor, workspace, request = self._fixture()
         db.session.add(Setting(workspace_id=workspace.id, key="spa_logo", value="logo.png"))
         db.session.commit()
         with self.assertRaises(PurgeConflictError) as context:
-            PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
+            self._execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=executor.id, now=datetime(2026, 2, 1))
         self.assertEqual(context.exception.code, "MANIFEST_MISMATCH")
+
+    def test_reauth_issue_success_persists_only_hash_and_resets_throttle(self):
+        requester, executor, workspace, request = self._fixture()
+        issuance = PurgeReauthService.issue_local_authorization(request.id, executor.id, "TestPassword123!")
+        self.assertEqual(issuance.generation, 1)
+        self.assertGreaterEqual(len(issuance.raw_nonce), 43)
+        self.assertNotIn(issuance.raw_nonce, repr(issuance))
+        authorization = db.session.query(WorkspacePurgeExecutionAuthorization).one()
+        self.assertNotEqual(authorization.nonce_hash, issuance.raw_nonce)
+        self.assertEqual(len(authorization.nonce_hash), 64)
+        self.assertEqual(authorization.state, "ACTIVE")
+        self.assertLessEqual(issuance.expires_at - issuance.authenticated_at, timedelta(minutes=5))
+        throttle = db.session.query(WorkspacePurgeReauthActorThrottle).one()
+        self.assertEqual(throttle.failed_attempt_count, 0)
+        self.assertEqual(db.session.query(ActivityLog).count(), 2)
+
+    def test_reauth_bad_password_is_durable_and_actor_global_rate_limited(self):
+        requester, executor, workspace, request = self._fixture()
+        for _ in range(4):
+            with self.assertRaises(PurgeReauthInvalidCredentialError):
+                PurgeReauthService.issue_local_authorization(request.id, executor.id, "wrong")
+        with self.assertRaises(PurgeReauthInvalidCredentialError):
+            PurgeReauthService.issue_local_authorization(request.id, executor.id, "wrong")
+        with self.assertRaises(PurgeReauthRateLimitedError):
+            PurgeReauthService.issue_local_authorization(request.id, executor.id, "TestPassword123!")
+        throttle = db.session.query(WorkspacePurgeReauthActorThrottle).one()
+        self.assertEqual(throttle.failed_attempt_count, 5)
+        self.assertIsNotNone(throttle.locked_until)
+
+    def test_direct_execution_requires_durable_reauth(self):
+        requester, executor, workspace, request = self._fixture()
+        with self.assertRaises(PurgeReauthRequiredError):
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+        self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
+
+    def test_claim_before_purge_and_success_transition(self):
+        requester, executor, workspace, request = self._fixture()
+        issuance = PurgeReauthService.issue_local_authorization(request.id, executor.id, "TestPassword123!")
+        result = self._execute_workspace_purge(
+            request_id=request.id,
+            workspace_id=workspace.id,
+            executor_user_id=executor.id,
+            authorization_generation=issuance.generation,
+            authorization_nonce=issuance.raw_nonce,
+            now=datetime(2026, 2, 1),
+        )
+        self.assertEqual(result.status, "COMPLETED")
+        authorization = db.session.query(WorkspacePurgeExecutionAuthorization).one()
+        self.assertEqual(authorization.state, "CONSUMED_SUCCESS")
+        self.assertIsNone(authorization.nonce_hash)
+        self.assertIsNotNone(authorization.execution_started_event_id)

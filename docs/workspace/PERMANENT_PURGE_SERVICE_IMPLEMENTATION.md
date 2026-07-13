@@ -152,13 +152,40 @@ Neither table duplicates `workspace_id`; the service must derive and lock the
 workspace through the authoritative purge request. Both tables use restricted
 foreign keys, named portable checks, and guarded empty-table downgrade.
 
-The ORM models are schema-only representations. No password verification,
-nonce transport, authorization claim, route, or purge-service runtime behavior
-is included. PostgreSQL migration rehearsal and concurrency evidence remain
-pending in the later validation tasks. Production purge remains NOT
-AUTHORIZED.
+The ORM models remain schema representations; Task 6.6.8d3c now provides the
+separate local-password issuance and purge-service claim runtime over them.
+No route, browser form, or session transport is included. PostgreSQL migration
+rehearsal and concurrency evidence remain pending in the later validation
+tasks. Production purge remains NOT AUTHORIZED.
 
 Expanded all-table tenant and PostgreSQL concurrency coverage remains a
 Task 6.6.6/6.6.7 requirement. Production execution is not authorized.
 Task 6.6.5–6.6.9 are not complete. Task 6.6.4 is not marked DONE until
 review and commit approval are complete. Version 6.6 is not closed.
+
+## Task 6.6.8d3c durable local re-auth execution claim
+
+Task 6.6.8d3c adds the runtime foundation over migration `0008` without
+changing schema or migration files. `PurgeReauthService` issues one
+request-wide authorization after current-password verification by an active
+local `APPROVAL_OWNER`, enforces the existing three-person actor separation,
+rotates the generation, keeps the raw nonce only in the returned in-memory
+value, and persists only its SHA-256 hash. The actor-global throttle persists
+five failures in a ten-minute window and a fifteen-minute lockout.
+
+Issuance, failed attempts, rate limiting, claims, revocation, and terminal
+authorization transitions write durable activity audit entries in the same
+transaction. Commit uncertainty is reconciled through a fresh read before a
+successful result is returned. A public purge call must provide the current
+generation and raw nonce; the service claims the authorization and commits
+that claim before opening the destructive purge transaction. The existing
+`execution_started` lifecycle event is associated with the authorization in
+the service-started transition. Successful completion becomes
+`CONSUMED_SUCCESS`; a known pre-start rejection becomes `REVOKED`, while an
+unexpected pre-start failure becomes `CLAIMED_UNRESOLVED`.
+
+Direct service calls fail closed with `REAUTH_REQUIRED`. No browser form,
+route, session transport, logout/password-change wiring, Google re-auth, or
+production execution is introduced in this task. PostgreSQL concurrency proof,
+transport integration, and later lifecycle invalidation work remain deferred
+to their approved follow-up tasks. Feature flags remain disabled by default.

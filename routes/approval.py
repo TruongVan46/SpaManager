@@ -23,6 +23,7 @@ from services.purge_service import (
     PurgeExecutionError,
     PurgeService,
 )
+from services.purge_reauth_service import PurgeReauthError
 
 
 def _require_approval_owner():
@@ -376,6 +377,8 @@ def execute_purge_request(request_id):
             workspace_id=summary.workspace_id,
             executor_user_id=actor.id,
         )
+    except PurgeReauthError:
+        NotificationService.flash_error("Fresh purge re-authentication is required before execution.")
     except PurgeCommitOutcomeUnknownError:
         NotificationService.flash_error("Purge outcome requires investigation; no retry was attempted.")
     except PurgeExecutionDisabledError:
