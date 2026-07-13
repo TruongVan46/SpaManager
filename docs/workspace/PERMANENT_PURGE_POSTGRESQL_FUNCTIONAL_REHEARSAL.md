@@ -237,3 +237,15 @@ The functional rehearsal is **not** declared PASS from Task 6.6.7e4.
 Task 6.6.7e5 corrects the harness by replacing all direct ORM terminal
 attribute access with Core `workspace_terminal_state_table` queries in the
 three affected test functions.
+
+### Task 6.6.7e6 Controlled Rerun — Result
+
+The controlled PostgreSQL suite collected 9 tests, not 10. Five tests passed
+before `test_restore_invalidates_request` failed, before runtime restore
+execution began. The harness attempted to call `PurgeRequestService.UserService`,
+but `PurgeRequestService` does not expose `UserService`; the direct service
+bundle namespace is required. The post-failure cleanup invariant passed: all 13
+application tables returned to 0, with the expected schema identity and
+revision `0007_permanent_purge_workflow` intact. No application runtime defect
+was established by this failure, and the functional rehearsal is still not
+declared PASS.

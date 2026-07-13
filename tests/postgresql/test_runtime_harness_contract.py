@@ -359,6 +359,103 @@ def test_direct_fixture_mutations_call_prepare_scoped_session_first():
     assert source.index("postgres_case.prepare_scoped_session()") < source.index('fixture["db"].session.add(fixture["models"].PurgeLegalHold')
 
 
+def test_ast_restore_scenario_uses_direct_user_service_namespace_and_ordering():
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    func_node = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name == "test_restore_invalidates_request"
+        ),
+        None,
+    )
+    assert func_node is not None
+
+    def fixture_member(node, member):
+        return (
+            isinstance(node, ast.Attribute)
+            and node.attr == member
+            and isinstance(node.value, ast.Subscript)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "fixture"
+            and isinstance(node.value.slice, ast.Constant)
+            and node.value.slice.value == "services"
+        )
+
+    def service_member(node, member):
+        return (
+            isinstance(node, ast.Attribute)
+            and node.attr == member
+            and isinstance(node.value, ast.Subscript)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "fixture"
+            and isinstance(node.value.slice, ast.Constant)
+            and node.value.slice.value == "services"
+        )
+
+    restore_calls = [
+        node
+        for node in ast.walk(func_node)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "restore_owner_workspace"
+    ]
+    assert len(restore_calls) == 1
+    restore_call = restore_calls[0]
+    assert (
+        isinstance(restore_call.func.value, ast.Attribute)
+        and restore_call.func.value.attr == "UserService"
+        and isinstance(restore_call.func.value.value, ast.Subscript)
+        and isinstance(restore_call.func.value.value.value, ast.Name)
+        and restore_call.func.value.value.value.id == "fixture"
+        and isinstance(restore_call.func.value.value.slice, ast.Constant)
+        and restore_call.func.value.value.slice.value == "services"
+    )
+    assert len(restore_call.args) == 2
+    assert not restore_call.keywords
+    assert all(
+        isinstance(arg, ast.Subscript)
+        and isinstance(arg.value, ast.Name)
+        and arg.value.id == "fixture"
+        and isinstance(arg.slice, ast.Constant)
+        and arg.slice.value == expected
+        for arg, expected in zip(restore_call.args, ("actor", "owner_id"))
+    )
+
+    prepare_calls = [
+        node
+        for node in ast.walk(func_node)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "prepare_scoped_session"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "postgres_case"
+    ]
+    assert prepare_calls
+    assert max(node.lineno for node in prepare_calls) < restore_call.lineno
+
+    request_assignments = [
+        node
+        for node in func_node.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "request_service" for target in node.targets)
+    ]
+    assert len(request_assignments) == 1
+    request_value = request_assignments[0].value
+    assert service_member(request_value, "PurgeRequestService")
+
+    create_calls = [
+        node
+        for node in ast.walk(func_node)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "create_purge_request"
+    ]
+    assert create_calls
+    assert all(isinstance(node.func.value, ast.Name) and node.func.value.id == "request_service" for node in create_calls)
+
+
 def test_rollback_audit_uses_unique_description():
     source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
     assert "verification.query(fixture[\"models\"].ActivityLog).filter_by(" in source

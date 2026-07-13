@@ -347,14 +347,14 @@ def test_restore_invalidates_request(postgres_case):
     from models.purge import workspace_terminal_state_table
 
     fixture = _base_fixture(postgres_case, include_business=False)
-    service = fixture["services"].PurgeRequestService
-    request = service.create_purge_request(
+    request_service = fixture["services"].PurgeRequestService
+    request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
         confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
     )
     request_id = request.id
     postgres_case.prepare_scoped_session()
-    service.UserService.restore_owner_workspace(fixture["actor"], fixture["owner_id"])
+    fixture["services"].UserService.restore_owner_workspace(fixture["actor"], fixture["owner_id"])
     fixture["db"].session.remove()
     verification = postgres_case.new_session()
     try:
