@@ -52,6 +52,11 @@ class ScenarioPlan:
     isolation: str
     acceptable_outcomes: tuple[str, ...]
     forbidden_outcomes: tuple[str, ...]
+    execution_mode: str = "AUTHORIZATION_ONLY"
+
+    @property
+    def service_deletion_expected(self):
+        return self.execution_mode == "PURGE_SERVICE"
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -92,11 +97,13 @@ SCENARIO_PLANS = {
         "D", 5, 2, "threading.Barrier", "independent app context and service session per worker",
         ("one public purge success", "one claim/replay failure"),
         ("private-core bypass", "double destructive execution"),
+        execution_mode="PURGE_SERVICE",
     ),
     "E": ScenarioPlan(
         "E", 5, 2, "threading.Barrier", "two independent Flask clients and sessions",
         ("one copied-cookie winner", "one fail-closed loser"),
         ("shared client object", "double execution", "cookie disclosure"),
+        execution_mode="PURGE_SERVICE",
     ),
     "F": ScenarioPlan(
         "F", 10, 2, "threading.Barrier", "independent engine/session per worker",
@@ -109,6 +116,124 @@ SCENARIO_PLANS = {
         ("return to ACTIVE", "nonce restoration", "logout blocked"),
     ),
 }
+
+
+POSTGRESQL_SCENARIO_NODE_IDS = {
+    code: f"tests/test_postgresql_purge_reauth_concurrency.py::{name}"
+    for code, name in {
+        "A": "test_postgresql_concurrent_authorization_issuance",
+        "B": "test_postgresql_actor_global_throttle_race",
+        "C": "test_postgresql_same_nonce_claim_race",
+        "D": "test_postgresql_concurrent_public_purge_execution",
+        "E": "test_postgresql_copied_session_cookie_race",
+        "F": "test_postgresql_issuance_versus_claim_race",
+        "G": "test_postgresql_logout_revocation_versus_claim_race",
+    }.items()
+}
+
+INDEPENDENT_PHASE_NODE_IDS = {
+    "A-D": tuple(POSTGRESQL_SCENARIO_NODE_IDS[code] for code in "ABCD"),
+    "E": (POSTGRESQL_SCENARIO_NODE_IDS["E"],),
+    "F": (POSTGRESQL_SCENARIO_NODE_IDS["F"],),
+    "G": (POSTGRESQL_SCENARIO_NODE_IDS["G"],),
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ZeroRowGateResult:
+    database: str
+    revision: str | None
+    application_counts: Mapping[str, int]
+    unknown_public_tables: tuple[str, ...] = ()
+
+    @property
+    def nonzero_tables(self):
+        return {
+            name: count for name, count in self.application_counts.items() if count
+        }
+
+    @property
+    def passed(self):
+        return (
+            self.database == REHEARSAL_DATABASE_NAME
+            and self.revision == EXPECTED_REVISION
+            and not self.nonzero_tables
+            and not self.unknown_public_tables
+            and set(self.application_counts) == set(APPLICATION_TABLE_NAMES)
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ScenarioExecutionResult:
+    scenario: str
+    functional_status: str
+    functional_error: str | None = None
+    teardown_status: str = "NOT_RUN"
+    teardown_error: str | None = None
+    postflight_status: str = "NOT_RUN"
+    remaining_objects: tuple[str, ...] = ()
+    pytest_node_id: str | None = None
+
+    @property
+    def overall_status(self):
+        if self.functional_status != "PASS":
+            return "FAIL"
+        if self.teardown_status != "PASS" or self.postflight_status != "PASS":
+            return "FAIL"
+        return "PASS"
+
+
+@dataclass(frozen=True, slots=True)
+class PhaseEvidence:
+    phase: str
+    functional_status: str
+    teardown_status: str
+    postflight_status: str
+    stdout: str = ""
+    stderr: str = ""
+    exit_code: int | None = None
+    duration_seconds: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IndependentExecutionPlan:
+    phases: tuple[str, ...] = ("A-D", "E", "F", "G")
+    stop_on_functional_failure: bool = True
+    stop_on_teardown_failure: bool = True
+    stop_on_postflight_failure: bool = True
+    require_zero_baseline: bool = True
+
+    def selectors(self):
+        return {phase: INDEPENDENT_PHASE_NODE_IDS[phase] for phase in self.phases}
+
+    def validate(self):
+        selectors = self.selectors()
+        all_nodes = tuple(node for nodes in selectors.values() for node in nodes)
+        expected = tuple(POSTGRESQL_SCENARIO_NODE_IDS.values())
+        if len(all_nodes) != len(set(all_nodes)):
+            raise ValueError("independent phase selectors overlap")
+        if set(all_nodes) != set(expected):
+            raise ValueError("independent phase selectors do not cover A-G exactly")
+        if not all(node.startswith("tests/test_postgresql_purge_reauth_concurrency.py::test_postgresql_") for node in all_nodes):
+            raise ValueError("destructive selector includes a non-PostgreSQL node")
+        return selectors
+
+    def should_start(self, phase, previous: PhaseEvidence | None = None):
+        if phase not in self.phases:
+            return False
+        if previous is None:
+            return self.require_zero_baseline
+        return (
+            previous.functional_status == "PASS"
+            and previous.teardown_status == "PASS"
+            and previous.postflight_status == "PASS"
+        )
+
+
+def build_independent_execution_plan():
+    plan = IndependentExecutionPlan()
+    plan.validate()
+    return plan
 
 
 APPLICATION_TABLE_NAMES = frozenset(
@@ -513,6 +638,7 @@ class RoundContext:
     round_number: int
     namespace: str
     manifest: CleanupManifest
+    execution_mode: str = "AUTHORIZATION_ONLY"
 
     def __repr__(self):
         return f"RoundContext(scenario={self.scenario!r}, round_number={self.round_number!r})"
@@ -522,7 +648,13 @@ def create_round_context(scenario: str, round_number: int, run_namespace: str):
     if scenario not in SCENARIO_PLANS or round_number <= 0 or not run_namespace:
         raise ValueError("invalid rehearsal round context")
     namespace = f"{run_namespace}-{scenario.lower()}-{round_number}"
-    return RoundContext(scenario, round_number, namespace, CleanupManifest(namespace))
+    return RoundContext(
+        scenario,
+        round_number,
+        namespace,
+        CleanupManifest(namespace),
+        SCENARIO_PLANS[scenario].execution_mode,
+    )
 
 
 @contextmanager
@@ -781,6 +913,46 @@ def execute_scenario(context: RehearsalContext, code: str):
         if cleanup_error is not None:
             raise cleanup_error
     return results
+
+
+def execute_scenario_with_outcomes(context: RehearsalContext, code: str):
+    """Run one scenario while preserving functional, teardown, and postflight outcomes."""
+
+    plan = SCENARIO_PLANS[code]
+    callback = resolve_scenario_callback(context, code)
+    functional_error = None
+    teardown_error = None
+    remaining = ()
+    for round_number in range(1, plan.rounds + 1):
+        round_context = create_round_context(code, round_number, context.manifest.namespace)
+        try:
+            callback(context, plan, round_context)
+        except BaseException as error:
+            functional_error = error
+        finally:
+            try:
+                cleanup_round_exactly(context, round_context)
+            except BaseException as error:
+                teardown_error = error
+                remaining = tuple(
+                    f"{kind}:{object_id}"
+                    for kind, object_id in _remaining_manifest_objects(round_context.manifest)
+                )
+        if functional_error is not None or teardown_error is not None:
+            break
+    functional_status = "FAIL" if functional_error is not None else "PASS"
+    teardown_status = "FAIL" if teardown_error is not None else "PASS"
+    postflight_status = "FAIL" if teardown_error is not None else "PASS"
+    return ScenarioExecutionResult(
+        scenario=code,
+        functional_status=functional_status,
+        functional_error=(str(functional_error) if functional_error else None),
+        teardown_status=teardown_status,
+        teardown_error=(str(teardown_error) if teardown_error else None),
+        postflight_status=postflight_status,
+        remaining_objects=remaining,
+        pytest_node_id=POSTGRESQL_SCENARIO_NODE_IDS.get(code),
+    )
 
 
 def resolve_scenario_callback(context, code):
@@ -1217,7 +1389,7 @@ class SyntheticFixtureBuilder:
         manifest.plan("activity_log", activity.id)
         db.session.commit()
         manifest.mark_all_persisted()
-        if round_context.scenario == "D":
+        if round_context.execution_mode == "PURGE_SERVICE":
             for kind, object_id in (
                 ("invoice_detail", detail.id),
                 ("appointment", appointment.id),
@@ -1449,7 +1621,8 @@ def run_scenario_e_copied_cookie(context, plan, round_context):
             client = clients[0 if label.endswith("1") else 1]
             response = execute_route_with_copied_cookie(client, case)
             return WorkerResult("E", round_number, label, f"HTTP_{response.status_code}", resource[1])
-        return _service_worker_results(context, plan, execute)
+        with isolated_purge_execution_flags(context.application):
+            return _service_worker_results(context, plan, execute)
     finally:
         pass
 

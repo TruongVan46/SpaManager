@@ -46,6 +46,14 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     canonical_route_url,
     format_rehearsal_evidence,
     run_postflight_with_evidence,
+    POSTGRESQL_SCENARIO_NODE_IDS,
+    INDEPENDENT_PHASE_NODE_IDS,
+    IndependentExecutionPlan,
+    PhaseEvidence,
+    ScenarioExecutionResult,
+    ZeroRowGateResult,
+    build_independent_execution_plan,
+    execute_scenario_with_outcomes,
 )
 
 
@@ -86,6 +94,96 @@ def test_d3e_scenario_plans_have_independent_deterministic_workers():
         plan = _assert_scenario_plan(code)
         assert "independent" in plan.isolation
         assert plan.forbidden_outcomes
+
+
+def test_d3e_service_deletion_mode_is_semantic_not_letter_based():
+    assert SCENARIO_PLANS["D"].execution_mode == "PURGE_SERVICE"
+    assert SCENARIO_PLANS["E"].execution_mode == "PURGE_SERVICE"
+    assert not SCENARIO_PLANS["A"].service_deletion_expected
+    assert not SCENARIO_PLANS["B"].service_deletion_expected
+    assert not SCENARIO_PLANS["C"].service_deletion_expected
+    assert not SCENARIO_PLANS["F"].service_deletion_expected
+    assert not SCENARIO_PLANS["G"].service_deletion_expected
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    assert "if round_context.scenario == \"D\"" not in source
+    assert "if scenario in {\"D\", \"E\"}" not in source
+
+
+def test_d3e_round_context_carries_execution_semantics():
+    assert create_round_context("D", 1, "run").execution_mode == "PURGE_SERVICE"
+    assert create_round_context("E", 1, "run").execution_mode == "PURGE_SERVICE"
+    assert create_round_context("F", 1, "run").execution_mode == "AUTHORIZATION_ONLY"
+
+
+def test_d3e_e_fixture_registers_service_deletions_by_mode():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    fixture = source[source.index("def approved_request"):source.index("def _service_worker_results")]
+    assert "round_context.execution_mode == \"PURGE_SERVICE\"" in fixture
+    assert "register_service_deletion_expected" not in fixture
+    assert "manifest.classification_by_key[(kind, object_id)] = SERVICE_DELETION_EXPECTED" in fixture
+
+
+def test_d3e_e_uses_same_isolated_execution_flags_as_d():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    e_source = source[source.index("def run_scenario_e_copied_cookie"):source.index("def run_scenario_f_issuance_vs_claim")]
+    assert "with isolated_purge_execution_flags(context.application):" in e_source
+
+
+def test_d3e_independent_phase_selectors_are_exact_and_disjoint():
+    plan = build_independent_execution_plan()
+    selectors = plan.validate()
+    assert len(selectors["A-D"]) == 4
+    assert len(selectors["E"]) == len(selectors["F"]) == len(selectors["G"]) == 1
+    flattened = [node for nodes in selectors.values() for node in nodes]
+    assert len(flattened) == len(set(flattened)) == 7
+    assert set(flattened) == set(POSTGRESQL_SCENARIO_NODE_IDS.values())
+    assert all(node.startswith("tests/test_postgresql_purge_reauth_concurrency.py::test_postgresql_") for node in flattened)
+
+
+def test_d3e_independent_plan_requires_zero_and_stops_after_any_failure():
+    plan = IndependentExecutionPlan()
+    assert plan.should_start("A-D")
+    passed = PhaseEvidence("A-D", "PASS", "PASS", "PASS")
+    failed_teardown = PhaseEvidence("E", "PASS", "FAIL", "FAIL")
+    failed_functional = PhaseEvidence("E", "FAIL", "PASS", "PASS")
+    assert plan.should_start("E", passed)
+    assert not plan.should_start("F", failed_teardown)
+    assert not plan.should_start("F", failed_functional)
+    assert not plan.should_start("G", failed_teardown)
+
+
+def test_d3e_zero_row_gate_reports_exact_nonzero_tables():
+    counts = {name: 0 for name in APPLICATION_TABLE_NAMES}
+    counts["users"] = 2
+    failed = ZeroRowGateResult("spamanager_purge_rehearsal_test", EXPECTED_REVISION, counts)
+    assert not failed.passed
+    assert failed.nonzero_tables == {"users": 2}
+    passed = ZeroRowGateResult("spamanager_purge_rehearsal_test", EXPECTED_REVISION, {name: 0 for name in APPLICATION_TABLE_NAMES})
+    assert passed.passed
+
+
+def test_d3e_outcome_separates_functional_teardown_and_postflight():
+    result = ScenarioExecutionResult("E", "PASS", teardown_status="FAIL", teardown_error="missing row", postflight_status="FAIL", remaining_objects=("user:1",))
+    assert result.functional_status == "PASS"
+    assert result.teardown_status == "FAIL"
+    assert result.postflight_status == "FAIL"
+    assert result.overall_status == "FAIL"
+    assert result.remaining_objects == ("user:1",)
+
+
+def test_d3e_outcome_preserves_functional_failure_when_cleanup_passes():
+    result = ScenarioExecutionResult("E", "FAIL", functional_error="HTTP contract failure", teardown_status="PASS", postflight_status="PASS")
+    assert result.functional_status == "FAIL"
+    assert result.teardown_status == "PASS"
+    assert result.overall_status == "FAIL"
+
+
+def test_d3e_execution_plan_has_no_broad_repair_continue_path():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    plan_source = source[source.index("class IndependentExecutionPlan"):source.index("def build_independent_execution_plan")]
+    assert "repair" not in plan_source.lower()
+    assert "stop_on_teardown_failure" in plan_source
+    assert "stop_on_postflight_failure" in plan_source
 
 
 def test_d3e_callback_registry_is_complete_and_harness_owned():
@@ -286,14 +384,15 @@ def test_d3e_missing_cleanup_required_row_remains_strict():
     assert manifest.deletion_order() == (("workspace", 10),)
 
 
-def test_d3e_service_deletion_reconciliation_uses_fresh_session_and_accepts_verified_absence(monkeypatch):
+@pytest.mark.parametrize("scenario", ["D", "E"])
+def test_d3e_service_deletion_reconciliation_uses_fresh_session_and_accepts_verified_absence(monkeypatch, scenario):
     from sqlalchemy import Column, Integer, MetaData, Table
 
     terminal_table = Table(
         "workspace_purge_terminal_state", MetaData(),
         Column("id", Integer), Column("purged_at", Integer), Column("purge_request_id", Integer),
     )
-    round_context = create_round_context("D", 1, "run")
+    round_context = create_round_context(scenario, 1, "run")
     round_context.manifest.register_service_deletion_expected("customer", 11)
     round_context.manifest.register_purge_request(20)
 
@@ -337,14 +436,15 @@ def test_d3e_service_deletion_reconciliation_uses_fresh_session_and_accepts_veri
     assert round_context.manifest.lifecycle_by_key[("customer", 11)] == "service-deleted-verified"
 
 
-def test_d3e_service_deletion_missing_before_verified_success_fails_closed(monkeypatch):
+@pytest.mark.parametrize("scenario", ["D", "E"])
+def test_d3e_service_deletion_missing_before_verified_success_fails_closed(monkeypatch, scenario):
     from sqlalchemy import Column, Integer, MetaData, Table
 
     terminal_table = Table(
         "workspace_purge_terminal_state", MetaData(),
         Column("id", Integer), Column("purged_at", Integer), Column("purge_request_id", Integer),
     )
-    round_context = create_round_context("D", 1, "run")
+    round_context = create_round_context(scenario, 1, "run")
     round_context.manifest.register_service_deletion_expected("customer", 11)
     round_context.manifest.register_purge_request(20)
 
