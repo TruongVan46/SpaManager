@@ -118,6 +118,11 @@ class BaseConfig:
     DEFAULT_OWNER_USERNAME = os.getenv("DEFAULT_OWNER_USERNAME", "owner")
     DEFAULT_OWNER_PASSWORD = os.getenv("DEFAULT_OWNER_PASSWORD", "owner123")
     DEFAULT_OWNER_EMAIL = os.getenv("DEFAULT_OWNER_EMAIL", "")
+    # Account bootstrap remains enabled by default. Isolated rehearsal sets this
+    # explicitly before importing the application module.
+    BOOTSTRAP_ACCOUNTS_ENABLED = _parse_bool_env(
+        os.getenv("SPAMANAGER_BOOTSTRAP_ACCOUNTS_ENABLED"), True
+    )
 
     # Approval owner account bootstrap settings
     APPROVAL_OWNER_USERNAME = os.getenv("APPROVAL_OWNER_USERNAME", "")

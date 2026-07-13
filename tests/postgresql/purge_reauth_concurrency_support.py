@@ -383,6 +383,13 @@ def _count_tables(connection, table_names):
     return counts
 
 
+def assert_application_tables_empty(counts):
+    """Fail closed on any application-row delta; never delete the delta here."""
+
+    if any(count != 0 for count in counts.values()):
+        raise RehearsalGuardError("PostgreSQL rehearsal application data is not empty.")
+
+
 def _assert_readiness(connection, metadata):
     from sqlalchemy import text
 
@@ -395,8 +402,7 @@ def _assert_readiness(connection, metadata):
     assert_revision_metadata(revision)
     classification = _catalog_and_metadata(connection, metadata)
     counts = _count_tables(connection, classification["application"])
-    if any(count != 0 for count in counts.values()):
-        raise RehearsalGuardError("PostgreSQL rehearsal application data is not empty.")
+    assert_application_tables_empty(counts)
     return classification
 
 
@@ -404,6 +410,9 @@ def create_enabled_rehearsal_context(environ: Mapping[str, object]) -> Rehearsal
     """Create the guarded application/engine context only after opt-in."""
 
     target = require_rehearsal_environment(environ)
+    # This explicit setting must precede importing app.py, whose module-level
+    # bootstrap hook otherwise seeds accounts during application creation.
+    os.environ["SPAMANAGER_BOOTSTRAP_ACCOUNTS_ENABLED"] = "0"
     from sqlalchemy import create_engine, text
     from sqlalchemy.pool import NullPool
 
@@ -424,8 +433,9 @@ def create_enabled_rehearsal_context(environ: Mapping[str, object]) -> Rehearsal
                 connection.execute(text("SET LOCAL statement_timeout = '30s'"))
                 classification = _assert_readiness(connection, db.metadata)
             with engine.connect() as connection:
-                if any(value != 0 for value in _count_tables(connection, classification["application"]).values()):
-                    raise RehearsalGuardError("Application initialization side effect detected.")
+                assert_application_tables_empty(
+                    _count_tables(connection, classification["application"])
+                )
         finally:
             engine.dispose()
         context = RehearsalContext(

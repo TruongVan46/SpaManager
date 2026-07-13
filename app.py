@@ -299,7 +299,7 @@ def _baseline_schema_is_ready():
 
 with app.app_context():
     if _baseline_schema_is_ready():
-        if not _should_skip_owner_seed_for_cli():
+        if app.config.get("BOOTSTRAP_ACCOUNTS_ENABLED", True) and not _should_skip_owner_seed_for_cli():
             AuthService.seed_owner_if_empty()
             AuthService.seed_approval_owner_if_configured()
     else:

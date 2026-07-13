@@ -30,6 +30,7 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     isolated_purge_execution_flags,
     copy_actual_session_cookie,
     resolve_scenario_callback,
+    assert_application_tables_empty,
 )
 
 
@@ -160,6 +161,32 @@ def test_d3e_expected_application_table_missing_fails_closed():
             {MIGRATION_METADATA_TABLE, *(APPLICATION_TABLE_NAMES - {"purge_lifecycle_events"})},
             set(),
         )
+
+
+def test_d3e_bootstrap_readiness_rejects_any_application_delta_without_cleanup():
+    with pytest.raises(RehearsalGuardError, match="application data is not empty"):
+        assert_application_tables_empty({"users": 1, "workspaces": 0})
+
+    support_source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    assert "DELETE" not in support_source[support_source.index("def assert_application_tables_empty"):support_source.index("def _assert_readiness")]
+
+
+def test_d3e_bootstrap_suppression_is_explicit_and_loaded_before_app_import():
+    config_source = Path("config.py").read_text(encoding="utf-8")
+    app_source = Path("app.py").read_text(encoding="utf-8")
+    support_source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    assert "BOOTSTRAP_ACCOUNTS_ENABLED" in config_source
+    assert 'os.getenv("SPAMANAGER_BOOTSTRAP_ACCOUNTS_ENABLED")' in config_source
+    assert "BOOTSTRAP_ACCOUNTS_ENABLED" in app_source
+    assert "seed_owner_if_empty" in app_source
+    app_import = support_source.index("from app import app")
+    suppression = support_source.index('os.environ["SPAMANAGER_BOOTSTRAP_ACCOUNTS_ENABLED"] = "0"')
+    assert suppression < app_import
+
+
+def test_d3e_bootstrap_default_behavior_remains_enabled_without_explicit_suppression():
+    source = Path("config.py").read_text(encoding="utf-8")
+    assert "_parse_bool_env(\n        os.getenv(\"SPAMANAGER_BOOTSTRAP_ACCOUNTS_ENABLED\"), True\n    )" in source
 
 
 @pytest.mark.parametrize(
