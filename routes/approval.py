@@ -10,8 +10,19 @@ from services.purge_request_service import (
     PurgeRequestService,
     PurgeRequestServiceError,
 )
-from config import is_permanent_purge_ui_enabled
+from config import (
+    is_permanent_purge_execution_enabled,
+    is_permanent_purge_ui_enabled,
+)
 from utils.pagination import get_pagination_params
+from services.purge_service import (
+    PurgeAuthorizationError,
+    PurgeCommitOutcomeUnknownError,
+    PurgeConflictError,
+    PurgeExecutionDisabledError,
+    PurgeExecutionError,
+    PurgeService,
+)
 
 
 def _require_approval_owner():
@@ -29,6 +40,14 @@ def _require_purge_ui():
     return _require_approval_owner()
 
 
+def _require_purge_execution():
+    if not is_permanent_purge_ui_enabled(current_app.config.get("PERMANENT_PURGE_UI_ENABLED")):
+        abort(404)
+    if not is_permanent_purge_execution_enabled(current_app.config.get("PERMANENT_PURGE_EXECUTION_ENABLED")):
+        abort(404)
+    return _require_approval_owner()
+
+
 def _no_cache(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
@@ -39,6 +58,29 @@ def _no_cache(response):
 def _purge_error(error):
     NotificationService.flash_error(error.message)
     return redirect(url_for("approval.purge_requests"))
+
+
+def _load_execution_summary(request_id):
+    try:
+        summary = PurgeRequestService.get_summary(request_id)
+    except PurgeRequestServiceError as error:
+        abort(404 if error.code == "NOT_FOUND" else 409)
+    try:
+        workspace_target = PurgeRequestService.get_workspace_target(summary.workspace_id)
+    except PurgeRequestServiceError as error:
+        abort(404 if error.code == "NOT_FOUND" else 409)
+    return summary, workspace_target
+
+
+def _execution_is_basic_candidate(summary, workspace_target, actor):
+    return (
+        summary.status == "APPROVED"
+        and summary.requested_by_id != actor.id
+        and summary.invalidated_at is None
+        and not summary.outcome_unknown
+        and summary.manifest_valid
+        and not workspace_target.get("purged")
+    )
 
 
 @approval_bp.route('/approval/pending')
@@ -272,10 +314,73 @@ def purge_request_detail(request_id):
         summary = PurgeRequestService.get_summary(request_id)
     except PurgeRequestServiceError as error:
         abort(404 if error.code == "NOT_FOUND" else 409)
+    workspace_target = None
+    try:
+        workspace_target = PurgeRequestService.get_workspace_target(summary.workspace_id)
+    except PurgeRequestServiceError:
+        pass
     response = make_response(render_template(
         "approval/purge_request_detail.html", current_user=actor, summary=summary,
+        workspace_target=workspace_target,
     ))
     return _no_cache(response)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/execute/confirm', methods=['GET'])
+def confirm_purge_request(request_id):
+    actor = _require_purge_execution()
+    summary, workspace_target = _load_execution_summary(request_id)
+    if summary.requested_by_id == actor.id:
+        abort(403)
+    if not _execution_is_basic_candidate(summary, workspace_target, actor):
+        abort(409)
+    response = make_response(render_template(
+        "approval/purge_request_execute.html",
+        current_user=actor,
+        summary=summary,
+        workspace_target=workspace_target,
+        confirmation_phrase=f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}",
+    ))
+    return _no_cache(response)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/execute', methods=['POST'])
+def execute_purge_request(request_id):
+    actor = _require_purge_execution()
+    summary, workspace_target = _load_execution_summary(request_id)
+    if summary.requested_by_id == actor.id:
+        abort(403)
+    if not _execution_is_basic_candidate(summary, workspace_target, actor):
+        NotificationService.flash_error("Purge request is no longer executable.")
+        return redirect(url_for("approval.purge_request_detail", request_id=request_id))
+
+    expected_phrase = f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}"
+    supplied_phrase = request.form.get("confirmation_phrase")
+    if not isinstance(supplied_phrase, str) or supplied_phrase.strip() != expected_phrase:
+        NotificationService.flash_error("Typed confirmation is invalid.")
+        return redirect(url_for("approval.purge_request_detail", request_id=request_id))
+
+    try:
+        result = PurgeService.execute_workspace_purge(
+            request_id=summary.id,
+            workspace_id=summary.workspace_id,
+            executor_user_id=actor.id,
+        )
+    except PurgeCommitOutcomeUnknownError:
+        NotificationService.flash_error("Purge outcome requires investigation; no retry was attempted.")
+    except PurgeExecutionDisabledError:
+        NotificationService.flash_error("Permanent purge execution is disabled.")
+    except PurgeAuthorizationError:
+        NotificationService.flash_error("Actor is not authorized to execute this purge request.")
+    except PurgeConflictError as error:
+        NotificationService.flash_error(str(error))
+    except PurgeExecutionError:
+        NotificationService.flash_error("Purge execution failed; review the request before taking further action.")
+    else:
+        NotificationService.flash_success(
+            f"Purge request {result.request_id} completed."
+        )
+    return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 
 
 @approval_bp.route('/approval/workspaces/<int:workspace_id>/purge-request', methods=['POST'])

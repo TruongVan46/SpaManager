@@ -1,0 +1,33 @@
+{% extends 'layout/approval_base.html' %}
+{% block title %}Confirm purge execution - SpaManager{% endblock %}
+{% block content %}
+<section class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="alert alert-danger" role="alert">
+      <strong>Irreversible action.</strong> This action permanently deletes the approved workspace business records.
+    </div>
+    <h1 class="h4">Confirm purge execution</h1>
+    <dl class="row small">
+      <dt class="col-sm-4">Request ID</dt><dd class="col-sm-8"><code>{{ summary.id }}</code></dd>
+      <dt class="col-sm-4">Workspace</dt><dd class="col-sm-8">{{ summary.workspace_name }} ({{ summary.workspace_slug }})</dd>
+      <dt class="col-sm-4">Workspace ID</dt><dd class="col-sm-8"><code>{{ summary.workspace_id }}</code></dd>
+      <dt class="col-sm-4">Requester</dt><dd class="col-sm-8">{{ summary.requested_by_snapshot }}</dd>
+      <dt class="col-sm-4">Approver</dt><dd class="col-sm-8">{{ summary.approved_by_snapshot or '—' }}</dd>
+      <dt class="col-sm-4">Current status</dt><dd class="col-sm-8">{{ summary.status }}</dd>
+      <dt class="col-sm-4">Manifest hash</dt><dd class="col-sm-8"><code>{{ summary.manifest_hash }}</code></dd>
+    </dl>
+    <h2 class="h6 mt-4">Expected deletion counts</h2>
+    <ul>{% for table, count in summary.destructive_counts.items() %}<li>{{ table }}: {{ count }}</li>{% else %}<li>Manifest unavailable/invalid.</li>{% endfor %}</ul>
+    <h2 class="h6 mt-4">Preserved records</h2>
+    <ul>{% for item in summary.preserved %}<li>{{ item }}</li>{% else %}<li>Preservation summary unavailable.</li>{% endfor %}</ul>
+    <p class="small text-muted">Filesystem files are not deleted. Backup does not make this purge instantly reversible.</p>
+    <p class="small text-muted">The existence of this route does not authorize production purge. Both purge gates are currently required and production authorization remains separate.</p>
+    <form method="post" action="{{ url_for('approval.execute_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="form-label" for="execute-confirmation">Type exactly: <code>{{ confirmation_phrase }}</code></label>
+      <input id="execute-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>
+      <button class="btn btn-danger mt-3" type="submit">Execute permanent purge</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -64,6 +64,22 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
   code `EXECUTION_DISABLED`. They are distinct from authorization, request,
   database, and commit-outcome failures and do not trigger retry or failure
   lifecycle mutation.
+- Task 6.6.8c adds an authenticated Approval Portal browser boundary with a
+  read-only confirmation GET and a POST-only execution route. Both
+  `PERMANENT_PURGE_UI_ENABLED` and `PERMANENT_PURGE_EXECUTION_ENABLED` must be
+  exactly enabled for the route to be available.
+- The confirmation phrase is generated server-side as
+  `PURGE WORKSPACE <workspace_id> REQUEST <request_id>`. The POST route loads
+  the actor, request, and workspace server-side, requires CSRF, and passes
+  only server-derived identifiers to `PurgeService.execute_workspace_purge`.
+- The execution route uses Post/Redirect/Get, calls the destructive service at
+  most once per POST, and does not automatically retry outcome-unknown or
+  failed execution. The service remains the final authority for authorization,
+  requester/executor separation, retention, legal hold, provenance, manifest,
+  logo, terminal-state, locking, transaction, and reconciliation checks.
+- Strong purge-specific re-authentication, its freshness window, durable
+  evidence, and any executor-versus-approver decision beyond the existing
+  service contract remain deferred to Task 6.6.8d.
 - Only an active `APPROVAL_OWNER` may execute.
 - Authorization is checked before a `COMPLETED` idempotent return.
 - Requester and executor must be different users.
@@ -92,16 +108,17 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 
 ## Explicit non-goals
 
-- No public route.
-- No UI.
+- No public route or public API; the only execution surface is the gated,
+  authenticated Approval Portal boundary described above.
 - No worker or scheduler.
 - No startup execution.
 - No filesystem cleanup.
 - No new migration.
 - No production purge.
 
-The execution gate does not expose a production execution route or authorize
-production purge. Production execution remains unauthorized.
+The execution gate and browser boundary do not authorize production purge.
+Both flags remain disabled by default and production execution remains
+unauthorized.
 
 Expanded all-table tenant and PostgreSQL concurrency coverage remains a
 Task 6.6.6/6.6.7 requirement. Production execution is not authorized.

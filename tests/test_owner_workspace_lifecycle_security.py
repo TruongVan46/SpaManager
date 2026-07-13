@@ -516,8 +516,29 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertIn(owner, UserService.list_approval_accounts(status="active").items)
         self.assertNotIn(owner, UserService.list_approval_accounts(status="deleted").items)
 
-        approval_routes = {rule.rule for rule in app.url_map.iter_rules() if rule.rule.startswith("/approval/")}
-        self.assertFalse(any("purge" in rule and ("execute" in rule or "confirm" in rule) for rule in approval_routes))
+        # Task 6.6.8c permits execution routes only inside the gated Approval
+        # Portal boundary; focused purge-route tests cover runtime access.
+        approval_routes = {
+            rule.rule: rule
+            for rule in app.url_map.iter_rules()
+            if rule.rule.startswith("/approval/")
+        }
+        confirmation_rule = approval_routes["/approval/purge-requests/<int:request_id>/execute/confirm"]
+        execution_rule = approval_routes["/approval/purge-requests/<int:request_id>/execute"]
+        self.assertEqual(confirmation_rule.endpoint, "approval.confirm_purge_request")
+        self.assertIn("GET", confirmation_rule.methods)
+        self.assertNotIn("POST", confirmation_rule.methods)
+        self.assertEqual(execution_rule.endpoint, "approval.execute_purge_request")
+        self.assertIn("POST", execution_rule.methods)
+        self.assertNotIn("GET", execution_rule.methods)
+
+        non_approval_execution_routes = [
+            rule.rule
+            for rule in app.url_map.iter_rules()
+            if ("purge" in rule.rule and ("execute" in rule.rule or "confirm" in rule.rule))
+            and not rule.rule.startswith("/approval/")
+        ]
+        self.assertEqual(non_approval_execution_routes, [])
 
     def test_staff_admin_account_lifecycle_remains_separate(self):
         staff = self._create_user("separate_staff", "STAFF")
