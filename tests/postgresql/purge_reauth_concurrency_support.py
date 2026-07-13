@@ -29,7 +29,7 @@ EXPECTED_REVISION = "0008_durable_purge_reauth_state"
 CLEANUP_KIND_ORDER = (
     "authorization", "throttle", "lifecycle_event", "legal_hold", "activity_log",
     "invoice_detail", "appointment", "invoice", "workspace_member", "customer",
-    "service", "setting", "workspace", "purge_request", "user",
+    "service", "setting", "purge_request", "workspace", "user",
 )
 
 
@@ -692,6 +692,81 @@ def _manifest_actor_ids(round_context):
     return round_context.manifest.ids_by_kind.get("user", set())
 
 
+def validate_terminal_backlink_bindings(workspace_rows, request_rows, workspace_ids, request_ids):
+    """Validate the exact nullable workspace/request relationship before reconciliation."""
+
+    workspace_ids = set(workspace_ids)
+    request_ids = set(request_ids)
+    workspace_map = dict(workspace_rows)
+    request_map = dict(request_rows)
+    if set(workspace_map) != workspace_ids or set(request_map) != request_ids:
+        raise RehearsalGuardError("workspace/request discovery set mismatch")
+    for request_id, workspace_id in request_map.items():
+        if workspace_id not in workspace_ids:
+            raise RehearsalGuardError("purge request points outside cleanup namespace")
+    to_clear = []
+    for workspace_id, request_id in workspace_map.items():
+        if request_id is None:
+            continue
+        if request_id not in request_ids or request_map[request_id] != workspace_id:
+            raise RehearsalGuardError("workspace terminal backlink crosses cleanup namespace")
+        to_clear.append((workspace_id, request_id))
+    return tuple(sorted(to_clear))
+
+
+def _reconcile_workspace_terminal_backlinks(connection, manifest, metadata):
+    """Clear only discovered run-owned terminal backlinks before request deletion."""
+
+    from sqlalchemy import Table, select, update
+
+    request_ids = tuple(sorted(
+        object_id for kind, object_id in manifest.deletion_order()
+        if kind == "purge_request"
+    ))
+    workspace_ids = tuple(sorted(
+        object_id for kind, object_id in manifest.deletion_order()
+        if kind == "workspace"
+    ))
+    if not workspace_ids and request_ids:
+        raise RehearsalGuardError("purge request has no discovered workspace")
+    if not workspace_ids:
+        return
+
+    workspaces = metadata.tables.get("workspaces")
+    if workspaces is None:
+        workspaces = Table("workspaces", metadata, autoload_with=connection)
+    requests = metadata.tables.get("workspace_purge_requests")
+    if requests is None:
+        requests = Table("workspace_purge_requests", metadata, autoload_with=connection)
+    workspace_rows = connection.execute(
+        select(workspaces.c.id, workspaces.c.purge_request_id)
+        .where(workspaces.c.id.in_(workspace_ids))
+        .with_for_update()
+    ).all()
+    request_rows = connection.execute(
+        select(requests.c.id, requests.c.workspace_id)
+        .where(requests.c.id.in_(request_ids))
+        .with_for_update()
+    ).all() if request_ids else []
+    clear_rows = validate_terminal_backlink_bindings(
+        workspace_rows, request_rows, workspace_ids, request_ids
+    )
+    if not clear_rows:
+        return
+    clear_ids = tuple(workspace_id for workspace_id, _request_id in clear_rows)
+    clear_request_ids = tuple(request_id for _workspace_id, request_id in clear_rows)
+    affected = connection.execute(
+        update(workspaces)
+        .where(
+            workspaces.c.id.in_(clear_ids),
+            workspaces.c.purge_request_id.in_(clear_request_ids),
+        )
+        .values(purge_request_id=None, purged_at=None)
+    ).rowcount
+    if affected != len(clear_rows):
+        raise RehearsalGuardError("terminal backlink reconciliation affected an unexpected row count")
+
+
 def cleanup_manifest(context: RehearsalContext, round_context: RoundContext | None = None):
     """Compatibility wrapper; enabled callbacks must pass their fresh round."""
     if round_context is None:
@@ -732,6 +807,7 @@ def _cleanup_manifest(context: RehearsalContext, manifest: CleanupManifest):
             database = connection.execute(text("SELECT current_database()")).scalar_one()
             if database != REHEARSAL_DATABASE_NAME:
                 raise RehearsalGuardError("Cleanup database identity mismatch.")
+            _reconcile_workspace_terminal_backlinks(connection, manifest, metadata)
             for kind, object_id in manifest.deletion_order():
                 table_name, column_name = table_by_kind[kind]
                 table = metadata.tables.get(table_name)

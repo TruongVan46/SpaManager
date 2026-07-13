@@ -34,6 +34,7 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     CLEANUP_KIND_ORDER,
     _manifest_request_ids,
     _manifest_workspace_ids,
+    validate_terminal_backlink_bindings,
 )
 
 
@@ -236,7 +237,7 @@ def test_d3e_cleanup_manifest_is_exact_and_reverse_ordered():
     manifest.register("purge_request", 20)
     manifest.register("authorization", 30)
     manifest.require_registered("authorization", 30)
-    assert manifest.deletion_order() == (("authorization", 30), ("workspace", 10), ("purge_request", 20))
+    assert manifest.deletion_order() == (("authorization", 30), ("purge_request", 20), ("workspace", 10))
     with pytest.raises(ValueError):
         manifest.require_registered("authorization", 999)
 
@@ -267,13 +268,36 @@ def test_d3e_round_cleanup_discovers_all_registered_request_and_workspace_ids_de
 def test_d3e_cleanup_order_is_fk_safe_for_authorization_events_requests_and_workspace():
     assert CLEANUP_KIND_ORDER.index("authorization") < CLEANUP_KIND_ORDER.index("lifecycle_event")
     assert CLEANUP_KIND_ORDER.index("lifecycle_event") < CLEANUP_KIND_ORDER.index("purge_request")
-    assert CLEANUP_KIND_ORDER.index("workspace") < CLEANUP_KIND_ORDER.index("purge_request")
+    assert CLEANUP_KIND_ORDER.index("purge_request") < CLEANUP_KIND_ORDER.index("workspace")
     assert CLEANUP_KIND_ORDER.index("workspace_member") < CLEANUP_KIND_ORDER.index("workspace")
     source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
     discovery = source[source.index("def discover_and_register_indirect_rows"):source.index("def verify_final_zero_row_state")]
     assert ".in_(request_ids)" in discovery
     assert "independent_worker_session(context)" in discovery
     assert "def _manifest_request_id(" not in source
+
+
+def test_d3e_terminal_backlink_reconciliation_is_exact_and_namespace_bound():
+    assert validate_terminal_backlink_bindings(
+        [(9, 2), (10, None)], [(2, 9)], {9, 10}, {2}
+    ) == ((9, 2),)
+    assert validate_terminal_backlink_bindings(
+        [(9, None)], [], {9}, set()
+    ) == ()
+    with pytest.raises(RehearsalGuardError):
+        validate_terminal_backlink_bindings([(9, 99)], [(2, 9)], {9}, {2})
+    with pytest.raises(RehearsalGuardError):
+        validate_terminal_backlink_bindings([(9, 2)], [(2, 77)], {9}, {2})
+
+
+def test_d3e_terminal_reconciliation_uses_parameterized_exact_update_and_rolls_back_on_mismatch():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    reconciliation = source[source.index("def _reconcile_workspace_terminal_backlinks"):source.index("def cleanup_manifest")]
+    assert "with_for_update()" in reconciliation
+    assert "purge_request_id.in_(clear_request_ids)" in reconciliation
+    assert ".values(purge_request_id=None, purged_at=None)" in reconciliation
+    assert "WHERE purge_request_id IS NOT NULL" not in reconciliation
+    assert "workspaces.c.id.in_(clear_ids)" in reconciliation
 
 
 def test_d3e_fixture_commits_before_independent_purge_request_service_and_checks_actors():
