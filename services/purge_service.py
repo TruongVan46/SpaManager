@@ -2,10 +2,13 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from flask import current_app, has_app_context
+
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import sessionmaker
 
 from core.auth.permissions import is_approval_owner
+from config import is_permanent_purge_execution_enabled
 from extensions import db
 from models.activity_log import ActivityLog
 from models.appointment import Appointment
@@ -66,6 +69,11 @@ class PurgeExecutionError(PurgeServiceError):
         super().__init__(message, code)
 
 
+class PurgeExecutionDisabledError(PurgeExecutionError):
+    def __init__(self, message="Permanent purge execution is disabled."):
+        super().__init__(message, "EXECUTION_DISABLED")
+
+
 class PurgeCommitOutcomeUnknownError(PurgeExecutionError):
     def __init__(self, message="Purge commit outcome is unknown; reconciliation is required.", code="OUTCOME_UNKNOWN"):
         super().__init__(message, code)
@@ -91,6 +99,14 @@ class PurgeService:
 
     @staticmethod
     def execute_workspace_purge(*, request_id: int, workspace_id: int, executor_user_id: int, now=None):
+        execution_enabled = (
+            has_app_context()
+            and is_permanent_purge_execution_enabled(
+                current_app.config.get("PERMANENT_PURGE_EXECUTION_ENABLED")
+            )
+        )
+        if not execution_enabled:
+            raise PurgeExecutionDisabledError()
         if now is not None and not isinstance(now, datetime):
             raise PurgeConflictError("Purge execution time must be a datetime.", "INVALID_NOW")
         execution_time = now or utc_now()

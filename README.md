@@ -110,6 +110,8 @@ Required or commonly used variables:
 - `APP_NAME`
 - `APP_VERSION`
 - `APP_TIMEZONE`
+- `PERMANENT_PURGE_UI_ENABLED` for the staged Approval Portal only
+- `PERMANENT_PURGE_EXECUTION_ENABLED` for the independent destructive-service gate; defaults disabled and fails closed
 - `DATABASE_URL`
 - `TEST_DATABASE_URL` for the PostgreSQL test profile
 - `SPA_ENABLE_SQLITE_LEGACY` for explicit legacy SQLite fallback only

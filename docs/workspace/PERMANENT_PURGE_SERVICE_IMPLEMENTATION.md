@@ -45,6 +45,25 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 
 ## Safety boundary
 
+- Permanent purge execution is independently gated by
+  `PERMANENT_PURGE_EXECUTION_ENABLED`, which defaults to `false` and is
+  parsed fail-closed. Missing, false, or malformed configuration blocks
+  execution.
+- The execution gate is checked at the beginning of the destructive service
+  boundary on every `PurgeService.execute_workspace_purge` invocation, before
+  the service opens its dedicated session or acquires destructive locks.
+- `PERMANENT_PURGE_UI_ENABLED` remains an independent staged Approval Portal
+  flag. Enabling the UI flag does not enable destructive execution, and a
+  direct service call cannot bypass the execution gate.
+- The execution flag is the kill switch for new executions. Configuration is
+  read from the application configuration on each invocation; changing the
+  environment requires a process restart or redeploy for all application
+  instances to receive the disabled state. It does not cancel an already
+  started or committed operation and is not a rollback mechanism.
+- Execution-gate failures raise the typed `PurgeExecutionDisabledError` with
+  code `EXECUTION_DISABLED`. They are distinct from authorization, request,
+  database, and commit-outcome failures and do not trigger retry or failure
+  lifecycle mutation.
 - Only an active `APPROVAL_OWNER` may execute.
 - Authorization is checked before a `COMPLETED` idempotent return.
 - Requester and executor must be different users.
@@ -80,6 +99,9 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 - No filesystem cleanup.
 - No new migration.
 - No production purge.
+
+The execution gate does not expose a production execution route or authorize
+production purge. Production execution remains unauthorized.
 
 Expanded all-table tenant and PostgreSQL concurrency coverage remains a
 Task 6.6.6/6.6.7 requirement. Production execution is not authorized.

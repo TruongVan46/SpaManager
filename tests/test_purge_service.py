@@ -33,6 +33,7 @@ from services.purge_service import (
     PurgeAuthorizationError,
     PurgeConflictError,
     PurgeCommitOutcomeUnknownError,
+    PurgeExecutionDisabledError,
     PurgeExecutionError,
     PurgeService,
 )
@@ -61,6 +62,8 @@ class PurgeServiceTestCase(unittest.TestCase):
                 TEST_DB_FILE.unlink()
 
     def setUp(self):
+        self.previous_execution_flag = app.config.get("PERMANENT_PURGE_EXECUTION_ENABLED")
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = False
         db.session.remove()
         for model in (PurgeLifecycleEvent, PurgeLegalHold, WorkspacePurgeRequest, ActivityLog, InvoiceDetail, Appointment, Invoice, Customer, Service, Setting, WorkspaceMember, Workspace, User):
             db.session.query(model).delete(synchronize_session=False)
@@ -68,8 +71,10 @@ class PurgeServiceTestCase(unittest.TestCase):
 
     def tearDown(self):
         db.session.rollback()
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = self.previous_execution_flag
 
-    def _fixture(self, *, logo=None):
+    def _fixture(self, *, logo=None, execution_enabled=True):
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = execution_enabled
         requester = User(username=f"requester_{uuid.uuid4().hex[:8]}", full_name="Requester", role="APPROVAL_OWNER", approval_status="active", is_active=True)
         executor = User(username=f"executor_{uuid.uuid4().hex[:8]}", full_name="Executor", role="APPROVAL_OWNER", approval_status="active", is_active=True)
         requester.set_password("TestPassword123!")
@@ -124,6 +129,46 @@ class PurgeServiceTestCase(unittest.TestCase):
         request.manifest_hash = digest
         db.session.commit()
         return requester, executor, workspace, request
+
+    def test_disabled_execution_gate_blocks_before_destructive_mutation(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        with self.assertRaises(PurgeExecutionDisabledError) as context:
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+        self.assertEqual(context.exception.code, "EXECUTION_DISABLED")
+        self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
+        self.assertEqual(db.session.query(PurgeLifecycleEvent).count(), 0)
+        stored_request = db.session.get(WorkspacePurgeRequest, request.id)
+        self.assertEqual(stored_request.status, "APPROVED")
+        self.assertFalse(stored_request.outcome_unknown)
+
+    def test_ui_flag_does_not_enable_execution_gate(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        requester, executor, workspace, request = self._fixture(execution_enabled=False)
+        with self.assertRaises(PurgeExecutionDisabledError):
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+
+    def test_enabled_execution_gate_reaches_existing_contract_validation(self):
+        requester, executor, workspace, request = self._fixture(execution_enabled=True)
+        request.status = "REQUESTED"
+        db.session.commit()
+        with self.assertRaises(PurgeConflictError) as context:
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+        self.assertEqual(context.exception.code, "INVALID_STATUS")
 
     def test_happy_path_deletes_only_target_business_rows_and_preserves_audit(self):
         requester, executor, workspace, request = self._fixture()
