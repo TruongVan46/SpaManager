@@ -20,6 +20,7 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     RehearsalGuardError,
     WorkerResult,
     assert_distinct_backend_pids,
+    assert_revision_metadata,
     classify_public_tables,
     require_rehearsal_environment,
     source_application_table_names,
@@ -134,6 +135,44 @@ def test_d3e_metadata_classification_excludes_alembic_version():
     assert classified["metadata"] == {MIGRATION_METADATA_TABLE}
     assert MIGRATION_METADATA_TABLE not in classified["application"]
     assert classified["application"] == APPLICATION_TABLE_NAMES
+
+
+def test_d3e_workflow_tables_are_classified_without_purge_registry_imports():
+    regular_metadata = APPLICATION_TABLE_NAMES - {
+        "workspace_purge_requests", "purge_legal_holds", "purge_lifecycle_events",
+        "workspace_purge_execution_authorizations", "workspace_purge_reauth_actor_throttles",
+    }
+    classified = classify_public_tables(
+        {MIGRATION_METADATA_TABLE, *APPLICATION_TABLE_NAMES}, regular_metadata
+    )
+    assert classified["application"] == APPLICATION_TABLE_NAMES
+
+
+def test_d3e_classification_is_import_order_independent():
+    catalog = {MIGRATION_METADATA_TABLE, *APPLICATION_TABLE_NAMES}
+    assert classify_public_tables(catalog, set())["application"] == APPLICATION_TABLE_NAMES
+    assert classify_public_tables(catalog, APPLICATION_TABLE_NAMES)["application"] == APPLICATION_TABLE_NAMES
+
+
+def test_d3e_expected_application_table_missing_fails_closed():
+    with pytest.raises(RehearsalGuardError, match="Application table missing"):
+        classify_public_tables(
+            {MIGRATION_METADATA_TABLE, *(APPLICATION_TABLE_NAMES - {"purge_lifecycle_events"})},
+            set(),
+        )
+
+
+@pytest.mark.parametrize(
+    "revision_rows",
+    [(), (EXPECTED_REVISION, EXPECTED_REVISION), ("0007_permanent_purge_workflow",)],
+)
+def test_d3e_revision_metadata_requires_exact_single_0008_row(revision_rows):
+    with pytest.raises(RehearsalGuardError):
+        assert_revision_metadata(revision_rows)
+
+
+def test_d3e_revision_metadata_accepts_exact_single_0008_row():
+    assert_revision_metadata((EXPECTED_REVISION,))
 
 
 def test_d3e_unknown_public_table_fails_closed():

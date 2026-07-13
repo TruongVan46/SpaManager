@@ -117,13 +117,26 @@ APPLICATION_TABLE_NAMES = frozenset(
 
 
 def classify_public_tables(catalog_tables: Iterable[str], metadata_tables: Iterable[str]):
-    """Reconcile catalog tables against authoritative application metadata."""
+    """Reconcile catalog tables against the revision-0008 table contract.
+
+    The purge workflow models use a separate SQLAlchemy registry, so relying
+    only on ``extensions.db.metadata`` is import-order dependent.  The
+    explicit allowlist is the authoritative application contract; reflected
+    metadata may be a partial view but may not introduce unclassified names.
+    """
 
     catalog = frozenset(catalog_tables)
     metadata = frozenset(metadata_tables)
     if MIGRATION_METADATA_TABLE not in catalog:
         raise RehearsalGuardError("alembic_version metadata table is missing.")
-    application = metadata - {MIGRATION_METADATA_TABLE}
+    metadata_application = metadata - {MIGRATION_METADATA_TABLE}
+    metadata_unknown = metadata_application - APPLICATION_TABLE_NAMES
+    if metadata_unknown:
+        raise RehearsalGuardError(
+            "Unknown application metadata table classification: "
+            + ", ".join(sorted(metadata_unknown))
+        )
+    application = APPLICATION_TABLE_NAMES
     unknown = catalog - application - {MIGRATION_METADATA_TABLE}
     missing = application - catalog
     if unknown:
@@ -143,10 +156,25 @@ def classify_public_tables(catalog_tables: Iterable[str], metadata_tables: Itera
     }
 
 
-def source_application_table_names(metadata) -> frozenset[str]:
-    """Return table names from SQLAlchemy metadata without opening a connection."""
+def assert_revision_metadata(revision_rows: Iterable[str]):
+    """Require exactly one Alembic row at the rehearsal revision."""
 
-    return frozenset(metadata.tables) - {MIGRATION_METADATA_TABLE}
+    revisions = tuple(revision_rows)
+    if revisions != (EXPECTED_REVISION,):
+        raise RehearsalGuardError("PostgreSQL rehearsal revision mismatch.")
+
+
+def source_application_table_names(metadata) -> frozenset[str]:
+    """Return the stable application contract independent of model imports."""
+
+    metadata_application = frozenset(metadata.tables) - {MIGRATION_METADATA_TABLE}
+    unknown = metadata_application - APPLICATION_TABLE_NAMES
+    if unknown:
+        raise RehearsalGuardError(
+            "Unknown application metadata table classification: "
+            + ", ".join(sorted(unknown))
+        )
+    return APPLICATION_TABLE_NAMES
 
 
 def require_rehearsal_environment(environ: Mapping[str, object]) -> RehearsalTarget:
@@ -336,8 +364,7 @@ def _assert_readiness(connection, metadata):
     if database != REHEARSAL_DATABASE_NAME or not user or str(port) != "5432":
         raise RehearsalGuardError("PostgreSQL rehearsal identity mismatch.")
     revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalars().all()
-    if revision != [EXPECTED_REVISION]:
-        raise RehearsalGuardError("PostgreSQL rehearsal revision mismatch.")
+    assert_revision_metadata(revision)
     classification = _catalog_and_metadata(connection, metadata)
     counts = _count_tables(connection, classification["application"])
     if any(count != 0 for count in counts.values()):
