@@ -794,7 +794,7 @@ def resolve_scenario_callback(context, code):
 
 def discover_and_register_indirect_rows(context, round_context, request_ids, workspace_ids, actor_ids=()):
     """Register all dependent rows by exact synthetic round bindings."""
-    from sqlalchemy import select
+    from sqlalchemy import or_, select
 
     models = context.models
     request_ids = tuple(sorted(set(request_ids)))
@@ -835,7 +835,11 @@ def discover_and_register_indirect_rows(context, round_context, request_ids, wor
             ("throttle", getattr(models, "WorkspacePurgeReauthActorThrottle", None),
              lambda model: model.actor_user_id.in_(actor_ids)),
             ("activity_log", getattr(models, "ActivityLog", None),
-             lambda model: model.workspace_id.in_(workspace_ids)),
+             lambda model: or_(
+                 model.workspace_id.in_(workspace_ids),
+                 model.user_id.in_(actor_ids),
+                 model.reference_id.in_(request_ids),
+             )),
         )
         for kind, model, predicate in indirect:
             if model is None:
@@ -1259,7 +1263,7 @@ def _service_worker_results(context, plan, operation):
 
 
 def csrf_token_for_client(client):
-    client.get("/login")
+    client.get(canonical_route_url(client, "auth.login", "GET"))
     with client.session_transaction() as state:
         token = state.get("_csrf_token")
     if not token:
@@ -1267,12 +1271,38 @@ def csrf_token_for_client(client):
     return token
 
 
+def canonical_route_url(client, endpoint, method, **values):
+    """Resolve a browser step only through the registered Flask endpoint contract."""
+
+    rules = tuple(
+        rule for rule in client.application.url_map.iter_rules()
+        if rule.endpoint == endpoint
+    )
+    if len(rules) != 1:
+        raise RehearsalGuardError(
+            f"route contract unavailable: endpoint={endpoint!r} rule_count={len(rules)}"
+        )
+    rule = rules[0]
+    if method.upper() not in rule.methods:
+        raise RehearsalGuardError(
+            f"route contract method mismatch: endpoint={endpoint!r} method={method.upper()!r}"
+        )
+    missing = sorted(set(rule.arguments) - set(values))
+    if missing:
+        raise RehearsalGuardError(
+            f"route contract parameters missing: endpoint={endpoint!r} missing={missing!r}"
+        )
+    from flask import url_for
+    with client.application.test_request_context():
+        return url_for(endpoint, **values)
+
+
 def authenticate_executor(client, case, index=0):
     from core.auth.constants import AUTH_SESSION_KEY
 
     csrf = csrf_token_for_client(client)
     response = client.post(
-        "/login",
+        canonical_route_url(client, "auth.login", "POST"),
         json={"username": case.executor_usernames[index], "password": case.passwords[index]},
         headers={"X-CSRFToken": csrf, "X-Requested-With": "XMLHttpRequest"},
     )
@@ -1291,13 +1321,15 @@ def authenticate_executor(client, case, index=0):
 
 def issue_route_transport(client, case):
     csrf = csrf_token_for_client(client)
-    confirmation = client.get(
-        f"/approval/purge-requests/{case.request_id}/execute/confirm"
-    )
+    confirmation = client.get(canonical_route_url(
+        client, "approval.confirm_purge_request", "GET", request_id=case.request_id
+    ))
     if confirmation.status_code != 200:
         raise AssertionError("confirmation page was not available")
     response = client.post(
-        f"/approval/purge-requests/{case.request_id}/reauth",
+        canonical_route_url(
+            client, "approval.reauth_purge_request", "POST", request_id=case.request_id
+        ),
         data={"current_password": case.passwords[0], "csrf_token": csrf},
         follow_redirects=False,
     )
@@ -1315,7 +1347,9 @@ def copy_actual_session_cookie(source, target):
 def execute_route_with_copied_cookie(client, case):
     csrf = csrf_token_for_client(client)
     return client.post(
-        f"/approval/purge-requests/{case.request_id}/execute",
+        canonical_route_url(
+            client, "approval.execute_purge_request", "POST", request_id=case.request_id
+        ),
         data={
             "confirmation_phrase": f"PURGE WORKSPACE {case.workspace_id} REQUEST {case.request_id}",
             "csrf_token": csrf,
@@ -1457,7 +1491,10 @@ def run_scenario_g_logout_vs_claim(context, plan, round_context):
                     return WorkerResult("G", round_number, label, getattr(error, "code", "CLAIM_FAILURE"), resource[1])
             client = context.application.test_client()
             csrf = csrf_token_for_client(client)
-            response = client.post("/logout", data={"csrf_token": csrf})
+            response = client.post(
+                canonical_route_url(client, "auth.logout", "POST"),
+                data={"csrf_token": csrf},
+            )
             return WorkerResult("G", round_number, label, f"HTTP_{response.status_code}", resource[1], issuance.generation, "REVOKED")
         return _service_worker_results(context, plan, revoke_or_claim)
     finally:

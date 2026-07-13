@@ -43,6 +43,7 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     HARNESS_CLEANUP_REQUIRED,
     SERVICE_DELETION_EXPECTED,
     reconcile_service_deletion_expected,
+    canonical_route_url,
     format_rehearsal_evidence,
     run_postflight_with_evidence,
 )
@@ -383,6 +384,47 @@ def test_d3e_service_deletion_missing_before_verified_success_fails_closed(monke
         reconcile_service_deletion_expected(context, round_context)
 
 
+def test_d3e_browser_helpers_resolve_registered_routes_and_methods():
+    from flask import Flask
+
+    application = Flask("d3e-route-contract")
+
+    @application.get("/login", endpoint="auth.login")
+    def login():
+        return "ok"
+
+    @application.post("/approval/purge-requests/<int:request_id>/reauth", endpoint="approval.reauth_purge_request")
+    def reauth(request_id):
+        return str(request_id)
+
+    client = application.test_client()
+    assert canonical_route_url(client, "auth.login", "GET") == "/login"
+    assert canonical_route_url(
+        client, "approval.reauth_purge_request", "POST", request_id=45
+    ) == "/approval/purge-requests/45/reauth"
+    with pytest.raises(RehearsalGuardError, match="method mismatch"):
+        canonical_route_url(client, "auth.login", "POST")
+    with pytest.raises(RehearsalGuardError, match="endpoint"):
+        canonical_route_url(client, "approval.missing", "GET")
+
+
+def test_d3e_browser_helpers_do_not_guess_purge_urls():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    assert "approval.confirm_purge_request" in source
+    assert "approval.reauth_purge_request" in source
+    assert "approval.execute_purge_request" in source
+    assert "f\"/approval/purge-requests/{case.request_id}" not in source
+
+
+def test_d3e_activity_discovery_is_actor_workspace_request_bound_and_fresh_session():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    discovery = source[source.index("def discover_and_register_indirect_rows"):source.index("def verify_final_zero_row_state")]
+    assert "independent_worker_session(context)" in discovery
+    assert "model.workspace_id.in_(workspace_ids)" in discovery
+    assert "model.user_id.in_(actor_ids)" in discovery
+    assert "model.reference_id.in_(request_ids)" in discovery
+
+
 def test_d3e_round_cleanup_discovers_all_registered_request_and_workspace_ids_deterministically():
     round_context = create_round_context("B", 1, "run")
     for request_id in (30, 10, 20, 10):
@@ -398,6 +440,8 @@ def test_d3e_cleanup_order_is_fk_safe_for_authorization_events_requests_and_work
     assert CLEANUP_KIND_ORDER.index("lifecycle_event") < CLEANUP_KIND_ORDER.index("purge_request")
     assert CLEANUP_KIND_ORDER.index("purge_request") < CLEANUP_KIND_ORDER.index("workspace")
     assert CLEANUP_KIND_ORDER.index("workspace_member") < CLEANUP_KIND_ORDER.index("workspace")
+    assert CLEANUP_KIND_ORDER.index("activity_log") < CLEANUP_KIND_ORDER.index("user")
+    assert CLEANUP_KIND_ORDER.index("activity_log") < CLEANUP_KIND_ORDER.index("workspace")
     source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
     discovery = source[source.index("def discover_and_register_indirect_rows"):source.index("def verify_final_zero_row_state")]
     assert ".in_(request_ids)" in discovery
@@ -479,7 +523,7 @@ def test_d3e_route_helpers_use_real_cookie_and_logout_route_contract():
     source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
     assert "source.get_cookie(\"session\")" in source
     assert "target.set_cookie" in source
-    assert 'client.post("/logout"' in source
+    assert 'canonical_route_url(client, "auth.logout", "POST")' in source
     assert "revoke_active_authorizations_for_actor" not in source
 
 
@@ -553,6 +597,12 @@ def test_d3e_real_login_helper_uses_json_csrf_header_and_expected_session():
 
     class Client:
         def __init__(self):
+            from flask import Flask
+            self.application = Flask("d3e-login-helper")
+            self.application.add_url_rule(
+                "/login", endpoint="auth.login", methods=["GET", "POST"],
+                view_func=lambda: "ok",
+            )
             self.state = {"_csrf_token": "csrf-test-token"}
             self.request = None
 
@@ -588,6 +638,12 @@ def test_d3e_login_failure_diagnostics_are_sanitized_and_actionable():
 
     class Client:
         def __init__(self):
+            from flask import Flask
+            self.application = Flask("d3e-login-failure")
+            self.application.add_url_rule(
+                "/login", endpoint="auth.login", methods=["GET", "POST"],
+                view_func=lambda: "ok",
+            )
             self.state = {"_csrf_token": "csrf-test-token"}
 
         def get(self, _path):
