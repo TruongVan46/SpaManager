@@ -8,6 +8,7 @@ only after the strict rehearsal guard passes.
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass, field
+from functools import wraps
 import os
 import re
 import secrets
@@ -344,6 +345,58 @@ class WorkerResult:
             f"backend_pid={self.backend_pid!r}, generation={self.generation!r}, "
             f"state={self.state!r})"
         )
+
+
+@dataclass(frozen=True, slots=True)
+class BrowserRouteDiagnostic:
+    """Secret-free route-map and view-entry evidence for browser helpers."""
+
+    endpoint: str
+    path: str | None
+    allowed_methods: tuple[str, ...]
+    request_status: int | None
+    redirect_path: str | None
+    view_entered: bool
+    rejection_category: str
+
+
+def diagnose_browser_route(client, endpoint, method, **values):
+    """Separate route resolution from a view-level 404 or other rejection."""
+
+    rules = tuple(rule for rule in client.application.url_map.iter_rules() if rule.endpoint == endpoint)
+    if len(rules) != 1:
+        return BrowserRouteDiagnostic(endpoint, None, (), None, None, False, "ROUTE_NOT_REGISTERED")
+    rule = rules[0]
+    allowed_methods = tuple(sorted(rule.methods or ()))
+    if method.upper() not in rule.methods:
+        return BrowserRouteDiagnostic(endpoint, None, allowed_methods, 405, None, False, "METHOD_NOT_ALLOWED")
+    path = canonical_route_url(client, endpoint, method, **values)
+    entered = False
+    view = client.application.view_functions[endpoint]
+
+    @wraps(view)
+    def instrumented_view(*args, **kwargs):
+        nonlocal entered
+        entered = True
+        return view(*args, **kwargs)
+
+    client.application.view_functions[endpoint] = instrumented_view
+    try:
+        response = client.open(path, method=method.upper())
+    finally:
+        client.application.view_functions[endpoint] = view
+    location = response.headers.get("Location")
+    redirect_path = location.split("?", 1)[0] if location else None
+    if response.status_code == 404 and entered:
+        category = "VIEW_ABORT_404"
+    elif response.status_code >= 400:
+        category = "VIEW_REJECTION"
+    else:
+        category = "SUCCESS"
+    return BrowserRouteDiagnostic(
+        endpoint, path, allowed_methods, response.status_code, redirect_path,
+        entered, category,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1611,17 +1664,19 @@ def run_scenario_e_copied_cookie(context, plan, round_context):
     round_number = round_context.round_number
     case = context.fixture_builder.approved_request(context, round_context, executors=1)
     try:
-        source = context.application.test_client()
-        authenticate_executor(source, case)
-        issue_route_transport(source, case)
-        clients = [context.application.test_client(), context.application.test_client()]
-        copy_actual_session_cookie(source, clients[0])
-        copy_actual_session_cookie(source, clients[1])
-        def execute(label, resource):
-            client = clients[0 if label.endswith("1") else 1]
-            response = execute_route_with_copied_cookie(client, case)
-            return WorkerResult("E", round_number, label, f"HTTP_{response.status_code}", resource[1])
         with isolated_purge_execution_flags(context.application):
+            source = context.application.test_client()
+            authenticate_executor(source, case)
+            issue_route_transport(source, case)
+            clients = [context.application.test_client(), context.application.test_client()]
+            copy_actual_session_cookie(source, clients[0])
+            copy_actual_session_cookie(source, clients[1])
+
+            def execute(label, resource):
+                client = clients[0 if label.endswith("1") else 1]
+                response = execute_route_with_copied_cookie(client, case)
+                return WorkerResult("E", round_number, label, f"HTTP_{response.status_code}", resource[1])
+
             return _service_worker_results(context, plan, execute)
     finally:
         pass

@@ -22,6 +22,7 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     RoundContext,
     RehearsalGuardError,
     WorkerResult,
+    BrowserRouteDiagnostic,
     assert_distinct_backend_pids,
     assert_revision_metadata,
     classify_public_tables,
@@ -127,6 +128,40 @@ def test_d3e_e_uses_same_isolated_execution_flags_as_d():
     source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
     e_source = source[source.index("def run_scenario_e_copied_cookie"):source.index("def run_scenario_f_issuance_vs_claim")]
     assert "with isolated_purge_execution_flags(context.application):" in e_source
+    assert e_source.index("with isolated_purge_execution_flags(context.application):") < e_source.index("source = context.application.test_client()")
+    assert e_source.index("with isolated_purge_execution_flags(context.application):") < e_source.index("issue_route_transport(source, case)")
+
+
+def test_d3e_browser_diagnostic_distinguishes_route_missing_from_view_404():
+    from flask import Flask, abort
+
+    application = Flask("d3e-route-diagnostics")
+    application.secret_key = "test-only"
+
+    @application.get("/view-404", endpoint="approval.view_404")
+    def view_404():
+        abort(404)
+
+    client = application.test_client()
+    view_result = support.diagnose_browser_route(client, "approval.view_404", "GET")
+    missing_result = support.diagnose_browser_route(client, "approval.missing", "GET")
+    assert isinstance(view_result, BrowserRouteDiagnostic)
+    assert view_result.path == "/view-404"
+    assert view_result.view_entered is True
+    assert view_result.request_status == 404
+    assert view_result.rejection_category == "VIEW_ABORT_404"
+    assert missing_result.path is None
+    assert missing_result.view_entered is False
+    assert missing_result.rejection_category == "ROUTE_NOT_REGISTERED"
+
+
+def test_d3e_confirmation_route_source_identifies_execution_flag_guard():
+    route_source = Path("routes/approval.py").read_text(encoding="utf-8")
+    confirmation = route_source[route_source.index("def confirm_purge_request"):route_source.index("def reauth_purge_request")]
+    assert "actor = _require_purge_execution()" in confirmation
+    assert "is_permanent_purge_execution_enabled" not in confirmation
+    guard = route_source[route_source.index("def _require_purge_execution"):route_source.index("def _no_cache")]
+    assert "PERMANENT_PURGE_EXECUTION_ENABLED" in guard
 
 
 def test_d3e_independent_phase_selectors_are_exact_and_disjoint():
