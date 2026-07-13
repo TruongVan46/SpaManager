@@ -75,12 +75,21 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 - The execution route uses Post/Redirect/Get, calls the destructive service at
   most once per POST, and does not automatically retry outcome-unknown or
   failed execution. The service remains the final authority for authorization,
-  requester/executor separation, retention, legal hold, provenance, manifest,
-  logo, terminal-state, locking, transaction, and reconciliation checks.
+  requester/approver/executor separation, actor eligibility, executor provider,
+  retention, legal hold, provenance, manifest, logo, terminal-state, locking,
+  transaction, and reconciliation checks.
 - Strong purge-specific re-authentication, its freshness window, durable
   evidence, and any executor-versus-approver decision beyond the existing
   service contract remain deferred to Task 6.6.8d.
-- Only an active `APPROVAL_OWNER` may execute.
+- Requester, approver, and executor must be three distinct users.
+- All three actors are reloaded and rechecked at the locked service boundary.
+- All three must remain active, non-deleted `APPROVAL_OWNER` users with active
+  approval status.
+- Phase 1 execution requires `auth_provider == "local"` for the executor.
+  Google-only Approval Owners fail closed as executors; Google requester or
+  approver accounts are not automatically prohibited.
+- The local provider check does not prove recent password verification.
+- There is no two-person fallback and no break-glass path.
 - Authorization is checked before a `COMPLETED` idempotent return.
 - Requester and executor must be different users.
 - Request type, lifecycle ID, invalidation fields, idempotency key, outcome
@@ -114,6 +123,8 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 - No startup execution.
 - No filesystem cleanup.
 - No new migration.
+- No re-authentication, fresh-session marker, or durable nonce is implemented;
+  Task 6.6.8d3 remains required.
 - No production purge.
 
 The execution gate and browser boundary do not authorize production purge.

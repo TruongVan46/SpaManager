@@ -76,6 +76,12 @@ def _execution_is_basic_candidate(summary, workspace_target, actor):
     return (
         summary.status == "APPROVED"
         and summary.requested_by_id != actor.id
+        and summary.approved_by_id != actor.id
+        and getattr(actor, "role", None) == "APPROVAL_OWNER"
+        and getattr(actor, "is_active", False) is True
+        and getattr(actor, "approval_status", None) == "active"
+        and getattr(actor, "deleted_at", None) is None
+        and getattr(actor, "auth_provider", None) == "local"
         and summary.invalidated_at is None
         and not summary.outcome_unknown
         and summary.manifest_valid
@@ -333,6 +339,8 @@ def confirm_purge_request(request_id):
     if summary.requested_by_id == actor.id:
         abort(403)
     if not _execution_is_basic_candidate(summary, workspace_target, actor):
+        if summary.approved_by_id == actor.id or getattr(actor, "auth_provider", None) != "local":
+            abort(403)
         abort(409)
     response = make_response(render_template(
         "approval/purge_request_execute.html",
@@ -351,6 +359,8 @@ def execute_purge_request(request_id):
     if summary.requested_by_id == actor.id:
         abort(403)
     if not _execution_is_basic_candidate(summary, workspace_target, actor):
+        if summary.approved_by_id == actor.id or getattr(actor, "auth_provider", None) != "local":
+            abort(403)
         NotificationService.flash_error("Purge request is no longer executable.")
         return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 

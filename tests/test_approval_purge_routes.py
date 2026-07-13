@@ -57,10 +57,11 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         )
 
     @staticmethod
-    def _actor(actor_id=8):
+    def _actor(actor_id=9, auth_provider="local"):
         return SimpleNamespace(
             id=actor_id, full_name="Approval Owner", role="APPROVAL_OWNER", is_active=True,
-            deleted_at=None, approval_status="active", can_access_app=True,
+            deleted_at=None, approval_status="active", auth_provider=auth_provider,
+            can_access_app=True,
         )
 
     def test_flag_disabled_returns_not_found_before_auth_or_query(self):
@@ -311,6 +312,34 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         ):
             self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 403)
 
+    def test_approver_cannot_open_or_submit_execution_flow(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+        actor = self._actor(actor_id=8)
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch(
+            "routes.approval.PurgeRequestService.get_summary", return_value=self._execution_summary()
+        ), patch(
+            "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
+        ), patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
+            self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 403)
+            execute.assert_not_called()
+
+    def test_google_only_executor_cannot_open_or_submit_execution_flow(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+        actor = self._actor(auth_provider="google")
+        with patch("app.AuthService.get_current_user", return_value=actor), patch(
+            "routes.approval.AuthService.get_current_active_user", return_value=actor
+        ), patch(
+            "routes.approval.PurgeRequestService.get_summary", return_value=self._execution_summary()
+        ), patch(
+            "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
+        ), patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
+            self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 403)
+            execute.assert_not_called()
+
     def test_execution_post_requires_csrf_before_service_call(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
         app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
@@ -356,10 +385,15 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
 
             response = valid_client.post(
                 "/approval/purge-requests/45/execute",
-                data={"csrf_token": csrf_token, "confirmation_phrase": "  PURGE WORKSPACE 12 REQUEST 45  "},
+                data={
+                    "csrf_token": csrf_token,
+                    "confirmation_phrase": "  PURGE WORKSPACE 12 REQUEST 45  ",
+                    "actor_id": "8",
+                    "auth_provider": "google",
+                },
             )
         self.assertEqual(response.status_code, 302)
-        execute.assert_called_once_with(request_id=45, workspace_id=12, executor_user_id=8)
+        execute.assert_called_once_with(request_id=45, workspace_id=12, executor_user_id=9)
 
     def test_execution_post_maps_outcome_unknown_without_retry_or_success(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True

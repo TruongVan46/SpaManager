@@ -59,6 +59,30 @@ class PurgeAuthorizationError(PurgeServiceError):
         super().__init__(message, "UNAUTHORIZED_EXECUTOR")
 
 
+class PurgeActorMissingError(PurgeAuthorizationError):
+    def __init__(self, actor_name):
+        super().__init__(f"Purge {actor_name} actor is unavailable.")
+        self.code = f"{actor_name.upper()}_ACTOR_MISSING"
+
+
+class PurgeActorIneligibleError(PurgeAuthorizationError):
+    def __init__(self, actor_name):
+        super().__init__(f"Purge {actor_name} actor is no longer eligible.")
+        self.code = f"{actor_name.upper()}_ACTOR_INELIGIBLE"
+
+
+class PurgeActorSeparationError(PurgeAuthorizationError):
+    def __init__(self, separation):
+        super().__init__(f"Purge actor separation is invalid: {separation}.")
+        self.code = f"ACTOR_SEPARATION_{separation.upper()}"
+
+
+class PurgeExecutorProviderError(PurgeAuthorizationError):
+    def __init__(self):
+        super().__init__("Purge executor authentication provider is not supported.")
+        self.code = "EXECUTOR_AUTH_PROVIDER_UNSUPPORTED"
+
+
 class PurgeConflictError(PurgeServiceError):
     def __init__(self, message, code="PURGE_CONFLICT"):
         super().__init__(message, code)
@@ -248,13 +272,47 @@ class PurgeService:
 
     @staticmethod
     def _validate_executor(session, executor_user_id, request):
-        executor = session.query(User).filter(User.id == executor_user_id).one_or_none()
-        if executor is None or not is_approval_owner(executor) or not executor.is_active:
-            raise PurgeAuthorizationError()
-        if executor.deleted_at is not None or executor.approval_status != User.APPROVAL_ACTIVE:
-            raise PurgeAuthorizationError()
-        if request.requested_by_id == executor.id:
-            raise PurgeAuthorizationError("Requester cannot execute the same purge request.")
+        actor_ids = {
+            "requester": request.requested_by_id,
+            "approver": request.approved_by_id,
+            "executor": executor_user_id,
+        }
+        missing_actor = next((name for name, actor_id in actor_ids.items() if actor_id is None), None)
+        if missing_actor is not None:
+            raise PurgeActorMissingError(missing_actor)
+
+        if len(set(actor_ids.values())) != len(actor_ids):
+            if actor_ids["requester"] == actor_ids["approver"]:
+                raise PurgeActorSeparationError("requester_equals_approver")
+            if actor_ids["requester"] == actor_ids["executor"]:
+                raise PurgeActorSeparationError("requester_equals_executor")
+            raise PurgeActorSeparationError("approver_equals_executor")
+
+        actors_by_id = {
+            actor.id: actor
+            for actor in session.query(User).filter(User.id.in_(actor_ids.values())).all()
+        }
+        missing_actor = next(
+            (name for name, actor_id in actor_ids.items() if actor_id not in actors_by_id),
+            None,
+        )
+        if missing_actor is not None:
+            raise PurgeActorMissingError(missing_actor)
+
+        for actor_name, actor_id in actor_ids.items():
+            actor = actors_by_id[actor_id]
+            if (
+                not is_approval_owner(actor)
+                or actor.is_active is not True
+                or actor.deleted_at is not None
+                or actor.approval_status != User.APPROVAL_ACTIVE
+            ):
+                raise PurgeActorIneligibleError(actor_name)
+
+        executor = actors_by_id[executor_user_id]
+        if executor.auth_provider != "local":
+            raise PurgeExecutorProviderError()
+
         return executor
 
     @staticmethod

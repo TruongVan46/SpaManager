@@ -127,7 +127,7 @@ Owner-approved product default: **30 ngày tính từ `Workspace.deleted_at`**.
 
 | Role | View deleted target | Submit request | Approve request | Execute purge |
 |---|---:|---:|---:|---:|
-| APPROVAL_OWNER | Yes | Yes, Phase 1 Approval Portal | Yes, for another requester | Yes, as non-requester execution trigger after gates |
+| APPROVAL_OWNER | Yes | Yes, Phase 1 Approval Portal | Yes, for another requester | Yes, only as a distinct third actor after all gates |
 | Workspace OWNER | Scoped view only | No, Phase 1 | No | No |
 | ADMIN | No purge authority | No | No | No |
 | STAFF | No purge authority | No | No | No |
@@ -158,7 +158,8 @@ Production-grade recommendation: dùng two-person approval.
 ### Execution authority and actor model
 
 - Requester không execute hoặc trigger execution.
-- Approver là APPROVAL_OWNER khác requester, có thể trigger execution sau strong re-auth và gate validation.
+- Approver là APPROVAL_OWNER khác requester; approver không được là executor.
+- Executor phải là một Approval Owner thứ ba, khác requester và approver.
 - Human approver không tự chọn target data để delete; server-side purge service là thành phần duy nhất thực hiện database mutation.
 - Human actor trigger execution phải là Approval Owner đã được server authorize.
 - Server phải recheck toàn bộ eligibility, provenance, manifest và legal hold trong transaction.
@@ -167,7 +168,14 @@ Production-grade recommendation: dùng two-person approval.
 - Execution actor, requester và approver phải được audit riêng.
 - Nếu requester là Approval Owner, requester không được là approver hoặc execution-trigger actor.
 - Workspace OWNER không phải requester trong Phase 1; APPROVAL_OWNER approver có thể trigger server execution sau khi tất cả gates đạt.
-- Persisted actor separation requires request/approval/lifecycle state and therefore likely requires migration if this production-grade policy is selected.
+- Task 6.6.8d2 rechecks the persisted requester and approver plus the
+  authenticated executor at the execution boundary. It adds no schema or
+  migration; existing request actor fields are sufficient for this enforcement.
+- Phase 1 executor phải có `auth_provider == "local"`. Google-only executor bị
+  fail-closed; Google requester/approver không tự động bị cấm.
+- Local provider restriction không phải là re-authentication. Strong
+  re-authentication vẫn là Task 6.6.8d3.
+- Không có two-person fallback hoặc break-glass khi không đủ ba actor.
 
 ### Re-authentication
 
@@ -495,7 +503,7 @@ Không tạo migration trong Task 6.6.2.
 | PURGE-POL-014 | Potential files/media block disposition until ownership mapping is proven | Ownership not proven complete | APPROVED | File state if persisted |
 | PURGE-POL-015 | Local PostgreSQL rehearsal and readiness approval precede production | Recovery and parity gate | APPROVED | None; operational gate |
 | PURGE-POL-016 | Workspace-first; account purge deferred until shared/audit policy clear | Lower dependency risk | APPROVED | None for minimal flow |
-| PURGE-POL-017 | Requester không execute; non-requester Approval Owner approver may trigger; server-side purge service alone mutates DB; actors audited separately | Explicit execution contract | APPROVED | Actor separation/request state |
+| PURGE-POL-017 | Requester, approver và executor phải là ba Approval Owner khác nhau; executor local-auth trong Phase 1; server-side purge service alone mutates DB | Explicit three-person execution contract | APPROVED | Existing actor fields; no migration for d2 |
 | PURGE-POL-018 | Unique lifecycle ID binds target, provenance, retention, request, manifest, approval, cancellation/expiry and result; ID never reused | Prevent stale/provenance mismatch | APPROVED | Lifecycle state required |
 | PURGE-POL-019 | Global workspace/account legal and operational hold blocks request approval and execution; unresolved hold fails closed at three checks | Avoid narrow financial/audit-only hold | APPROVED | Hold state if persisted |
 | PURGE-POL-020 | Immutable server-generated dry-run manifest reviewed and rechecked; changes invalidate approval | Prevent unreviewed dependency mutation | APPROVED | Manifest/hash state |
@@ -520,7 +528,7 @@ Invoice deletion, legal/accounting exceptions, break-glass và provider-specific
 - Distinct requester/approver: [x] Approved [ ] Rejected [ ] Revise
 - Execution actor model: [x] Approved [ ] Rejected [ ] Revise
 - No break-glass when separation unavailable: [x] Approved [ ] Rejected [ ] Revise
-- Two-person approval: [x] Approved [ ] Rejected [ ] Revise
+- Three-person execution: [x] Approved [ ] Rejected [ ] Revise
 - Self-approval/self-purge/last Approval Owner block: [x] Approved [ ] Rejected [ ] Revise
 
 ### Re-authentication and confirmation

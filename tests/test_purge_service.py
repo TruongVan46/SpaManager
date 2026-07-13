@@ -76,10 +76,12 @@ class PurgeServiceTestCase(unittest.TestCase):
     def _fixture(self, *, logo=None, execution_enabled=True):
         app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = execution_enabled
         requester = User(username=f"requester_{uuid.uuid4().hex[:8]}", full_name="Requester", role="APPROVAL_OWNER", approval_status="active", is_active=True)
+        approver = User(username=f"approver_{uuid.uuid4().hex[:8]}", full_name="Approver", role="APPROVAL_OWNER", approval_status="active", is_active=True)
         executor = User(username=f"executor_{uuid.uuid4().hex[:8]}", full_name="Executor", role="APPROVAL_OWNER", approval_status="active", is_active=True)
         requester.set_password("TestPassword123!")
+        approver.set_password("TestPassword123!")
         executor.set_password("TestPassword123!")
-        db.session.add_all([requester, executor])
+        db.session.add_all([requester, approver, executor])
         db.session.flush()
         workspace = Workspace(name="Purge Target", slug=f"purge-{uuid.uuid4().hex}", status="active", deleted_at=datetime(2026, 1, 1), deleted_by_id=requester.id)
         db.session.add(workspace)
@@ -111,8 +113,8 @@ class PurgeServiceTestCase(unittest.TestCase):
             requested_by_snapshot=requester.username,
             eligible_at=datetime(2025, 12, 1),
             retention_policy_version="retention-v1",
-            approved_by_id=executor.id,
-            approved_by_snapshot=executor.username,
+            approved_by_id=approver.id,
+            approved_by_snapshot=approver.username,
             approved_at=datetime(2026, 1, 2),
             hold_check_status="CLEAR",
             manifest_version="purge-manifest-v1",
@@ -184,7 +186,7 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.assertIsNotNone(terminal_state["purged_at"])
         self.assertIsNotNone(terminal_state["purge_request_id"])
         self.assertIsNotNone(db.session.get(WorkspacePurgeRequest, request.id))
-        self.assertEqual(db.session.query(User).count(), 2)
+        self.assertEqual(db.session.query(User).count(), 3)
         self.assertEqual(db.session.query(ActivityLog).count(), 1)
         self.assertEqual(db.session.query(PurgeLifecycleEvent).count(), 2)
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 0)
@@ -212,6 +214,136 @@ class PurgeServiceTestCase(unittest.TestCase):
         db.session.commit()
         with self.assertRaises(PurgeAuthorizationError):
             PurgeService.execute_workspace_purge(request_id=request.id, workspace_id=workspace.id, executor_user_id=staff.id, now=datetime(2026, 2, 1))
+
+    def test_three_distinct_active_local_actors_execute(self):
+        requester, executor, workspace, request = self._fixture()
+        approver = db.session.get(User, request.approved_by_id)
+
+        self.assertNotEqual(requester.id, approver.id)
+        self.assertNotEqual(requester.id, executor.id)
+        self.assertNotEqual(approver.id, executor.id)
+        self.assertEqual(executor.auth_provider, "local")
+
+        result = PurgeService.execute_workspace_purge(
+            request_id=request.id,
+            workspace_id=workspace.id,
+            executor_user_id=executor.id,
+            now=datetime(2026, 2, 1),
+        )
+
+        self.assertEqual(result.status, "COMPLETED")
+
+    def test_approver_cannot_execute_as_executor(self):
+        _requester, _executor, workspace, request = self._fixture()
+        with self.assertRaises(PurgeAuthorizationError) as context:
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=request.approved_by_id,
+                now=datetime(2026, 2, 1),
+            )
+
+        self.assertEqual(context.exception.code, "ACTOR_SEPARATION_APPROVER_EQUALS_EXECUTOR")
+        self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
+        terminal_state = db.session.execute(
+            select(workspace_terminal_state_table).where(workspace_terminal_state_table.c.id == workspace.id)
+        ).mappings().one()
+        self.assertIsNone(terminal_state["purged_at"])
+
+    def test_malformed_requester_approver_collision_fails_closed(self):
+        requester, executor, workspace, request = self._fixture()
+        request.approved_by_id = requester.id
+        db.session.commit()
+
+        with self.assertRaises(PurgeAuthorizationError) as context:
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+
+        self.assertEqual(context.exception.code, "ACTOR_SEPARATION_REQUESTER_EQUALS_APPROVER")
+        self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
+
+    def test_google_only_executor_is_rejected_even_with_generated_password_hash(self):
+        _requester, executor, workspace, request = self._fixture()
+        executor.auth_provider = "google"
+        db.session.commit()
+
+        with self.assertRaises(PurgeAuthorizationError) as context:
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+
+        self.assertEqual(context.exception.code, "EXECUTOR_AUTH_PROVIDER_UNSUPPORTED")
+        self.assertTrue(executor.password_hash)
+        self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
+
+    def test_google_requester_and_approver_do_not_block_local_executor(self):
+        requester, executor, workspace, request = self._fixture()
+        approver = db.session.get(User, request.approved_by_id)
+        requester.auth_provider = "google"
+        approver.auth_provider = "google"
+        db.session.commit()
+
+        result = PurgeService.execute_workspace_purge(
+            request_id=request.id,
+            workspace_id=workspace.id,
+            executor_user_id=executor.id,
+            now=datetime(2026, 2, 1),
+        )
+
+        self.assertEqual(result.status, "COMPLETED")
+
+    def test_missing_approver_blocks_execution(self):
+        _requester, executor, workspace, request = self._fixture()
+        request.approved_by_id = None
+        db.session.commit()
+
+        with self.assertRaises(PurgeAuthorizationError) as context:
+            PurgeService.execute_workspace_purge(
+                request_id=request.id,
+                workspace_id=workspace.id,
+                executor_user_id=executor.id,
+                now=datetime(2026, 2, 1),
+            )
+
+        self.assertEqual(context.exception.code, "APPROVER_ACTOR_MISSING")
+        self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
+
+    def test_requester_approver_and_executor_eligibility_are_rechecked(self):
+        actor_cases = (
+            ("requester", "role", "STAFF", "REQUESTER_ACTOR_INELIGIBLE"),
+            ("approver", "approval_status", User.APPROVAL_REJECTED, "APPROVER_ACTOR_INELIGIBLE"),
+            ("executor", "is_active", False, "EXECUTOR_ACTOR_INELIGIBLE"),
+            ("executor", "deleted_at", datetime(2026, 1, 3), "EXECUTOR_ACTOR_INELIGIBLE"),
+        )
+        for actor_name, field, value, expected_code in actor_cases:
+            with self.subTest(actor=actor_name, field=field):
+                requester, executor, workspace, request = self._fixture()
+                actor_id = {
+                    "requester": requester.id,
+                    "approver": request.approved_by_id,
+                    "executor": executor.id,
+                }[actor_name]
+                actor = db.session.get(User, actor_id)
+                setattr(actor, field, value)
+                db.session.commit()
+
+                with self.assertRaises(PurgeAuthorizationError) as context:
+                    PurgeService.execute_workspace_purge(
+                        request_id=request.id,
+                        workspace_id=workspace.id,
+                        executor_user_id=executor.id,
+                        now=datetime(2026, 2, 1),
+                    )
+
+                self.assertEqual(context.exception.code, expected_code)
+                self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
     def test_runtime_failure_rolls_back_and_records_failed_event(self):
         requester, executor, workspace, request = self._fixture()
