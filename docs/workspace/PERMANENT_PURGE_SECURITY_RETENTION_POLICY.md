@@ -595,6 +595,31 @@ Deferred or separately approved items: account purge implementation, invoice del
 
 Không tạo approval marker trong repository.
 
+## Task 6.6.8d3b durable re-auth schema foundation
+
+The separately approved schema migration is `0008_durable_purge_reauth_state`
+with down revision `0007_permanent_purge_workflow`. It creates exactly two
+empty tables and does not modify existing tables:
+
+- `workspace_purge_execution_authorizations`: one request-wide current
+  authorization row, generation identity, explicit state allowlist, nonce
+  hash only, and nullable unique association to the existing
+  `execution_started` lifecycle event;
+- `workspace_purge_reauth_actor_throttles`: one actor-global durable throttle
+  row per user, preventing cross-request and cross-instance lockout bypass.
+
+The new tables do not duplicate `workspace_id`; workspace identity is derived
+from the authoritative purge request. The migration uses named portable
+constraints, restricted foreign keys, starts empty, and refuses downgrade when
+either table contains evidence.
+
+This task implements schema foundation only. Password verification, nonce
+issuance/transport/claim, Approval Portal flow, and destructive execution
+integration remain unimplemented. PostgreSQL migration rehearsal is required;
+runtime concurrency evidence remains pending. Google-only executor support
+remains deferred, feature flags remain disabled, and production purge remains
+NOT AUTHORIZED.
+
 ## 12. Final classification
 
 `POLICY APPROVED / READY FOR MIGRATION PROPOSAL`

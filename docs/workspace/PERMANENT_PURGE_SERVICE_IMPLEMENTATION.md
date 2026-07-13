@@ -78,9 +78,9 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
   requester/approver/executor separation, actor eligibility, executor provider,
   retention, legal hold, provenance, manifest, logo, terminal-state, locking,
   transaction, and reconciliation checks.
-- Strong purge-specific re-authentication, its freshness window, durable
-  evidence, and any executor-versus-approver decision beyond the existing
-  service contract remain deferred to Task 6.6.8d.
+- Strong purge-specific re-authentication runtime remains deferred to
+  Task 6.6.8d3c. Task 6.6.8d3b adds only the approved schema foundation;
+  it does not issue, verify, transport, or consume credentials.
 - Requester, approver, and executor must be three distinct users.
 - All three actors are reloaded and rechecked at the locked service boundary.
 - All three must remain active, non-deleted `APPROVAL_OWNER` users with active
@@ -122,14 +122,41 @@ and the terminal workspace tombstone. It does not delete filesystem assets.
 - No worker or scheduler.
 - No startup execution.
 - No filesystem cleanup.
-- No new migration.
-- No re-authentication, fresh-session marker, or durable nonce is implemented;
-  Task 6.6.8d3 remains required.
+- Migration `0008_durable_purge_reauth_state` is the approved schema
+  foundation for Task 6.6.8d3b. It creates only the two documented durable
+  re-auth tables and starts them empty.
+- No password re-authentication, nonce issuance/claim, fresh-session runtime,
+  route flow, or destructive execution integration is implemented; Tasks
+  6.6.8d3c and 6.6.8d3d remain required.
 - No production purge.
 
 The execution gate and browser boundary do not authorize production purge.
 Both flags remain disabled by default and production execution remains
 unauthorized.
+
+## Task 6.6.8d3b schema foundation
+
+Migration `0008_durable_purge_reauth_state` has down revision
+`0007_permanent_purge_workflow` and is a single linear migration head. It
+creates exactly two empty tables:
+
+- `workspace_purge_execution_authorizations`: one current authorization row
+  per purge request, with generation identity, explicit states (`ACTIVE`,
+  `CLAIMED`, `SERVICE_STARTED`, `CONSUMED_SUCCESS`, `REVOKED`, and
+  `CLAIMED_UNRESOLVED`), nonce hash only, and nullable unique association to
+  the existing `execution_started` lifecycle event;
+- `workspace_purge_reauth_actor_throttles`: one actor-global durable throttle
+  row per user.
+
+Neither table duplicates `workspace_id`; the service must derive and lock the
+workspace through the authoritative purge request. Both tables use restricted
+foreign keys, named portable checks, and guarded empty-table downgrade.
+
+The ORM models are schema-only representations. No password verification,
+nonce transport, authorization claim, route, or purge-service runtime behavior
+is included. PostgreSQL migration rehearsal and concurrency evidence remain
+pending in the later validation tasks. Production purge remains NOT
+AUTHORIZED.
 
 Expanded all-table tenant and PostgreSQL concurrency coverage remains a
 Task 6.6.6/6.6.7 requirement. Production execution is not authorized.

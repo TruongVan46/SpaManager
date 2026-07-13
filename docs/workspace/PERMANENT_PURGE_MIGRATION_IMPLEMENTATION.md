@@ -549,6 +549,32 @@ The owner-confirmed Railway deployment ran the production migration
 successfully. Permanent business-data purge execution is not implemented by
 this migration.
 
+## Task 6.6.8d3b schema-only amendment
+
+Task 6.6.8d3b adds the separately approved linear revision
+`0008_durable_purge_reauth_state`, down revision
+`0007_permanent_purge_workflow`. This amendment creates exactly two new empty
+tables:
+
+- `workspace_purge_execution_authorizations`: one current request-wide
+  authorization row with generation identity, explicit state machine, nonce
+  hash only, and nullable unique association to the existing
+  `execution_started` lifecycle event;
+- `workspace_purge_reauth_actor_throttles`: one actor-global durable throttle
+  row per user.
+
+Neither table duplicates `workspace_id`. Workspace identity remains derived
+from the authoritative purge request. Both tables use restricted foreign keys,
+portable named checks, and guarded empty-table downgrade. No existing table,
+lifecycle event type, ActivityLog schema, authentication-session table, or
+runtime field was changed.
+
+The ORM additions are schema-only. Password verification, nonce issuance or
+transport, authorization claiming, routes, and purge-service integration remain
+follow-up work. The dedicated local PostgreSQL migration rehearsal is required
+before coordinator review; production migration and production purge remain
+unauthorized.
+
 ## Remaining runtime approval gates
 
 1. Keep permanent purge execution disabled until the remaining Version 6.6

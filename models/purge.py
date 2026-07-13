@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, MetaData, String, Table, Text, text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, MetaData, String, Table, Text, text
 from sqlalchemy.orm import registry
 
 
@@ -118,6 +118,72 @@ purge_lifecycle_events_table = Table(
 )
 
 
+AUTHORIZATION_STATES = (
+    "ACTIVE",
+    "CLAIMED",
+    "SERVICE_STARTED",
+    "CONSUMED_SUCCESS",
+    "REVOKED",
+    "CLAIMED_UNRESOLVED",
+)
+PURGE_REAUTH_METHODS = ("local_password",)
+
+
+workspace_purge_execution_authorizations_table = Table(
+    "workspace_purge_execution_authorizations",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "purge_request_id",
+        Integer,
+        ForeignKey("workspace_purge_requests.id", ondelete="RESTRICT"),
+        nullable=False,
+    ),
+    Column(
+        "actor_user_id",
+        Integer,
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    ),
+    Column("method", String(30), nullable=False, server_default=text("'local_password'")),
+    Column("generation", Integer, nullable=False, server_default=text("1")),
+    Column("state", String(30), nullable=False, server_default=text("'ACTIVE'")),
+    Column("nonce_hash", String(64)),
+    Column("authenticated_at", DateTime),
+    Column("expires_at", DateTime),
+    Column("consumed_at", DateTime),
+    Column("claimed_at", DateTime),
+    Column("service_started_at", DateTime),
+    Column(
+        "execution_started_event_id",
+        Integer,
+        ForeignKey("purge_lifecycle_events.id", ondelete="RESTRICT"),
+    ),
+    Column("revoked_at", DateTime),
+    Column("revocation_reason", String(80)),
+    Column("created_at", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("updated_at", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+)
+
+
+workspace_purge_reauth_actor_throttles_table = Table(
+    "workspace_purge_reauth_actor_throttles",
+    metadata,
+    Column(
+        "actor_user_id",
+        Integer,
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        primary_key=True,
+    ),
+    Column("failed_attempt_count", Integer, nullable=False, server_default=text("0")),
+    Column("first_failed_at", DateTime),
+    Column("last_failed_at", DateTime),
+    Column("locked_until", DateTime),
+    Column("created_at", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("updated_at", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+)
+
+
 @_registry.mapped
 class WorkspacePurgeRequest:
     __table__ = workspace_purge_requests_table
@@ -131,3 +197,13 @@ class PurgeLegalHold:
 @_registry.mapped
 class PurgeLifecycleEvent:
     __table__ = purge_lifecycle_events_table
+
+
+@_registry.mapped
+class WorkspacePurgeExecutionAuthorization:
+    __table__ = workspace_purge_execution_authorizations_table
+
+
+@_registry.mapped
+class WorkspacePurgeReauthActorThrottle:
+    __table__ = workspace_purge_reauth_actor_throttles_table
