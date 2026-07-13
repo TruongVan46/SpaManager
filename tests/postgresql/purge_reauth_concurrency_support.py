@@ -210,6 +210,7 @@ class CleanupManifest:
     namespace: str
     ids_by_kind: dict[str, set[int]] = field(default_factory=dict)
     namespaces: dict[tuple[str, int], str] = field(default_factory=dict, repr=False)
+    lifecycle_by_key: dict[tuple[str, int], str] = field(default_factory=dict, repr=False)
 
     VALID_KINDS = frozenset({
         "user", "workspace", "workspace_member", "setting", "customer", "service",
@@ -217,7 +218,7 @@ class CleanupManifest:
         "lifecycle_event", "activity_log", "authorization", "throttle",
     })
 
-    def register(self, kind: str, object_id: int):
+    def _validate(self, kind: str, object_id: int):
         if kind == MIGRATION_METADATA_TABLE or kind not in self.VALID_KINDS:
             raise ValueError("manifest kind is outside the synthetic namespace")
         if not isinstance(object_id, int) or isinstance(object_id, bool) or object_id <= 0:
@@ -228,6 +229,32 @@ class CleanupManifest:
             raise ValueError("synthetic ID is already registered in another namespace")
         self.namespaces[key] = self.namespace
         self.ids_by_kind.setdefault(kind, set()).add(object_id)
+
+    def register(self, kind: str, object_id: int, *, state="created"):
+        if state not in {"planned", "created"}:
+            raise ValueError("invalid cleanup lifecycle state")
+        self._validate(kind, object_id)
+        self.lifecycle_by_key[(kind, object_id)] = state
+
+    def plan(self, kind: str, object_id: int):
+        self.register(kind, object_id, state="planned")
+
+    def mark_persisted(self, kind: str, object_id: int):
+        key = (kind, object_id)
+        if key not in self.lifecycle_by_key:
+            raise ValueError("cannot mark an unregistered cleanup object persisted")
+        self.lifecycle_by_key[key] = "created"
+
+    def mark_all_persisted(self):
+        for key, state in tuple(self.lifecycle_by_key.items()):
+            if state == "planned":
+                self.lifecycle_by_key[key] = "created"
+
+    def mark_cleanup_completed(self, kind: str, object_id: int):
+        key = (kind, object_id)
+        if self.lifecycle_by_key.get(key) != "created":
+            raise ValueError("cleanup completed for an object that was not persisted")
+        self.lifecycle_by_key[key] = "cleanup-completed"
 
     def register_typed(self, kind: str, object_id: int, namespace: str | None = None):
         if namespace is not None and namespace != self.namespace:
@@ -262,6 +289,7 @@ class CleanupManifest:
             (kind, object_id)
             for kind in reversed(tuple(self.ids_by_kind))
             for object_id in sorted(self.ids_by_kind[kind], reverse=True)
+            if self.lifecycle_by_key.get((kind, object_id)) == "created"
         )
 
 
@@ -465,6 +493,37 @@ def independent_worker_session(context: RehearsalContext):
         engine.dispose()
 
 
+def assert_fixture_actor_contract(context: RehearsalContext, case: SyntheticCase):
+    """Verify committed actors are independently visible before any race starts."""
+
+    from core.auth.permissions import is_approval_owner
+
+    actor_ids = (case.requester_id, case.approver_id, *case.executor_ids)
+    if case.requester_id == case.approver_id or len(set(actor_ids)) != len(actor_ids):
+        raise RehearsalGuardError("synthetic actor separation contract failed")
+    with independent_worker_session(context) as (session, _pid):
+        users = [session.get(context.models.User, actor_id) for actor_id in actor_ids]
+        if any(user is None for user in users):
+            raise RehearsalGuardError("synthetic actors are not visible in a fresh session")
+        if any(
+            not is_approval_owner(user)
+            or not user.is_active
+            or user.deleted_at is not None
+            or user.approval_status != user.APPROVAL_ACTIVE
+            for user in users[:2]
+        ):
+            raise RehearsalGuardError("requester/approver approval-owner contract failed")
+        if any(
+            not is_approval_owner(user)
+            or user.auth_provider != "local" or not user.password_hash
+            or not user.is_active
+            or user.deleted_at is not None
+            or user.approval_status != user.APPROVAL_ACTIVE
+            for user in users[2:]
+        ):
+            raise RehearsalGuardError("executor local-password eligibility contract failed")
+
+
 def run_barrier_workers(context, plan: ScenarioPlan, operation):
     """Run real worker callbacks with independent sessions and bounded joins."""
 
@@ -646,6 +705,7 @@ def _cleanup_manifest(context: RehearsalContext, manifest: CleanupManifest):
                 affected = connection.execute(delete(table).where(column == object_id)).rowcount
                 if affected != 1:
                     raise RehearsalGuardError("Cleanup affected an unexpected row count.")
+                manifest.mark_cleanup_completed(kind, object_id)
         with engine.connect() as connection:
             remaining = _count_tables(connection, context.classification["application"])
             if any(value != 0 for value in remaining.values()):
@@ -688,7 +748,7 @@ class SyntheticFixtureBuilder:
             users.append((user, password))
             db.session.add(user)
             db.session.flush()
-            manifest.register_user(user.id)
+            manifest.plan("user", user.id)
         requester, approver = users[0][0], users[1][0]
         target_owner = models.User(
             username=f"d3e_target_{marker}",
@@ -703,26 +763,26 @@ class SyntheticFixtureBuilder:
         target_owner.set_password(secrets.token_urlsafe(24))
         db.session.add(target_owner)
         db.session.flush()
-        manifest.register_user(target_owner.id)
+        manifest.plan("user", target_owner.id)
         workspace = models.Workspace(
             name=f"D3E {marker}", slug=f"d3e-{marker}", status="active",
             deleted_at=datetime(2026, 1, 1), deleted_by_id=requester.id,
         )
         db.session.add(workspace)
         db.session.flush()
-        manifest.register_workspace(workspace.id)
+        manifest.plan("workspace", workspace.id)
         member = models.WorkspaceMember(workspace_id=workspace.id, user_id=target_owner.id, role="owner", status="active")
         db.session.add(member)
         db.session.flush()
-        manifest.register_workspace_member(member.id)
+        manifest.plan("workspace_member", member.id)
         setting = models.Setting(key=f"d3e_{marker}", value="safe", workspace_id=workspace.id)
         customer = models.Customer(name=f"D3E customer {marker}", workspace_id=workspace.id)
         service = models.Service(name=f"D3E service {marker}", price=10.0, duration=30, workspace_id=workspace.id)
         db.session.add_all([setting, customer, service])
         db.session.flush()
-        manifest.register_setting(setting.id)
-        manifest.register_customer(customer.id)
-        manifest.register_service(service.id)
+        manifest.plan("setting", setting.id)
+        manifest.plan("customer", customer.id)
+        manifest.plan("service", service.id)
         appointment = models.Appointment(
             customer_id=customer.id, service_id=service.id,
             appointment_time=datetime(2026, 2, 2), status="Confirmed",
@@ -742,10 +802,12 @@ class SyntheticFixtureBuilder:
         )
         db.session.add(activity)
         db.session.flush()
-        manifest.register_appointment(appointment.id)
-        manifest.register_invoice(invoice.id)
-        manifest.register_invoice_detail(detail.id)
-        manifest.register_activity_log(activity.id)
+        manifest.plan("appointment", appointment.id)
+        manifest.plan("invoice", invoice.id)
+        manifest.plan("invoice_detail", detail.id)
+        manifest.plan("activity_log", activity.id)
+        db.session.commit()
+        manifest.mark_all_persisted()
         request = services.PurgeRequestService.create_purge_request(
             workspace_id=workspace.id,
             requester_user_id=requester.id,
@@ -759,7 +821,15 @@ class SyntheticFixtureBuilder:
             now=datetime(2026, 2, 1),
         )
         manifest.register_purge_request(request.id)
-        db.session.commit()
+        assert_fixture_actor_contract(
+            context,
+            SyntheticCase(
+                request.id, workspace.id, requester.id, approver.id,
+                tuple(item[0].id for item in users[2:]),
+                tuple(item[1] for item in users[2:]),
+                tuple(item[0].username for item in users[2:]), workspace.slug,
+            ),
+        )
         return SyntheticCase(
             request.id, workspace.id, requester.id, approver.id,
             tuple(item[0].id for item in users[2:]),

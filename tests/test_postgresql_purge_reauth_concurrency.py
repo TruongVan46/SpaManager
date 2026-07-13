@@ -215,6 +215,36 @@ def test_d3e_cleanup_manifest_is_exact_and_reverse_ordered():
         manifest.require_registered("authorization", 999)
 
 
+def test_d3e_cleanup_manifest_tracks_partial_creation_without_false_cleanup_failure():
+    manifest = CleanupManifest("d3e-lifecycle")
+    manifest.plan("workspace", 10)
+    manifest.register("user", 11)
+    assert manifest.deletion_order() == (("user", 11),)
+    manifest.mark_persisted("workspace", 10)
+    assert manifest.deletion_order() == (("user", 11), ("workspace", 10))
+    manifest.mark_cleanup_completed("user", 11)
+    assert manifest.lifecycle_by_key[("user", 11)] == "cleanup-completed"
+    with pytest.raises(ValueError):
+        manifest.mark_cleanup_completed("user", 11)
+
+
+def test_d3e_fixture_commits_before_independent_purge_request_service_and_checks_actors():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    commit_position = source.index("db.session.commit()")
+    service_position = source.index("services.PurgeRequestService.create_purge_request(")
+    assert commit_position < service_position
+    actor_check_position = source.index("        assert_fixture_actor_contract(", service_position)
+    assert service_position < actor_check_position
+    for required_contract in (
+        "independent_worker_session(context)",
+        "is_approval_owner(user)",
+        'user.auth_provider != "local"',
+        "user.password_hash",
+        "synthetic actor separation contract failed",
+    ):
+        assert required_contract in source
+
+
 def test_d3e_manifest_typed_registration_rejects_metadata_and_namespace_mismatch():
     manifest = CleanupManifest("round-a")
     manifest.register_user(1)
