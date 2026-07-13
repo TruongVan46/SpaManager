@@ -40,6 +40,9 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     validate_terminal_backlink_bindings,
     CapturedPytestResult,
     CleanupFailure,
+    HARNESS_CLEANUP_REQUIRED,
+    SERVICE_DELETION_EXPECTED,
+    reconcile_service_deletion_expected,
     format_rehearsal_evidence,
     run_postflight_with_evidence,
 )
@@ -260,6 +263,124 @@ def test_d3e_cleanup_manifest_tracks_partial_creation_without_false_cleanup_fail
     assert manifest.lifecycle_by_key[("user", 11)] == "cleanup-completed"
     with pytest.raises(ValueError):
         manifest.mark_cleanup_completed("user", 11)
+
+
+def test_d3e_service_deletion_expected_rows_are_distinct_and_not_cleanup_targets():
+    manifest = CleanupManifest("d3e-service-contract")
+    manifest.register("workspace", 10)
+    manifest.register_service_deletion_expected("customer", 11)
+    manifest.register_service_deletion_expected("service", 12)
+    assert manifest.classification_by_key[("workspace", 10)] == HARNESS_CLEANUP_REQUIRED
+    assert manifest.classification_by_key[("customer", 11)] == SERVICE_DELETION_EXPECTED
+    assert manifest.deletion_order() == (("workspace", 10),)
+    manifest.mark_service_deletion_verified("customer", 11)
+    manifest.mark_service_deletion_verified("service", 12)
+    assert manifest.deletion_order() == (("workspace", 10),)
+
+
+def test_d3e_missing_cleanup_required_row_remains_strict():
+    manifest = CleanupManifest("d3e-strict-missing")
+    manifest.register("workspace", 10)
+    assert manifest.classification_by_key[("workspace", 10)] == HARNESS_CLEANUP_REQUIRED
+    assert manifest.deletion_order() == (("workspace", 10),)
+
+
+def test_d3e_service_deletion_reconciliation_uses_fresh_session_and_accepts_verified_absence(monkeypatch):
+    from sqlalchemy import Column, Integer, MetaData, Table
+
+    terminal_table = Table(
+        "workspace_purge_terminal_state", MetaData(),
+        Column("id", Integer), Column("purged_at", Integer), Column("purge_request_id", Integer),
+    )
+    round_context = create_round_context("D", 1, "run")
+    round_context.manifest.register_service_deletion_expected("customer", 11)
+    round_context.manifest.register_purge_request(20)
+
+    class Result:
+        def mappings(self):
+            return self
+
+        def one_or_none(self):
+            return {"purged_at": object(), "purge_request_id": 20}
+
+    class Query:
+        def filter_by(self, **_kwargs):
+            return self
+
+        def one_or_none(self):
+            return None
+
+    class Session:
+        def get(self, _model, _object_id):
+            return SimpleNamespace(id=20, workspace_id=30, status="COMPLETED", outcome_unknown=False)
+
+        def execute(self, _statement):
+            return Result()
+
+        def query(self, _model):
+            return Query()
+
+    @contextmanager
+    def fresh_session(_context):
+        yield Session(), 123
+
+    monkeypatch.setattr(support, "independent_worker_session", fresh_session)
+    context = SimpleNamespace(
+        models=SimpleNamespace(
+                WorkspacePurgeRequest=object,
+                Customer=object,
+                workspace_terminal_state_table=terminal_table,
+        )
+    )
+    reconcile_service_deletion_expected(context, round_context)
+    assert round_context.manifest.lifecycle_by_key[("customer", 11)] == "service-deleted-verified"
+
+
+def test_d3e_service_deletion_missing_before_verified_success_fails_closed(monkeypatch):
+    from sqlalchemy import Column, Integer, MetaData, Table
+
+    terminal_table = Table(
+        "workspace_purge_terminal_state", MetaData(),
+        Column("id", Integer), Column("purged_at", Integer), Column("purge_request_id", Integer),
+    )
+    round_context = create_round_context("D", 1, "run")
+    round_context.manifest.register_service_deletion_expected("customer", 11)
+    round_context.manifest.register_purge_request(20)
+
+    class Session:
+        def get(self, _model, _object_id):
+            return SimpleNamespace(id=20, workspace_id=30, status="APPROVED", outcome_unknown=False)
+
+        def execute(self, _statement):
+            return SimpleNamespace(
+                mappings=lambda: SimpleNamespace(
+                    one_or_none=lambda: {"purged_at": None, "purge_request_id": None}
+                )
+            )
+
+        def query(self, _model):
+            return self
+
+        def filter_by(self, **_kwargs):
+            return self
+
+        def one_or_none(self):
+            return None
+
+    @contextmanager
+    def fresh_session(_context):
+        yield Session(), 123
+
+    monkeypatch.setattr(support, "independent_worker_session", fresh_session)
+    context = SimpleNamespace(
+        models=SimpleNamespace(
+                WorkspacePurgeRequest=object,
+                Customer=object,
+                workspace_terminal_state_table=terminal_table,
+        )
+    )
+    with pytest.raises(RehearsalGuardError, match="missing before verified purge"):
+        reconcile_service_deletion_expected(context, round_context)
 
 
 def test_d3e_round_cleanup_discovers_all_registered_request_and_workspace_ids_deterministically():

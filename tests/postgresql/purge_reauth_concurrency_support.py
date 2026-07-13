@@ -33,6 +33,15 @@ CLEANUP_KIND_ORDER = (
     "service", "setting", "purge_request", "workspace", "user",
 )
 
+HARNESS_CLEANUP_REQUIRED = "HARNESS_CLEANUP_REQUIRED"
+SERVICE_DELETION_EXPECTED = "SERVICE_DELETION_EXPECTED"
+SERVICE_PRESERVATION_REQUIRED = "SERVICE_PRESERVATION_REQUIRED"
+NEVER_CREATED_PLANNED_ONLY = "NEVER_CREATED_PLANNED_ONLY"
+SERVICE_DELETION_KINDS = frozenset({
+    "invoice_detail", "appointment", "invoice", "customer", "service", "setting",
+    "workspace_member",
+})
+
 
 @dataclass(frozen=True, slots=True)
 class ScenarioPlan:
@@ -367,6 +376,7 @@ class CleanupManifest:
     ids_by_kind: dict[str, set[int]] = field(default_factory=dict)
     namespaces: dict[tuple[str, int], str] = field(default_factory=dict, repr=False)
     lifecycle_by_key: dict[tuple[str, int], str] = field(default_factory=dict, repr=False)
+    classification_by_key: dict[tuple[str, int], str] = field(default_factory=dict, repr=False)
 
     VALID_KINDS = frozenset({
         "user", "workspace", "workspace_member", "setting", "customer", "service",
@@ -391,6 +401,7 @@ class CleanupManifest:
             raise ValueError("invalid cleanup lifecycle state")
         self._validate(kind, object_id)
         self.lifecycle_by_key[(kind, object_id)] = state
+        self.classification_by_key.setdefault((kind, object_id), HARNESS_CLEANUP_REQUIRED)
 
     def plan(self, kind: str, object_id: int):
         self.register(kind, object_id, state="planned")
@@ -416,6 +427,20 @@ class CleanupManifest:
         if namespace is not None and namespace != self.namespace:
             raise ValueError("synthetic object namespace mismatch")
         self.register(kind, object_id)
+
+    def register_service_deletion_expected(self, kind: str, object_id: int):
+        if kind not in SERVICE_DELETION_KINDS:
+            raise ValueError("kind is not covered by the purge deletion contract")
+        self.register(kind, object_id)
+        self.classification_by_key[(kind, object_id)] = SERVICE_DELETION_EXPECTED
+
+    def mark_service_deletion_verified(self, kind: str, object_id: int):
+        key = (kind, object_id)
+        if self.classification_by_key.get(key) != SERVICE_DELETION_EXPECTED:
+            raise ValueError("object is not service-deletion-expected")
+        if self.lifecycle_by_key.get(key) != "created":
+            raise ValueError("service deletion verified for an object that was not persisted")
+        self.lifecycle_by_key[key] = "service-deleted-verified"
 
     def _typed(self, kind, object_id):
         self.register_typed(kind, object_id)
@@ -447,6 +472,8 @@ class CleanupManifest:
             if kind in self.ids_by_kind
             for object_id in sorted(self.ids_by_kind[kind], reverse=True)
             if self.lifecycle_by_key.get((kind, object_id)) == "created"
+            and self.classification_by_key.get((kind, object_id), HARNESS_CLEANUP_REQUIRED)
+            != SERVICE_DELETION_EXPECTED
         )
 
 
@@ -613,6 +640,7 @@ def create_enabled_rehearsal_context(environ: Mapping[str, object]) -> Rehearsal
                 WorkspaceMember=workspace.WorkspaceMember,
                 ActivityLog=__import__("models.activity_log", fromlist=["ActivityLog"]).ActivityLog,
                 WorkspacePurgeRequest=purge.WorkspacePurgeRequest,
+                workspace_terminal_state_table=purge.workspace_terminal_state_table,
                 PurgeLegalHold=purge.PurgeLegalHold,
                 PurgeLifecycleEvent=purge.PurgeLifecycleEvent,
                 WorkspacePurgeExecutionAuthorization=purge.WorkspacePurgeExecutionAuthorization,
@@ -843,16 +871,31 @@ def verify_final_zero_row_state(context, round_context):
 
 
 def cleanup_round_exactly(context: RehearsalContext, round_context: RoundContext):
+    errors = []
     try:
         discover_and_register_indirect_rows(
             context, round_context, _manifest_request_ids(round_context),
             _manifest_workspace_ids(round_context), _manifest_actor_ids(round_context),
         )
+    except BaseException as error:
+        errors.append(error)
+    if not errors:
+        try:
+            reconcile_service_deletion_expected(context, round_context)
+        except BaseException as error:
+            errors.append(error)
+    try:
         _cleanup_manifest(context, round_context.manifest)
+    except BaseException as error:
+        errors.append(error)
+    try:
         verify_final_zero_row_state(context, round_context)
     except BaseException as error:
+        errors.append(error)
+    if errors:
+        error = errors[0]
         if isinstance(error, CleanupFailure):
-            raise
+            raise error
         raise CleanupFailure(
             str(error), _remaining_manifest_objects(round_context.manifest)
         ) from error
@@ -868,6 +911,69 @@ def _manifest_workspace_ids(round_context):
 
 def _manifest_actor_ids(round_context):
     return round_context.manifest.ids_by_kind.get("user", set())
+
+
+def reconcile_service_deletion_expected(context: RehearsalContext, round_context: RoundContext):
+    """Reconcile purge-owned deletions from a fresh independent database session."""
+
+    expected = tuple(
+        (kind, object_id)
+        for kind, object_ids in round_context.manifest.ids_by_kind.items()
+        for object_id in sorted(object_ids)
+        if round_context.manifest.classification_by_key.get((kind, object_id))
+        == SERVICE_DELETION_EXPECTED
+        and round_context.manifest.lifecycle_by_key.get((kind, object_id)) == "created"
+    )
+    if not expected:
+        return
+    request_ids = _manifest_request_ids(round_context)
+    if len(request_ids) != 1:
+        raise RehearsalGuardError("service-deletion reconciliation requires one purge request")
+
+    from sqlalchemy import select
+    workspace_terminal_state_table = getattr(
+        context.models, "workspace_terminal_state_table", None
+    )
+    if workspace_terminal_state_table is None:
+        raise RehearsalGuardError("terminal workspace state contract is unavailable")
+
+    model_name_by_kind = {
+        "invoice_detail": "InvoiceDetail",
+        "appointment": "Appointment",
+        "invoice": "Invoice",
+        "customer": "Customer",
+        "service": "Service",
+        "setting": "Setting",
+        "workspace_member": "WorkspaceMember",
+    }
+    with independent_worker_session(context) as (session, _pid):
+        request = session.get(context.models.WorkspacePurgeRequest, request_ids[0])
+        terminal = session.execute(
+            select(workspace_terminal_state_table).where(
+                workspace_terminal_state_table.c.id == request.workspace_id
+            )
+        ).mappings().one_or_none() if request is not None else None
+        committed = bool(
+            request is not None
+            and request.status == "COMPLETED"
+            and not request.outcome_unknown
+            and terminal is not None
+            and terminal["purged_at"] is not None
+            and terminal["purge_request_id"] == request.id
+        )
+        for kind, object_id in expected:
+            model = getattr(context.models, model_name_by_kind[kind], None)
+            if model is None:
+                raise RehearsalGuardError(f"service-deletion model contract is unavailable for {kind}")
+            present = session.query(model).filter_by(id=object_id).one_or_none()
+            if committed and present is None:
+                round_context.manifest.mark_service_deletion_verified(kind, object_id)
+            elif committed:
+                raise RehearsalGuardError(f"Verified purge retained approved {kind} row.")
+            elif present is None:
+                raise RehearsalGuardError(
+                    f"Service-deletion-expected {kind} row is missing before verified purge."
+                )
 
 
 def validate_terminal_backlink_bindings(workspace_rows, request_rows, workspace_ids, request_ids):
@@ -1107,6 +1213,17 @@ class SyntheticFixtureBuilder:
         manifest.plan("activity_log", activity.id)
         db.session.commit()
         manifest.mark_all_persisted()
+        if round_context.scenario == "D":
+            for kind, object_id in (
+                ("invoice_detail", detail.id),
+                ("appointment", appointment.id),
+                ("invoice", invoice.id),
+                ("customer", customer.id),
+                ("service", service.id),
+                ("setting", setting.id),
+                ("workspace_member", member.id),
+            ):
+                manifest.classification_by_key[(kind, object_id)] = SERVICE_DELETION_EXPECTED
         request = services.PurgeRequestService.create_purge_request(
             workspace_id=workspace.id,
             requester_user_id=requester.id,
