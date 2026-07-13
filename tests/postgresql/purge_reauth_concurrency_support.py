@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass, field
 import os
+import re
 import secrets
 import threading
 from types import SimpleNamespace
@@ -209,6 +210,155 @@ class WorkerResult:
             f"backend_pid={self.backend_pid!r}, generation={self.generation!r}, "
             f"state={self.state!r})"
         )
+
+
+@dataclass(frozen=True, slots=True)
+class CapturedPytestResult:
+    """Secret-free subprocess evidence retained before postflight verification."""
+
+    exit_code: int | None
+    stdout: str = ""
+    stderr: str = ""
+    completed: bool = True
+    timed_out: bool = False
+
+    @property
+    def has_output(self):
+        return bool(self.stdout or self.stderr)
+
+
+@dataclass(frozen=True, slots=True)
+class PostflightResult:
+    """Independent final-state verifier evidence."""
+
+    passed: bool
+    summary: str = ""
+    error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CombinedRehearsalResult:
+    """Combined result whose success requires complete pytest and postflight evidence."""
+
+    pytest: CapturedPytestResult
+    postflight: PostflightResult
+    evidence_error: str | None = None
+
+    @property
+    def overall_pass(self):
+        return (
+            self.pytest.completed
+            and not self.pytest.timed_out
+            and self.pytest.exit_code == 0
+            and self.pytest.has_output
+            and self.postflight.passed
+            and self.evidence_error is None
+        )
+
+
+class CleanupFailure(RehearsalGuardError):
+    """Typed cleanup failure retaining the registered remaining namespace."""
+
+    def __init__(self, message, remaining_by_kind=None):
+        self.remaining_by_kind = {
+            kind: tuple(sorted(ids))
+            for kind, ids in (remaining_by_kind or {}).items()
+            if ids
+        }
+        suffix = ""
+        if self.remaining_by_kind:
+            suffix = f" remaining={self.remaining_by_kind!r}"
+        super().__init__(f"{message}{suffix}")
+
+
+def _remaining_manifest_objects(manifest):
+    return {
+        kind: {
+            object_id
+            for object_id in ids
+            if manifest.lifecycle_by_key.get((kind, object_id)) == "created"
+        }
+        for kind, ids in manifest.ids_by_kind.items()
+    }
+
+
+def sanitize_rehearsal_output(value, secret_values=()):
+    """Remove supplied secrets and credential-bearing values without hiding test totals."""
+
+    rendered = str(value or "")
+    for secret in secret_values:
+        if secret:
+            rendered = rendered.replace(str(secret), "[REDACTED]")
+    rendered = re.sub(
+        r"(?i)(postgres(?:ql)?(?:\+\w+)?://[^:/\s]+:)[^@\s]+(@)",
+        r"\1[REDACTED]\2",
+        rendered,
+    )
+    rendered = re.sub(
+        r"(?i)(\b(?:password|passwd|nonce|nonce_hash|signed_cookie|cookie|hash)\b\s*[:=]\s*)[^\s,;]+",
+        r"\1[REDACTED]",
+        rendered,
+    )
+    return rendered
+
+
+def run_postflight_with_evidence(pytest_result, verifier, *, secret_values=()):
+    """Run postflight after subprocess completion while preserving both outcomes."""
+
+    if not isinstance(pytest_result, CapturedPytestResult):
+        raise TypeError("pytest_result must be CapturedPytestResult")
+    if not pytest_result.completed:
+        postflight = PostflightResult(False, error="pytest subprocess did not complete")
+    else:
+        try:
+            summary = verifier()
+        except BaseException as error:
+            postflight = PostflightResult(False, error=f"{type(error).__name__}: {error}")
+        else:
+            postflight = PostflightResult(True, summary=str(summary or "PASS"))
+    evidence_error = None
+    if not pytest_result.has_output:
+        evidence_error = "captured pytest stdout/stderr is empty"
+    sanitized = CapturedPytestResult(
+        pytest_result.exit_code,
+        sanitize_rehearsal_output(pytest_result.stdout, secret_values),
+        sanitize_rehearsal_output(pytest_result.stderr, secret_values),
+        pytest_result.completed,
+        pytest_result.timed_out,
+    )
+    sanitized_postflight = PostflightResult(
+        postflight.passed,
+        sanitize_rehearsal_output(postflight.summary, secret_values),
+        sanitize_rehearsal_output(postflight.error, secret_values) if postflight.error else None,
+    )
+    return CombinedRehearsalResult(sanitized, sanitized_postflight, evidence_error)
+
+
+def format_rehearsal_evidence(result: CombinedRehearsalResult):
+    """Format primary pytest evidence before independent postflight evidence."""
+
+    if not isinstance(result, CombinedRehearsalResult):
+        raise TypeError("result must be CombinedRehearsalResult")
+    lines = [
+        f"PYTEST_EXIT_CODE={result.pytest.exit_code}",
+        f"PYTEST_COMPLETED={result.pytest.completed}",
+        f"PYTEST_TIMED_OUT={result.pytest.timed_out}",
+        "PYTEST_STDOUT_BEGIN",
+        result.pytest.stdout,
+        "PYTEST_STDOUT_END",
+        "PYTEST_STDERR_BEGIN",
+        result.pytest.stderr,
+        "PYTEST_STDERR_END",
+    ]
+    if result.evidence_error:
+        lines.append(f"EVIDENCE_ERROR={result.evidence_error}")
+    lines.append(f"POSTFLIGHT_PASS={result.postflight.passed}")
+    if result.postflight.summary:
+        lines.append(f"POSTFLIGHT_SUMMARY={result.postflight.summary}")
+    if result.postflight.error:
+        lines.append(f"POSTFLIGHT_ERROR={result.postflight.error}")
+    lines.append(f"OVERALL_PASS={result.overall_pass}")
+    return "\n".join(lines)
 
 
 @dataclass(slots=True)
@@ -587,7 +737,9 @@ def execute_scenario(context: RehearsalContext, code: str):
             try:
                 cleanup_round_exactly(context, round_context)
             except BaseException as error:
-                cleanup_error = error
+                cleanup_error = error if isinstance(error, CleanupFailure) else CleanupFailure(
+                    str(error), _remaining_manifest_objects(round_context.manifest)
+                )
         if primary_error is not None:
             if cleanup_error is not None:
                 raise primary_error from cleanup_error
@@ -614,11 +766,23 @@ def discover_and_register_indirect_rows(context, round_context, request_ids, wor
     request_ids = tuple(sorted(set(request_ids)))
     workspace_ids = tuple(sorted(set(workspace_ids)))
     actor_ids = tuple(sorted(set(actor_ids)))
-    if not request_ids:
-        raise RehearsalGuardError("round has no registered purge request")
-
     with independent_worker_session(context) as (session, _pid):
         request_model = models.WorkspacePurgeRequest
+        if not request_ids and workspace_ids:
+            discovered_requests = session.execute(
+                select(request_model.id).where(request_model.workspace_id.in_(workspace_ids))
+            ).scalars().all()
+            if not discovered_requests:
+                raise RehearsalGuardError("round has no discoverable purge request")
+            if len(discovered_requests) != len(set(discovered_requests)):
+                raise RehearsalGuardError("round request discovery returned duplicate IDs")
+            if len(discovered_requests) > len(workspace_ids):
+                raise RehearsalGuardError("round has multiple purge requests for a workspace")
+            request_ids = tuple(sorted(set(discovered_requests)))
+            for request_id in request_ids:
+                round_context.manifest.register_purge_request(request_id)
+        if not request_ids:
+            raise RehearsalGuardError("round has no registered purge request")
         visible_request_ids = set(
             session.execute(
                 select(request_model.id).where(request_model.id.in_(request_ids))
@@ -647,7 +811,8 @@ def discover_and_register_indirect_rows(context, round_context, request_ids, wor
             if kind == "throttle" and not actor_ids:
                 continue
             for row in session.execute(select(model).where(predicate(model))).scalars():
-                round_context.manifest.register_typed(kind, row.id)
+                object_id = row.actor_user_id if kind == "throttle" else row.id
+                round_context.manifest.register_typed(kind, object_id)
 
 
 def verify_final_zero_row_state(context, round_context):
@@ -672,12 +837,19 @@ def verify_final_zero_row_state(context, round_context):
 
 
 def cleanup_round_exactly(context: RehearsalContext, round_context: RoundContext):
-    discover_and_register_indirect_rows(
-        context, round_context, _manifest_request_ids(round_context),
-        _manifest_workspace_ids(round_context), _manifest_actor_ids(round_context),
-    )
-    _cleanup_manifest(context, round_context.manifest)
-    verify_final_zero_row_state(context, round_context)
+    try:
+        discover_and_register_indirect_rows(
+            context, round_context, _manifest_request_ids(round_context),
+            _manifest_workspace_ids(round_context), _manifest_actor_ids(round_context),
+        )
+        _cleanup_manifest(context, round_context.manifest)
+        verify_final_zero_row_state(context, round_context)
+    except BaseException as error:
+        if isinstance(error, CleanupFailure):
+            raise
+        raise CleanupFailure(
+            str(error), _remaining_manifest_objects(round_context.manifest)
+        ) from error
 
 
 def _manifest_request_ids(round_context):
@@ -803,29 +975,34 @@ def _cleanup_manifest(context: RehearsalContext, manifest: CleanupManifest):
     engine = create_engine(context.engine_url, poolclass=NullPool, future=True)
     metadata = MetaData()
     try:
-        with engine.begin() as connection:
-            database = connection.execute(text("SELECT current_database()")).scalar_one()
-            if database != REHEARSAL_DATABASE_NAME:
-                raise RehearsalGuardError("Cleanup database identity mismatch.")
-            _reconcile_workspace_terminal_backlinks(connection, manifest, metadata)
-            for kind, object_id in manifest.deletion_order():
-                table_name, column_name = table_by_kind[kind]
-                table = metadata.tables.get(table_name)
-                if table is None:
-                    from sqlalchemy import Table
-                    table = Table(table_name, metadata, autoload_with=connection)
-                column = table.c[column_name]
-                present = connection.execute(select(column).where(column == object_id)).first()
-                if present is None:
-                    raise RehearsalGuardError("Registered cleanup object is missing.")
-                affected = connection.execute(delete(table).where(column == object_id)).rowcount
-                if affected != 1:
-                    raise RehearsalGuardError("Cleanup affected an unexpected row count.")
-                manifest.mark_cleanup_completed(kind, object_id)
-        with engine.connect() as connection:
-            remaining = _count_tables(connection, context.classification["application"])
-            if any(value != 0 for value in remaining.values()):
-                raise RehearsalGuardError("Cleanup did not restore application zero-row state.")
+        try:
+            with engine.begin() as connection:
+                database = connection.execute(text("SELECT current_database()")).scalar_one()
+                if database != REHEARSAL_DATABASE_NAME:
+                    raise RehearsalGuardError("Cleanup database identity mismatch.")
+                _reconcile_workspace_terminal_backlinks(connection, manifest, metadata)
+                for kind, object_id in manifest.deletion_order():
+                    table_name, column_name = table_by_kind[kind]
+                    table = metadata.tables.get(table_name)
+                    if table is None:
+                        from sqlalchemy import Table
+                        table = Table(table_name, metadata, autoload_with=connection)
+                    column = table.c[column_name]
+                    present = connection.execute(select(column).where(column == object_id)).first()
+                    if present is None:
+                        raise RehearsalGuardError("Registered cleanup object is missing.")
+                    affected = connection.execute(delete(table).where(column == object_id)).rowcount
+                    if affected != 1:
+                        raise RehearsalGuardError("Cleanup affected an unexpected row count.")
+                    manifest.mark_cleanup_completed(kind, object_id)
+            with engine.connect() as connection:
+                remaining = _count_tables(connection, context.classification["application"])
+                if any(value != 0 for value in remaining.values()):
+                    raise RehearsalGuardError("Cleanup did not restore application zero-row state.")
+        except BaseException as error:
+            if isinstance(error, CleanupFailure):
+                raise
+            raise CleanupFailure(str(error), _remaining_manifest_objects(manifest)) from error
     finally:
         engine.dispose()
 

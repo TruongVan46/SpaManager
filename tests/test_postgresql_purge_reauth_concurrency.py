@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+import tests.postgresql.purge_reauth_concurrency_support as support
 from tests.postgresql.purge_reauth_concurrency_support import (
     APPLICATION_TABLE_NAMES,
     EXPECTED_REVISION,
@@ -35,6 +36,10 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     _manifest_request_ids,
     _manifest_workspace_ids,
     validate_terminal_backlink_bindings,
+    CapturedPytestResult,
+    CleanupFailure,
+    format_rehearsal_evidence,
+    run_postflight_with_evidence,
 )
 
 
@@ -353,6 +358,161 @@ def test_d3e_route_helpers_use_real_cookie_and_logout_route_contract():
     assert "target.set_cookie" in source
     assert 'client.post("/logout"' in source
     assert "revoke_active_authorizations_for_actor" not in source
+
+
+def test_d3e_evidence_pass_preserves_pytest_and_postflight_results():
+    result = run_postflight_with_evidence(
+        CapturedPytestResult(0, "20 passed\n", ""),
+        lambda: "15 application tables zero",
+    )
+    report = format_rehearsal_evidence(result)
+    assert result.overall_pass
+    assert "20 passed" in report
+    assert "POSTFLIGHT_SUMMARY=15 application tables zero" in report
+    assert report.index("PYTEST_STDOUT_BEGIN") < report.index("POSTFLIGHT_PASS=True")
+
+
+def test_d3e_evidence_pytest_failure_survives_postflight_pass():
+    result = run_postflight_with_evidence(
+        CapturedPytestResult(1, "FAILED test_round\n", "assertion details\n"),
+        lambda: "zero rows",
+    )
+    report = format_rehearsal_evidence(result)
+    assert not result.overall_pass
+    assert result.pytest.exit_code == 1
+    assert "FAILED test_round" in report
+    assert "assertion details" in report
+    assert "POSTFLIGHT_PASS=True" in report
+
+
+def test_d3e_evidence_postflight_failure_survives_pytest_pass():
+    result = run_postflight_with_evidence(
+        CapturedPytestResult(0, "20 passed\n", ""),
+        lambda: (_ for _ in ()).throw(RuntimeError("residue detected")),
+    )
+    report = format_rehearsal_evidence(result)
+    assert not result.overall_pass
+    assert "20 passed" in report
+    assert "POSTFLIGHT_PASS=False" in report
+    assert "residue detected" in report
+
+
+def test_d3e_evidence_both_failures_remain_independently_visible():
+    result = run_postflight_with_evidence(
+        CapturedPytestResult(2, "FAILED test_worker\n", "worker error\n"),
+        lambda: (_ for _ in ()).throw(RuntimeError("cleanup error")),
+    )
+    report = format_rehearsal_evidence(result)
+    assert not result.overall_pass
+    assert "FAILED test_worker" in report
+    assert "worker error" in report
+    assert "cleanup error" in report
+
+
+def test_d3e_evidence_postflight_exception_cannot_suppress_captured_summary():
+    result = run_postflight_with_evidence(
+        CapturedPytestResult(0, "7 passed, 7 skipped\n", ""),
+        lambda: (_ for _ in ()).throw(ValueError("verifier exploded")),
+    )
+    assert "7 passed, 7 skipped" in format_rehearsal_evidence(result)
+    assert "ValueError: verifier exploded" in result.postflight.error
+
+
+def test_d3e_evidence_timeout_and_empty_capture_are_not_success():
+    timeout = run_postflight_with_evidence(
+        CapturedPytestResult(None, "partial test name\n", "", completed=False, timed_out=True),
+        lambda: "must not run",
+    )
+    empty = run_postflight_with_evidence(CapturedPytestResult(0), lambda: "pass")
+    assert not timeout.overall_pass
+    assert timeout.postflight.error == "pytest subprocess did not complete"
+    assert not empty.overall_pass
+    assert empty.evidence_error == "captured pytest stdout/stderr is empty"
+
+
+def test_d3e_evidence_sanitizer_removes_secrets_but_keeps_totals():
+    result = run_postflight_with_evidence(
+        CapturedPytestResult(
+            0,
+            "20 passed password=secret nonce=rawnonce\n",
+            "postgresql+psycopg2://user:secret@localhost:5433/db\n",
+        ),
+        lambda: "zero rows password=secret",
+        secret_values=("secret", "rawnonce"),
+    )
+    rendered = format_rehearsal_evidence(result)
+    assert result.overall_pass
+    assert "20 passed" in rendered
+    assert "secret" not in rendered
+    assert "rawnonce" not in rendered
+    assert "postgresql+psycopg2://user:[REDACTED]@localhost:5433/db" in rendered
+    assert "zero rows password=[REDACTED]" in rendered
+
+
+def test_d3e_cleanup_failure_preserves_primary_error_and_typed_remaining_rows(monkeypatch):
+    calls = []
+
+    def callback(_context, _plan, round_context):
+        round_context.manifest.register("workspace", 10)
+        raise AssertionError("primary scenario failure")
+
+    def cleanup(_context, round_context):
+        calls.append(round_context.round_number)
+        raise CleanupFailure("typed cleanup failure", {"workspace": {10}, "throttle": {20}})
+
+    monkeypatch.setitem(support.SCENARIO_CALLBACKS, "A", callback)
+    monkeypatch.setattr(support, "cleanup_round_exactly", cleanup)
+    context = type("Context", (), {"manifest": type("Manifest", (), {"namespace": "run"})(), "scenario_callbacks": {"A": callback}})()
+    with pytest.raises(AssertionError, match="primary scenario failure") as raised:
+        support.execute_scenario(context, "A")
+    assert calls == [1]
+    assert isinstance(raised.value.__cause__, CleanupFailure)
+    assert raised.value.__cause__.remaining_by_kind == {"workspace": (10,), "throttle": (20,)}
+
+
+def test_d3e_final_round_uses_identical_cleanup_path(monkeypatch):
+    executed = []
+    cleaned = []
+
+    def callback(_context, _plan, round_context):
+        executed.append(round_context.round_number)
+        return round_context.round_number
+
+    def cleanup(_context, round_context):
+        cleaned.append(round_context.round_number)
+
+    monkeypatch.setitem(support.SCENARIO_CALLBACKS, "A", callback)
+    monkeypatch.setattr(support, "cleanup_round_exactly", cleanup)
+    context = type("Context", (), {"manifest": type("Manifest", (), {"namespace": "run"})(), "scenario_callbacks": {"A": callback}})()
+    assert len(support.execute_scenario(context, "A")) == 10
+    assert executed == list(range(1, 11))
+    assert cleaned == executed
+
+
+def test_d3e_partial_setup_request_is_recovered_by_exact_workspace_discovery():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    discovery = source[source.index("def discover_and_register_indirect_rows"):source.index("def verify_final_zero_row_state")]
+    assert "request_model.workspace_id.in_(workspace_ids)" in discovery
+    assert "register_purge_request(request_id)" in discovery
+    assert "actor_user_id if kind == \"throttle\"" in discovery
+
+
+def test_d3e_residue_pattern_is_typed_and_fk_ordered():
+    manifest = CleanupManifest("d3e-residue")
+    for kind, object_id in (
+        ("user", 1), ("user", 2), ("user", 3), ("user", 4),
+        ("workspace", 5), ("purge_request", 6),
+        ("authorization", 7), ("throttle", 3),
+        ("lifecycle_event", 8), ("lifecycle_event", 9),
+        ("workspace_member", 10), ("customer", 11), ("service", 12),
+        ("appointment", 13), ("invoice", 14), ("invoice_detail", 15),
+        ("activity_log", 16), ("setting", 17),
+    ):
+        manifest.register(kind, object_id)
+    order = [kind for kind, _object_id in manifest.deletion_order()]
+    assert order.index("authorization") < order.index("purge_request")
+    assert order.index("purge_request") < order.index("workspace")
+    assert order.index("workspace_member") < order.index("workspace")
 
 
 def test_d3e_worker_backend_pid_assertion_is_fail_closed():
