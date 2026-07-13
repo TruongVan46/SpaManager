@@ -5,7 +5,9 @@ entry points are skipped unless every existing rehearsal guard is enabled.
 """
 
 import os
+from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -358,6 +360,140 @@ def test_d3e_route_helpers_use_real_cookie_and_logout_route_contract():
     assert "target.set_cookie" in source
     assert 'client.post("/logout"' in source
     assert "revoke_active_authorizations_for_actor" not in source
+
+
+def test_d3e_workers_push_independent_application_contexts_and_preserve_sessions(monkeypatch):
+    from flask import Flask, current_app, g, has_app_context
+
+    app = Flask("d3e-worker-context")
+    app.config.update(TESTING=True, SECRET_KEY="test-only")
+    resources = iter((101, 102))
+
+    @contextmanager
+    def fake_session(_context):
+        yield object(), next(resources)
+
+    seen = []
+
+    def operation(label, resource):
+        g.worker_label = label
+        seen.append((current_app.name, id(g._get_current_object()), has_app_context()))
+        return WorkerResult("A", 1, label, "ok", resource[1])
+
+    monkeypatch.setattr(support, "independent_worker_session", fake_session)
+    context = SimpleNamespace(application=app)
+    plan = support.ScenarioPlan("A", 1, 2, "threading.Barrier", "independent", ("ok",), ())
+    results = support.run_barrier_workers(context, plan, operation)
+    assert len(results) == 2
+    assert {item[0] for item in seen} == {"d3e-worker-context"}
+    assert all(item[2] for item in seen)
+    assert len({item[1] for item in seen}) == 2
+    assert not has_app_context()
+
+
+def test_d3e_worker_application_context_pops_when_operation_raises(monkeypatch):
+    from flask import Flask, has_app_context
+
+    app = Flask("d3e-worker-exception")
+    app.config.update(TESTING=True, SECRET_KEY="test-only")
+
+    @contextmanager
+    def fake_session(_context):
+        yield object(), 201
+
+    monkeypatch.setattr(support, "independent_worker_session", fake_session)
+    context = SimpleNamespace(application=app)
+    plan = support.ScenarioPlan("A", 1, 2, "threading.Barrier", "independent", ("ok",), ())
+
+    def operation(_label, _resource):
+        raise RuntimeError("worker failure")
+
+    with pytest.raises(RuntimeError, match="worker failure"):
+        support.run_barrier_workers(context, plan, operation)
+    assert not has_app_context()
+
+
+def test_d3e_worker_context_contract_keeps_barrier_and_independent_session_path():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    worker = source[source.index("def run_barrier_workers"):source.index("def execute_scenario")]
+    assert "with context.application.app_context():" in worker
+    assert "with independent_worker_session(context) as resource:" in worker
+    assert "barrier.wait(timeout=30)" in worker
+    assert "future.result(timeout=45)" in worker
+
+
+def test_d3e_real_login_helper_uses_json_csrf_header_and_expected_session():
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def get_json(silent=False):
+            return {"success": True}
+
+    class Client:
+        def __init__(self):
+            self.state = {"_csrf_token": "csrf-test-token"}
+            self.request = None
+
+        def get(self, path):
+            assert path == "/login"
+            return Response()
+
+        @contextmanager
+        def session_transaction(self):
+            yield self.state
+
+        def post(self, path, **kwargs):
+            self.request = (path, kwargs)
+            self.state["auth_user_id"] = 7
+            return Response()
+
+    client = Client()
+    case = SimpleNamespace(executor_usernames=("executor",), passwords=("memory-only",), executor_ids=(7,))
+    support.authenticate_executor(client, case)
+    path, request = client.request
+    assert path == "/login"
+    assert request["json"] == {"username": "executor", "password": "memory-only"}
+    assert request["headers"] == {"X-CSRFToken": "csrf-test-token", "X-Requested-With": "XMLHttpRequest"}
+
+
+def test_d3e_login_failure_diagnostics_are_sanitized_and_actionable():
+    class Response:
+        status_code = 401
+
+        @staticmethod
+        def get_json(silent=False):
+            return {"error": "AUTH_LOGIN_FAILED"}
+
+    class Client:
+        def __init__(self):
+            self.state = {"_csrf_token": "csrf-test-token"}
+
+        def get(self, _path):
+            return Response()
+
+        @contextmanager
+        def session_transaction(self):
+            yield self.state
+
+        def post(self, _path, **_kwargs):
+            return Response()
+
+    case = SimpleNamespace(executor_usernames=("executor",), passwords=("secret-not-output",), executor_ids=(7,))
+    with pytest.raises(AssertionError) as raised:
+        support.authenticate_executor(Client(), case)
+    message = str(raised.value)
+    assert "status=401" in message
+    assert "csrf_present=True" in message
+    assert "authenticated_user_match=False" in message
+    assert "secret-not-output" not in message
+
+
+def test_d3e_fixture_self_checks_canonical_password_and_commits_before_login():
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    assert "user.check_password(password)" in source
+    fixture = source[source.index("def approved_request"):source.index("def _service_worker_results")]
+    assert fixture.index("db.session.commit()") < fixture.index("assert_fixture_actor_contract(")
 
 
 def test_d3e_evidence_pass_preserves_pytest_and_postflight_results():

@@ -691,6 +691,11 @@ def assert_fixture_actor_contract(context: RehearsalContext, case: SyntheticCase
             for user in users[2:]
         ):
             raise RehearsalGuardError("executor local-password eligibility contract failed")
+        if any(
+            not user.check_password(password)
+            for user, password in zip(users[2:], case.passwords)
+        ):
+            raise RehearsalGuardError("executor password fixture self-check failed")
 
 
 def run_barrier_workers(context, plan: ScenarioPlan, operation):
@@ -699,9 +704,10 @@ def run_barrier_workers(context, plan: ScenarioPlan, operation):
     barrier = threading.Barrier(plan.workers)
 
     def worker(label):
-        with independent_worker_session(context) as resource:
-            barrier.wait(timeout=30)
-            return operation(label, resource)
+        with context.application.app_context():
+            with independent_worker_session(context) as resource:
+                barrier.wait(timeout=30)
+                return operation(label, resource)
 
     with ThreadPoolExecutor(max_workers=plan.workers, thread_name_prefix=f"d3e-{plan.name}") as pool:
         futures = [pool.submit(worker, f"worker-{index + 1}") for index in range(plan.workers)]
@@ -1145,13 +1151,25 @@ def csrf_token_for_client(client):
 
 
 def authenticate_executor(client, case, index=0):
-    csrf_token_for_client(client)
+    from core.auth.constants import AUTH_SESSION_KEY
+
+    csrf = csrf_token_for_client(client)
     response = client.post(
         "/login",
         json={"username": case.executor_usernames[index], "password": case.passwords[index]},
+        headers={"X-CSRFToken": csrf, "X-Requested-With": "XMLHttpRequest"},
     )
-    if response.status_code not in (200, 302):
-        raise AssertionError("real local login failed during rehearsal")
+    with client.session_transaction() as state:
+        authenticated_user_id = state.get(AUTH_SESSION_KEY)
+    payload = response.get_json(silent=True) or {}
+    if response.status_code not in (200, 302) or authenticated_user_id != case.executor_ids[index]:
+        code = payload.get("code") or payload.get("error") or "LOGIN_REJECTED"
+        raise AssertionError(
+            "real local login failed during rehearsal: "
+            f"status={response.status_code} csrf_present={bool(csrf)} "
+            f"authenticated_user_match={authenticated_user_id == case.executor_ids[index]} "
+            f"code={code}"
+        )
 
 
 def issue_route_transport(client, case):
