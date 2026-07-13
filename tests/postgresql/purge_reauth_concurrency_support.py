@@ -26,6 +26,12 @@ from tests.postgresql.rehearsal_guard import (
 MIGRATION_METADATA_TABLE = "alembic_version"
 EXPECTED_REVISION = "0008_durable_purge_reauth_state"
 
+CLEANUP_KIND_ORDER = (
+    "authorization", "throttle", "lifecycle_event", "legal_hold", "activity_log",
+    "invoice_detail", "appointment", "invoice", "workspace_member", "customer",
+    "service", "setting", "workspace", "purge_request", "user",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ScenarioPlan:
@@ -287,7 +293,8 @@ class CleanupManifest:
     def deletion_order(self):
         return tuple(
             (kind, object_id)
-            for kind in reversed(tuple(self.ids_by_kind))
+            for kind in CLEANUP_KIND_ORDER
+            if kind in self.ids_by_kind
             for object_id in sorted(self.ids_by_kind[kind], reverse=True)
             if self.lifecycle_by_key.get((kind, object_id)) == "created"
         )
@@ -455,6 +462,8 @@ def create_enabled_rehearsal_context(environ: Mapping[str, object]) -> Rehearsal
                 Workspace=workspace.Workspace,
                 WorkspaceMember=workspace.WorkspaceMember,
                 ActivityLog=__import__("models.activity_log", fromlist=["ActivityLog"]).ActivityLog,
+                WorkspacePurgeRequest=purge.WorkspacePurgeRequest,
+                PurgeLegalHold=purge.PurgeLegalHold,
                 PurgeLifecycleEvent=purge.PurgeLifecycleEvent,
                 WorkspacePurgeExecutionAuthorization=purge.WorkspacePurgeExecutionAuthorization,
                 WorkspacePurgeReauthActorThrottle=purge.WorkspacePurgeReauthActorThrottle,
@@ -597,27 +606,48 @@ def resolve_scenario_callback(context, code):
     return callback
 
 
-def discover_and_register_indirect_rows(context, round_context, request_id, workspace_id, actor_ids=()):
-    """Register dependent rows by exact synthetic request/workspace/actor bindings."""
+def discover_and_register_indirect_rows(context, round_context, request_ids, workspace_ids, actor_ids=()):
+    """Register all dependent rows by exact synthetic round bindings."""
     from sqlalchemy import select
 
     models = context.models
-    db = context.db
-    indirect = (
-        ("authorization", getattr(models, "WorkspacePurgeExecutionAuthorization", None),
-         lambda model: model.purge_request_id == request_id),
-        ("throttle", getattr(models, "WorkspacePurgeReauthActorThrottle", None),
-         lambda model: model.actor_user_id.in_(tuple(actor_ids))),
-        ("lifecycle_event", getattr(models, "PurgeLifecycleEvent", None),
-         lambda model: model.request_id == request_id),
-        ("activity_log", getattr(models, "ActivityLog", None),
-         lambda model: model.workspace_id == workspace_id),
-    )
-    for kind, model, predicate in indirect:
-        if model is None:
-            continue
-        for row in db.session.execute(select(model).where(predicate(model))).scalars():
-            round_context.manifest.register_typed(kind, row.id)
+    request_ids = tuple(sorted(set(request_ids)))
+    workspace_ids = tuple(sorted(set(workspace_ids)))
+    actor_ids = tuple(sorted(set(actor_ids)))
+    if not request_ids:
+        raise RehearsalGuardError("round has no registered purge request")
+
+    with independent_worker_session(context) as (session, _pid):
+        request_model = models.WorkspacePurgeRequest
+        visible_request_ids = set(
+            session.execute(
+                select(request_model.id).where(request_model.id.in_(request_ids))
+            ).scalars()
+        )
+        if visible_request_ids != set(request_ids):
+            raise RehearsalGuardError("registered round purge request is missing")
+
+        indirect = (
+            ("authorization", getattr(models, "WorkspacePurgeExecutionAuthorization", None),
+             lambda model: model.purge_request_id.in_(request_ids)),
+            ("lifecycle_event", getattr(models, "PurgeLifecycleEvent", None),
+             lambda model: model.request_id.in_(request_ids)),
+            ("legal_hold", getattr(models, "PurgeLegalHold", None),
+             lambda model: model.workspace_id.in_(workspace_ids)),
+            ("throttle", getattr(models, "WorkspacePurgeReauthActorThrottle", None),
+             lambda model: model.actor_user_id.in_(actor_ids)),
+            ("activity_log", getattr(models, "ActivityLog", None),
+             lambda model: model.workspace_id.in_(workspace_ids)),
+        )
+        for kind, model, predicate in indirect:
+            if model is None:
+                continue
+            if kind in {"legal_hold", "activity_log"} and not workspace_ids:
+                continue
+            if kind == "throttle" and not actor_ids:
+                continue
+            for row in session.execute(select(model).where(predicate(model))).scalars():
+                round_context.manifest.register_typed(kind, row.id)
 
 
 def verify_final_zero_row_state(context, round_context):
@@ -643,19 +673,19 @@ def verify_final_zero_row_state(context, round_context):
 
 def cleanup_round_exactly(context: RehearsalContext, round_context: RoundContext):
     discover_and_register_indirect_rows(
-        context, round_context, _manifest_request_id(round_context),
-        _manifest_workspace_id(round_context), _manifest_actor_ids(round_context),
+        context, round_context, _manifest_request_ids(round_context),
+        _manifest_workspace_ids(round_context), _manifest_actor_ids(round_context),
     )
     _cleanup_manifest(context, round_context.manifest)
     verify_final_zero_row_state(context, round_context)
 
 
-def _manifest_request_id(round_context):
-    return next(iter(round_context.manifest.ids_by_kind.get("purge_request", {0})))
+def _manifest_request_ids(round_context):
+    return tuple(sorted(round_context.manifest.ids_by_kind.get("purge_request", set())))
 
 
-def _manifest_workspace_id(round_context):
-    return next(iter(round_context.manifest.ids_by_kind.get("workspace", {0})))
+def _manifest_workspace_ids(round_context):
+    return tuple(sorted(round_context.manifest.ids_by_kind.get("workspace", set())))
 
 
 def _manifest_actor_ids(round_context):

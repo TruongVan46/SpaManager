@@ -31,6 +31,9 @@ from tests.postgresql.purge_reauth_concurrency_support import (
     copy_actual_session_cookie,
     resolve_scenario_callback,
     assert_application_tables_empty,
+    CLEANUP_KIND_ORDER,
+    _manifest_request_ids,
+    _manifest_workspace_ids,
 )
 
 
@@ -233,11 +236,7 @@ def test_d3e_cleanup_manifest_is_exact_and_reverse_ordered():
     manifest.register("purge_request", 20)
     manifest.register("authorization", 30)
     manifest.require_registered("authorization", 30)
-    assert manifest.deletion_order() == (
-        ("authorization", 30),
-        ("purge_request", 20),
-        ("workspace", 10),
-    )
+    assert manifest.deletion_order() == (("authorization", 30), ("workspace", 10), ("purge_request", 20))
     with pytest.raises(ValueError):
         manifest.require_registered("authorization", 999)
 
@@ -248,11 +247,33 @@ def test_d3e_cleanup_manifest_tracks_partial_creation_without_false_cleanup_fail
     manifest.register("user", 11)
     assert manifest.deletion_order() == (("user", 11),)
     manifest.mark_persisted("workspace", 10)
-    assert manifest.deletion_order() == (("user", 11), ("workspace", 10))
+    assert manifest.deletion_order() == (("workspace", 10), ("user", 11))
     manifest.mark_cleanup_completed("user", 11)
     assert manifest.lifecycle_by_key[("user", 11)] == "cleanup-completed"
     with pytest.raises(ValueError):
         manifest.mark_cleanup_completed("user", 11)
+
+
+def test_d3e_round_cleanup_discovers_all_registered_request_and_workspace_ids_deterministically():
+    round_context = create_round_context("B", 1, "run")
+    for request_id in (30, 10, 20, 10):
+        round_context.manifest.register_purge_request(request_id)
+    for workspace_id in (9, 7, 8, 7):
+        round_context.manifest.register_workspace(workspace_id)
+    assert _manifest_request_ids(round_context) == (10, 20, 30)
+    assert _manifest_workspace_ids(round_context) == (7, 8, 9)
+
+
+def test_d3e_cleanup_order_is_fk_safe_for_authorization_events_requests_and_workspace():
+    assert CLEANUP_KIND_ORDER.index("authorization") < CLEANUP_KIND_ORDER.index("lifecycle_event")
+    assert CLEANUP_KIND_ORDER.index("lifecycle_event") < CLEANUP_KIND_ORDER.index("purge_request")
+    assert CLEANUP_KIND_ORDER.index("workspace") < CLEANUP_KIND_ORDER.index("purge_request")
+    assert CLEANUP_KIND_ORDER.index("workspace_member") < CLEANUP_KIND_ORDER.index("workspace")
+    source = Path("tests/postgresql/purge_reauth_concurrency_support.py").read_text(encoding="utf-8")
+    discovery = source[source.index("def discover_and_register_indirect_rows"):source.index("def verify_final_zero_row_state")]
+    assert ".in_(request_ids)" in discovery
+    assert "independent_worker_session(context)" in discovery
+    assert "def _manifest_request_id(" not in source
 
 
 def test_d3e_fixture_commits_before_independent_purge_request_service_and_checks_actors():
