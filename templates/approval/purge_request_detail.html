@@ -53,6 +53,7 @@
       </form>
     {% endif %}
     {% if summary.status == 'APPROVED' and not (config.get('PERMANENT_PURGE_UI_ENABLED') is sameas true and config.get('PERMANENT_PURGE_EXECUTION_ENABLED') is sameas true) %}<div class="alert alert-info">Execution is unavailable while the required purge gates are disabled.</div>{% endif %}
+    {% if summary.status in ('REQUESTED', 'PENDING_RETENTION', 'PENDING_APPROVAL', 'APPROVED') %}<div class="alert alert-secondary">Quản trị duyệt tài khoản có thể tự tạo, phê duyệt và thực thi purge request. Xác thực lại mật khẩu và xác nhận chính xác vẫn bắt buộc; thao tác thực thi là không thể hoàn tác.</div>{% endif %}
     {% if summary.invalidated_at %}<div class="alert alert-warning">Request đã bị invalidated bởi restore và chỉ còn read-only.</div>{% endif %}
     {% if summary.status in ('FAILED', 'RETRY_PENDING') or summary.outcome_unknown %}<div class="alert alert-warning">Request is read-only; retry/reconcile is not available here.</div>{% endif %}
     {% set preapproval = summary.status in ('REQUESTED', 'PENDING_RETENTION', 'PENDING_APPROVAL') %}
@@ -64,10 +65,10 @@
     {% if mutation_allowed and summary.requested_by_id != current_user.id %}
       <form method="post" action="{{ url_for('approval.reject_purge_request', request_id=summary.id) }}" class="border rounded p-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="reject-reason">Lý do reject</label><input id="reject-reason" name="reason" class="form-control"><button class="btn btn-outline-danger mt-2" type="submit">Reject request</button></form>
     {% endif %}
-    {% if mutation_allowed and summary.requested_by_id != current_user.id and summary.status in ('PENDING_RETENTION', 'PENDING_APPROVAL') and summary.retention_reached and summary.manifest_valid %}
+    {% if mutation_allowed and summary.status in ('PENDING_RETENTION', 'PENDING_APPROVAL') and summary.retention_reached and summary.manifest_valid %}
       <form method="post" action="{{ url_for('approval.approve_purge_request', request_id=summary.id) }}" class="border rounded p-3 mb-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="approve-confirmation">Nhập: <code>APPROVE PURGE {{ summary.workspace_slug }} {{ summary.lifecycle_id }}</code></label><input id="approve-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required><button class="btn btn-warning mt-2" type="submit">Approve request</button></form>
     {% endif %}
-    {% if config.get('PERMANENT_PURGE_UI_ENABLED') is sameas true and config.get('PERMANENT_PURGE_EXECUTION_ENABLED') is sameas true and summary.status == 'APPROVED' and summary.requested_by_id != current_user.id and not summary.invalidated_at and not summary.outcome_unknown and summary.manifest_valid and workspace_target and not workspace_target.purged %}
+    {% if config.get('PERMANENT_PURGE_UI_ENABLED') is sameas true and config.get('PERMANENT_PURGE_EXECUTION_ENABLED') is sameas true and summary.status == 'APPROVED' and not summary.invalidated_at and not summary.outcome_unknown and summary.manifest_valid and workspace_target and not workspace_target.purged %}
       <a class="btn btn-danger mt-3" href="{{ url_for('approval.confirm_purge_request', request_id=summary.id) }}">Review purge execution</a>
     {% endif %}
   </div>

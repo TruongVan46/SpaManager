@@ -91,8 +91,6 @@ def _load_execution_summary(request_id):
 def _execution_is_basic_candidate(summary, workspace_target, actor):
     return (
         summary.status == "APPROVED"
-        and summary.requested_by_id != actor.id
-        and summary.approved_by_id != actor.id
         and getattr(actor, "role", None) == "APPROVAL_OWNER"
         and getattr(actor, "is_active", False) is True
         and getattr(actor, "approval_status", None) == "active"
@@ -359,10 +357,8 @@ def purge_request_detail(request_id):
 def confirm_purge_request(request_id):
     actor = _require_purge_execution()
     summary, workspace_target = _load_execution_summary(request_id)
-    if summary.requested_by_id == actor.id:
-        abort(403)
     if not _execution_is_basic_candidate(summary, workspace_target, actor):
-        if summary.approved_by_id == actor.id or getattr(actor, "auth_provider", None) != "local":
+        if getattr(actor, "auth_provider", None) != "local":
             abort(403)
         abort(409)
     transport = peek_transport()
@@ -427,10 +423,8 @@ def reauth_purge_request(request_id):
 def execute_purge_request(request_id):
     actor = _require_purge_execution()
     summary, workspace_target = _load_execution_summary(request_id)
-    if summary.requested_by_id == actor.id:
-        abort(403)
     if not _execution_is_basic_candidate(summary, workspace_target, actor):
-        if summary.approved_by_id == actor.id or getattr(actor, "auth_provider", None) != "local":
+        if getattr(actor, "auth_provider", None) != "local":
             abort(403)
         NotificationService.flash_error("Purge request is no longer executable.")
         return redirect(url_for("approval.purge_request_detail", request_id=request_id))

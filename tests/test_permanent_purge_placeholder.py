@@ -44,9 +44,8 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
             if TEST_DB_FILE.exists():
                 TEST_DB_FILE.unlink()
 
-    def test_all_ui_placeholders_are_disabled_without_mutation_urls(self):
+    def test_non_purge_ui_placeholders_remain_disabled_without_mutation_urls(self):
         for path in (
-            "templates/approval/accounts.html",
             "templates/user/index.html",
             "templates/recycle_bin/index.html",
         ):
@@ -57,6 +56,10 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
             self.assertNotIn("/permanent-delete", source)
             self.assertNotIn("form action=\"/purge", source)
             self.assertNotIn("href=\"/purge", source)
+
+        approval_source = Path("templates/approval/accounts.html").read_text(encoding="utf-8")
+        self.assertIn("Xóa vĩnh viễn qua Purge request", approval_source)
+        self.assertNotIn("Xóa vĩnh viễn (Chưa triển khai)", approval_source)
 
     def test_common_account_workspace_and_business_purge_routes_are_unavailable(self):
         client = app.test_client()
@@ -143,12 +146,14 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
             client = app.test_client()
             with client.session_transaction() as session:
                 session[AUTH_SESSION_KEY] = ids["approver"]
+            previous_purge_ui = app.config.get("PERMANENT_PURGE_UI_ENABLED")
+            app.config["PERMANENT_PURGE_UI_ENABLED"] = True
             approval_response = client.get("/approval/accounts?status=deleted")
+            app.config["PERMANENT_PURGE_UI_ENABLED"] = previous_purge_ui
             self.assertEqual(approval_response.status_code, 200)
             approval_html = approval_response.get_data(as_text=True)
-            self.assertIn("Xóa vĩnh viễn", approval_html)
-            self.assertIn("disabled", approval_html)
-            self.assertNotIn("/purge", approval_html)
+            self.assertIn("Xóa vĩnh viễn qua Purge request", approval_html)
+            self.assertIn("/approval/purge-requests", approval_html)
             self.assertNotIn("/permanent-delete", approval_html)
 
             with client.session_transaction() as session:

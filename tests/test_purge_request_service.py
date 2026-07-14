@@ -156,7 +156,7 @@ class PurgeRequestServiceTestCase(unittest.TestCase):
         self.assertIn("DUPLICATE_LIFECYCLE", method_text)
         self.assertIn("PERSISTENCE_ERROR", method_text)
 
-    def test_approval_requires_other_actor_and_exact_phrase(self):
+    def test_approval_allows_self_approval_and_exact_phrase(self):
         requester, approver, workspace = self._fixture()
         summary = PurgeRequestService.create_purge_request(
             workspace_id=workspace.id, requester_user_id=requester.id,
@@ -167,16 +167,13 @@ class PurgeRequestServiceTestCase(unittest.TestCase):
                 request_id=summary.id, approver_user_id=approver.id,
                 confirmation_phrase=f"APPROVE PURGE {workspace.slug} wrong", now=datetime(2026, 2, 1),
             )
-        with self.assertRaises(PurgeRequestAuthorizationError):
-            PurgeRequestService.approve_purge_request(
-                request_id=summary.id, approver_user_id=requester.id,
-                confirmation_phrase=f"APPROVE PURGE {workspace.slug} {summary.lifecycle_id}", now=datetime(2026, 2, 1),
-            )
         approved = PurgeRequestService.approve_purge_request(
-            request_id=summary.id, approver_user_id=approver.id,
+            request_id=summary.id, approver_user_id=requester.id,
             confirmation_phrase=f"APPROVE PURGE {workspace.slug} {summary.lifecycle_id}", now=datetime(2026, 2, 1),
         )
         self.assertEqual(approved.status, "APPROVED")
+        self.assertEqual(approved.requested_by_id, requester.id)
+        self.assertEqual(approved.approved_by_id, requester.id)
 
     def test_approval_event_sequence_is_complete_and_unique(self):
         requester, approver, workspace = self._fixture()

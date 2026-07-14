@@ -419,7 +419,7 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         execute.assert_not_called()
 
-    def test_requester_cannot_open_or_submit_execution_flow(self):
+    def test_requester_can_open_execution_flow_when_otherwise_eligible(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
         app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
         actor = self._actor(actor_id=7)
@@ -430,9 +430,9 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         ), patch(
             "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
         ):
-            self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 403)
+            self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 200)
 
-    def test_approver_cannot_open_or_submit_execution_flow(self):
+    def test_approver_can_open_execution_flow_when_otherwise_eligible(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
         app.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
         actor = self._actor(actor_id=8)
@@ -443,7 +443,7 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         ), patch(
             "routes.approval.PurgeRequestService.get_workspace_target", return_value={"purged": False}
         ), patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
-            self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 403)
+            self.assertEqual(self.client.get("/approval/purge-requests/45/execute/confirm").status_code, 200)
             execute.assert_not_called()
 
     def test_google_only_executor_cannot_open_or_submit_execution_flow(self):

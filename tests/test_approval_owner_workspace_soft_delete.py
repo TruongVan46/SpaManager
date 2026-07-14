@@ -415,12 +415,17 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
         db.session.commit()
         UserService.soft_delete_owner_workspace(self.approval_owner, owner.id)
         self._login_as(self.approval_owner)
+        previous_purge_ui = app.config.get("PERMANENT_PURGE_UI_ENABLED")
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
 
-        deleted_page = self.client.get("/approval/accounts?status=deleted")
+        try:
+            deleted_page = self.client.get("/approval/accounts?status=deleted")
+        finally:
+            app.config["PERMANENT_PURGE_UI_ENABLED"] = previous_purge_ui
         self.assertEqual(deleted_page.status_code, 200)
         self.assertIn(b"restore-owner-workspace", deleted_page.data)
         self.assertIn("Khôi phục owner/workspace".encode("utf-8"), deleted_page.data)
-        self.assertIn("Xóa vĩnh viễn".encode("utf-8"), deleted_page.data)
+        self.assertIn("Xóa vĩnh viễn qua Purge request".encode("utf-8"), deleted_page.data)
 
         response = self.client.post(f"/approval/users/{owner.id}/restore-owner-workspace")
         self.assertEqual(response.status_code, 302)

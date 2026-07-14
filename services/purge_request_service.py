@@ -337,8 +337,6 @@ class PurgeRequestService:
         session = PurgeRequestService._new_session()
         try:
             actor, request, workspace, terminal = PurgeRequestService._load_for_mutation(session, request_id, approver_user_id)
-            if request.requested_by_id == actor.id:
-                raise PurgeRequestAuthorizationError("Requester cannot approve the same request.")
             if request.invalidated_at is not None or request.outcome_unknown or request.status in TERMINAL_STATUSES:
                 raise PurgeRequestConflictError("Request is read-only.", "READ_ONLY")
             if now < request.eligible_at:

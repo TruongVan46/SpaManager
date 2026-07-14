@@ -295,8 +295,6 @@ class PurgeReauthService:
             or request.outcome_unknown
         ):
             raise PurgeReauthRequestIneligibleError()
-        if request.requested_by_id == request.approved_by_id:
-            raise PurgeReauthRequestIneligibleError()
 
     @staticmethod
     def _lock_workspace_for_claim(session, workspace_id):
@@ -315,8 +313,6 @@ class PurgeReauthService:
             for actor in session.query(User).filter(User.id.in_(ids)).with_for_update().all()
         }
         if len(actors) != len(set(ids)):
-            raise PurgeReauthActorIneligibleError()
-        if len(set(ids)) != 3:
             raise PurgeReauthActorIneligibleError()
         for actor_id in ids:
             actor = actors[actor_id]

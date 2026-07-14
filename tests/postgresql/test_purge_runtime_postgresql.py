@@ -514,22 +514,12 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
     previous_ui_flag = application.config.get("PERMANENT_PURGE_UI_ENABLED")
     previous_execution_flag = application.config.get("PERMANENT_PURGE_EXECUTION_ENABLED")
 
-    route_executor = models.User(
-        username=f"pg_route_executor_{fixture['marker']}",
-        email=f"pg_route_executor_{fixture['marker']}@invalid.test",
-        full_name="Synthetic Route Executor",
-        role="APPROVAL_OWNER",
-        approval_status="active",
-        is_active=True,
-    )
-    route_executor_password = f"route-secret-{fixture['marker']}"
-    route_executor.set_password(route_executor_password)
     unrelated_workspace = models.Workspace(
         name=f"Unrelated Workspace {fixture['marker']}",
         slug=f"unrelated-{fixture['marker']}",
         status="active",
     )
-    runtime.db.session.add_all([route_executor, unrelated_workspace])
+    runtime.db.session.add(unrelated_workspace)
     runtime.db.session.flush()
     unrelated_customer = models.Customer(
         name=f"Unrelated Customer {fixture['marker']}",
@@ -556,7 +546,7 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
     )
     request_service.approve_purge_request(
         request_id=request.id,
-        approver_user_id=fixture["executor_id"],
+        approver_user_id=fixture["actor_id"],
         confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {request.lifecycle_id}",
         now=datetime(2026, 2, 1),
     )
@@ -567,8 +557,8 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
     try:
         login_response, csrf_token = login_test_client_with_csrf(
             client,
-            route_executor.username,
-            route_executor_password,
+            fixture["actor"].username,
+            f"synthetic-{fixture['marker']}",
         )
         assert login_response.status_code == 200
         assert login_response.get_json()["success"] is True
@@ -576,7 +566,7 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
 
         reauth_response = client.post(
             f"/approval/purge-requests/{request.id}/reauth",
-            data={"csrf_token": csrf_token, "current_password": route_executor_password},
+            data={"csrf_token": csrf_token, "current_password": f"synthetic-{fixture['marker']}"},
         )
         assert reauth_response.status_code == 302
 
@@ -669,7 +659,7 @@ def test_direct_execution_reauth_uses_current_production_api_signature():
     assert "def issue_local_authorization(purge_request_id, actor_user_id, current_password)" in signature_source
 
 
-def test_direct_execution_tests_use_three_distinct_eligible_actors():
+def test_direct_execution_tests_support_single_and_distinct_eligible_actors():
     helper_source = inspect.getsource(_distinct_execution_actor)
     assert 'role="APPROVAL_OWNER"' in helper_source
     assert 'approval_status="active"' in helper_source
@@ -678,6 +668,13 @@ def test_direct_execution_tests_use_three_distinct_eligible_actors():
     assert "db.session.commit()" in helper_source
     assert "return executor.id, password" in helper_source
     assert "db.session.flush()\n    return executor.id" not in helper_source
+
+    service_source = (Path(__file__).parents[2] / "services" / "purge_service.py").read_text(encoding="utf-8")
+    reauth_source = (Path(__file__).parents[2] / "services" / "purge_reauth_service.py").read_text(encoding="utf-8")
+    assert "PurgeActorSeparationError" in service_source
+    assert "is_approval_owner(actor)" in service_source
+    assert "len(set(ids)) != 3" not in reauth_source
+    assert "request.requested_by_id == request.approved_by_id" not in reauth_source
 
     for function in (
         test_execution_success_preserves_audit_and_terminal_tombstone,

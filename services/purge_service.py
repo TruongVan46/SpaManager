@@ -194,8 +194,6 @@ class PurgeService:
                 raise PurgeConflictError("Purge request is not approved.", "INVALID_STATUS")
             if request.approved_by_id is None or request.approved_at is None:
                 raise PurgeConflictError("Purge approval is incomplete.", "INVALID_APPROVAL")
-            if request.requested_by_id == request.approved_by_id:
-                raise PurgeAuthorizationError("Requester cannot approve the same purge request.")
             if workspace.deleted_at is None:
                 raise PurgeConflictError("Workspace is not soft-deleted.", "ACTIVE_WORKSPACE")
             if terminal_state["purged_at"] is not None or terminal_state["purge_request_id"] is not None:
@@ -332,13 +330,6 @@ class PurgeService:
         missing_actor = next((name for name, actor_id in actor_ids.items() if actor_id is None), None)
         if missing_actor is not None:
             raise PurgeActorMissingError(missing_actor)
-
-        if len(set(actor_ids.values())) != len(actor_ids):
-            if actor_ids["requester"] == actor_ids["approver"]:
-                raise PurgeActorSeparationError("requester_equals_approver")
-            if actor_ids["requester"] == actor_ids["executor"]:
-                raise PurgeActorSeparationError("requester_equals_executor")
-            raise PurgeActorSeparationError("approver_equals_executor")
 
         actors_by_id = {
             actor.id: actor
