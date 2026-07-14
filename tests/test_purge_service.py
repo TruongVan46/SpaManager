@@ -42,10 +42,17 @@ from services.purge_reauth_service import (
     PurgeReauthInvalidCredentialError,
     PurgeReauthRateLimitedError,
     PurgeReauthRequiredError,
+    PurgeReauthRequestIneligibleError,
     PurgeReauthService,
 )
 from services.auth_service import AuthService
 from services.user_service import UserService
+from services.purge_legal_hold_service import (
+    PurgeLegalHoldAuthorizationError,
+    PurgeLegalHoldConflictError,
+    PurgeLegalHoldNotFoundError,
+    PurgeLegalHoldService,
+)
 
 
 class PurgeServiceTestCase(unittest.TestCase):
@@ -541,6 +548,108 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.assertEqual(context.exception.code, "ACTIVE_LEGAL_HOLD")
         self.assertEqual(db.session.query(Customer).filter_by(workspace_id=workspace.id).count(), 1)
 
+    def test_legal_hold_create_release_and_atomic_audit_contract(self):
+        requester, executor, workspace, _request = self._fixture()
+        created = PurgeLegalHoldService.create_legal_hold(
+            workspace_id=workspace.id, actor_user_id=requester.id,
+            hold_type="LEGAL", reason="Litigation preservation",
+            confirmation_phrase=f"HOLD {workspace.slug}",
+        )
+        stored = db.session.query(PurgeLegalHold).filter_by(hold_id=created.hold_id).one()
+        self.assertEqual(stored.status, "ACTIVE")
+        self.assertEqual(stored.placed_by_id, requester.id)
+        self.assertIsNone(stored.released_at)
+        self.assertEqual(db.session.query(ActivityLog).filter_by(action="LEGAL_HOLD_CREATE").count(), 1)
+
+        released = PurgeLegalHoldService.release_legal_hold(
+            hold_id=created.hold_id, actor_user_id=executor.id,
+            release_reason="Matter resolved", confirmation_phrase=f"RELEASE {created.hold_id}",
+        )
+        self.assertEqual(released.status, "RELEASED")
+        db.session.expire_all()
+        stored = db.session.query(PurgeLegalHold).filter_by(hold_id=created.hold_id).one()
+        self.assertEqual(stored.placed_by_id, requester.id)
+        self.assertEqual(stored.released_by_id, executor.id)
+        self.assertEqual(db.session.query(ActivityLog).filter_by(action="LEGAL_HOLD_RELEASE").count(), 1)
+
+        with self.assertRaises(PurgeLegalHoldConflictError) as second_release:
+            PurgeLegalHoldService.release_legal_hold(
+                hold_id=created.hold_id, actor_user_id=executor.id,
+                release_reason="Overwrite", confirmation_phrase=f"RELEASE {created.hold_id}",
+            )
+        self.assertEqual(second_release.exception.code, "ALREADY_RELEASED")
+
+    def test_legal_hold_create_does_not_require_purge_request(self):
+        requester, _executor, _workspace, _request = self._fixture()
+        standalone = Workspace(
+            name="Standalone Hold Target",
+            slug=f"standalone-hold-{uuid.uuid4().hex}",
+            status="active",
+            deleted_at=datetime(2026, 1, 1),
+            deleted_by_id=requester.id,
+        )
+        db.session.add(standalone)
+        db.session.commit()
+
+        created = PurgeLegalHoldService.create_legal_hold(
+            workspace_id=standalone.id,
+            actor_user_id=requester.id,
+            hold_type="LEGAL",
+            reason="Before a purge request exists",
+            confirmation_phrase=f"HOLD {standalone.slug}",
+        )
+
+        stored = db.session.query(PurgeLegalHold).filter_by(hold_id=created.hold_id).one()
+        self.assertEqual(stored.workspace_id, standalone.id)
+        self.assertEqual(stored.status, "ACTIVE")
+        self.assertEqual(
+            db.session.query(WorkspacePurgeRequest).filter_by(workspace_id=standalone.id).count(), 0
+        )
+
+    def test_legal_hold_authorization_binding_and_audit_failure_fail_closed(self):
+        requester, executor, workspace, _request = self._fixture()
+        staff = User(username=f"hold_staff_{uuid.uuid4().hex[:8]}", full_name="Staff", role="STAFF", approval_status="active", is_active=True)
+        staff.set_password("StaffPassword123!")
+        db.session.add(staff)
+        db.session.commit()
+        with self.assertRaises(PurgeLegalHoldAuthorizationError):
+            PurgeLegalHoldService.create_legal_hold(
+                workspace_id=workspace.id, actor_user_id=staff.id, hold_type="LEGAL",
+                reason="No", confirmation_phrase=f"HOLD {workspace.slug}",
+            )
+        with self.assertRaises(PurgeLegalHoldConflictError):
+            PurgeLegalHoldService.create_legal_hold(
+                workspace_id=workspace.id, actor_user_id=requester.id, hold_type="bad type",
+                reason="No", confirmation_phrase=f"HOLD {workspace.slug}",
+            )
+        with patch.object(PurgeLegalHoldService, "_audit", side_effect=RuntimeError("audit failure")):
+            with self.assertRaises(RuntimeError):
+                PurgeLegalHoldService.create_legal_hold(
+                    workspace_id=workspace.id, actor_user_id=requester.id, hold_type="LEGAL",
+                    reason="Rollback", confirmation_phrase=f"HOLD {workspace.slug}",
+                )
+        self.assertEqual(db.session.query(PurgeLegalHold).count(), 0)
+
+    def test_legal_hold_mutations_preserve_workspace_first_atomic_lock_contract(self):
+        import inspect
+        create_source = inspect.getsource(PurgeLegalHoldService.create_legal_hold)
+        release_source = inspect.getsource(PurgeLegalHoldService.release_legal_hold)
+        self.assertLess(create_source.index("_workspace_for_mutation"), create_source.index("session.add(hold)"))
+        self.assertLess(create_source.index("session.add(hold)"), create_source.index("_audit"))
+        self.assertEqual(create_source.count("session.commit()"), 1)
+        self.assertLess(release_source.index("hold_identity"), release_source.index("_workspace_for_mutation"))
+        self.assertLess(release_source.index("_workspace_for_mutation"), release_source.index("with_for_update"))
+        self.assertIn("populate_existing()", release_source)
+        self.assertLess(release_source.index("populate_existing()"), release_source.index("if hold.status"))
+        self.assertLess(release_source.index("_audit"), release_source.index("session.commit()"))
+        self.assertEqual(release_source.count("session.commit()"), 1)
+
+    def test_release_execution_contract_keeps_active_hold_before_first_delete(self):
+        import inspect
+        execution_source = inspect.getsource(PurgeService.execute_workspace_purge)
+        self.assertLess(execution_source.index("_validate_holds"), execution_source.index("_delete_exact_rows"))
+        self.assertNotIn("status = \"COMPLETED\"", execution_source[:execution_source.index("_validate_holds")])
+
     def test_tenant_rows_are_not_deleted(self):
         requester, executor, workspace, request = self._fixture()
         other_workspace = Workspace(name="Other", slug=f"other-{uuid.uuid4().hex}", status="active")
@@ -765,6 +874,75 @@ class PurgeServiceTestCase(unittest.TestCase):
         self.assertEqual(authorization.state, "CONSUMED_SUCCESS")
         self.assertIsNone(authorization.nonce_hash)
         self.assertIsNotNone(authorization.execution_started_event_id)
+
+    def test_claim_locks_request_workspace_actors_before_authorization_audit(self):
+        requester, executor, workspace, request = self._fixture()
+        issuance = PurgeReauthService.issue_local_authorization(request.id, executor.id, "TestPassword123!")
+        events = []
+        original_load_request = PurgeReauthService._load_request
+        original_lock_workspace = PurgeReauthService._lock_workspace_for_claim
+        original_load_actors = PurgeReauthService._load_actors
+        original_audit = PurgeReauthService._audit
+
+        def load_request(session, purge_request_id):
+            events.append("request")
+            return original_load_request(session, purge_request_id)
+
+        def lock_workspace(session, workspace_id):
+            events.append("workspace")
+            return original_lock_workspace(session, workspace_id)
+
+        def load_actors(session, purge_request, executor_user_id):
+            authorization = (
+                session.query(WorkspacePurgeExecutionAuthorization)
+                .filter_by(purge_request_id=purge_request.id)
+                .one()
+            )
+            self.assertEqual(authorization.state, "ACTIVE")
+            events.append("actors")
+            return original_load_actors(session, purge_request, executor_user_id)
+
+        def audit(session, **kwargs):
+            authorization = (
+                session.query(WorkspacePurgeExecutionAuthorization)
+                .filter_by(purge_request_id=request.id)
+                .one()
+            )
+            self.assertEqual(authorization.state, "CLAIMED")
+            events.append("audit")
+            return original_audit(session, **kwargs)
+
+        with patch.object(PurgeReauthService, "_load_request", side_effect=load_request), \
+             patch.object(PurgeReauthService, "_lock_workspace_for_claim", side_effect=lock_workspace), \
+             patch.object(PurgeReauthService, "_load_actors", side_effect=load_actors), \
+             patch.object(PurgeReauthService, "_audit", side_effect=audit):
+            PurgeReauthService.claim_for_execution(
+                request.id, workspace.id, executor.id, issuance.generation, issuance.raw_nonce
+            )
+
+        self.assertEqual(events, ["request", "workspace", "actors", "audit"])
+
+    def test_claim_workspace_lock_failure_rolls_back_without_authorization_mutation_or_audit(self):
+        requester, executor, workspace, request = self._fixture()
+        issuance = PurgeReauthService.issue_local_authorization(request.id, executor.id, "TestPassword123!")
+        with patch.object(PurgeReauthService, "_lock_workspace_for_claim", return_value=None), \
+             patch.object(PurgeReauthService, "_audit") as audit:
+            with self.assertRaises(PurgeReauthRequestIneligibleError) as context:
+                PurgeReauthService.claim_for_execution(
+                    request.id, workspace.id, executor.id, issuance.generation, issuance.raw_nonce
+                )
+
+        self.assertEqual(context.exception.code, "REAUTH_REQUEST_INELIGIBLE")
+        db.session.expire_all()
+        authorization = (
+            db.session.query(WorkspacePurgeExecutionAuthorization)
+            .filter_by(purge_request_id=request.id)
+            .one()
+        )
+        self.assertEqual(authorization.state, "ACTIVE")
+        self.assertEqual(authorization.nonce_hash, hashlib.sha256(issuance.raw_nonce.encode("utf-8")).hexdigest())
+        self.assertEqual(db.session.query(ActivityLog).filter_by(action="CLAIM").count(), 0)
+        audit.assert_not_called()
 
     def test_password_change_revokes_authorization_atomically_when_flags_disabled(self):
         requester, executor, workspace, request = self._fixture(execution_enabled=False)

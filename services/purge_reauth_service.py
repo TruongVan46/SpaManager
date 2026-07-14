@@ -30,6 +30,7 @@ from models.purge import (
     WorkspacePurgeRequest,
 )
 from models.user import User
+from models.workspace import Workspace
 
 
 AUTHORIZATION_ACTIVE = AUTHORIZATION_STATES[0]
@@ -296,6 +297,15 @@ class PurgeReauthService:
             raise PurgeReauthRequestIneligibleError()
         if request.requested_by_id == request.approved_by_id:
             raise PurgeReauthRequestIneligibleError()
+
+    @staticmethod
+    def _lock_workspace_for_claim(session, workspace_id):
+        return (
+            session.query(Workspace)
+            .filter(Workspace.id == workspace_id)
+            .with_for_update()
+            .one_or_none()
+        )
 
     @staticmethod
     def _load_actors(session, request, executor_user_id):
@@ -571,6 +581,8 @@ class PurgeReauthService:
             if request is None or request.workspace_id != workspace_id:
                 raise PurgeReauthRequestIneligibleError()
             PurgeReauthService._validate_request(request)
+            if PurgeReauthService._lock_workspace_for_claim(session, request.workspace_id) is None:
+                raise PurgeReauthRequestIneligibleError()
             PurgeReauthService._load_actors(session, request, actor_user_id)
             authorization = (
                 session.query(WorkspacePurgeExecutionAuthorization)

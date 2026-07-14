@@ -1,4 +1,6 @@
 from datetime import datetime
+import inspect
+from pathlib import Path
 import uuid
 
 import pytest
@@ -96,6 +98,26 @@ def _base_fixture(runtime, *, include_business=True, logo=None):
     }
 
 
+def _distinct_execution_actor(fixture):
+    models = fixture["models"]
+    db = fixture["db"]
+    marker = fixture["marker"]
+    password = f"execution-{marker}"
+    executor = models.User(
+        username=f"pg_execution_executor_{marker}",
+        email=f"pg_execution_executor_{marker}@invalid.test",
+        full_name="Synthetic Distinct Execution Executor",
+        role="APPROVAL_OWNER",
+        approval_status="active",
+        is_active=True,
+    )
+    executor.set_password(password)
+    db.session.add(executor)
+    db.session.flush()
+    db.session.commit()
+    return executor.id, password
+
+
 @pytest.fixture
 def postgres_case(postgres_service_session_timeouts, postgres_runtime):
     postgres_runtime.reset_database()
@@ -108,7 +130,7 @@ def postgres_case(postgres_service_session_timeouts, postgres_runtime):
 def test_schema_and_runtime_identity(postgres_runtime):
     identity = postgres_runtime.identity()
     assert identity["database"] == "spamanager_purge_rehearsal_test"
-    assert identity["revision"] == "0007_permanent_purge_workflow"
+    assert identity["revision"] == "0008_durable_purge_reauth_state"
     assert identity["server_port"] == "5432"
     assert identity["workflow_tables"] == (
         "purge_legal_holds", "purge_lifecycle_events", "workspace_purge_requests"
@@ -405,6 +427,8 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
     fixture = _base_fixture(postgres_case)
     request_service = fixture["services"].PurgeRequestService
     purge_service = fixture["services"].PurgeService
+    approver_user_id = fixture["executor_id"]
+    executor_user_id, executor_password = _distinct_execution_actor(fixture)
     request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
         confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
@@ -413,12 +437,19 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
     lifecycle_id = request.lifecycle_id
 
     request_service.approve_purge_request(
-        request_id=request_id, approver_user_id=fixture["executor_id"],
+        request_id=request_id, approver_user_id=approver_user_id,
         confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}", now=datetime(2026, 2, 1),
+    )
+    issuance = fixture["services"].PurgeReauthService.issue_local_authorization(
+        purge_request_id=request_id,
+        actor_user_id=executor_user_id,
+        current_password=executor_password,
     )
     execution_time = datetime(2026, 2, 2)
     fixture_ids = {
-        "users": {fixture["actor_id"], fixture["executor_id"], fixture["owner_id"]},
+        "users": {
+            fixture["actor_id"], approver_user_id, fixture["owner_id"], executor_user_id
+        },
         "customer": fixture["customer_id"],
         "service": fixture["service_id"],
         "invoice": fixture["invoice_id"],
@@ -427,14 +458,17 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
     }
     result = purge_service.execute_workspace_purge(
         request_id=request_id, workspace_id=fixture["workspace_id"],
-        executor_user_id=fixture["executor_id"], now=execution_time,
+        executor_user_id=executor_user_id,
+        authorization_generation=issuance.generation,
+        authorization_nonce=issuance.raw_nonce,
+        now=execution_time,
     )
     assert result.status == "COMPLETED"
     fixture["db"].session.remove()
     verification = postgres_case.new_session()
     try:
-        assert verification.query(fixture["models"].User).filter(fixture["models"].User.id.in_(fixture_ids["users"])).count() == 3
-        assert verification.query(fixture["models"].User).count() == 3
+        assert verification.query(fixture["models"].User).filter(fixture["models"].User.id.in_(fixture_ids["users"])).count() == 4
+        assert verification.query(fixture["models"].User).count() == 4
         assert verification.query(fixture["models"].ActivityLog).filter_by(description=fixture["audit_description"]).count() == 1
         assert verification.query(fixture["models"].Customer).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
         assert verification.query(fixture["models"].Service).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
@@ -467,6 +501,205 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
         verification.close()
 
 
+def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
+    from sqlalchemy import select
+    from models.purge import workspace_terminal_state_table
+    from tests.postgresql.rehearsal_runtime import login_test_client_with_csrf
+
+    runtime = postgres_case
+    fixture = _base_fixture(runtime)
+    models = fixture["models"]
+    services = fixture["services"]
+    application = runtime.app
+    previous_ui_flag = application.config.get("PERMANENT_PURGE_UI_ENABLED")
+    previous_execution_flag = application.config.get("PERMANENT_PURGE_EXECUTION_ENABLED")
+
+    route_executor = models.User(
+        username=f"pg_route_executor_{fixture['marker']}",
+        email=f"pg_route_executor_{fixture['marker']}@invalid.test",
+        full_name="Synthetic Route Executor",
+        role="APPROVAL_OWNER",
+        approval_status="active",
+        is_active=True,
+    )
+    route_executor_password = f"route-secret-{fixture['marker']}"
+    route_executor.set_password(route_executor_password)
+    unrelated_workspace = models.Workspace(
+        name=f"Unrelated Workspace {fixture['marker']}",
+        slug=f"unrelated-{fixture['marker']}",
+        status="active",
+    )
+    runtime.db.session.add_all([route_executor, unrelated_workspace])
+    runtime.db.session.flush()
+    unrelated_customer = models.Customer(
+        name=f"Unrelated Customer {fixture['marker']}",
+        workspace_id=unrelated_workspace.id,
+    )
+    unrelated_service = models.Service(
+        name=f"Unrelated Service {fixture['marker']}",
+        price=200,
+        workspace_id=unrelated_workspace.id,
+    )
+    runtime.db.session.add_all([unrelated_customer, unrelated_service])
+    runtime.db.session.flush()
+    unrelated_workspace_id = unrelated_workspace.id
+    unrelated_customer_id = unrelated_customer.id
+    unrelated_service_id = unrelated_service.id
+    runtime.db.session.commit()
+
+    request_service = services.PurgeRequestService
+    request = request_service.create_purge_request(
+        workspace_id=fixture["workspace_id"],
+        requester_user_id=fixture["actor_id"],
+        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}",
+        now=datetime(2026, 2, 1),
+    )
+    request_service.approve_purge_request(
+        request_id=request.id,
+        approver_user_id=fixture["executor_id"],
+        confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {request.lifecycle_id}",
+        now=datetime(2026, 2, 1),
+    )
+
+    application.config["PERMANENT_PURGE_UI_ENABLED"] = True
+    application.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
+    client = application.test_client()
+    try:
+        login_response, csrf_token = login_test_client_with_csrf(
+            client,
+            route_executor.username,
+            route_executor_password,
+        )
+        assert login_response.status_code == 200
+        assert login_response.get_json()["success"] is True
+        assert csrf_token
+
+        reauth_response = client.post(
+            f"/approval/purge-requests/{request.id}/reauth",
+            data={"csrf_token": csrf_token, "current_password": route_executor_password},
+        )
+        assert reauth_response.status_code == 302
+
+        with client.session_transaction() as session_data:
+            execute_csrf_token = session_data.get("_csrf_token")
+        assert execute_csrf_token
+
+        execute_response = client.post(
+            f"/approval/purge-requests/{request.id}/execute",
+            data={
+                "csrf_token": execute_csrf_token,
+                "confirmation_phrase": f"PURGE WORKSPACE {fixture['workspace_id']} REQUEST {request.id}",
+            },
+            follow_redirects=True,
+        )
+        assert execute_response.status_code == 200
+        assert f"Purge request {request.id} completed." in execute_response.get_data(as_text=True)
+        assert "Purge execution failed" not in execute_response.get_data(as_text=True)
+    finally:
+        runtime.db.session.remove()
+        application.config["PERMANENT_PURGE_UI_ENABLED"] = previous_ui_flag
+        application.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = previous_execution_flag
+
+    verification = runtime.new_session()
+    try:
+        stored_request = verification.get(models.WorkspacePurgeRequest, request.id)
+        target_workspace = verification.get(models.Workspace, fixture["workspace_id"])
+        terminal = verification.execute(
+            select(workspace_terminal_state_table).where(
+                workspace_terminal_state_table.c.id == fixture["workspace_id"]
+            )
+        ).mappings().one()
+        assert stored_request.status == "COMPLETED"
+        assert stored_request.completed_at is not None
+        assert terminal["purged_at"] is not None
+        assert terminal["purge_request_id"] == request.id
+        assert target_workspace is not None
+        assert verification.query(models.Customer).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
+        assert verification.query(models.Service).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
+        assert verification.query(models.Appointment).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
+        assert verification.query(models.Invoice).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
+        assert verification.query(models.InvoiceDetail).join(
+            models.Invoice, models.InvoiceDetail.invoice_id == models.Invoice.id
+        ).filter(models.Invoice.workspace_id == fixture["workspace_id"]).count() == 0
+        assert verification.query(models.WorkspaceMember).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
+        assert verification.query(models.Setting).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
+        assert verification.query(models.Workspace).filter_by(id=fixture["workspace_id"]).count() == 1
+        assert verification.query(models.WorkspacePurgeRequest).filter_by(id=request.id).count() == 1
+        assert verification.query(models.PurgeLifecycleEvent).filter_by(request_id=request.id).count() >= 1
+        assert verification.get(models.Customer, unrelated_customer_id) is not None
+        assert verification.get(models.Service, unrelated_service_id) is not None
+        assert verification.get(models.Workspace, unrelated_workspace_id) is not None
+    finally:
+        verification.close()
+
+
+def test_route_e2e_cross_workspace_verification_uses_stable_scalar_ids():
+    source = inspect.getsource(test_execute_route_runs_real_workspace_purge_end_to_end)
+    after_session_remove = source.split("runtime.db.session.remove()", 1)[1]
+
+    assert "unrelated_workspace_id = unrelated_workspace.id" in source
+    assert "unrelated_customer_id = unrelated_customer.id" in source
+    assert "unrelated_service_id = unrelated_service.id" in source
+    assert "verification.get(models.Customer, unrelated_customer_id)" in after_session_remove
+    assert "verification.get(models.Service, unrelated_service_id)" in after_session_remove
+    assert "verification.get(models.Workspace, unrelated_workspace_id)" in after_session_remove
+    assert "unrelated_workspace." not in after_session_remove
+    assert "unrelated_customer." not in after_session_remove
+    assert "unrelated_service." not in after_session_remove
+    assert "login_test_client_with_csrf" in source
+    assert "execute_purge_request" not in source
+    assert "PurgeService.execute_workspace_purge" not in source
+
+
+def test_direct_execution_reauth_uses_current_production_api_signature():
+    success_source = inspect.getsource(
+        test_execution_success_preserves_audit_and_terminal_tombstone
+    )
+    rollback_source = inspect.getsource(test_execution_rolls_back_after_mutation)
+    for source in (success_source, rollback_source):
+        assert "purge_request_id=request_id" in source
+        assert "issue_local_authorization(\n        request_id=" not in source
+        assert "issue_local_authorization(\n            request_id=" not in source
+        assert "authorization_generation=issuance.generation" in source
+        assert "authorization_nonce=issuance.raw_nonce" in source
+
+    signature_source = (
+        Path(__file__).parents[2] / "services" / "purge_reauth_service.py"
+    ).read_text(encoding="utf-8")
+    assert "def issue_local_authorization(purge_request_id, actor_user_id, current_password)" in signature_source
+
+
+def test_direct_execution_tests_use_three_distinct_eligible_actors():
+    helper_source = inspect.getsource(_distinct_execution_actor)
+    assert 'role="APPROVAL_OWNER"' in helper_source
+    assert 'approval_status="active"' in helper_source
+    assert "is_active=True" in helper_source
+    assert "executor.set_password(password)" in helper_source
+    assert "db.session.commit()" in helper_source
+    assert "return executor.id, password" in helper_source
+    assert "db.session.flush()\n    return executor.id" not in helper_source
+
+    for function in (
+        test_execution_success_preserves_audit_and_terminal_tombstone,
+        test_execution_rolls_back_after_mutation,
+    ):
+        source = inspect.getsource(function)
+        assert "approver_user_id = fixture[\"executor_id\"]" in source
+        assert "executor_user_id, executor_password = _distinct_execution_actor(fixture)" in source
+        assert "approver_user_id=approver_user_id" in source
+        assert "actor_user_id=executor_user_id" in source
+        assert "executor_user_id=executor_user_id" in source
+        assert "executor_user_id=fixture[\"executor_id\"]" not in source
+        assert "executor_user_id != fixture[\"actor_id\"]" not in source
+
+    rollback_source = inspect.getsource(test_execution_rolls_back_after_mutation)
+    assert "baseline_user_ids =" in rollback_source
+    assert "post_rollback_user_ids =" in rollback_source
+    assert "post_rollback_user_ids == baseline_user_ids" in rollback_source
+    assert "verification.get(fixture[\"models\"].User, executor_user_id) is not None" in rollback_source
+    assert "verification.query(fixture[\"models\"].User).count() == 3" not in rollback_source
+
+
 def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
     from sqlalchemy import select, text
     from models.purge import workspace_terminal_state_table
@@ -474,6 +707,12 @@ def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
     fixture = _base_fixture(postgres_case)
     request_service = fixture["services"].PurgeRequestService
     purge_service = fixture["services"].PurgeService
+    approver_user_id = fixture["executor_id"]
+    executor_user_id, executor_password = _distinct_execution_actor(fixture)
+    baseline_user_ids = {
+        user_id
+        for (user_id,) in fixture["db"].session.query(fixture["models"].User.id).all()
+    }
     request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
         confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
@@ -482,8 +721,13 @@ def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
     lifecycle_id = request.lifecycle_id
 
     request_service.approve_purge_request(
-        request_id=request_id, approver_user_id=fixture["executor_id"],
+        request_id=request_id, approver_user_id=approver_user_id,
         confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}", now=datetime(2026, 2, 1),
+    )
+    issuance = fixture["services"].PurgeReauthService.issue_local_authorization(
+        purge_request_id=request_id,
+        actor_user_id=executor_user_id,
+        current_password=executor_password,
     )
     original_delete = purge_service._delete_exact_rows
 
@@ -495,7 +739,10 @@ def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
     with pytest.raises(fixture["services"].PurgeExecutionError):
         purge_service.execute_workspace_purge(
             request_id=request_id, workspace_id=fixture["workspace_id"],
-            executor_user_id=fixture["executor_id"], now=datetime(2026, 2, 2),
+            executor_user_id=executor_user_id,
+            authorization_generation=issuance.generation,
+            authorization_nonce=issuance.raw_nonce,
+            now=datetime(2026, 2, 2),
         )
     fixture["db"].session.remove()
     verification = postgres_case.new_session()
@@ -507,7 +754,12 @@ def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
         assert verification.query(fixture["models"].InvoiceDetail).filter_by(invoice_id=fixture["invoice_id"]).count() == 1
         assert verification.get(fixture["models"].Setting, fixture["setting_id"]) is not None
         assert verification.get(fixture["models"].WorkspaceMember, fixture["member_id"]) is not None
-        assert verification.query(fixture["models"].User).count() == 3
+        post_rollback_user_ids = {
+            user_id
+            for (user_id,) in verification.query(fixture["models"].User.id).all()
+        }
+        assert post_rollback_user_ids == baseline_user_ids
+        assert verification.get(fixture["models"].User, executor_user_id) is not None
         # Verify the original synthetic audit row survives using exact workspace_id and unique description
         original_audits = verification.query(fixture["models"].ActivityLog).filter_by(
             workspace_id=fixture["workspace_id"],

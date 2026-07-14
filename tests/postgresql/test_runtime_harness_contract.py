@@ -1,8 +1,171 @@
 import ast
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from tests.postgresql import rehearsal_runtime
 
 
 ROOT = Path(__file__).parent
+
+
+class _FakeResult:
+    def __init__(self, value=0):
+        self.value = value
+
+    def scalar_one(self):
+        return self.value
+
+
+class _FakeTransaction:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+
+class _FakeConnection:
+    def __init__(self, events):
+        self.events = events
+
+    def begin(self):
+        return _FakeTransaction()
+
+    def execute(self, statement):
+        return _FakeResult(0)
+
+    def close(self):
+        self.events.append("connection.close")
+
+
+class _FakeEngine:
+    def __init__(self, events, dispose_error=None):
+        self.events = events
+        self.dispose_error = dispose_error
+
+    def connect(self):
+        self.events.append("engine.connect")
+        return _FakeConnection(self.events)
+
+    def dispose(self):
+        self.events.append("engine.dispose.begin")
+        if self.dispose_error is not None:
+            raise self.dispose_error
+        self.events.append("engine.dispose.end")
+
+
+def _patch_fake_preflight(monkeypatch, events, engine):
+    target = SimpleNamespace(database="spamanager_purge_rehearsal_test")
+    monkeypatch.setattr(
+        rehearsal_runtime,
+        "validate_rehearsal_environment",
+        lambda environ: target,
+    )
+    monkeypatch.setattr(
+        rehearsal_runtime,
+        "_create_preflight_engine",
+        lambda database_url: engine,
+    )
+    monkeypatch.setattr(
+        rehearsal_runtime,
+        "_preflight_identity",
+        lambda connection, target: (
+            "spamanager_purge_rehearsal_test",
+            "spamanager",
+            "5432",
+            "0008_durable_purge_reauth_state",
+        ),
+    )
+    monkeypatch.setattr(
+        rehearsal_runtime,
+        "apply_transaction_timeouts",
+        lambda executor: events.append("timeouts.applied"),
+    )
+
+
+def _run_fake_preflight(monkeypatch, events, engine):
+    _patch_fake_preflight(monkeypatch, events, engine)
+    return rehearsal_runtime.run_rehearsal_preflight(
+        {"TEST_DATABASE_URL": "synthetic"}
+    )
+
+
+def test_preflight_result_exposes_boolean_engine_disposal_field():
+    field = rehearsal_runtime.RehearsalPreflightResult.__dataclass_fields__["engine_disposed"]
+    assert field.type is bool
+
+
+def test_preflight_success_closes_connection_and_disposes_engine_once(monkeypatch):
+    events = []
+    result = _run_fake_preflight(monkeypatch, events, _FakeEngine(events))
+
+    assert result.database == "spamanager_purge_rehearsal_test"
+    assert result.role == "spamanager"
+    assert result.server_port == "5432"
+    assert result.revision == "0008_durable_purge_reauth_state"
+    assert result.tables_checked == 15
+    assert result.all_tables_zero is True
+    assert result.hanging_transactions == 0
+    assert result.connections_closed is True
+    assert result.engine_disposed is True
+    assert events.count("engine.dispose.begin") == 1
+
+
+def test_preflight_returns_only_after_engine_disposal(monkeypatch):
+    events = []
+    result = _run_fake_preflight(monkeypatch, events, _FakeEngine(events))
+    events.append("caller.received")
+
+    assert result.engine_disposed is True
+    assert events.index("engine.dispose.end") < events.index("caller.received")
+
+
+def test_preflight_disposal_failure_is_sanitized_and_fail_closed(monkeypatch):
+    events = []
+    with pytest.raises(rehearsal_runtime.RehearsalDatabaseDisposalError) as caught:
+        _run_fake_preflight(
+            monkeypatch,
+            events,
+            _FakeEngine(events, RuntimeError("private disposal detail")),
+        )
+
+    assert str(caught.value) == "LOCAL_REHEARSAL_DATABASE_DISPOSAL_FAILED"
+    assert "private disposal detail" not in str(caught.value)
+    assert events.count("engine.dispose.begin") == 1
+
+
+def test_preflight_creation_failure_does_not_dispose_missing_engine(monkeypatch):
+    dispose_calls = []
+    target = SimpleNamespace(database="spamanager_purge_rehearsal_test")
+    monkeypatch.setattr(
+        rehearsal_runtime,
+        "validate_rehearsal_environment",
+        lambda environ: target,
+    )
+    monkeypatch.setattr(
+        rehearsal_runtime,
+        "_create_preflight_engine",
+        lambda database_url: (_ for _ in ()).throw(RuntimeError("private creation detail")),
+    )
+
+    with pytest.raises(rehearsal_runtime.RehearsalDatabaseConnectionError):
+        rehearsal_runtime.run_rehearsal_preflight(
+            {"TEST_DATABASE_URL": "synthetic"}
+        )
+
+    assert dispose_calls == []
+
+
+def test_preflight_result_preserves_tuple_table_count_contract(monkeypatch):
+    events = []
+    result = _run_fake_preflight(monkeypatch, events, _FakeEngine(events))
+
+    counts = dict(result.table_counts)
+    assert len(counts) == 15
+    assert result.connections_closed is True
+    assert result.engine_disposed is True
 
 
 def _module_imports(path):
@@ -18,12 +181,18 @@ def _module_imports(path):
 
 def test_postgresql_modules_have_no_top_level_runtime_imports():
     forbidden = {"app", "extensions", "services", "models"}
-    for name in ("conftest.py", "rehearsal_runtime.py", "test_purge_runtime_postgresql.py"):
+    for name in (
+        "conftest.py", "rehearsal_runtime.py", "test_purge_runtime_postgresql.py",
+        "test_purge_legal_hold_concurrency_postgresql.py",
+    ):
         assert not (_module_imports(ROOT / name) & forbidden)
 
 
 def test_reset_helper_has_explicit_allowlist_and_protects_revision():
     source = (ROOT / "rehearsal_runtime.py").read_text(encoding="utf-8")
+    assert 'EXPECTED_PURGE_REHEARSAL_REVISION = "0008_durable_purge_reauth_state"' in source
+    assert 'revision_rows != [(EXPECTED_PURGE_REHEARSAL_REVISION,)]' in source
+    assert "0007_permanent_purge_workflow" not in source
     assert "EXPECTED_APPLICATION_TABLES" in source
     assert "EXPECTED_SCHEMA_TABLES" in source
     assert "alembic_version" in source
@@ -41,9 +210,31 @@ def test_runtime_identity_checks_internal_server_port_and_external_endpoint():
     assert "self.target.port != 5433" in source
 
 
-def test_runtime_contract_preserves_all_three_users_and_adds_counted_drift_row():
+def test_runtime_contract_preserves_complete_user_baseline_and_adds_counted_drift_row():
     source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
-    assert "assert verification.query(fixture[\"models\"].User).count() == 3" in source
+    rollback_source = source.split(
+        "def test_execution_rolls_back_after_mutation", 1
+    )[1]
+    assert "baseline_user_ids = {" in rollback_source
+    assert (
+        'for (user_id,) in fixture["db"].session.query('
+        'fixture["models"].User.id).all()'
+    ) in rollback_source
+    assert "post_rollback_user_ids = {" in rollback_source
+    assert (
+        'for (user_id,) in verification.query('
+        'fixture["models"].User.id).all()'
+    ) in rollback_source
+    assert "assert post_rollback_user_ids == baseline_user_ids" in rollback_source
+    assert (
+        'assert verification.get(fixture["models"].User, executor_user_id) is not None'
+    ) in rollback_source
+    assert 'verification.query(fixture["models"].User).count() == 3' not in rollback_source
+    assert 'verification.query(fixture["models"].User).count() >=' not in rollback_source
+    assert "authorization_generation=issuance.generation" in rollback_source
+    assert "authorization_nonce=issuance.raw_nonce" in rollback_source
+    assert "delete_then_fail" in rollback_source
+    assert "postgres_case.new_session()" in rollback_source
     assert "new_customer_id = new_customer.id" in source
     assert "stored.manifest_hash == manifest_hash" in source
 
@@ -60,6 +251,676 @@ def test_runtime_module_is_lazy_and_non_concurrent():
     assert "postgres_runtime" in source
     for forbidden in ("threading", "ThreadPoolExecutor"):
         assert forbidden not in source
+
+
+def test_legal_hold_concurrency_harness_has_seven_named_nodes_and_bounded_hooks():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    for name in (
+        "test_lh_a1_create_wins_against_approval",
+        "test_lh_a2_approval_wins_then_hold_blocks_execution",
+        "test_lh_b1_create_wins_against_execution",
+        "test_lh_b2_execution_wins_then_create_rejects_terminal_workspace",
+        "test_lh_c1_release_wins_then_execution_observes_released",
+        "test_lh_c2_execution_sees_active_then_release_succeeds",
+        "test_lh_d_concurrent_double_release_is_exactly_once",
+    ):
+        assert f"def {name}(" in source
+    assert "EVENT_TIMEOUT_SECONDS = 10" in source
+    assert "THREAD_JOIN_TIMEOUT_SECONDS = 20" in source
+    assert "event.listen" in source and "event.remove" in source
+    assert "runtime.new_session()" in source
+    assert "runtime.app.app_context()" in source
+    assert "runtime.reset_database()" in source
+    assert "finally:" in source
+    assert "actor_user_id" in source or "PurgeLegalHoldService.release_legal_hold" in source
+    assert "time.sleep" not in source
+    assert ".join()" not in source
+
+
+def test_lh_b2_barrier_targets_execution_workspace_lock_after_claim_arm():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        HookPlan,
+        _workspace_barrier_is_armed,
+    )
+
+    plan = HookPlan()
+    assert _workspace_barrier_is_armed(plan, "execution") is False
+    plan.execution_lock_armed.set()
+    assert _workspace_barrier_is_armed(plan, "execution") is True
+    assert _workspace_barrier_is_armed(HookPlan(), "workspace") is True
+
+
+def test_lh_b2_barrier_contract_arms_only_after_claim_returns():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    assert "def _arm_execution_claim" in source
+    assert "claim = original(*args, **kwargs)" in source
+    assert "current.execution_lock_armed.set()" in source
+    assert "barrier_target=\"execution\"" in source
+    assert "if not _workspace_barrier_is_armed(current, barrier_target):" in source
+
+
+def test_lh_c2_barrier_targets_active_hold_observation_after_claim():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    assert "def _arm_active_hold_observation" in source
+    assert "barrier_target=\"active_hold\"" in source
+    assert "current.execution_lock_armed.is_set() and active_observed" in source
+    assert "barrier_target not in {\"active_hold\", \"decisive_hold\"}" in source
+    assert "active_hold_observed.set()" in source
+    assert "operation_started.set()" in source
+    assert "completed_event.set()" in source
+
+
+def test_lh_c2_active_hold_wrapper_preserves_results_and_ignores_non_active_or_unarmed():
+    from types import SimpleNamespace
+    import threading
+
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        HookPlan,
+        _arm_active_hold_observation,
+    )
+
+    class Hold:
+        def __init__(self, status):
+            self.status = status
+
+    class PurgeService:
+        @staticmethod
+        def _validate_holds(request, holds):
+            return (request, tuple(hold.status for hold in holds))
+
+    runtime = SimpleNamespace(services=SimpleNamespace(PurgeService=PurgeService))
+    plan = HookPlan()
+    patches = [_arm_active_hold_observation(runtime, {"winner": plan})]
+    try:
+        non_active = PurgeService._validate_holds("released", [Hold("RELEASED")])
+        assert non_active == ("released", ("RELEASED",))
+        assert not plan.active_hold_observed.is_set()
+
+        unarmed = PurgeService._validate_holds("active-before-claim", [Hold("ACTIVE")])
+        assert unarmed == ("active-before-claim", ("ACTIVE",))
+        assert not plan.active_hold_observed.is_set()
+
+        plan.execution_lock_armed.set()
+        observed_result = []
+
+        def observe():
+            observed_result.append(PurgeService._validate_holds("active-after-claim", [Hold("ACTIVE")]))
+
+        thread = threading.Thread(target=observe, name="winner")
+        thread.start()
+        assert plan.active_hold_observed.wait(1)
+        assert thread.is_alive()
+        plan.allow_winner_to_continue.set()
+        thread.join(1)
+        assert observed_result == [("active-after-claim", ("ACTIVE",))]
+        assert plan.post_lock_passed.is_set()
+    finally:
+        service, attribute, descriptor = patches[0]
+        setattr(service, attribute, descriptor)
+
+
+def test_lh_c2_preserves_other_barrier_targets():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    assert "barrier_target=\"execution\"" in source
+    assert "barrier_target=\"active_hold\"" in source
+    assert "winner_pause=\"hold\"" in source
+    assert "test_lh_c1_release_wins_then_execution_observes_released" in source
+    assert "test_lh_b2_execution_wins_then_create_rejects_terminal_workspace" in source
+
+
+def test_lh_d_barrier_targets_winner_decisive_hold_stage_only():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    assert "def _arm_decisive_release_hold_barrier" in source
+    assert "barrier_target=\"decisive_hold\"" in source
+    assert "barrier_target not in {\"active_hold\", \"decisive_hold\"}" in source
+    assert "current is plans.get(\"winner\")" in source
+    assert "winner_hold_lock_acquired.set()" in source
+    assert "winner_observed_active.set()" in source
+
+
+def test_lh_d_decisive_barrier_preserves_result_and_ignores_waiter():
+    from types import SimpleNamespace
+    import threading
+
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        HookPlan,
+        _arm_decisive_release_hold_barrier,
+    )
+
+    class PurgeLegalHoldService:
+        @staticmethod
+        def _phrase(value, expected):
+            return (value, expected)
+
+    runtime = SimpleNamespace(services=SimpleNamespace(PurgeLegalHoldService=PurgeLegalHoldService))
+    winner_plan = HookPlan()
+    waiter_plan = HookPlan()
+    plans = {"winner": winner_plan, "waiter": waiter_plan}
+    service, attribute, descriptor = _arm_decisive_release_hold_barrier(runtime, plans)
+    try:
+        unrelated = PurgeLegalHoldService._phrase("HOLD workspace", "HOLD workspace")
+        assert unrelated == ("HOLD workspace", "HOLD workspace")
+        assert not winner_plan.winner_hold_lock_acquired.is_set()
+
+        winner_result = []
+
+        def winner_call():
+            winner_result.append(PurgeLegalHoldService._phrase("RELEASE hold-1", "RELEASE hold-1"))
+
+        winner = threading.Thread(target=winner_call, name="winner")
+        winner.start()
+        assert winner_plan.winner_hold_lock_acquired.wait(1)
+        assert winner.is_alive()
+        assert not waiter_plan.winner_hold_lock_acquired.is_set()
+        winner_plan.allow_winner_to_continue.set()
+        winner.join(1)
+        assert winner_result == [("RELEASE hold-1", "RELEASE hold-1")]
+
+        waiter_result = []
+
+        def waiter_call():
+            waiter_result.append(PurgeLegalHoldService._phrase("RELEASE hold-1", "RELEASE hold-1"))
+
+        waiter = threading.Thread(target=waiter_call, name="waiter")
+        waiter.start()
+        waiter.join(1)
+        assert waiter_result == [("RELEASE hold-1", "RELEASE hold-1")]
+        assert not waiter_plan.winner_hold_lock_acquired.is_set()
+    finally:
+        setattr(service, attribute, descriptor)
+
+
+def test_lh_d_exactly_once_contract_remains_explicit():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    assert 'getattr(results["waiter"].exception, "code", None) == "ALREADY_RELEASED"' in source
+    assert 'assert results["winner"].exception is None' in source
+    assert 'final_hold_status == "RELEASED"' in source
+    assert "successful_release_result_count == 1" in source
+    assert "PERSISTED_RELEASE_TRANSITION_SOURCE=NONE" not in source
+    assert "RELEASE_TRANSITION_COUNT_ASSERTED" not in source
+    assert "duplicate_release_occurred is False" in source
+    assert "deadlock_detected is False" in source
+    assert 'assert plans["winner"].winner_hold_lock_acquired.is_set()' in source
+    assert 'assert plans["winner"].winner_observed_active.is_set()' in source
+    assert 'assert plans["waiter"].operation_started.is_set()' in source
+    assert 'assert plans["waiter"].completed_event.is_set()' in source
+    assert "operation_returned_sequence" in source
+    assert "completed_sequence" in source
+    assert 'results["waiter"].completed_sequence' in source
+    assert 'results["waiter"].completed_at > results["winner"].operation_returned_at' not in source
+    assert "except BaseException" not in source
+
+
+def test_worker_safe_diagnostic_exposes_only_class_and_allowlisted_code():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        WorkerResult,
+        _record_safe_worker_error,
+        _safe_worker_failure,
+    )
+
+    class SyntheticError(Exception):
+        def __init__(self):
+            self.code = "TERMINAL_WORKSPACE"
+            super().__init__("secret message", "secret parameters")
+
+    result = WorkerResult(name="waiter")
+    error = SyntheticError()
+    _record_safe_worker_error(result, error)
+    rendered = _safe_worker_failure(result)
+
+    assert "SyntheticError" in rendered
+    assert "TERMINAL_WORKSPACE" in rendered
+    assert "secret message" not in rendered
+    assert "secret parameters" not in rendered
+    assert "args" not in rendered.lower()
+    assert result.exception.public_exception_class == "SyntheticError"
+    assert result.exception.safe_root_category == "UNCLASSIFIED_SAFE_EXCEPTION"
+    assert result.exception.sqlstate is None
+    assert "secret message" not in repr(result.exception)
+    assert "secret parameters" not in repr(result.exception)
+
+
+def test_worker_safe_diagnostic_classifies_sqlstate_without_rendering_exception():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        WorkerResult,
+        _record_safe_worker_error,
+    )
+
+    class SyntheticDeadlock(Exception):
+        pgcode = "40P01"
+
+        def __init__(self):
+            super().__init__("postgresql://secret", {"password": "secret"})
+
+    result = WorkerResult(name="winner")
+    _record_safe_worker_error(result, SyntheticDeadlock())
+
+    assert result.exception.safe_root_category == "DEADLOCK_DETECTED"
+    assert result.exception.sqlstate == "40P01"
+    assert result.exception.code is None
+
+
+def test_worker_safe_diagnostic_preserves_legal_hold_unresolved_code():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        WorkerResult,
+        _record_safe_worker_error,
+    )
+
+    class SyntheticLegalHoldConflict(Exception):
+        code = "LEGAL_HOLD_UNRESOLVED"
+
+        def __init__(self):
+            super().__init__("secret message", "postgresql://secret")
+
+    result = WorkerResult(name="waiter")
+    _record_safe_worker_error(result, SyntheticLegalHoldConflict())
+
+    assert result.safe_error_code == "LEGAL_HOLD_UNRESOLVED"
+    assert result.exception.code == "LEGAL_HOLD_UNRESOLVED"
+    assert "secret message" not in repr(result.exception)
+    assert "postgresql://" not in repr(result.exception)
+
+
+def test_lh_d_sequence_order_survives_equal_float_timestamps(monkeypatch):
+    from contextlib import nullcontext
+    from tests.postgresql import test_purge_legal_hold_concurrency_postgresql as harness
+
+    runtime = SimpleNamespace(app=SimpleNamespace(app_context=lambda: nullcontext()))
+    sequence_state = {"lock": __import__("threading").Lock(), "value": 0}
+    results = {}
+    monkeypatch.setattr(harness.time, "monotonic", lambda: 42.0)
+
+    harness._worker(
+        runtime, "winner", lambda: "ok", harness.HookPlan(), results, sequence_state
+    )
+    harness._worker(
+        runtime, "waiter", lambda: None, harness.HookPlan(), results, sequence_state
+    )
+
+    assert results["winner"].operation_returned_at == results["winner"].completed_at
+    assert results["winner"].operation_returned_sequence == 1
+    assert results["waiter"].completed_sequence == 4
+    assert results["waiter"].completed_sequence > results["winner"].operation_returned_sequence
+
+
+def test_direct_execution_tests_use_fresh_real_durable_reauth():
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    target_names = {
+        "test_execution_success_preserves_audit_and_terminal_tombstone",
+        "test_execution_rolls_back_after_mutation",
+    }
+    functions = {
+        node.name: ast.get_source_segment(source, node)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name in target_names
+    }
+
+    assert set(functions) == target_names
+    for function_source in functions.values():
+        assert "issue_local_authorization" in function_source
+        assert "authorization_generation=issuance.generation" in function_source
+        assert "authorization_nonce=issuance.raw_nonce" in function_source
+        assert "monkeypatch.setattr(purge_service, \"PurgeReauthService\"" not in function_source
+    rollback_source = functions["test_execution_rolls_back_after_mutation"]
+    assert "original_delete(*args, **kwargs)" in rollback_source
+    assert 'raise RuntimeError("synthetic rollback after mutation")' in rollback_source
+
+
+def test_lh_d_snapshots_winner_before_waiter_join_assertion_and_marks_timeout():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        WorkerResult,
+        _mark_waiter_join_timeout,
+        _snapshot_worker_results,
+    )
+
+    winner = WorkerResult(name="winner", completed=True, result="winner-result")
+    waiter = WorkerResult(name="waiter", thread_alive=True)
+    local_results = {"winner": winner, "waiter": waiter}
+    retained_results = {
+        "winner": WorkerResult(name="winner"),
+        "waiter": WorkerResult(name="waiter"),
+    }
+
+    _mark_waiter_join_timeout(waiter)
+    _snapshot_worker_results(local_results, retained_results)
+
+    assert retained_results["winner"].result == "winner-result"
+    assert retained_results["winner"].completed is True
+    assert retained_results["waiter"].safe_root_category == "WAITER_JOIN_TIMEOUT"
+    assert retained_results["waiter"].safe_error_code is None
+    assert "postgresql://" not in repr(retained_results)
+
+
+def test_lh_d_timeout_is_not_classified_as_already_released():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        WorkerResult,
+        _mark_waiter_join_timeout,
+    )
+
+    waiter = WorkerResult(name="waiter", thread_alive=True)
+    _mark_waiter_join_timeout(waiter)
+
+    assert waiter.safe_root_category == "WAITER_JOIN_TIMEOUT"
+    assert waiter.safe_error_code is None
+    assert waiter.exception is None
+
+
+def test_worker_none_return_is_explicit_normal_return():
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        HookPlan,
+        _worker,
+    )
+
+    runtime = SimpleNamespace(app=SimpleNamespace(app_context=lambda: nullcontext()))
+    results = {}
+    _worker(runtime, "waiter", lambda: None, HookPlan(), results)
+
+    assert results["waiter"].completed is True
+    assert results["waiter"].result is None
+    assert results["waiter"].terminal_outcome == "NORMAL_RETURN"
+
+
+def test_worker_already_released_is_explicit_safe_exception():
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        HookPlan,
+        _worker,
+    )
+
+    class SyntheticConflict(Exception):
+        code = "ALREADY_RELEASED"
+
+        def __init__(self):
+            super().__init__("secret message", "postgresql://secret")
+
+    runtime = SimpleNamespace(app=SimpleNamespace(app_context=lambda: nullcontext()))
+    results = {}
+    _worker(runtime, "waiter", lambda: (_ for _ in ()).throw(SyntheticConflict()), HookPlan(), results)
+
+    result = results["waiter"]
+    assert result.terminal_outcome == "SAFE_EXCEPTION"
+    assert result.safe_error_code == "ALREADY_RELEASED"
+    assert "secret message" not in repr(result.exception)
+    assert "postgresql://" not in repr(result.exception)
+
+
+def test_worker_other_safe_exception_is_not_already_released():
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import (
+        HookPlan,
+        _worker,
+    )
+
+    class SyntheticConflict(Exception):
+        code = "TERMINAL_WORKSPACE"
+
+        def __init__(self):
+            super().__init__("secret message", "secret parameters")
+
+    runtime = SimpleNamespace(app=SimpleNamespace(app_context=lambda: nullcontext()))
+    results = {}
+    _worker(runtime, "waiter", lambda: (_ for _ in ()).throw(SyntheticConflict()), HookPlan(), results)
+
+    result = results["waiter"]
+    assert result.terminal_outcome == "SAFE_EXCEPTION"
+    assert result.safe_error_code == "TERMINAL_WORKSPACE"
+    assert result.safe_error_code != "ALREADY_RELEASED"
+    assert "secret message" not in repr(result.exception)
+    assert "secret parameters" not in repr(result.exception)
+
+
+def test_uncompleted_worker_is_not_reported_as_normal_return():
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import WorkerResult
+
+    result = WorkerResult(name="waiter")
+
+    assert result.completed is False
+    assert result.terminal_outcome == "NOT_STARTED"
+
+
+def test_lh_d_safe_markers_preserve_explicit_waiter_outcome_fields(capsys):
+    from tests.postgresql.test_purge_legal_hold_concurrency_postgresql import WorkerResult, _emit_lh_d_safe_failure
+
+    winner = WorkerResult(name="winner", terminal_outcome="NORMAL_RETURN")
+    waiter = WorkerResult(
+        name="waiter",
+        terminal_outcome="SAFE_EXCEPTION",
+        safe_error_code="ALREADY_RELEASED",
+        thread_alive=False,
+    )
+    _emit_lh_d_safe_failure({"winner": winner, "waiter": waiter}, "ASSERTION")
+    output = capsys.readouterr().out
+
+    assert "LH_D_SAFE_WAITER_TERMINAL_OUTCOME=SAFE_EXCEPTION" in output
+    assert "LH_D_SAFE_WAITER_EXCEPTION_CODE=ALREADY_RELEASED" in output
+    assert "postgresql://" not in output
+    assert "secret" not in output.lower()
+
+
+def test_lh_d_pair_runner_retains_timeout_snapshot_and_normal_mapping():
+    source = (ROOT / "test_purge_legal_hold_concurrency_postgresql.py").read_text(encoding="utf-8")
+    assert "result_sink=None" in source
+    assert "_snapshot_worker_results(results, result_sink)" in source
+    assert "_mark_waiter_join_timeout(results[\"waiter\"])" in source
+    assert "result_sink=results" in source
+    assert 'safe_root_category = "WAITER_JOIN_TIMEOUT"' in source
+    assert "WAITER_JOIN_TIMEOUT" not in source.split("SAFE_ERROR_CODES", 1)[1].split("})", 1)[0]
+    assert 'terminal_outcome = "NORMAL_RETURN"' in source
+    assert '"SAFE_EXCEPTION" if safe_code is not None else "UNSAFE_EXCEPTION"' in source
+    assert '"LH_D_SAFE_WAITER_TERMINAL_OUTCOME"' in source
+    assert '"LH_D_SAFE_WAITER_EXCEPTION_CODE"' in source
+
+
+def _preflight_test_doubles(monkeypatch, *, users_count=0, database="spamanager_purge_rehearsal_test"):
+    import builtins
+
+    from tests.postgresql import rehearsal_runtime as runtime_module
+    from tests.postgresql.rehearsal_guard import RehearsalTarget
+
+    class Result:
+        def __init__(self, *, row=None, rows=None, scalar=None, values=None):
+            self._row = row
+            self._rows = rows
+            self._scalar = scalar
+            self._values = values
+
+        def one(self):
+            return self._row
+
+        def all(self):
+            return self._rows if self._rows is not None else self._values
+
+        def scalar_one(self):
+            return self._scalar
+
+        def scalars(self):
+            return Result(values=self._values)
+
+    class Transaction:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        def __init__(self):
+            self.closed = False
+            self.count_queries = 0
+            self.write_queries = []
+
+        def begin(self):
+            return Transaction()
+
+        def execute(self, statement):
+            sql = str(statement)
+            if sql.startswith("SET LOCAL"):
+                return Result()
+            if "current_database()" in sql:
+                return Result(row=(database, "spamanager", "5432"))
+            if "version_num" in sql:
+                return Result(rows=[("0008_durable_purge_reauth_state",)])
+            if "information_schema.tables" in sql:
+                return Result(values=sorted(runtime_module.EXPECTED_SCHEMA_TABLES))
+            if "pg_stat_activity" in sql:
+                return Result(scalar=0)
+            if "SELECT count(*)" in sql:
+                self.count_queries += 1
+                return Result(scalar=users_count if '"users"' in sql else 0)
+            self.write_queries.append(sql)
+            return Result()
+
+        def close(self):
+            self.closed = True
+
+    class Engine:
+        def __init__(self):
+            self.connection = Connection()
+            self.disposed = False
+
+        def connect(self):
+            return self.connection
+
+        def dispose(self):
+            self.disposed = True
+
+    engine = Engine()
+    target = RehearsalTarget("postgresql", "127.0.0.1", 5433, database)
+    monkeypatch.setattr(runtime_module, "validate_rehearsal_environment", lambda _env: target)
+    monkeypatch.setattr(runtime_module, "_create_preflight_engine", lambda _url: engine)
+    original_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "app" or name.startswith(("extensions", "services", "models")):
+            raise AssertionError("application bootstrap import attempted")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    env = {
+        "APP_ENV": "testing",
+        "SPAMANAGER_TEST_PROCESS": "1",
+        "SPAMANAGER_ALLOW_POSTGRES_TESTS": "1",
+        "SPAMANAGER_RUN_PURGE_POSTGRES_REHEARSAL": "1",
+        "TEST_DATABASE_URL": "postgresql://user:password@127.0.0.1:5433/spamanager_purge_rehearsal_test",
+    }
+    return runtime_module.run_rehearsal_preflight(env), engine
+
+
+def test_no_bootstrap_preflight_does_not_import_application(monkeypatch):
+    result, engine = _preflight_test_doubles(monkeypatch)
+    assert result.all_tables_zero is True
+    assert result.tables_checked == 15
+    assert result.connections_closed is True
+    assert engine.connection.closed is True
+    assert engine.disposed is True
+    assert engine.connection.write_queries == []
+
+
+def test_no_bootstrap_preflight_preserves_exact_zero_state(monkeypatch):
+    result, _engine = _preflight_test_doubles(monkeypatch, users_count=0)
+    assert dict(result.table_counts)["users"] == 0
+    assert result.all_tables_zero is True
+
+
+def test_no_bootstrap_preflight_reports_users_one_without_mutation(monkeypatch):
+    result, engine = _preflight_test_doubles(monkeypatch, users_count=1)
+    assert dict(result.table_counts)["users"] == 1
+    assert result.all_tables_zero is False
+    assert all(value == 0 for name, value in result.table_counts if name != "users")
+    assert engine.connection.write_queries == []
+
+
+def test_no_bootstrap_preflight_rejects_wrong_database_before_counts(monkeypatch):
+    import pytest
+
+    from tests.postgresql import rehearsal_runtime as runtime_module
+    from tests.postgresql.rehearsal_guard import RehearsalTarget
+    from tests.postgresql.rehearsal_runtime import RehearsalIdentityError
+
+    class Connection:
+        def __init__(self):
+            self.closed = False
+            self.count_queries = 0
+
+        def begin(self):
+            class Transaction:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_args):
+                    return False
+
+            return Transaction()
+
+        def execute(self, statement):
+            sql = str(statement)
+            if sql.startswith("SET LOCAL"):
+                return type("Result", (), {})()
+            if "current_database()" in sql:
+                return type("Result", (), {"one": lambda _self: ("spamanager_dev", "spamanager", "5432")})()
+            self.count_queries += 1
+            raise AssertionError("table count queried after identity mismatch")
+
+        def close(self):
+            self.closed = True
+
+    class Engine:
+        def __init__(self):
+            self.connection = Connection()
+            self.disposed = False
+
+        def connect(self):
+            return self.connection
+
+        def dispose(self):
+            self.disposed = True
+
+    engine = Engine()
+    target = RehearsalTarget("postgresql", "127.0.0.1", 5433, "spamanager_purge_rehearsal_test")
+    monkeypatch.setattr(runtime_module, "validate_rehearsal_environment", lambda _env: target)
+    monkeypatch.setattr(runtime_module, "_create_preflight_engine", lambda _url: engine)
+
+    with pytest.raises(RehearsalIdentityError):
+        runtime_module.run_rehearsal_preflight({"TEST_DATABASE_URL": "redacted"})
+
+    assert engine.connection.count_queries == 0
+    assert engine.connection.closed is True
+    assert engine.disposed is True
+
+
+def test_no_bootstrap_preflight_sanitizes_failure_and_disposes_engine(monkeypatch):
+    import pytest
+
+    from tests.postgresql import rehearsal_runtime as runtime_module
+    from tests.postgresql.rehearsal_runtime import RehearsalDatabaseConnectionError
+
+    class Engine:
+        disposed = False
+
+        def connect(self):
+            raise RuntimeError("secret connection detail")
+
+        def dispose(self):
+            self.disposed = True
+
+    engine = Engine()
+    monkeypatch.setattr(runtime_module, "validate_rehearsal_environment", lambda _env: object())
+    monkeypatch.setattr(runtime_module, "_create_preflight_engine", lambda _url: engine)
+
+    with pytest.raises(RehearsalDatabaseConnectionError) as exc_info:
+        runtime_module.run_rehearsal_preflight({"TEST_DATABASE_URL": "redacted"})
+
+    assert str(exc_info.value) == "LOCAL_REHEARSAL_DATABASE_CONNECTION_FAILED"
+    assert "secret connection detail" not in str(exc_info.value)
+    assert engine.disposed is True
 
 
 def test_no_database_process_commands_in_harness_sources():
@@ -511,10 +1372,31 @@ def test_rollback_audit_uses_unique_description():
 
 def test_create_runtime_uses_bare_raise():
     source = (ROOT / "rehearsal_runtime.py").read_text(encoding="utf-8")
-    # Find the except block in create_runtime
     assert "except Exception:" in source
-    assert "raise" in source
+    assert "except OperationalError as exc:" in source
+    assert "raise_sanitized_database_error(exc)" in source
     assert "raise orig_exc" not in source
+
+
+def test_runtime_creation_sanitizes_operational_errors():
+    source = (ROOT / "rehearsal_runtime.py").read_text(encoding="utf-8")
+    assert "class RehearsalDatabaseAuthenticationError" in source
+    assert "class RehearsalDatabaseConnectionError" in source
+    assert '"LOCAL_REHEARSAL_DATABASE_AUTHENTICATION_FAILED"' in source
+    assert '"LOCAL_REHEARSAL_DATABASE_CONNECTION_FAILED"' in source
+    assert "from None" in source
+    assert "logger.exception" not in source
+    assert "traceback.print_exc" not in source
+    assert "hide_parameters=True" in source
+
+
+def test_execution_flag_is_rehearsal_only_and_literal_true():
+    source = (ROOT / "rehearsal_runtime.py").read_text(encoding="utf-8")
+    assert 'application.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True' in source
+    assert "configure_rehearsal_app(app, target, environ)" in source
+    assert '"SPAMANAGER_RUN_PURGE_POSTGRES_REHEARSAL"' in source
+    assert "PERMANENT_PURGE_EXECUTION_ENABLED = True" not in (ROOT.parent.parent / "config.py").read_text(encoding="utf-8")
+    assert "tests/postgresql/test_postgresql_purge_reauth_concurrency.py" not in source
 
 
 def test_ast_timeout_cleanup_methods_use_bare_raise():

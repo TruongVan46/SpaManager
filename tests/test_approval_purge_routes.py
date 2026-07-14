@@ -1,6 +1,8 @@
 import os
+import time
 import unittest
 from datetime import datetime, timedelta
+import inspect
 from types import SimpleNamespace
 from unittest.mock import DEFAULT, patch
 
@@ -91,6 +93,78 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
                     app.config["PERMANENT_PURGE_UI_ENABLED"] = value
                 self.assertEqual(self.client.get("/approval/purge-requests").status_code, 404)
                 self.assertEqual(self.client.post("/approval/workspaces/1/purge-request").status_code, 404)
+
+    def test_legal_hold_routes_are_flagged_and_csrf_protected(self):
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = False
+        for path in (
+            "/approval/purge-requests/1/legal-holds",
+            "/approval/purge-requests/1/legal-holds/hold-1/release",
+            "/approval/legal-holds/hold-1/release",
+        ):
+            with self.subTest(phase="disabled", path=path):
+                self.assertEqual(self.client.post(path).status_code, 404)
+        self.assertEqual(self.client.get("/approval/workspaces/1/legal-holds").status_code, 404)
+
+        actor = SimpleNamespace(
+            id=7, full_name="Approval Owner", role="APPROVAL_OWNER", is_active=True,
+            deleted_at=None, approval_status="active", can_access_app=True,
+        )
+        app.config["PERMANENT_PURGE_UI_ENABLED"] = True
+        with patch("services.auth_service.AuthService.get_current_user", return_value=actor), \
+             patch("services.auth_service.AuthService.get_current_active_user", return_value=actor):
+            for path in (
+                "/approval/purge-requests/1/legal-holds",
+                "/approval/purge-requests/1/legal-holds/hold-1/release",
+                "/approval/legal-holds/hold-1/release",
+            ):
+                with self.subTest(phase="csrf", path=path):
+                    self.assertEqual(self.client.post(path).status_code, 400)
+
+        with self.client.session_transaction() as session_data:
+            session_data["_csrf_token"] = "csrf"
+            session_data["_csrf_issued_at"] = int(time.time())
+        summary = SimpleNamespace(workspace_id=12)
+        with patch("services.auth_service.AuthService.get_current_user", return_value=actor), \
+             patch("services.auth_service.AuthService.get_current_active_user", return_value=actor), \
+             patch("routes.approval.PurgeRequestService.get_summary", return_value=summary), \
+             patch("routes.approval.PurgeLegalHoldService.get_workspace_target", return_value={"id": 12, "name": "Target Workspace", "slug": "target-workspace", "deleted_at": datetime(2026, 1, 1), "purged": False}) as target, \
+             patch("routes.approval.PurgeLegalHoldService.list_legal_holds", return_value=[]) as listing, \
+             patch("routes.approval.PurgeLegalHoldService.create_legal_hold", return_value=SimpleNamespace(hold_id="hold-created")) as create, \
+             patch("routes.approval.PurgeLegalHoldService.release_legal_hold", return_value=SimpleNamespace(hold_id="hold-created", workspace_id=12)) as release:
+            response = self.client.get("/approval/workspaces/1/legal-holds")
+            self.assertEqual(response.status_code, 200)
+            target.assert_called_once_with(workspace_id=1, actor_user_id=7)
+            listing.assert_called_once_with(workspace_id=1, actor_user_id=7)
+            create.assert_not_called()
+            release.assert_not_called()
+
+            response = self.client.post(
+                "/approval/workspaces/1/legal-holds",
+                data={"csrf_token": "csrf", "hold_type": "LEGAL", "reason": "Preserve", "confirmation_phrase": "HOLD target-workspace"},
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(create.call_args.kwargs["workspace_id"], 1)
+            self.assertNotIn("request_id", create.call_args.kwargs)
+
+            response = self.client.post(
+                "/approval/purge-requests/1/legal-holds",
+                data={"csrf_token": "csrf", "hold_type": "LEGAL", "reason": "Preserve", "confirmation_phrase": "HOLD target"},
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(create.call_args.kwargs["workspace_id"], 12)
+            response = self.client.post(
+                "/approval/legal-holds/hold-created/release",
+                data={"csrf_token": "csrf", "release_reason": "Resolved", "confirmation_phrase": "RELEASE hold-created"},
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertNotIn("expected_workspace_id", release.call_args.kwargs)
+
+            response = self.client.post(
+                "/approval/purge-requests/1/legal-holds/hold-created/release",
+                data={"csrf_token": "csrf", "release_reason": "Resolved", "confirmation_phrase": "RELEASE hold-created"},
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(release.call_args.kwargs["expected_workspace_id"], 12)
 
     def test_true_flag_reaches_auth_guard(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True
@@ -484,6 +558,44 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         self.assertNotIn("nonce_hash", template)
         self.assertNotIn("authorization_id", template)
         self.assertNotIn("generation", template)
+
+    def test_postgres_route_login_helper_preserves_real_csrf_flow(self):
+        from tests.postgresql.rehearsal_runtime import login_test_client_with_csrf
+
+        helper_source = inspect.getsource(login_test_client_with_csrf)
+        with open("tests/postgresql/test_purge_runtime_postgresql.py", encoding="utf-8") as source_file:
+            route_test_source = source_file.read()
+        self.assertIn('client.get("/login")', helper_source)
+        self.assertIn('headers={"X-CSRFToken": login_csrf_token}', helper_source)
+        self.assertIn('session_data.get("_csrf_token")', helper_source)
+        self.assertIn("login_test_client_with_csrf", route_test_source)
+        self.assertIn('execute_csrf_token = session_data.get("_csrf_token")', route_test_source)
+        self.assertIn('"csrf_token": execute_csrf_token', route_test_source)
+        self.assertNotIn("AUTH_SESSION_KEY", helper_source)
+        self.assertNotIn("login_user", helper_source)
+        self.assertNotIn("print(", helper_source)
+        self.assertNotIn("TEST_DATABASE_URL", helper_source)
+
+    def test_login_rejects_missing_or_invalid_csrf_before_authentication(self):
+        client = app.test_client()
+        self.assertEqual(client.get("/login").status_code, 200)
+        with client.session_transaction() as session_data:
+            valid_token = session_data.get("_csrf_token")
+        self.assertTrue(valid_token)
+
+        missing = client.post(
+            "/login",
+            json={"username": "not-used", "password": "not-used"},
+        )
+        invalid = client.post(
+            "/login",
+            json={"username": "not-used", "password": "not-used"},
+            headers={"X-CSRFToken": "invalid-token"},
+        )
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(invalid.status_code, 400)
+        with client.session_transaction() as session_data:
+            self.assertNotIn("auth_user_id", session_data)
 
     def test_reauth_post_requires_csrf_and_stores_only_durable_issuance_transport(self):
         app.config["PERMANENT_PURGE_UI_ENABLED"] = True

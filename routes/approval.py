@@ -35,6 +35,10 @@ from services.purge_reauth_transport import (
     store_transport,
     transport_matches,
 )
+from services.purge_legal_hold_service import (
+    PurgeLegalHoldService,
+    PurgeLegalHoldServiceError,
+)
 
 
 def _require_approval_owner():
@@ -337,9 +341,16 @@ def purge_request_detail(request_id):
         workspace_target = PurgeRequestService.get_workspace_target(summary.workspace_id)
     except PurgeRequestServiceError:
         pass
+    legal_holds = None
+    try:
+        legal_holds = PurgeLegalHoldService.list_legal_holds(
+            workspace_id=summary.workspace_id, actor_user_id=actor.id
+        )
+    except PurgeLegalHoldServiceError:
+        pass
     response = make_response(render_template(
         "approval/purge_request_detail.html", current_user=actor, summary=summary,
-        workspace_target=workspace_target,
+        workspace_target=workspace_target, legal_holds=legal_holds,
     ))
     return _no_cache(response)
 
@@ -477,6 +488,97 @@ def create_purge_request(workspace_id):
         return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
     except PurgeRequestServiceError as error:
         return _purge_error(error)
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/legal-holds', methods=['POST'])
+def create_legal_hold(request_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.get_summary(request_id)
+        hold_type = request.form.get("hold_type")
+        reason = request.form.get("reason")
+        hold = PurgeLegalHoldService.create_legal_hold(
+            workspace_id=summary.workspace_id,
+            actor_user_id=actor.id,
+            hold_type=hold_type,
+            reason=reason,
+            confirmation_phrase=request.form.get("confirmation_phrase"),
+        )
+        NotificationService.flash_success(f"Legal hold {hold.hold_id} was created.")
+    except (PurgeRequestServiceError, PurgeLegalHoldServiceError) as error:
+        NotificationService.flash_error(getattr(error, "message", "Legal hold could not be created."))
+    return redirect(url_for("approval.purge_request_detail", request_id=request_id))
+
+
+@approval_bp.route('/approval/purge-requests/<int:request_id>/legal-holds/<hold_id>/release', methods=['POST'])
+def release_legal_hold(request_id, hold_id):
+    actor = _require_purge_ui()
+    try:
+        summary = PurgeRequestService.get_summary(request_id)
+        hold = PurgeLegalHoldService.release_legal_hold(
+            hold_id=hold_id,
+            actor_user_id=actor.id,
+            expected_workspace_id=summary.workspace_id,
+            release_reason=request.form.get("release_reason"),
+            confirmation_phrase=request.form.get("confirmation_phrase"),
+        )
+        NotificationService.flash_success(f"Legal hold {hold.hold_id} was released.")
+    except (PurgeRequestServiceError, PurgeLegalHoldServiceError) as error:
+        NotificationService.flash_error(getattr(error, "message", "Legal hold could not be released."))
+    return redirect(url_for("approval.purge_request_detail", request_id=request_id))
+
+
+@approval_bp.route('/approval/workspaces/<int:workspace_id>/legal-holds')
+def workspace_legal_holds(workspace_id):
+    actor = _require_purge_ui()
+    try:
+        workspace_target = PurgeLegalHoldService.get_workspace_target(
+            workspace_id=workspace_id, actor_user_id=actor.id
+        )
+        legal_holds = PurgeLegalHoldService.list_legal_holds(
+            workspace_id=workspace_id, actor_user_id=actor.id
+        )
+    except PurgeLegalHoldServiceError:
+        abort(404)
+    response = make_response(render_template(
+        "approval/legal_holds.html", current_user=actor,
+        workspace_target=workspace_target, legal_holds=legal_holds,
+    ))
+    return _no_cache(response)
+
+
+@approval_bp.route('/approval/workspaces/<int:workspace_id>/legal-holds', methods=['POST'])
+def create_workspace_legal_hold(workspace_id):
+    actor = _require_purge_ui()
+    try:
+        hold = PurgeLegalHoldService.create_legal_hold(
+            workspace_id=workspace_id,
+            actor_user_id=actor.id,
+            hold_type=request.form.get("hold_type"),
+            reason=request.form.get("reason"),
+            confirmation_phrase=request.form.get("confirmation_phrase"),
+        )
+        NotificationService.flash_success(f"Legal hold {hold.hold_id} was created.")
+    except PurgeLegalHoldServiceError as error:
+        NotificationService.flash_error(error.message)
+    return redirect(url_for("approval.workspace_legal_holds", workspace_id=workspace_id))
+
+
+@approval_bp.route('/approval/legal-holds/<hold_id>/release', methods=['POST'])
+def release_workspace_legal_hold(hold_id):
+    actor = _require_purge_ui()
+    try:
+        hold = PurgeLegalHoldService.release_legal_hold(
+            hold_id=hold_id,
+            actor_user_id=actor.id,
+            release_reason=request.form.get("release_reason"),
+            confirmation_phrase=request.form.get("confirmation_phrase"),
+        )
+        NotificationService.flash_success(f"Legal hold {hold.hold_id} was released.")
+        return redirect(url_for("approval.workspace_legal_holds", workspace_id=hold.workspace_id))
+    except PurgeLegalHoldServiceError as error:
+        NotificationService.flash_error(error.message)
+        return redirect(url_for("approval.accounts"))
 
 
 @approval_bp.route('/approval/purge-requests/<int:request_id>/approve', methods=['POST'])

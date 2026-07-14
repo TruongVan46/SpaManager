@@ -1,0 +1,46 @@
+{% extends 'layout/approval_base.html' %}
+{% block title %}Legal holds - SpaManager{% endblock %}
+{% block content %}
+<section class="card border-0 shadow-sm">
+  <div class="card-body">
+    <h1 class="h4">Legal holds — {{ workspace_target.name }}</h1>
+    <p class="small text-muted">Workspace slug: <code>{{ workspace_target.slug }}</code></p>
+    {% if workspace_target.purged %}
+      <div class="alert alert-warning">Terminal workspaces cannot change legal holds.</div>
+    {% endif %}
+    <h2 class="h6 mt-4">Current holds</h2>
+    {% if legal_holds %}
+      {% for hold in legal_holds %}
+        <div class="border rounded p-3 mb-2">
+          <div><strong>{{ hold.hold_id }}</strong> — {{ hold.hold_type }} — {{ hold.status }}</div>
+          <div class="small text-muted">{{ hold.reason }} · placed by {{ hold.placed_by_snapshot }}</div>
+          {% if hold.status == 'ACTIVE' and not workspace_target.purged %}
+            <form method="post" action="{{ url_for('approval.release_workspace_legal_hold', hold_id=hold.hold_id) }}" class="mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label class="form-label" for="release-reason-{{ hold.id }}">Release reason</label>
+              <input id="release-reason-{{ hold.id }}" name="release_reason" class="form-control" maxlength="1000" required>
+              <label class="form-label mt-2" for="release-confirmation-{{ hold.id }}">Nhập: <code>RELEASE {{ hold.hold_id }}</code></label>
+              <input id="release-confirmation-{{ hold.id }}" name="confirmation_phrase" class="form-control" autocomplete="off" required>
+              <button class="btn btn-outline-warning mt-2" type="submit">Release hold</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="small text-muted">No legal holds recorded.</p>
+    {% endif %}
+    {% if not workspace_target.purged %}
+      <form method="post" action="{{ url_for('approval.create_workspace_legal_hold', workspace_id=workspace_target.id) }}" class="border rounded p-3 mt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="hold-type">Hold type</label>
+        <input id="hold-type" name="hold_type" class="form-control" value="LEGAL" maxlength="50" required>
+        <label class="form-label mt-2" for="hold-reason">Reason</label>
+        <textarea id="hold-reason" name="reason" class="form-control" maxlength="1000" required></textarea>
+        <label class="form-label mt-2" for="hold-confirmation">Nhập: <code>HOLD {{ workspace_target.slug }}</code></label>
+        <input id="hold-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>
+        <button class="btn btn-outline-danger mt-2" type="submit">Place legal hold</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

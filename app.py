@@ -143,8 +143,13 @@ def require_login():
     if request.endpoint is None:
         return
 
-    purge_ui_path = request.path.startswith('/approval/purge-requests') or (
-        request.path.startswith('/approval/workspaces/') and request.path.endswith('/purge-request')
+    purge_ui_path = (
+        request.path.startswith('/approval/purge-requests')
+        or request.path.startswith('/approval/legal-holds/')
+        or (
+            request.path.startswith('/approval/workspaces/')
+            and (request.path.endswith('/purge-request') or request.path.endswith('/legal-holds'))
+        )
     )
     if purge_ui_path and not is_permanent_purge_ui_enabled(app.config.get('PERMANENT_PURGE_UI_ENABLED')):
         abort(404)
