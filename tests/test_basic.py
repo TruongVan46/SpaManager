@@ -3013,7 +3013,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn('id="uploadBackupForm"', template)
         self.assertIn('action="{{ url_for(\'setting.save_spa_info\') }}" method="POST"', template)
         self.assertGreaterEqual(template.count('name="csrf_token"'), 4)
-        self.assertIn('Backup lưu lại trạng thái hiện tại của hệ thống.', template)
+        self.assertIn('Sao lưu lưu lại trạng thái hiện tại của hệ thống.', template)
         self.assertIn('id="restoreConfirmCheck"', template)
         self.assertIn('id="deleteBackupConfirmCheck"', template)
         self.assertIn('id="wizardRestoreConfirmCheck"', template)

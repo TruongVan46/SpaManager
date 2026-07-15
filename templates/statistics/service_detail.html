@@ -73,7 +73,7 @@
                                 <tr>
                                     <td>{{ loop.index }}</td>
                                     <td class="fw-bold">{{ inv.invoice_code }}</td>
-                                    <td>{{ inv.invoice_date.strftime('%d/%m/%Y') if inv.invoice_date else 'N/A' }}</td>
+                                    <td>{{ inv.invoice_date.strftime('%d/%m/%Y') if inv.invoice_date else 'Không có' }}</td>
                                     <td>{{ inv.customer_name }}</td>
                                     <td>{{ inv.quantity }}</td>
                                     <td>{{ inv.price | format_currency }}</td>

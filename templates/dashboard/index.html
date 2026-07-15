@@ -1,8 +1,6 @@
 {% extends "layout/base.html" %}
 
-{% block title %}
-Dashboard
-{% endblock %}
+{% block title %}Trang chủ{% endblock %}
 
 {% block content %}
 <div class="container-fluid app-page dashboard-page">
@@ -129,7 +127,7 @@ Dashboard
                                 <td>{{ inv.total }}</td>
                                 <td>{{ inv.date }}</td>
                                 <td>
-                                    <span class="app-badge app-badge-completed badge status-completed">{{ inv.status }}</span>
+                                    <span class="app-badge app-badge-completed badge status-completed">{{ display_status(inv.status) }}</span>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -155,7 +153,7 @@ Dashboard
                 <h5 class="app-card-header-title card-title m-0">
                     <i class="bi bi-shield-check" style="font-size: 18px; margin-right: 8px;"></i>Tổng quan quản trị
                 </h5>
-                <span class="badge rounded-pill text-bg-light border text-secondary">{{ admin_summary.activity.status }}</span>
+                <span class="badge rounded-pill text-bg-light border text-secondary">{{ display_status(admin_summary.activity.status) }}</span>
             </div>
             <div class="app-card-body">
                 <div class="admin-summary-grid">
@@ -164,13 +162,13 @@ Dashboard
                         {% if admin_summary.backup.has_backup %}
                         <div class="admin-summary-card-value">{{ admin_summary.backup.display_name }}</div>
                         <div class="admin-summary-card-meta">
-                            {{ admin_summary.backup.friendly_time or 'Không rõ thời gian' }} · {{ admin_summary.backup.status or 'Valid' }}
+                            {{ admin_summary.backup.friendly_time or 'Không rõ thời gian' }} · {{ display_status(admin_summary.backup.status or 'Unknown') }}
                         </div>
                         <div class="admin-summary-card-meta">{{ admin_summary.backup.count }} bản sao lưu</div>
                         {% else %}
                         <div class="admin-summary-empty">Chưa có bản sao lưu.</div>
                         {% endif %}
-                        <a href="{{ url_for('setting.index') }}#card-backup-center" class="btn btn-sm btn-outline-primary mt-3">Mở Backup Center</a>
+                        <a href="{{ url_for('setting.index') }}#card-backup-center" class="btn btn-sm btn-outline-primary mt-3">Mở trung tâm sao lưu</a>
                     </div>
 
                     <div class="admin-summary-card">
@@ -186,7 +184,7 @@ Dashboard
                         <div class="admin-summary-card-value">{{ admin_summary.activity.warning_count + admin_summary.activity.error_count }}</div>
                         <div class="admin-summary-card-meta">Trong 7 ngày gần nhất</div>
                         <div class="admin-summary-card-meta">
-                            {{ admin_summary.activity.status }}
+                            {{ display_status(admin_summary.activity.status) }}
                             {% if admin_summary.activity.latest_time %}
                             · Lần gần nhất {{ admin_summary.activity.latest_time }}
                             {% endif %}

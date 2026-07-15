@@ -461,7 +461,7 @@ class AppointmentService:
 
             dashboard_cache.invalidate('dashboard_data')
             return True, None
-        return False, "Appointment not found"
+        return False, "Không tìm thấy lịch hẹn."
 
     @staticmethod
     def restore(appointment_id, actor=None):

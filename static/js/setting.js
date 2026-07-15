@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
         wBtnNext.classList.remove('d-none');
         wBtnExecute.classList.add('d-none');
         wBtnExecute.disabled = false;
-        wBtnExecute.innerHTML = '<i class="bi bi-check-lg me-1"></i> Thực hiện Import';
+        wBtnExecute.innerHTML = '<i class="bi bi-check-lg me-1"></i> Thực hiện nhập dữ liệu';
         
         wBtnCancel.classList.remove('d-none');
         wBtnCancel.disabled = false;
@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
         wBtnBack.disabled = true;
         wBtnCancel.disabled = true;
         wBtnCloseHeader.style.display = 'none';
-        wBtnExecute.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang tạo backup & Import dữ liệu...';
+        wBtnExecute.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang tạo bản sao lưu và nhập dữ liệu...';
 
         csrfFetch('/settings/import/execute', {
             method: 'POST',
@@ -477,17 +477,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (r.failed === r.total && r.total > 0) {
                     // All failed
                     if (reportIcon) reportIcon.className = 'bi bi-x-circle-fill text-danger';
-                    if (reportTitle) reportTitle.textContent = 'Import thất bại toàn bộ!';
+                    if (reportTitle) reportTitle.textContent = 'Nhập dữ liệu thất bại toàn bộ!';
                     if (reportDesc) reportDesc.textContent = 'Không có dòng dữ liệu nào được ghi nhận. Vui lòng kiểm tra báo cáo lỗi.';
                 } else if (r.failed > 0) {
                     // Partial success
                     if (reportIcon) reportIcon.className = 'bi bi-exclamation-circle-fill text-warning';
-                    if (reportTitle) reportTitle.textContent = 'Import hoàn tất với một số lỗi!';
+                    if (reportTitle) reportTitle.textContent = 'Nhập dữ liệu hoàn tất với một số lỗi!';
                     if (reportDesc) reportDesc.textContent = 'Một số dòng hợp lệ đã được ghi nhận. Một số dòng lỗi bị bỏ qua.';
                 } else {
                     // Success
                     if (reportIcon) reportIcon.className = 'bi bi-check-circle-fill text-success';
-                    if (reportTitle) reportTitle.textContent = 'Import hoàn tất thành công!';
+                    if (reportTitle) reportTitle.textContent = 'Nhập dữ liệu hoàn tất thành công!';
                     if (reportDesc) reportDesc.textContent = 'Toàn bộ dữ liệu trong tệp Excel đã được xử lý thành công.';
                 }
 
@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 wBtnBack.disabled = false;
                 wBtnCancel.disabled = false;
                 wBtnCloseHeader.style.display = 'block';
-                wBtnExecute.innerHTML = '<i class="bi bi-check-lg me-1"></i> Thực hiện Import';
+                wBtnExecute.innerHTML = '<i class="bi bi-check-lg me-1"></i> Thực hiện nhập dữ liệu';
             }
         })
         .catch(err => {
@@ -529,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function () {
             wBtnBack.disabled = false;
             wBtnCancel.disabled = false;
             wBtnCloseHeader.style.display = 'block';
-            wBtnExecute.innerHTML = '<i class="bi bi-check-lg me-1"></i> Thực hiện Import';
+            wBtnExecute.innerHTML = '<i class="bi bi-check-lg me-1"></i> Thực hiện nhập dữ liệu';
         });
     });
 
@@ -1033,11 +1033,11 @@ wizardBtnContinue1.addEventListener('click', function () {
         .then(res => res.json())
         .then(data => {
             if (data.blocked) {
-                wizardValidationResult.innerHTML = `<strong>Trạng thái:</strong> Bị khóa<br><strong>Thông báo:</strong> ${data.message || 'Backup Center đang tạm khóa trong chế độ PostgreSQL.'}`;
+                wizardValidationResult.innerHTML = `<strong>Trạng thái:</strong> Bị khóa<br><strong>Thông báo:</strong> ${data.message || 'Trung tâm sao lưu đang tạm khóa trong chế độ PostgreSQL.'}`;
                 if (wizardBtnContinue1) wizardBtnContinue1.disabled = true;
                 if (wizardBtnContinue2) wizardBtnContinue2.disabled = true;
                 if (wizardBtnConfirm) wizardBtnConfirm.disabled = true;
-                if (wizardWarningMsg) wizardWarningMsg.textContent = data.message || 'Backup Center đang tạm khóa trong chế độ PostgreSQL.';
+                if (wizardWarningMsg) wizardWarningMsg.textContent = data.message || 'Trung tâm sao lưu đang tạm khóa trong chế độ PostgreSQL.';
                 return;
             }
             const integrity = data.integrity || 'Unknown';

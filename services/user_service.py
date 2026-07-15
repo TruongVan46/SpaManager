@@ -14,8 +14,8 @@ from services.workspace_service import WorkspaceService
 
 class UserService:
     ROLE_LABELS = {
-        UserRole.OWNER.value: "Chủ Spa",
-        UserRole.ADMIN.value: "Quản trị",
+        UserRole.OWNER.value: "Chủ cơ sở",
+        UserRole.ADMIN.value: "Quản trị viên",
         UserRole.STAFF.value: "Nhân viên",
         UserRole.APPROVAL_OWNER.value: "Quản trị duyệt tài khoản",
     }

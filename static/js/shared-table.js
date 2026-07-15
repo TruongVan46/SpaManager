@@ -159,7 +159,7 @@
             credentials: 'same-origin'
         })
         .then(function(response) {
-            if (!response.ok) throw new Error('Failed to refresh table');
+            if (!response.ok) throw new Error('Không thể tải lại bảng dữ liệu');
             return response.text();
         })
         .then(function(html) {

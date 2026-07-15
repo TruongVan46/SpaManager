@@ -128,7 +128,7 @@ class BackupService:
         # Guard: Backup Center only supports SQLite backup flow
         if not BackupService.is_sqlite_database(app):
             app_logger.warning(
-                "Backup Center is disabled: only supported on SQLite databases. Use the PostgreSQL backup runbook instead.",
+                "Trung tâm sao lưu bị vô hiệu hóa: chỉ hỗ trợ cơ sở dữ liệu SQLite. Hãy sử dụng quy trình sao lưu PostgreSQL riêng.",
                 module="BACKUP"
             )
             return None, None, None
@@ -324,7 +324,7 @@ class BackupService:
                 'display_name': meta.get('display_name') or f"Backup ngày {dt.strftime('%d/%m/%Y %H:%M')}",
                 'created_at': dt,
                 'created_at_timestamp': dt.timestamp() if dt else 0,
-                'created_at_friendly': BackupService.format_friendly_time(dt) if dt else 'N/A',
+                'created_at_friendly': BackupService.format_friendly_time(dt) if dt else 'Không có',
                 'size': size_value or 0,
                 'size_friendly': BackupService.format_size(size_value or 0),
                 'version_db': meta.get('database_version', 'v1.0'),

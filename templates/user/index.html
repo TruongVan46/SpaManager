@@ -8,7 +8,7 @@
     <div class="app-page-header">
         <div>
             <h1 class="app-title mb-0">Quản lý Người dùng</h1>
-            <p class="text-muted mb-0">Chỉ owner/admin mới được truy cập khu vực này.</p>
+            <p class="text-muted mb-0">Chỉ chủ cơ sở hoặc quản trị viên mới được truy cập khu vực này.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <a href="{{ url_for('user.create') }}" class="app-btn app-btn-primary btn btn-primary">
@@ -39,7 +39,7 @@
                 <table class="app-table table table-hover align-middle">
                     <thead class="app-table-header">
                         <tr>
-                            <th scope="col">Username</th>
+                            <th scope="col">Tên đăng nhập</th>
                             <th scope="col">Họ tên</th>
                             <th scope="col">Email</th>
                             <th scope="col">Vai trò</th>
@@ -54,7 +54,7 @@
                             <td><strong>{{ user.username | highlight(q) }}</strong></td>
                             <td>{{ user.full_name | highlight(q) }}</td>
                             <td>{{ user.email | highlight(q) if user.email else 'Chưa có' }}</td>
-                            <td>{{ role_labels.get(user.role, user.role) }}</td>
+                            <td>{{ role_labels.get(user.role, display_role(user.role)) }}</td>
                             <td class="text-center">
                                 {% if user.is_active %}
                                 <span class="badge bg-success">Đang hoạt động</span>
@@ -64,7 +64,7 @@
                             </td>
                             <td>
                                 {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
-                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'Chưa có' }}
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm flex-wrap" role="group">
@@ -116,7 +116,7 @@
                 <table class="app-table table table-hover align-middle">
                     <thead class="app-table-header">
                         <tr>
-                            <th scope="col">Username</th>
+                            <th scope="col">Tên đăng nhập</th>
                             <th scope="col">Họ tên</th>
                             <th scope="col">Email</th>
                             <th scope="col">Vai trò</th>
@@ -131,10 +131,10 @@
                             <td><strong>{{ user.username | highlight(q) }}</strong></td>
                             <td>{{ user.full_name | highlight(q) }}</td>
                             <td>{{ user.email | highlight(q) if user.email else 'Chưa có' }}</td>
-                            <td>{{ role_labels.get(user.role, user.role) }}</td>
+                            <td>{{ role_labels.get(user.role, display_role(user.role)) }}</td>
                             <td>
                                 {% set removed_local = user.removed_at | vietnam_time if user.removed_at else None %}
-                                {{ removed_local.strftime('%d/%m/%Y %H:%M') if removed_local else 'N/A' }}
+                                {{ removed_local.strftime('%d/%m/%Y %H:%M') if removed_local else 'Chưa có' }}
                             </td>
                             <td>{{ user.removed_by.full_name if user.removed_by else 'Hệ thống' }}</td>
                             <td class="text-center">

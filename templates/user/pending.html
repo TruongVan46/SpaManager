@@ -27,7 +27,7 @@
                 <table class="app-table table table-hover align-middle">
                     <thead class="app-table-header">
                         <tr>
-                            <th scope="col">Username</th>
+                            <th scope="col">Tên đăng nhập</th>
                             <th scope="col">Họ tên</th>
                             <th scope="col">Email</th>
                             <th scope="col">Vai trò</th>
@@ -42,12 +42,12 @@
                             <td><strong>{{ user.username }}</strong></td>
                             <td>{{ user.full_name or 'Chưa có' }}</td>
                             <td>{{ user.email or 'Chưa có' }}</td>
-                            <td>{{ role_labels.get(user.role, user.role) if role_labels else user.role }}</td>
+                            <td>{{ role_labels.get(user.role, display_role(user.role)) if role_labels else display_role(user.role) }}</td>
                             <td>
                                 {% if user.auth_provider %}
                                 <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
                                 {% else %}
-                                <span class="text-muted">local</span>
+                                <span class="text-muted">Cục bộ</span>
                                 {% endif %}
                                 {% if user.email_verified %}
                                 <span class="badge bg-success ms-1">Email đã xác minh</span>
@@ -57,7 +57,7 @@
                             </td>
                             <td class="text-center">
                                 {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
-                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                                {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'Chưa có' }}
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">

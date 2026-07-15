@@ -99,8 +99,8 @@ class DashboardStatisticsService:
         recent_appointments = [
             {
                 'time': appt.appointment_time.strftime('%H:%M %d/%m'),
-                'customer': appt.customer.name if appt.customer else 'N/A',
-                'service': appt.service.name if appt.service else 'N/A',
+                'customer': appt.customer.name if appt.customer else 'Không có',
+                'service': appt.service.name if appt.service else 'Không có',
                 'status': status_map.get(appt.status, appt.status)
             }
             for appt in appointments
@@ -117,9 +117,9 @@ class DashboardStatisticsService:
         latest_invoices = [
             {
                 'id': inv.id,
-                'customer': inv.customer.name if inv.customer else 'N/A',
+                'customer': inv.customer.name if inv.customer else 'Không có',
                 'total': f"{int(inv.total_amount):,}".replace(',', '.') + 'đ',
-                'date': format_local_datetime(inv.created_at, assume_utc=True) if inv.created_at else 'N/A',
+                'date': format_local_datetime(inv.created_at, assume_utc=True) if inv.created_at else 'Không có',
                 'status': 'Hoàn thành'
             }
             for inv in latest_invoices_query
@@ -146,7 +146,7 @@ class DashboardStatisticsService:
                 'module': log.module,
                 'action': log.action,
                 'description': log.description,
-                'time': format_local_datetime(log.created_at, assume_utc=True) if log.created_at else 'N/A',
+                'time': format_local_datetime(log.created_at, assume_utc=True) if log.created_at else 'Không có',
                 'severity': log.severity
             }
             for log in recent_logs

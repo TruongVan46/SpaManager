@@ -69,7 +69,7 @@
                         <div class="spa-toast-content">
                             <span class="spa-toast-message"></span>
                         </div>
-                        <button type="button" class="spa-toast-close" aria-label="Close">
+                        <button type="button" class="spa-toast-close" aria-label="Đóng">
                             <i class="bi bi-x"></i>
                         </button>
                     </div>

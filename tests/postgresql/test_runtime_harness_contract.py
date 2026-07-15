@@ -239,6 +239,30 @@ def test_runtime_contract_preserves_complete_user_baseline_and_adds_counted_drif
     assert "stored.manifest_hash == manifest_hash" in source
 
 
+def test_runtime_contract_uses_vietnamese_confirmation_primary_paths():
+    source = (ROOT / "test_purge_runtime_postgresql.py").read_text(encoding="utf-8")
+    primary_e2e = source.split(
+        "def test_execute_route_runs_real_workspace_purge_end_to_end", 1
+    )[1].split("def test_route_e2e_cross_workspace_verification", 1)[0]
+    service_source = (ROOT.parent.parent / "services" / "purge_request_service.py").read_text(encoding="utf-8")
+    approval_source = (ROOT.parent.parent / "routes" / "approval.py").read_text(encoding="utf-8")
+
+    assert "_request_confirmation(fixture[\"workspace_slug\"])" in primary_e2e
+    assert "_approval_confirmation(fixture[\"workspace_slug\"], request.lifecycle_id)" in primary_e2e
+    assert "_execution_confirmation(fixture[\"workspace_id\"], request.id)" in primary_e2e
+    assert "REQUEST PURGE" not in primary_e2e
+    assert "APPROVE PURGE" not in primary_e2e
+    assert "PURGE WORKSPACE" not in primary_e2e
+
+    assert 'f"YÊU CẦU XÓA VĨNH VIỄN {workspace.slug}"' in service_source
+    assert 'f"PHÊ DUYỆT YÊU CẦU XÓA VĨNH VIỄN {request.target_workspace_slug} {request.lifecycle_id}"' in service_source
+    assert 'f"XÓA VĨNH VIỄN CƠ SỞ {summary.workspace_id} YÊU CẦU {summary.id}"' in approval_source
+    assert "legacy=f\"REQUEST PURGE {workspace.slug}\"" in service_source
+    assert "legacy=f\"APPROVE PURGE {request.target_workspace_slug} {request.lifecycle_id}\"" in service_source
+    assert 'f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}"' in approval_source
+    assert "value.strip() not in accepted" in service_source
+
+
 def test_opted_out_fixture_skips_before_runtime_creation():
     source = (ROOT / "conftest.py").read_text(encoding="utf-8")
     assert "pytest.skip" in source
@@ -389,8 +413,8 @@ def test_lh_d_decisive_barrier_preserves_result_and_ignores_waiter():
 
     class PurgeLegalHoldService:
         @staticmethod
-        def _phrase(value, expected):
-            return (value, expected)
+        def _phrase(value, expected, legacy=None):
+            return (value, expected, legacy)
 
     runtime = SimpleNamespace(services=SimpleNamespace(PurgeLegalHoldService=PurgeLegalHoldService))
     winner_plan = HookPlan()
@@ -399,13 +423,19 @@ def test_lh_d_decisive_barrier_preserves_result_and_ignores_waiter():
     service, attribute, descriptor = _arm_decisive_release_hold_barrier(runtime, plans)
     try:
         unrelated = PurgeLegalHoldService._phrase("HOLD workspace", "HOLD workspace")
-        assert unrelated == ("HOLD workspace", "HOLD workspace")
+        assert unrelated == ("HOLD workspace", "HOLD workspace", None)
         assert not winner_plan.winner_hold_lock_acquired.is_set()
 
         winner_result = []
 
         def winner_call():
-            winner_result.append(PurgeLegalHoldService._phrase("RELEASE hold-1", "RELEASE hold-1"))
+            winner_result.append(
+                PurgeLegalHoldService._phrase(
+                    "GIỮ workspace",
+                    "GIỮ workspace",
+                    legacy="RELEASE hold-1",
+                )
+            )
 
         winner = threading.Thread(target=winner_call, name="winner")
         winner.start()
@@ -414,17 +444,23 @@ def test_lh_d_decisive_barrier_preserves_result_and_ignores_waiter():
         assert not waiter_plan.winner_hold_lock_acquired.is_set()
         winner_plan.allow_winner_to_continue.set()
         winner.join(1)
-        assert winner_result == [("RELEASE hold-1", "RELEASE hold-1")]
+        assert winner_result == [("GIỮ workspace", "GIỮ workspace", "RELEASE hold-1")]
 
         waiter_result = []
 
         def waiter_call():
-            waiter_result.append(PurgeLegalHoldService._phrase("RELEASE hold-1", "RELEASE hold-1"))
+            waiter_result.append(
+                PurgeLegalHoldService._phrase(
+                    "GIỮ workspace",
+                    "GIỮ workspace",
+                    legacy="RELEASE hold-1",
+                )
+            )
 
         waiter = threading.Thread(target=waiter_call, name="waiter")
         waiter.start()
         waiter.join(1)
-        assert waiter_result == [("RELEASE hold-1", "RELEASE hold-1")]
+        assert waiter_result == [("GIỮ workspace", "GIỮ workspace", "RELEASE hold-1")]
         assert not waiter_plan.winner_hold_lock_acquired.is_set()
     finally:
         setattr(service, attribute, descriptor)

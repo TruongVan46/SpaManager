@@ -11,6 +11,7 @@ from datetime import datetime
 import inspect
 import threading
 import time
+from pathlib import PurePath
 from typing import Callable
 
 import pytest
@@ -52,6 +53,7 @@ class SanitizedWorkerFailure:
     sqlstate: str | None
     safe_root_category: str
     code: str | None = None
+    project_frame: str | None = None
 
 
 @dataclass
@@ -74,6 +76,8 @@ class WorkerResult:
     completed_at: float | None = None
     operation_returned_sequence: int | None = None
     completed_sequence: int | None = None
+    safe_project_frame: str | None = None
+    cleanup_outcome: str = "PENDING_FIXTURE_RESET"
 
 
 @dataclass
@@ -143,28 +147,72 @@ def _safe_root_category(error, sqlstate):
     return "UNCLASSIFIED_SAFE_EXCEPTION"
 
 
+def _safe_project_frame(error):
+    traceback = getattr(error, "__traceback__", None)
+    while traceback is not None:
+        frame = traceback.tb_frame
+        filename = str(frame.f_code.co_filename).replace("\\", "/")
+        if filename.endswith(
+            (
+                "/tests/postgresql/test_purge_legal_hold_concurrency_postgresql.py",
+                "/services/purge_legal_hold_service.py",
+            )
+        ):
+            return (
+                f"{PurePath(filename).name}:"
+                f"{traceback.tb_lineno}:"
+                f"{frame.f_code.co_name}"
+            )
+        traceback = traceback.tb_next
+    return None
+
+
+def _safe_root_exception(error):
+    current = error
+    seen = set()
+    for _ in range(4):
+        if current is None or id(current) in seen:
+            break
+        seen.add(id(current))
+        next_error = getattr(current, "orig", None)
+        if next_error is None or next_error is current:
+            next_error = getattr(current, "__cause__", None)
+        if next_error is None or next_error is current:
+            next_error = getattr(current, "__context__", None)
+        if next_error is None or next_error is current:
+            break
+        current = next_error
+    return current
+
+
 def _record_safe_worker_error(result, error):
     public_class = type(error).__name__
     public_module = type(error).__module__
+    root_error = _safe_root_exception(error)
+    root_class = type(root_error).__name__
+    root_module = type(root_error).__module__
     sqlstate = _safe_sqlstate(error)
     code = getattr(error, "code", None)
     safe_code = code if code in SAFE_ERROR_CODES else None
     category = _safe_root_category(error, sqlstate)
     if category not in SAFE_ROOT_CATEGORIES:
         category = "UNCLASSIFIED_SAFE_EXCEPTION"
+    project_frame = _safe_project_frame(error)
     result.exception = SanitizedWorkerFailure(
         public_exception_class=public_class,
         public_exception_module=public_module,
-        root_exception_class=public_class,
-        root_exception_module=public_module,
+        root_exception_class=root_class,
+        root_exception_module=root_module,
         sqlstate=sqlstate,
         safe_root_category=category,
         code=safe_code,
+        project_frame=project_frame,
     )
     result.safe_exception_class = public_class
     result.safe_error_code = safe_code
     result.safe_stage = f"{result.name.upper()}_OPERATION"
     result.safe_root_category = category
+    result.safe_project_frame = project_frame
     result.terminal_outcome = (
         "SAFE_EXCEPTION" if safe_code is not None else "UNSAFE_EXCEPTION"
     )
@@ -233,10 +281,11 @@ def _arm_decisive_release_hold_barrier(runtime, plans):
     descriptor = inspect.getattr_static(service, "_phrase")
     original = descriptor.__func__ if isinstance(descriptor, staticmethod) else descriptor
 
-    def wrapped(value, expected):
+    def wrapped(value, expected, legacy=None):
         current = plans.get(threading.current_thread().name)
-        result = original(value, expected)
-        if current is plans.get("winner") and isinstance(expected, str) and expected.startswith("RELEASE "):
+        result = original(value, expected, legacy=legacy)
+        effective_phrase = legacy if legacy is not None else expected
+        if current is plans.get("winner") and isinstance(effective_phrase, str) and effective_phrase.startswith("RELEASE "):
             current.winner_hold_lock_acquired.set()
             current.winner_observed_active.set()
             current.lock_acquired.set()
@@ -547,12 +596,12 @@ def _emit_lh_d_safe_failure(results, stage):
     winner = (
         "SUCCESS"
         if results["winner"].terminal_outcome == "NORMAL_RETURN"
-        else "UNKNOWN"
+        else results["winner"].terminal_outcome
     )
     waiter = (
         "ALREADY_RELEASED"
         if getattr(results["waiter"].exception, "code", None) == "ALREADY_RELEASED"
-        else "UNKNOWN"
+        else results["waiter"].terminal_outcome
     )
     waiter_outcome = results["waiter"].terminal_outcome
     if waiter_outcome == "NOT_STARTED":
@@ -579,12 +628,119 @@ def _emit_lh_d_safe_failure(results, stage):
             "YES" if results["waiter"].thread_alive else "NO"
         ),
         "LH_D_SAFE_DEADLOCK_DETECTED": "YES" if deadlock_detected else "NO",
-        "LH_D_SAFE_PUBLIC_EXCEPTION_CLASS": "SANITIZED",
-        "LH_D_SAFE_ROOT_EXCEPTION_CLASS": "SANITIZED",
-        "LH_D_SAFE_SQLSTATE": "UNKNOWN",
+        "LH_D_SAFE_WINNER_EXCEPTION_CLASS": (
+            results["winner"].exception.public_exception_class
+            if results["winner"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WINNER_EXCEPTION_MODULE": (
+            results["winner"].exception.public_exception_module
+            if results["winner"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WINNER_ROOT_EXCEPTION_CLASS": (
+            results["winner"].exception.root_exception_class
+            if results["winner"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WINNER_ROOT_EXCEPTION_MODULE": (
+            results["winner"].exception.root_exception_module
+            if results["winner"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WINNER_SQLSTATE": (
+            results["winner"].exception.sqlstate
+            if results["winner"].exception is not None
+            and results["winner"].exception.sqlstate
+            else "NONE"
+        ),
+        "LH_D_SAFE_WINNER_ROOT_CATEGORY": (
+            results["winner"].safe_root_category or "NONE"
+        ),
+        "LH_D_SAFE_WINNER_FAILURE_PHASE": (
+            results["winner"].safe_stage or "NONE"
+        ),
+        "LH_D_SAFE_WINNER_PROJECT_FRAME": (
+            results["winner"].safe_project_frame or "NONE"
+        ),
+        "LH_D_SAFE_FAILURE_PHASE": stage,
+        "LH_D_SAFE_PROJECT_FRAME": (
+            results["winner"].safe_project_frame
+            or results["waiter"].safe_project_frame
+            or "NONE"
+        ),
+        "LH_D_SAFE_WAITER_EXCEPTION_CLASS": (
+            results["waiter"].exception.public_exception_class
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WAITER_EXCEPTION_MODULE": (
+            results["waiter"].exception.public_exception_module
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WAITER_ROOT_EXCEPTION_CLASS": (
+            results["waiter"].exception.root_exception_class
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WAITER_ROOT_EXCEPTION_MODULE": (
+            results["waiter"].exception.root_exception_module
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_WAITER_SQLSTATE": (
+            results["waiter"].exception.sqlstate
+            if results["waiter"].exception is not None
+            and results["waiter"].exception.sqlstate
+            else "NONE"
+        ),
+        "LH_D_SAFE_WAITER_ROOT_CATEGORY": (
+            results["waiter"].safe_root_category or "NONE"
+        ),
+        "LH_D_SAFE_WAITER_FAILURE_PHASE": (
+            results["waiter"].safe_stage or "NONE"
+        ),
+        "LH_D_SAFE_WAITER_PROJECT_FRAME": (
+            results["waiter"].safe_project_frame or "NONE"
+        ),
+        "LH_D_SAFE_PUBLIC_EXCEPTION_CLASS": (
+            results["waiter"].exception.public_exception_class
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_PUBLIC_EXCEPTION_MODULE": (
+            results["waiter"].exception.public_exception_module
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_ROOT_EXCEPTION_CLASS": (
+            results["waiter"].exception.root_exception_class
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_ROOT_EXCEPTION_MODULE": (
+            results["waiter"].exception.root_exception_module
+            if results["waiter"].exception is not None
+            else "NONE"
+        ),
+        "LH_D_SAFE_SQLSTATE": (
+            results["waiter"].exception.sqlstate
+            if results["waiter"].exception is not None
+            and results["waiter"].exception.sqlstate
+            else "NONE"
+        ),
         "LH_D_SAFE_ROOT_CATEGORY": next(
             (category for category in categories if category),
             "UNCLASSIFIED_SAFE_EXCEPTION",
+        ),
+        "LH_D_SAFE_CLEANUP_RESULT": next(
+            (
+                results[name].cleanup_outcome
+                for name in ("winner", "waiter")
+                if results[name].cleanup_outcome
+            ),
+            "PENDING_FIXTURE_RESET",
         ),
     }
     for key, value in markers.items():

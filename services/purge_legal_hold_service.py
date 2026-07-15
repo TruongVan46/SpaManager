@@ -88,9 +88,10 @@ class PurgeLegalHoldService:
         return value
 
     @staticmethod
-    def _phrase(value, expected):
-        if not isinstance(value, str) or value.strip() != expected:
-            raise PurgeLegalHoldConflictError("Confirmation phrase is invalid.", "INVALID_CONFIRMATION")
+    def _phrase(value, expected, legacy=None):
+        accepted = {expected, legacy} - {None}
+        if not isinstance(value, str) or value.strip() not in accepted:
+            raise PurgeLegalHoldConflictError("Câu xác nhận không hợp lệ.", "INVALID_CONFIRMATION")
 
     @staticmethod
     def _terminal(session, workspace_id, lock=True):
@@ -106,7 +107,7 @@ class PurgeLegalHoldService:
         if workspace is None or terminal is None:
             raise PurgeLegalHoldNotFoundError()
         if terminal["purged_at"] is not None or terminal["purge_request_id"] is not None:
-            raise PurgeLegalHoldConflictError("Terminal workspaces cannot change legal holds.", "TERMINAL_WORKSPACE")
+            raise PurgeLegalHoldConflictError("Cơ sở đã kết thúc không thể thay đổi lệnh giữ dữ liệu pháp lý.", "TERMINAL_WORKSPACE")
         return workspace, terminal
 
     @staticmethod
@@ -141,10 +142,14 @@ class PurgeLegalHoldService:
             workspace, _terminal = PurgeLegalHoldService._workspace_for_mutation(session, workspace_id)
             hold_type = PurgeLegalHoldService._clean_text(hold_type, "Hold type", 50).upper()
             if not PurgeLegalHoldService._HOLD_TYPE.fullmatch(hold_type):
-                raise PurgeLegalHoldConflictError("Hold type is invalid.", "INVALID_INPUT")
+                raise PurgeLegalHoldConflictError("Loại lệnh giữ không hợp lệ.", "INVALID_INPUT")
             reason = PurgeLegalHoldService._clean_text(reason, "Reason")
             source = PurgeLegalHoldService._clean_text(source, "Source", 100)
-            PurgeLegalHoldService._phrase(confirmation_phrase, f"HOLD {workspace.slug}")
+            PurgeLegalHoldService._phrase(
+                confirmation_phrase,
+                f"GIỮ DỮ LIỆU PHÁP LÝ {workspace.slug}",
+                legacy=f"HOLD {workspace.slug}",
+            )
             hold = PurgeLegalHold(
                 hold_id=str(uuid.uuid4()), workspace_id=workspace.id, hold_type=hold_type,
                 status="ACTIVE", source=source, reason=reason,
@@ -184,9 +189,13 @@ class PurgeLegalHoldService:
             if hold is None or hold.workspace_id != workspace.id:
                 raise PurgeLegalHoldNotFoundError()
             if hold.status != "ACTIVE" or hold.released_at is not None or hold.released_by_snapshot or hold.release_reason:
-                raise PurgeLegalHoldConflictError("Legal hold is no longer active.", "ALREADY_RELEASED")
+                raise PurgeLegalHoldConflictError("Lệnh giữ dữ liệu pháp lý không còn hoạt động.", "ALREADY_RELEASED")
             release_reason = PurgeLegalHoldService._clean_text(release_reason, "Release reason")
-            PurgeLegalHoldService._phrase(confirmation_phrase, f"RELEASE {hold.hold_id}")
+            PurgeLegalHoldService._phrase(
+                confirmation_phrase,
+                f"GỠ GIỮ DỮ LIỆU PHÁP LÝ {hold.hold_id}",
+                legacy=f"RELEASE {hold.hold_id}",
+            )
             hold.status = "RELEASED"
             hold.released_by_id = actor.id
             hold.released_by_snapshot = actor.username[:100]

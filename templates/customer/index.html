@@ -61,9 +61,9 @@
                             {% for customer in customers.items %}
                             <tr>
                                 <td><strong>{{ customer.name | highlight(q) }}</strong></td>
-                                <td>{{ customer.phone | highlight(q) if customer.phone else 'N/A' }}</td>
-                                <td>{{ customer.email | highlight(q) if customer.email else 'N/A' }}</td>
-                                <td>{{ customer.address | highlight(q) if customer.address else 'N/A' }}</td>
+                            <td>{{ customer.phone | highlight(q) if customer.phone else 'Không có' }}</td>
+                            <td>{{ customer.email | highlight(q) if customer.email else 'Không có' }}</td>
+                            <td>{{ customer.address | highlight(q) if customer.address else 'Không có' }}</td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
                                         <a href="{{ url_for('customer.detail', id=customer.id) }}" class="btn btn-outline-secondary" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
@@ -96,7 +96,7 @@
             <form id="deleteCustomerForm" method="POST">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa khách hàng</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body text-center py-4">
                     <i class="bi bi-question-circle text-primary" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
@@ -121,7 +121,7 @@
                 <h5 class="modal-title fw-bold" id="deleteWarningModalLabel">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>Không thể xóa khách hàng
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body py-4">
                 <div class="text-center mb-3">

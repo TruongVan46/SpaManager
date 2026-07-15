@@ -230,7 +230,7 @@ def update_status():
     status = data.get('status')
     
     if not appointment_id or not status:
-        return jsonify({'error': 'Missing id or status'}), 400
+        return jsonify({'error': 'Thiếu mã hoặc trạng thái lịch hẹn.'}), 400
     
     appointment = AppointmentService.update_status(appointment_id, status)
     
@@ -306,14 +306,14 @@ def get_events():
         
         events.append({
             'id': a.id,
-            'title': a.customer.name if a.customer else 'N/A',
+            'title': a.customer.name if a.customer else 'Không có',
             'start': a.appointment_time.isoformat() if a.appointment_time else None,
             'end': end_time.isoformat() if end_time else None,
             'status': a.status,
             'display_status': AppointmentService._status_display_label(a.status),
-            'customer_name': a.customer.name if a.customer else 'N/A',
+            'customer_name': a.customer.name if a.customer else 'Không có',
             'customer_phone': a.customer.phone if a.customer else '',
-            'service_name': a.service.name if a.service else 'N/A',
+            'service_name': a.service.name if a.service else 'Không có',
             'service_price': a.service.price if (a.service and a.service.price is not None) else 0.0,
             'service_duration': duration,
             'notes': a.notes or '',

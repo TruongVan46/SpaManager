@@ -80,7 +80,7 @@
                                 <tr>
                                     <td>{{ loop.index }}</td>
                                     <td class="fw-bold">HD{{ invoice.id }}</td>
-                                    <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</td>
+                                    <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'Không có' }}</td>
                                     <td>{{ invoice.total_amount | format_currency }}</td>
                                     <td>
                                         <span class="app-badge badge bg-info text-dark">{{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</span>

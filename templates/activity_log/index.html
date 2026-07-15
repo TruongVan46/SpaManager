@@ -45,7 +45,7 @@
                     
                     <!-- 3. Filter Module -->
                     <div class="filter-item module-box">
-                        <label class="form-label small mb-1" for="module-select">Module</label>
+                        <label class="form-label small mb-1" for="module-select">Phân hệ</label>
                         <select id="module-select" name="module" class="app-form-select form-select form-select-sm">
                             <option value="" {% if not module or module == 'Tất cả' %}selected{% endif %}>Tất cả</option>
                             <option value="Customer" {% if module == 'Customer' %}selected{% endif %}>Khách hàng</option>
@@ -61,7 +61,7 @@
 
                     <!-- 4. Filter Action -->
                     <div class="filter-item action-box">
-                        <label class="form-label small mb-1" for="action-select">Action</label>
+                        <label class="form-label small mb-1" for="action-select">Thao tác</label>
                         <select id="action-select" name="action" class="app-form-select form-select form-select-sm">
                             <option value="" {% if not action or action == 'Tất cả' %}selected{% endif %}>Tất cả</option>
                             <option value="CREATE" {% if action == 'CREATE' %}selected{% endif %}>Tạo mới</option>
@@ -80,7 +80,7 @@
 
                     <!-- 5. Filter Severity -->
                     <div class="filter-item severity-box">
-                        <label class="form-label small mb-1" for="severity-select">Severity</label>
+                        <label class="form-label small mb-1" for="severity-select">Mức độ</label>
                         <select id="severity-select" name="severity" class="app-form-select form-select form-select-sm">
                             <option value="" {% if not severity or severity == 'Tất cả' %}selected{% endif %}>Tất cả</option>
                             <option value="SUCCESS" {% if severity == 'SUCCESS' %}selected{% endif %}>Thành công</option>
@@ -153,10 +153,10 @@
                     <thead class="app-table-header">
                         <tr>
                             <th class="col-time" scope="col">Thời gian</th>
-                            <th class="col-module" scope="col">Module</th>
+                            <th class="col-module" scope="col">Phân hệ</th>
                             <th class="col-actor d-none d-lg-table-cell" scope="col">Người thực hiện</th>
-                            <th class="col-action text-center" scope="col">Action</th>
-                            <th class="col-severity text-center" scope="col">Severity</th>
+                            <th class="col-action text-center" scope="col">Thao tác</th>
+                            <th class="col-severity text-center" scope="col">Mức độ</th>
                             <th class="col-description" scope="col">Nội dung</th>
                             <th class="col-reference text-center d-none d-md-table-cell" scope="col">ID tham chiếu</th>
                         </tr>
@@ -164,7 +164,7 @@
                     <tbody>
                         {% for log in logs.items %}
                         {% set local_dt = log.created_at | vietnam_time if log.created_at else None %}
-                        {% set formatted_time = local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else 'N/A' %}
+                        {% set formatted_time = local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else 'Chưa có' %}
                         
                         {# Map Module translation to display on data attribute #}
                         {% set translated_module = '-' %}
@@ -196,7 +196,7 @@
                                     <span class="log-time">{{ local_dt.strftime('%H:%M') }}</span>
                                 </div>
                                 {% else %}
-                                N/A
+                                Chưa có
                                 {% endif %}
                             </td>
                             <td class="col-module">

@@ -534,10 +534,10 @@ def restore_wizard_confirm():
     data = request.get_json() or {}
     backup_id = data.get('backup_id')
     if not backup_id:
-        return jsonify({'success': False, 'message': 'Missing backup_id'}), 400
+        return jsonify({'success': False, 'message': 'Thiếu mã bản sao lưu.'}), 400
     meta = BackupRepository.get_by_id(current_app, backup_id)
     if not meta:
-        return jsonify({'success': False, 'message': 'Backup not found'}), 400
+        return jsonify({'success': False, 'message': 'Không tìm thấy bản sao lưu.'}), 400
     filepath = BackupService.get_backup_file_path(current_app, meta.get('filename'))
     if not filepath or not os.path.exists(filepath):
         return jsonify({'success': False, 'message': 'File sao lưu không tồn tại trên đĩa.'}), 400

@@ -495,7 +495,14 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
         ), patch("routes.approval.PurgeService.execute_workspace_purge") as execute:
             execute.return_value = SimpleNamespace(request_id=45)
             self._set_transport(valid_client)
-            for phrase in ("", "purge workspace 12 request 45", "PURGE WORKSPACE 12"):
+            for phrase in (
+                "",
+                "purge workspace 12 request 45",
+                "PURGE WORKSPACE 12",
+                "XÓA VĨNH VIỄN CƠ SỞ 12",
+                "XOA VINH VIEN CO SO 12 YEU CAU 45",
+                "xóa vĩnh viễn cơ sở 12 yêu cầu 45",
+            ):
                 with self.subTest(phrase=phrase):
                     response = valid_client.post(
                         "/approval/purge-requests/45/execute",
@@ -550,8 +557,8 @@ class ApprovalPurgeRoutesTestCase(unittest.TestCase):
             template = source.read()
         self.assertIn("csrf_token()", template)
         self.assertIn("confirmation_phrase", template)
-        self.assertIn("Filesystem files are not deleted", template)
-        self.assertIn("production authorization remains separate", template)
+        self.assertIn("Tệp trên hệ thống không bị xóa", template)
+        self.assertIn("quyền production được cấp riêng", template)
         self.assertNotIn("DATABASE_URL", template)
         self.assertNotIn("execute_workspace_purge", template)
         self.assertNotIn("raw_nonce", template)

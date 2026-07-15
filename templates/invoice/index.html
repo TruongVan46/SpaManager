@@ -177,8 +177,8 @@
                             <tr>
                                 <td class="text-center">{{ (invoices.page - 1) * invoices.per_page + loop.index }}</td>
                                 <td class="fw-bold">HD{{ invoice.id }}</td>
-                                <td>{{ invoice.customer.name | highlight(q) if invoice.customer else 'N/A' }}</td>
-                                <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</td>
+                                    <td>{{ invoice.customer.name | highlight(q) if invoice.customer else 'Không có' }}</td>
+                                    <td>{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'Không có' }}</td>
                                 <td class="text-end fw-bold">{{ "{:,.0f}".format(invoice.total_amount) }}đ</td>
                                 <td>
                                 <span class="app-badge badge bg-info text-dark">{{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</span>
@@ -226,7 +226,7 @@
                     <h5 class="modal-title text-danger fw-bold" id="deleteConfirmModalLabel">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa hóa đơn
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body text-center py-4">
                     <i class="bi bi-question-circle text-danger" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>

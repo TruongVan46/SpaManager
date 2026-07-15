@@ -259,7 +259,7 @@
             </div>
             <div class="date-info text-right">
                 <h3>Hóa đơn:</h3>
-                <p><strong>Ngày lập:</strong> {{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</p>
+                <p><strong>Ngày lập:</strong> {{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'Không có' }}</p>
                 <p><strong>Phương thức thanh toán:</strong> {{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</p>
                 <p><strong>Giờ in:</strong> <span id="print-time"></span></p>
             </div>

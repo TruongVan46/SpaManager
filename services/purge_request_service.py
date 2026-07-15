@@ -125,7 +125,7 @@ class PurgeRequestService:
     @staticmethod
     def _now(value):
         if value is not None and not isinstance(value, datetime):
-            raise PurgeRequestConflictError("Workflow time must be a datetime.", "INVALID_NOW")
+            raise PurgeRequestConflictError("Thời điểm quy trình phải là ngày giờ hợp lệ.", "INVALID_NOW")
         return value or utc_now()
 
     @staticmethod
@@ -136,9 +136,10 @@ class PurgeRequestService:
         return actor
 
     @staticmethod
-    def _phrase(value, expected):
-        if not isinstance(value, str) or value.strip() != expected:
-            raise PurgeRequestConflictError("Confirmation phrase is invalid.", "INVALID_CONFIRMATION")
+    def _phrase(value, expected, legacy=None):
+        accepted = {expected, legacy} - {None}
+        if not isinstance(value, str) or value.strip() not in accepted:
+            raise PurgeRequestConflictError("Câu xác nhận không hợp lệ.", "INVALID_CONFIRMATION")
 
     @staticmethod
     def _terminal(session, workspace_id, lock=True):
@@ -253,15 +254,19 @@ class PurgeRequestService:
             if workspace is None or terminal is None:
                 raise PurgeRequestNotFoundError()
             target_deleted_at = workspace.deleted_at
-            PurgeRequestService._phrase(confirmation_phrase, f"REQUEST PURGE {workspace.slug}")
+            PurgeRequestService._phrase(
+                confirmation_phrase,
+                f"YÊU CẦU XÓA VĨNH VIỄN {workspace.slug}",
+                legacy=f"REQUEST PURGE {workspace.slug}",
+            )
             if workspace.deleted_at is None:
-                raise PurgeRequestConflictError("Only a soft-deleted workspace can be requested.", "ACTIVE_WORKSPACE")
+                raise PurgeRequestConflictError("Chỉ cơ sở đã xóa mềm mới có thể tạo yêu cầu.", "ACTIVE_WORKSPACE")
             if terminal["purged_at"] is not None or terminal["purge_request_id"] is not None:
-                raise PurgeRequestConflictError("Workspace is already purged.", "ALREADY_PURGED")
+                raise PurgeRequestConflictError("Cơ sở đã được xóa vĩnh viễn.", "ALREADY_PURGED")
             if workspace.deleted_by_id is None:
-                raise PurgeRequestConflictError("Workspace deletion provenance is incomplete.", "PROVENANCE_INVALID")
+                raise PurgeRequestConflictError("Thông tin nguồn gốc xóa cơ sở chưa đầy đủ.", "PROVENANCE_INVALID")
             if PurgeRequestService._logo_present(session, workspace.id):
-                raise PurgeRequestConflictError("Workspace logo reference must be empty before requesting purge.", "WORKSPACE_LOGO_PRESENT")
+                raise PurgeRequestConflictError("Phải xóa liên kết logo cơ sở trước khi tạo yêu cầu xóa vĩnh viễn.", "WORKSPACE_LOGO_PRESENT")
             # The workspace row is the create serialization anchor. Keep the
             # existing-request lookup non-locking so it cannot invert the
             # request -> workspace order used by approval, execution, and restore.
@@ -270,7 +275,7 @@ class PurgeRequestService:
                 WorkspacePurgeRequest.target_deleted_at == workspace.deleted_at,
             ).one_or_none()
             if existing is not None:
-                raise PurgeRequestConflictError(f"A request already exists: {existing.id}.", "DUPLICATE_LIFECYCLE")
+                raise PurgeRequestConflictError(f"Yêu cầu đã tồn tại: {existing.id}.", "DUPLICATE_LIFECYCLE")
             lifecycle_id = str(uuid.uuid4())
             eligible_at = workspace.deleted_at + timedelta(days=RETENTION_DAYS)
             status = "PENDING_APPROVAL" if now >= eligible_at else "PENDING_RETENTION"
@@ -310,7 +315,7 @@ class PurgeRequestService:
                 lookup.close()
             if existing is not None:
                 raise PurgeRequestConflictError(f"A request already exists: {existing.id}.", "DUPLICATE_LIFECYCLE")
-            raise PurgeRequestConflictError("Purge request could not be persisted.", "PERSISTENCE_ERROR")
+            raise PurgeRequestConflictError("Không thể lưu yêu cầu xóa vĩnh viễn.", "PERSISTENCE_ERROR")
         except Exception:
             session.rollback()
             raise
@@ -338,26 +343,30 @@ class PurgeRequestService:
         try:
             actor, request, workspace, terminal = PurgeRequestService._load_for_mutation(session, request_id, approver_user_id)
             if request.invalidated_at is not None or request.outcome_unknown or request.status in TERMINAL_STATUSES:
-                raise PurgeRequestConflictError("Request is read-only.", "READ_ONLY")
+                raise PurgeRequestConflictError("Yêu cầu chỉ còn chế độ xem.", "READ_ONLY")
             if now < request.eligible_at:
-                raise PurgeRequestConflictError("Retention period has not elapsed.", "RETENTION_NOT_REACHED")
+                raise PurgeRequestConflictError("Thời hạn lưu giữ chưa kết thúc.", "RETENTION_NOT_REACHED")
             if request.status == "PENDING_RETENTION":
                 request.status = "PENDING_APPROVAL"
                 request.updated_at = now
                 PurgeRequestService._event(session, request, workspace, actor.id, "retention_reached", "PENDING_RETENTION", "PENDING_APPROVAL", now, "Retention window reached.")
                 PurgeRequestService._event(session, request, workspace, actor.id, "pending_approval", "PENDING_RETENTION", "PENDING_APPROVAL", now, "Request promoted for approval.")
             elif request.status != APPROVABLE_STATUS:
-                raise PurgeRequestConflictError("Request is not ready for approval.", "INVALID_STATUS")
+                raise PurgeRequestConflictError("Yêu cầu chưa sẵn sàng để phê duyệt.", "INVALID_STATUS")
             if terminal["purged_at"] is not None or terminal["purge_request_id"] is not None:
-                raise PurgeRequestConflictError("Workspace has a terminal purge marker.", "ALREADY_PURGED")
+                raise PurgeRequestConflictError("Cơ sở đã có dấu mốc xóa vĩnh viễn kết thúc.", "ALREADY_PURGED")
             if workspace.deleted_at != request.target_deleted_at or workspace.deleted_by_id != request.target_deleted_by_id:
-                raise PurgeRequestConflictError("Workspace provenance changed.", "PROVENANCE_MISMATCH")
+                raise PurgeRequestConflictError("Nguồn gốc cơ sở đã thay đổi.", "PROVENANCE_MISMATCH")
             if PurgeRequestService._logo_present(session, workspace.id):
-                raise PurgeRequestConflictError("Workspace logo reference must be empty.", "WORKSPACE_LOGO_PRESENT")
-            PurgeRequestService._phrase(confirmation_phrase, f"APPROVE PURGE {request.target_workspace_slug} {request.lifecycle_id}")
+                raise PurgeRequestConflictError("Liên kết logo cơ sở phải được xóa trước khi phê duyệt.", "WORKSPACE_LOGO_PRESENT")
+            PurgeRequestService._phrase(
+                confirmation_phrase,
+                f"PHÊ DUYỆT YÊU CẦU XÓA VĨNH VIỄN {request.target_workspace_slug} {request.lifecycle_id}",
+                legacy=f"APPROVE PURGE {request.target_workspace_slug} {request.lifecycle_id}",
+            )
             holds = session.query(PurgeLegalHold).filter(PurgeLegalHold.workspace_id == workspace.id).order_by(PurgeLegalHold.id).with_for_update().all()
             if PurgeRequestService._holds_state(session, workspace.id, holds=holds) != "CLEAR":
-                raise PurgeRequestConflictError("Legal hold is unresolved.", "LEGAL_HOLD_UNRESOLVED")
+                raise PurgeRequestConflictError("Lệnh giữ dữ liệu pháp lý chưa được giải quyết.", "LEGAL_HOLD_UNRESOLVED")
             purge_plan = build_purge_plan(session, workspace, lock=True)
             try:
                 validate_stored_manifest(session, request, workspace, purge_plan)
@@ -396,7 +405,7 @@ class PurgeRequestService:
             if request.requested_by_id != actor.id:
                 raise PurgeRequestAuthorizationError("Only the requester can cancel this request.")
             if request.status not in REQUESTED_STATUSES or request.invalidated_at is not None or request.outcome_unknown:
-                raise PurgeRequestConflictError("Only a pre-approval request can be cancelled.", "INVALID_STATUS")
+                raise PurgeRequestConflictError("Chỉ yêu cầu trước phê duyệt mới có thể hủy.", "INVALID_STATUS")
             before = request.status
             request.status = "CANCELLED"
             request.cancelled_by_id = actor.id
@@ -422,7 +431,7 @@ class PurgeRequestService:
             if request.requested_by_id == actor.id:
                 raise PurgeRequestAuthorizationError("Requester cannot reject the same request.")
             if request.status not in REQUESTED_STATUSES or request.invalidated_at is not None or request.outcome_unknown:
-                raise PurgeRequestConflictError("Only a pre-approval request can be rejected.", "INVALID_STATUS")
+                raise PurgeRequestConflictError("Chỉ yêu cầu trước phê duyệt mới có thể từ chối.", "INVALID_STATUS")
             before = request.status
             request.status = target_status
             request.rejected_by_id = actor.id

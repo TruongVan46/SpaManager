@@ -1,42 +1,42 @@
 {% extends 'layout/approval_base.html' %}
-{% block title %}Confirm purge execution - SpaManager{% endblock %}
+{% block title %}Xác nhận thực hiện xóa vĩnh viễn - SpaManager{% endblock %}
 {% block content %}
 <section class="card border-0 shadow-sm">
   <div class="card-body">
     <div class="alert alert-danger" role="alert">
-      <strong>Irreversible action.</strong> This action permanently deletes the approved workspace business records.
+      <strong>Thao tác không thể hoàn tác.</strong> Thao tác này sẽ xóa vĩnh viễn dữ liệu nghiệp vụ của cơ sở đã được phê duyệt.
     </div>
-    <h1 class="h4">Confirm purge execution</h1>
+    <h1 class="h4">Xác nhận thực hiện xóa vĩnh viễn</h1>
     <dl class="row small">
-      <dt class="col-sm-4">Request ID</dt><dd class="col-sm-8"><code>{{ summary.id }}</code></dd>
-      <dt class="col-sm-4">Workspace</dt><dd class="col-sm-8">{{ summary.workspace_name }} ({{ summary.workspace_slug }})</dd>
-      <dt class="col-sm-4">Workspace ID</dt><dd class="col-sm-8"><code>{{ summary.workspace_id }}</code></dd>
-      <dt class="col-sm-4">Requester</dt><dd class="col-sm-8">{{ summary.requested_by_snapshot }}</dd>
-      <dt class="col-sm-4">Approver</dt><dd class="col-sm-8">{{ summary.approved_by_snapshot or '—' }}</dd>
-      <dt class="col-sm-4">Current status</dt><dd class="col-sm-8">{{ summary.status }}</dd>
-      <dt class="col-sm-4">Manifest hash</dt><dd class="col-sm-8"><code>{{ summary.manifest_hash }}</code></dd>
+      <dt class="col-sm-4">Mã yêu cầu</dt><dd class="col-sm-8"><code>{{ summary.id }}</code></dd>
+      <dt class="col-sm-4">Cơ sở</dt><dd class="col-sm-8">{{ summary.workspace_name }} ({{ summary.workspace_slug }})</dd>
+      <dt class="col-sm-4">Mã cơ sở</dt><dd class="col-sm-8"><code>{{ summary.workspace_id }}</code></dd>
+      <dt class="col-sm-4">Người tạo yêu cầu</dt><dd class="col-sm-8">{{ summary.requested_by_snapshot }}</dd>
+      <dt class="col-sm-4">Người phê duyệt</dt><dd class="col-sm-8">{{ summary.approved_by_snapshot or '—' }}</dd>
+      <dt class="col-sm-4">Trạng thái hiện tại</dt><dd class="col-sm-8">{{ display_status(summary.status) }}</dd>
+      <dt class="col-sm-4">Mã kiểm tra bản kê</dt><dd class="col-sm-8"><code>{{ summary.manifest_hash }}</code></dd>
     </dl>
-    <h2 class="h6 mt-4">Expected deletion counts</h2>
-    <ul>{% for table, count in summary.destructive_counts.items() %}<li>{{ table }}: {{ count }}</li>{% else %}<li>Manifest unavailable/invalid.</li>{% endfor %}</ul>
-    <h2 class="h6 mt-4">Preserved records</h2>
-    <ul>{% for item in summary.preserved %}<li>{{ item }}</li>{% else %}<li>Preservation summary unavailable.</li>{% endfor %}</ul>
-    <p class="small text-muted">Filesystem files are not deleted. Backup does not make this purge instantly reversible.</p>
-    <p class="small text-muted">The existence of this route does not authorize production purge. Both purge gates are currently required and production authorization remains separate.</p>
+    <h2 class="h6 mt-4">Số lượng dự kiến xóa</h2>
+    <ul>{% for table, count in summary.destructive_counts.items() %}<li>{{ table }}: {{ count }}</li>{% else %}<li>Bản kê không khả dụng hoặc không hợp lệ.</li>{% endfor %}</ul>
+    <h2 class="h6 mt-4">Bản ghi được giữ lại</h2>
+    <ul>{% for item in summary.preserved %}<li>{{ item }}</li>{% else %}<li>Chưa có thông tin bảo toàn.</li>{% endfor %}</ul>
+    <p class="small text-muted">Tệp trên hệ thống không bị xóa. Bản sao lưu không làm cho thao tác này có thể hoàn tác ngay lập tức.</p>
+    <p class="small text-muted">Việc có route này không tự cấp quyền xóa production. Cả hai cờ xóa vẫn bắt buộc và quyền production được cấp riêng.</p>
     {% if not reauth_fresh %}
-    <div class="alert alert-warning">Verify your current local password before the destructive confirmation step.</div>
+    <div class="alert alert-warning">Hãy xác thực mật khẩu cục bộ hiện tại trước bước xác nhận xóa.</div>
     <form method="post" action="{{ url_for('approval.reauth_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label class="form-label" for="current-password">Current local password</label>
+      <label class="form-label" for="current-password">Mật khẩu cục bộ hiện tại</label>
       <input id="current-password" name="current_password" type="password" class="form-control" autocomplete="current-password" required maxlength="512">
-      <button class="btn btn-primary mt-3" type="submit">Verify identity</button>
+      <button class="btn btn-primary mt-3" type="submit">Xác thực danh tính</button>
     </form>
     {% else %}
-    <div class="alert alert-success">Identity verified. The authorization is short-lived and one-time.</div>
+    <div class="alert alert-success">Đã xác thực danh tính. Quyền xóa có thời hạn ngắn và chỉ sử dụng một lần.</div>
     <form method="post" action="{{ url_for('approval.execute_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label class="form-label" for="execute-confirmation">Type exactly: <code>{{ confirmation_phrase }}</code></label>
+      <label class="form-label" for="execute-confirmation">Nhập chính xác: <code>{{ confirmation_phrase }}</code></label>
       <input id="execute-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>
-      <button class="btn btn-danger mt-3" type="submit">Execute permanent purge</button>
+      <button class="btn btn-danger mt-3" type="submit">Thực hiện xóa vĩnh viễn</button>
     </form>
     {% endif %}
   </div>

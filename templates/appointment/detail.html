@@ -23,16 +23,16 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="fw-bold text-muted">Khách hàng:</label>
-                    <p class="fs-5 fw-bold app-text-primary mb-1">{{ appointment.customer.name if appointment.customer else 'N/A' }}</p>
-                    <p class="text-muted mb-0"><i class="bi bi-telephone" style="margin-right: 8px;"></i>{{ appointment.customer.phone if appointment.customer else 'N/A' }}</p>
+            <p class="fs-5 fw-bold app-text-primary mb-1">{{ appointment.customer.name if appointment.customer else 'Không có' }}</p>
+            <p class="text-muted mb-0"><i class="bi bi-telephone" style="margin-right: 8px;"></i>{{ appointment.customer.phone if appointment.customer else 'Không có' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="fw-bold text-muted">Dịch vụ:</label>
-                    <p class="fs-5 fw-semibold app-text-primary">{{ appointment.service.name if appointment.service else 'N/A' }}</p>
+            <p class="fs-5 fw-semibold app-text-primary">{{ appointment.service.name if appointment.service else 'Không có' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="fw-bold text-muted">Thời gian hẹn:</label>
-                    <p class="fs-5 app-text-primary">{{ appointment.appointment_time.strftime('%d/%m/%Y %H:%M') if appointment.appointment_time else 'N/A' }}</p>
+            <p class="fs-5 app-text-primary">{{ appointment.appointment_time.strftime('%d/%m/%Y %H:%M') if appointment.appointment_time else 'Không có' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="fw-bold text-muted">Trạng thái:</label>

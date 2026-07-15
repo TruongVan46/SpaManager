@@ -173,7 +173,7 @@
                 <hr class="my-4">
 
                 <!-- Import Section -->
-                <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-arrow-up me-2"></i>Import dữ liệu</h6>
+                <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-arrow-up me-2"></i>Nhập dữ liệu</h6>
 
                 <div class="row g-4">
                     <!-- Import Khách hàng Card -->
@@ -182,12 +182,12 @@
                             <div>
                                 <div class="data-action-header">
                                     <i class="bi bi-people text-info"></i>
-                                    <h6>Import Khách hàng</h6>
+                                    <h6>Nhập dữ liệu khách hàng</h6>
                                 </div>
                                 <p class="text-muted small mb-3">Nhập danh sách khách hàng hàng loạt từ file Excel. Hệ thống sẽ tự động phát hiện số điện thoại/email bị trùng lặp và xác thực thông tin.</p>
                             </div>
                             <button type="button" class="btn btn-outline-info btn-sm w-100 py-2 btn-open-import-wizard" data-import-type="customers" data-template-url="{{ url_for('setting.download_customer_template') }}">
-                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Mở Import Wizard (Khách hàng)
+                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Mở trình hướng dẫn nhập (Khách hàng)
                             </button>
                         </div>
                     </div>
@@ -198,12 +198,12 @@
                             <div>
                                 <div class="data-action-header">
                                     <i class="bi bi-scissors text-success"></i>
-                                    <h6>Import Dịch vụ</h6>
+                                    <h6>Nhập dữ liệu dịch vụ</h6>
                                 </div>
                                 <p class="text-muted small mb-3">Nhập danh mục dịch vụ spa hàng loạt. Xác thực giá tiền, thời lượng thực hiện và tự động phân loại nhóm dịch vụ tương ứng.</p>
                             </div>
                             <button type="button" class="btn btn-outline-success btn-sm w-100 py-2 btn-open-import-wizard" data-import-type="services" data-template-url="{{ url_for('setting.download_service_template') }}">
-                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Mở Import Wizard (Dịch vụ)
+                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Mở trình hướng dẫn nhập (Dịch vụ)
                             </button>
                         </div>
                     </div>
@@ -219,7 +219,7 @@
     <div class="app-card setting-card backup-center-card" id="card-backup-center">
         <div class="app-card-header">
             <h5 class="app-card-header-title card-title m-0">
-                <i class="bi bi-shield-check" style="font-size: 18px; margin-right: 8px;"></i>Trung tâm sao lưu (Backup Center)
+                <i class="bi bi-shield-check" style="font-size: 18px; margin-right: 8px;"></i>Trung tâm sao lưu
             </h5>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBackupCenter" aria-expanded="true">
                 <i class="bi bi-chevron-up"></i>
@@ -238,28 +238,28 @@
                             <div class="border rounded p-3 h-100">
                                 <h6 class="fw-bold mb-2">Trạng thái hệ thống</h6>
                                 <p class="mb-1">Cơ sở dữ liệu: <strong>PostgreSQL</strong></p>
-                                <p class="mb-0">Chế độ Backup Center: <strong>Chỉ đọc</strong></p>
+                                <p class="mb-0">Chế độ Trung tâm sao lưu: <strong>Chỉ đọc</strong></p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
                                 <h6 class="fw-bold mb-2">Hướng dẫn sao lưu và khôi phục</h6>
-                                <p class="small mb-2">Backup PostgreSQL được quản lý ngoài ứng dụng theo runbook. Giao diện web không tạo, tải lên, tải xuống, xóa hoặc khôi phục backup.</p>
-                                <p class="small mb-0">Khôi phục production cần owner approval và quy trình vận hành riêng.</p>
+                                <p class="small mb-2">Sao lưu PostgreSQL được quản lý ngoài ứng dụng theo quy trình vận hành. Giao diện web không tạo, tải lên, tải xuống, xóa hoặc khôi phục bản sao lưu.</p>
+                                <p class="small mb-0">Khôi phục môi trường thật cần sự phê duyệt của chủ cơ sở và quy trình vận hành riêng.</p>
                             </div>
                         </div>
                     </div>
-                    <p class="text-muted small mt-3 mb-0">Các artifact SQLite cũ không được liệt kê hoặc quản lý từ Backup Center khi runtime dùng PostgreSQL.</p>
+                    <p class="text-muted small mt-3 mb-0">Các tệp SQLite cũ không được liệt kê hoặc quản lý từ trung tâm sao lưu khi hệ thống dùng PostgreSQL.</p>
                 </div>
                 {% else %}
                 
                 <!-- Toolbar -->
                 <div class="backup-toolbar">
                     <div class="backup-toolbar-left d-flex gap-2">
-                        <button type="button" class="btn btn-create-backup" data-bs-toggle="modal" data-bs-target="#createBackupModal" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Backup Center đang bị khóa khi chạy PostgreSQL"{% endif %}>
+                        <button type="button" class="btn btn-create-backup" data-bs-toggle="modal" data-bs-target="#createBackupModal" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL"{% endif %}>
                             <i class="bi bi-cloud-arrow-up-fill"></i> Tạo bản sao lưu
                         </button>
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Backup Center đang bị khóa khi chạy PostgreSQL"{% endif %}>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL"{% endif %}>
                             <i class="bi bi-upload"></i> Nhập bản sao lưu
                         </button>
                     </div>
@@ -293,7 +293,7 @@
 
                 <div class="alert alert-info backup-ux-hint mb-4 py-2 px-3 small">
                     <i class="bi bi-shield-lock me-1"></i>
-                    Backup lưu lại trạng thái hiện tại của hệ thống. Restore và Delete đều là thao tác không thể hoàn tác nên luôn cần xác nhận rõ ràng.
+                    Sao lưu lưu lại trạng thái hiện tại của hệ thống. Khôi phục và xóa đều là thao tác không thể hoàn tác nên luôn cần xác nhận rõ ràng.
                 </div>
 
                 {% if backup_error %}
@@ -320,7 +320,7 @@
                     <table class="app-table table table-hover align-middle stf-table backup-table" id="backup-table">
                         <thead class="app-table-header">
                             <tr>
-                                <th style="width: 18%;" scope="col">Tên Backup</th>
+                                <th style="width: 18%;" scope="col">Tên bản sao lưu</th>
                                 <th style="width: 12%;" scope="col">Ngày tạo</th>
                                 <th style="width: 8%;" scope="col">Dung lượng</th>
                                 <th style="width: 12%;" scope="col">Phiên bản (DB/App)</th>
@@ -374,7 +374,7 @@
                                     {% elif b.status == 'Invalid' %}
                                         <span class="badge bg-warning text-dark">Không hợp lệ</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">{{ b.status }}</span>
+                                        <span class="badge bg-secondary">{{ display_status(b.status) }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -483,7 +483,7 @@
       </div>
       <div class="modal-header">
         <h5 class="modal-title" id="restoreWizardModalLabel">Khôi phục dữ liệu</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
       </div>
       <div class="modal-body">
         <!-- Step 1: Backup details -->
@@ -551,7 +551,7 @@
                 <h5 class="modal-title text-warning fw-bold" id="restoreModalLabel">
                     <i class="bi bi-exclamation-triangle me-2"></i>Xác nhận khôi phục
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
@@ -583,7 +583,7 @@
                 <h5 class="modal-title text-primary fw-bold" id="createBackupModalLabel">
                     <i class="bi bi-cloud-arrow-up-fill me-2"></i>Tạo bản sao lưu mới
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <form id="createBackupForm" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -626,7 +626,7 @@
                 <h5 class="modal-title text-primary fw-bold" id="editBackupNoteModalLabel">
                     <i class="bi bi-pencil-square me-2"></i>Sửa ghi chú sao lưu
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <form id="editBackupNoteForm" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -658,7 +658,7 @@
                 <h5 class="modal-title text-warning fw-bold" id="restoreBackupModalLabel">
                     <i class="bi bi-exclamation-triangle me-2"></i>Xác nhận khôi phục
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
@@ -701,7 +701,7 @@
                 <h5 class="modal-title text-danger fw-bold" id="deleteBackupModalLabel">
                     <i class="bi bi-trash3 me-2"></i>Xác nhận xóa bản sao lưu
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
@@ -710,7 +710,7 @@
                 <p class="text-center fw-bold fs-5 mb-2">Hành động này không thể hoàn tác!</p>
                 <div class="delete-warning-box">
                     <p class="text-center mb-2">Bạn sắp xóa bản sao lưu <strong id="deleteBackupName"></strong>.</p>
-                    <p class="text-center text-muted small mb-0">File backup và metadata liên quan sẽ bị xóa vĩnh viễn khỏi hệ thống.</p>
+                        <p class="text-center text-muted small mb-0">Tệp sao lưu và siêu dữ liệu liên quan sẽ bị xóa vĩnh viễn khỏi hệ thống.</p>
                 </div>
                 <div class="alert alert-danger py-2 px-3 small mb-3 mt-3">
                     <i class="bi bi-exclamation-circle me-1"></i>Hãy chỉ tiếp tục khi bạn đã chắc chắn không còn cần đến bản sao lưu này.
@@ -742,7 +742,7 @@
                 <h5 class="modal-title text-primary fw-bold" id="uploadBackupModalLabel">
                     <i class="bi bi-upload me-2"></i>Nhập bản sao lưu bên ngoài
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <form id="uploadBackupForm" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -783,9 +783,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title text-primary fw-bold" id="importWizardModalLabel">
-                    <i class="bi bi-file-earmark-arrow-up me-2"></i>Smart Import Wizard - <span id="importWizardTypeName">Khách hàng</span>
+                    <i class="bi bi-file-earmark-arrow-up me-2"></i>Trình hướng dẫn nhập - <span id="importWizardTypeName">Khách hàng</span>
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="btn-close-import-wizard"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng" id="btn-close-import-wizard"></button>
             </div>
             
             <div class="modal-body p-4">
@@ -985,7 +985,7 @@
                 <!-- Right aligned buttons -->
                 <button type="button" class="btn btn-secondary" id="w-btn-back" disabled>Quay lại</button>
                 <button type="button" class="btn btn-primary" id="w-btn-next" disabled>Tiếp tục <i class="bi bi-arrow-right ms-1"></i></button>
-                <button type="button" class="btn btn-success d-none" id="w-btn-execute"><i class="bi bi-check-lg me-1"></i> Thực hiện Import</button>
+                <button type="button" class="btn btn-success d-none" id="w-btn-execute"><i class="bi bi-check-lg me-1"></i> Thực hiện nhập dữ liệu</button>
                 <button type="button" class="btn btn-primary d-none" id="w-btn-close-finish" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>

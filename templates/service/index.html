@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const serviceId = deleteBtn.getAttribute('data-id');
         const serviceName = deleteBtn.getAttribute('data-name');
 
-        if (confirm(`B?n c? ch?c ch?n mu?n x?a d?ch v? "${serviceName}" n?y kh?ng?`)) {
+        if (confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}" này không?`)) {
             const row = deleteBtn.closest('tr');
             const originalHtml = deleteBtn.innerHTML;
             deleteBtn.disabled = true;
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    Notification.success(data.message || '?? x?a d?ch v?.');
+                Notification.success(data.message || 'Đã xóa dịch vụ.');
                     row.style.transition = 'opacity 0.4s ease';
                     row.style.opacity = '0';
                     setTimeout(() => {
@@ -180,14 +180,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     deleteBtn.disabled = false;
                     deleteBtn.innerHTML = originalHtml;
-                    Notification.error(data.message || 'Kh?ng th? x?a d?ch v?.');
+                Notification.error(data.message || 'Không thể xóa dịch vụ.');
                 }
             })
             .catch(error => {
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalHtml;
                 console.error('Error:', error);
-                Notification.error('Kh?ng th? k?t n?i ??n m?y ch?.');
+                Notification.error('Không thể kết nối đến máy chủ.');
             });
         }
     });

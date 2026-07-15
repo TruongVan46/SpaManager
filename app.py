@@ -40,6 +40,7 @@ from core.auth.permissions import (
 from core.csrf import validate_csrf_request, csrf_token, CSRFError, clear_csrf_token
 from core.auth.google_oauth import init_google_oauth, is_google_auth_available
 from core.auth.constants import AUTH_SESSION_KEY
+from utils.display_labels import display_role, display_status
 from core.migration_cli import register_migration_commands
 from core.data_audit_cli import register_data_audit_commands
 from core.performance_cli import register_performance_profile_commands
@@ -240,6 +241,11 @@ def inject_permission_helpers():
         can_manage_backups=can_manage_backups,
         can_manage_business_data=can_manage_business_data,
     )
+
+
+@app.context_processor
+def inject_display_labels():
+    return dict(display_role=display_role, display_status=display_status)
 
 @app.context_processor
 def inject_asset_helpers():

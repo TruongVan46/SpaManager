@@ -537,7 +537,7 @@
 
         registry.register({
             id: 'action-backup',
-            title: 'Tạo bản sao lưu dữ liệu (Backup)',
+            title: 'Tạo bản sao lưu dữ liệu',
             shortcut: '',
             category: 'Hành động',
             icon: 'bi-cloud-arrow-up',
@@ -553,7 +553,7 @@
 
         registry.register({
             id: 'action-restore',
-            title: 'Khôi phục dữ liệu hệ thống (Restore)',
+            title: 'Khôi phục dữ liệu hệ thống',
             shortcut: '',
             category: 'Hành động',
             icon: 'bi-cloud-arrow-down',
@@ -569,7 +569,7 @@
 
         registry.register({
             id: 'action-import',
-            title: 'Nhập dữ liệu khách hàng/dịch vụ từ Excel (Import)',
+            title: 'Nhập dữ liệu khách hàng/dịch vụ từ Excel',
             shortcut: '',
             category: 'Hành động',
             icon: 'bi-file-earmark-arrow-up',
@@ -585,7 +585,7 @@
 
         registry.register({
             id: 'action-export',
-            title: 'Xuất dữ liệu báo cáo (Export)',
+            title: 'Xuất dữ liệu báo cáo',
             shortcut: '',
             category: 'Hành động',
             icon: 'bi-file-earmark-arrow-down',

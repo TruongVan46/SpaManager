@@ -12,7 +12,7 @@
 <div class="offcanvas offcanvas-end cal-offcanvas" tabindex="-1" id="calOffcanvas" aria-labelledby="calOffcanvasLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="calOffcanvasLabel">📋 Chi tiết lịch hẹn</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
     </div>
     <div class="offcanvas-body">
         <!-- Dynamic content injected by appointment-calendar.js -->
@@ -202,7 +202,7 @@
                                     <td class="text-center fw-medium text-secondary">{{ (appointments.page - 1) * appointments.per_page + loop.index }}</td>
                                     <td>
                                         <div class="datetime-cell">
-                                            <div class="date-part fw-semibold">{{ appointment.appointment_time.strftime('%d/%m/%Y') if appointment.appointment_time else 'N/A' }}</div>
+                        <div class="date-part fw-semibold">{{ appointment.appointment_time.strftime('%d/%m/%Y') if appointment.appointment_time else 'Không có' }}</div>
                                             <div class="time-part text-muted">{{ appointment.appointment_time.strftime('%H:%M') if appointment.appointment_time else '' }}</div>
                                             {% if appointment.is_today or appointment.is_upcoming or appointment.is_overdue %}
                                             <div class="badge-part mt-1 d-flex flex-wrap gap-1">
@@ -225,12 +225,12 @@
                                                 {% if appointment.is_today and appointment.status|lower == 'pending' %}
                                                 <i class="bi bi-exclamation-circle-fill text-warning fs-6" title="Chờ xử lý"></i>
                                                 {% endif %}
-                                                <div class="customer-name fw-bold">{{ appointment.customer.name | highlight(q) if appointment.customer else 'N/A' }}</div>
+                        <div class="customer-name fw-bold">{{ appointment.customer.name | highlight(q) if appointment.customer else 'Không có' }}</div>
                                             </div>
                                             <div class="customer-phone text-muted small mt-1">{{ appointment.customer.phone | highlight(q) if (appointment.customer and appointment.customer.phone) else '' }}</div>
                                         </div>
                                     </td>
-                                    <td class="fw-medium app-text-primary">{{ appointment.service.name | highlight(q) if appointment.service else 'N/A' }}</td>
+                        <td class="fw-medium app-text-primary">{{ appointment.service.name | highlight(q) if appointment.service else 'Không có' }}</td>
                                     <td>
                                         <div class="dropdown status-dropdown" data-id="{{ appointment.id }}">
                                             {% set status_key = appointment.status|lower if appointment.status else '' %}
@@ -342,7 +342,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="deleteConfirmationModalLabel">Xác nhận xóa</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                 Bạn có chắc chắn muốn xóa lịch hẹn này?

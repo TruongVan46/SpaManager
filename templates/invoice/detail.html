@@ -36,7 +36,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="text-muted d-block">Ngày lập</label>
-                        <span class="fw-bold">{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A' }}</span>
+                        <span class="fw-bold">{{ invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'Không có' }}</span>
                     </div>
                     <div class="mb-3">
                         <label class="text-muted d-block">Phương thức thanh toán</label>
@@ -125,7 +125,7 @@
                     <h5 class="modal-title text-danger fw-bold" id="deleteConfirmModalLabel">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa hóa đơn
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body text-center py-4">
                     <i class="bi bi-question-circle text-danger" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>

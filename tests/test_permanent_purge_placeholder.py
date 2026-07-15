@@ -58,7 +58,7 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
             self.assertNotIn("href=\"/purge", source)
 
         approval_source = Path("templates/approval/accounts.html").read_text(encoding="utf-8")
-        self.assertIn("Xóa vĩnh viễn qua Purge request", approval_source)
+        self.assertIn("Xóa vĩnh viễn qua yêu cầu", approval_source)
         self.assertNotIn("Xóa vĩnh viễn (Chưa triển khai)", approval_source)
 
     def test_common_account_workspace_and_business_purge_routes_are_unavailable(self):
@@ -152,7 +152,7 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
             app.config["PERMANENT_PURGE_UI_ENABLED"] = previous_purge_ui
             self.assertEqual(approval_response.status_code, 200)
             approval_html = approval_response.get_data(as_text=True)
-            self.assertIn("Xóa vĩnh viễn qua Purge request", approval_html)
+            self.assertIn("Xóa vĩnh viễn qua yêu cầu", approval_html)
             self.assertIn("/approval/purge-requests", approval_html)
             self.assertNotIn("/permanent-delete", approval_html)
 

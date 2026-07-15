@@ -39,7 +39,7 @@ class RestoreService:
 
         # Check file size (must not be empty)
         if os.path.getsize(filepath) == 0:
-            return False, 'File backup rỗng.'
+            return False, 'Tệp sao lưu rỗng.'
 
         # Check SQLite header magic bytes
         try:
@@ -62,11 +62,11 @@ class RestoreService:
             required_tables = ['customers', 'services']
             missing = [t for t in required_tables if t not in tables]
             if missing:
-                return False, f'File backup thiếu bảng dữ liệu: {", ".join(missing)}'
+                return False, f'Tệp sao lưu thiếu bảng dữ liệu: {", ".join(missing)}'
 
             return True, None
         except Exception as e:
-            return False, f'File backup không hợp lệ: {str(e)}'
+            return False, f'Tệp sao lưu không hợp lệ: {str(e)}'
 
     @staticmethod
     def restore_database(app, backup_filepath):

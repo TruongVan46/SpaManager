@@ -66,25 +66,25 @@ class PurgeAuthorizationError(PurgeServiceError):
 
 class PurgeActorMissingError(PurgeAuthorizationError):
     def __init__(self, actor_name):
-        super().__init__(f"Purge {actor_name} actor is unavailable.")
+        super().__init__(f"Tài khoản {actor_name} không khả dụng cho thao tác xóa vĩnh viễn.")
         self.code = f"{actor_name.upper()}_ACTOR_MISSING"
 
 
 class PurgeActorIneligibleError(PurgeAuthorizationError):
     def __init__(self, actor_name):
-        super().__init__(f"Purge {actor_name} actor is no longer eligible.")
+        super().__init__(f"Tài khoản {actor_name} không còn đủ điều kiện cho thao tác xóa vĩnh viễn.")
         self.code = f"{actor_name.upper()}_ACTOR_INELIGIBLE"
 
 
 class PurgeActorSeparationError(PurgeAuthorizationError):
     def __init__(self, separation):
-        super().__init__(f"Purge actor separation is invalid: {separation}.")
+        super().__init__(f"Phân tách tài khoản thực hiện xóa vĩnh viễn không hợp lệ: {separation}.")
         self.code = f"ACTOR_SEPARATION_{separation.upper()}"
 
 
 class PurgeExecutorProviderError(PurgeAuthorizationError):
     def __init__(self):
-        super().__init__("Purge executor authentication provider is not supported.")
+        super().__init__("Phương thức xác thực của tài khoản thực hiện xóa vĩnh viễn không được hỗ trợ.")
         self.code = "EXECUTOR_AUTH_PROVIDER_UNSUPPORTED"
 
 
@@ -145,7 +145,7 @@ class PurgeService:
         if not execution_enabled:
             raise PurgeExecutionDisabledError()
         if now is not None and not isinstance(now, datetime):
-            raise PurgeConflictError("Purge execution time must be a datetime.", "INVALID_NOW")
+            raise PurgeConflictError("Thời điểm thực hiện xóa vĩnh viễn phải là ngày giờ hợp lệ.", "INVALID_NOW")
         execution_time = now or utc_now()
         if authorization_generation is None or not authorization_nonce:
             raise PurgeReauthRequiredError()
@@ -188,14 +188,14 @@ class PurgeService:
                         purged_at=terminal_state["purged_at"],
                         already_completed=True,
                     )
-                raise PurgeConflictError("Completed purge request has inconsistent terminal state.", "INVALID_COMPLETED_STATE")
+                raise PurgeConflictError("Yêu cầu đã hoàn tất nhưng trạng thái kết thúc không nhất quán.", "INVALID_COMPLETED_STATE")
 
             if request.status != REQUEST_APPROVED:
-                raise PurgeConflictError("Purge request is not approved.", "INVALID_STATUS")
+                raise PurgeConflictError("Yêu cầu xóa vĩnh viễn chưa được phê duyệt.", "INVALID_STATUS")
             if request.approved_by_id is None or request.approved_at is None:
-                raise PurgeConflictError("Purge approval is incomplete.", "INVALID_APPROVAL")
+                raise PurgeConflictError("Thông tin phê duyệt xóa vĩnh viễn chưa đầy đủ.", "INVALID_APPROVAL")
             if workspace.deleted_at is None:
-                raise PurgeConflictError("Workspace is not soft-deleted.", "ACTIVE_WORKSPACE")
+                raise PurgeConflictError("Cơ sở chưa được xóa mềm.", "ACTIVE_WORKSPACE")
             if terminal_state["purged_at"] is not None or terminal_state["purge_request_id"] is not None:
                 raise PurgeConflictError("Workspace is already purged or has a conflicting purge request.", "ALREADY_PURGED")
 
@@ -216,7 +216,7 @@ class PurgeService:
                 raise PurgeConflictError(str(exc), "MANIFEST_MISMATCH") from exc
 
             if PurgeService._logo_state(session, workspace.id) != "RESOLVED":
-                raise PurgeConflictError("Workspace logo reference is still present.", "WORKSPACE_LOGO_PRESENT")
+                raise PurgeConflictError("Liên kết logo cơ sở vẫn còn tồn tại.", "WORKSPACE_LOGO_PRESENT")
 
             request.status = REQUEST_EXECUTING
             request.execution_triggered_by_id = executor_user_id
@@ -302,13 +302,13 @@ class PurgeService:
     @staticmethod
     def _validate_request_contract(request, workspace_id, now):
         if request.workspace_id != workspace_id:
-            raise PurgeConflictError("Purge request and workspace do not match.", "WORKSPACE_MISMATCH")
+                raise PurgeConflictError("Yêu cầu xóa vĩnh viễn và cơ sở không khớp.", "WORKSPACE_MISMATCH")
         if request.purge_type != "workspace":
             raise PurgeConflictError("Unsupported purge type.", "INVALID_PURGE_TYPE")
         if request.invalidated_at is not None or request.invalidated_by_restore:
-            raise PurgeConflictError("Purge request was invalidated by restore.", "INVALIDATED_REQUEST")
+                raise PurgeConflictError("Yêu cầu xóa vĩnh viễn đã bị vô hiệu hóa do khôi phục.", "INVALIDATED_REQUEST")
         if request.outcome_unknown:
-            raise PurgeConflictError("Purge outcome requires reconciliation.", "OUTCOME_UNKNOWN")
+                raise PurgeConflictError("Kết quả xóa vĩnh viễn cần được đối soát.", "OUTCOME_UNKNOWN")
         if not isinstance(request.idempotency_key, str) or not request.idempotency_key.strip():
             raise PurgeConflictError("Purge idempotency key is required.", "INVALID_IDEMPOTENCY_KEY")
         if not isinstance(request.lifecycle_id, str):
@@ -399,17 +399,17 @@ class PurgeService:
         eligible_at = request.eligible_at.replace(tzinfo=timezone.utc) if request.eligible_at.tzinfo is None else request.eligible_at.astimezone(timezone.utc)
         current_time = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
         if current_time < eligible_at:
-            raise PurgeConflictError("Retention period has not elapsed.", "RETENTION_NOT_REACHED")
+                raise PurgeConflictError("Thời hạn lưu giữ chưa kết thúc.", "RETENTION_NOT_REACHED")
 
     @staticmethod
     def _validate_holds(request, holds):
         if request.hold_check_status != HOLD_CLEAR:
-            raise PurgeConflictError("Legal-hold check is not clear.", "LEGAL_HOLD_UNRESOLVED")
+                raise PurgeConflictError("Kiểm tra giữ dữ liệu pháp lý chưa ở trạng thái thông suốt.", "LEGAL_HOLD_UNRESOLVED")
         for hold in holds:
             if hold.status != HOLD_RELEASED:
-                raise PurgeConflictError("Active or unknown legal hold blocks purge.", "ACTIVE_LEGAL_HOLD")
+                raise PurgeConflictError("Lệnh giữ dữ liệu pháp lý đang hoạt động hoặc chưa xác định nên chặn xóa vĩnh viễn.", "ACTIVE_LEGAL_HOLD")
             if hold.released_at is None or hold.released_by_snapshot is None or hold.release_reason is None:
-                raise PurgeConflictError("Malformed released legal hold blocks purge.", "LEGAL_HOLD_UNRESOLVED")
+                raise PurgeConflictError("Lệnh giữ dữ liệu pháp lý đã gỡ nhưng không hợp lệ nên chặn xóa vĩnh viễn.", "LEGAL_HOLD_UNRESOLVED")
 
     @staticmethod
     def _logo_state(session, workspace_id):

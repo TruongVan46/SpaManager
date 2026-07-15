@@ -380,7 +380,7 @@ def confirm_purge_request(request_id):
         current_user=actor,
         summary=summary,
         workspace_target=workspace_target,
-        confirmation_phrase=f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}",
+        confirmation_phrase=f"XÓA VĨNH VIỄN CƠ SỞ {summary.workspace_id} YÊU CẦU {summary.id}",
         reauth_fresh=transport_fresh,
         reauth_expires_at=transport.get("expires_at") if transport_fresh else None,
     ))
@@ -395,7 +395,7 @@ def reauth_purge_request(request_id):
         abort(403 if summary.approved_by_id == actor.id or actor.auth_provider != "local" else 409)
     password = request.form.get("current_password")
     if not isinstance(password, str) or len(password) > 512 or not password:
-        NotificationService.flash_error("Re-authentication could not be accepted.")
+        NotificationService.flash_error("Không thể chấp nhận yêu cầu xác thực lại bằng mật khẩu.")
         return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
     try:
         issuance = PurgeReauthService.issue_local_authorization(request_id, actor.id, password)
@@ -410,12 +410,12 @@ def reauth_purge_request(request_id):
             raise PurgeReauthIssuanceOutcomeUnknownError() from transport_error
     except PurgeReauthError as error:
         messages = {
-            "REAUTH_RATE_LIMITED": "Re-authentication is temporarily unavailable.",
-            "REAUTH_PROVIDER_UNSUPPORTED": "Phase 1 execution requires a local-password Approval Owner.",
+            "REAUTH_RATE_LIMITED": "Xác thực lại đang tạm thời không khả dụng.",
+            "REAUTH_PROVIDER_UNSUPPORTED": "Thực hiện xóa yêu cầu Quản trị duyệt tài khoản dùng mật khẩu cục bộ.",
         }
-        NotificationService.flash_error(messages.get(error.code, "Re-authentication could not be accepted."))
+        NotificationService.flash_error(messages.get(error.code, "Không thể chấp nhận yêu cầu xác thực lại bằng mật khẩu."))
         return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
-    NotificationService.flash_success("Identity verified. Continue with the exact typed confirmation.")
+    NotificationService.flash_success("Đã xác thực danh tính. Hãy tiếp tục bằng câu xác nhận chính xác.")
     return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
 
 
@@ -426,20 +426,23 @@ def execute_purge_request(request_id):
     if not _execution_is_basic_candidate(summary, workspace_target, actor):
         if getattr(actor, "auth_provider", None) != "local":
             abort(403)
-        NotificationService.flash_error("Purge request is no longer executable.")
+        NotificationService.flash_error("Yêu cầu xóa vĩnh viễn không còn đủ điều kiện thực hiện.")
         return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 
-    expected_phrase = f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}"
+    expected_phrases = {
+        f"XÓA VĨNH VIỄN CƠ SỞ {summary.workspace_id} YÊU CẦU {summary.id}",
+        f"PURGE WORKSPACE {summary.workspace_id} REQUEST {summary.id}",
+    }
     supplied_phrase = request.form.get("confirmation_phrase")
-    if not isinstance(supplied_phrase, str) or supplied_phrase != expected_phrase:
-        NotificationService.flash_error("Typed confirmation is invalid.")
+    if not isinstance(supplied_phrase, str) or supplied_phrase not in expected_phrases:
+        NotificationService.flash_error("Câu xác nhận không hợp lệ.")
         return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 
     transport = consume_transport(
         request_id=summary.id, workspace_id=summary.workspace_id, actor_user_id=actor.id
     )
     if transport is None:
-        NotificationService.flash_error("Fresh purge re-authentication is required before execution.")
+        NotificationService.flash_error("Cần xác thực lại bằng mật khẩu trước khi thực hiện xóa vĩnh viễn.")
         return redirect(url_for("approval.confirm_purge_request", request_id=request_id))
 
     try:
@@ -451,20 +454,20 @@ def execute_purge_request(request_id):
             authorization_nonce=transport["raw_nonce"],
         )
     except PurgeReauthError:
-        NotificationService.flash_error("Fresh purge re-authentication is required before execution.")
+        NotificationService.flash_error("Cần xác thực lại bằng mật khẩu trước khi thực hiện xóa vĩnh viễn.")
     except PurgeCommitOutcomeUnknownError:
-        NotificationService.flash_error("Purge outcome requires investigation; no retry was attempted.")
+        NotificationService.flash_error("Kết quả xóa vĩnh viễn cần được kiểm tra; hệ thống không thử lại.")
     except PurgeExecutionDisabledError:
-        NotificationService.flash_error("Permanent purge execution is disabled.")
+        NotificationService.flash_error("Tính năng thực hiện xóa vĩnh viễn đang bị tắt.")
     except PurgeAuthorizationError:
-        NotificationService.flash_error("Actor is not authorized to execute this purge request.")
+        NotificationService.flash_error("Tài khoản hiện tại không được cấp quyền thực hiện yêu cầu này.")
     except PurgeConflictError as error:
         NotificationService.flash_error(str(error))
     except PurgeExecutionError:
-        NotificationService.flash_error("Purge execution failed; review the request before taking further action.")
+        NotificationService.flash_error("Thực hiện xóa vĩnh viễn thất bại; hãy xem lại yêu cầu trước khi thao tác tiếp.")
     else:
         NotificationService.flash_success(
-            f"Purge request {result.request_id} completed."
+            f"Yêu cầu xóa vĩnh viễn {result.request_id} đã hoàn tất."
         )
     return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 
@@ -478,7 +481,7 @@ def create_purge_request(workspace_id):
             requester_user_id=actor.id,
             confirmation_phrase=request.form.get("confirmation_phrase"),
         )
-        NotificationService.flash_success("Purge request đã được tạo và chờ review.")
+        NotificationService.flash_success("Yêu cầu xóa vĩnh viễn đã được tạo và đang chờ xem xét.")
         return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
     except PurgeRequestServiceError as error:
         return _purge_error(error)
@@ -498,9 +501,9 @@ def create_legal_hold(request_id):
             reason=reason,
             confirmation_phrase=request.form.get("confirmation_phrase"),
         )
-        NotificationService.flash_success(f"Legal hold {hold.hold_id} was created.")
+        NotificationService.flash_success(f"Đã tạo lệnh giữ dữ liệu pháp lý {hold.hold_id}.")
     except (PurgeRequestServiceError, PurgeLegalHoldServiceError) as error:
-        NotificationService.flash_error(getattr(error, "message", "Legal hold could not be created."))
+        NotificationService.flash_error(getattr(error, "message", "Không thể tạo lệnh giữ dữ liệu pháp lý."))
     return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 
 
@@ -516,9 +519,9 @@ def release_legal_hold(request_id, hold_id):
             release_reason=request.form.get("release_reason"),
             confirmation_phrase=request.form.get("confirmation_phrase"),
         )
-        NotificationService.flash_success(f"Legal hold {hold.hold_id} was released.")
+        NotificationService.flash_success(f"Đã gỡ lệnh giữ dữ liệu pháp lý {hold.hold_id}.")
     except (PurgeRequestServiceError, PurgeLegalHoldServiceError) as error:
-        NotificationService.flash_error(getattr(error, "message", "Legal hold could not be released."))
+        NotificationService.flash_error(getattr(error, "message", "Không thể gỡ lệnh giữ dữ liệu pháp lý."))
     return redirect(url_for("approval.purge_request_detail", request_id=request_id))
 
 
@@ -552,7 +555,7 @@ def create_workspace_legal_hold(workspace_id):
             reason=request.form.get("reason"),
             confirmation_phrase=request.form.get("confirmation_phrase"),
         )
-        NotificationService.flash_success(f"Legal hold {hold.hold_id} was created.")
+        NotificationService.flash_success(f"Đã tạo lệnh giữ dữ liệu pháp lý {hold.hold_id}.")
     except PurgeLegalHoldServiceError as error:
         NotificationService.flash_error(error.message)
     return redirect(url_for("approval.workspace_legal_holds", workspace_id=workspace_id))
@@ -568,7 +571,7 @@ def release_workspace_legal_hold(hold_id):
             release_reason=request.form.get("release_reason"),
             confirmation_phrase=request.form.get("confirmation_phrase"),
         )
-        NotificationService.flash_success(f"Legal hold {hold.hold_id} was released.")
+        NotificationService.flash_success(f"Đã gỡ lệnh giữ dữ liệu pháp lý {hold.hold_id}.")
         return redirect(url_for("approval.workspace_legal_holds", workspace_id=hold.workspace_id))
     except PurgeLegalHoldServiceError as error:
         NotificationService.flash_error(error.message)
@@ -583,7 +586,7 @@ def approve_purge_request(request_id):
             request_id=request_id, approver_user_id=actor.id,
             confirmation_phrase=request.form.get("confirmation_phrase"),
         )
-        NotificationService.flash_success("Purge request đã được approve; execution chưa được mở.")
+        NotificationService.flash_success("Yêu cầu xóa vĩnh viễn đã được phê duyệt; bước thực hiện chưa được mở.")
         return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
     except PurgeRequestServiceError as error:
         return _purge_error(error)
@@ -597,7 +600,7 @@ def reject_purge_request(request_id):
             request_id=request_id, rejector_user_id=actor.id,
             reason=request.form.get("reason"),
         )
-        NotificationService.flash_success("Purge request đã bị reject và được lưu audit.")
+        NotificationService.flash_success("Yêu cầu xóa vĩnh viễn đã bị từ chối và được lưu vào nhật ký kiểm tra.")
         return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
     except PurgeRequestServiceError as error:
         return _purge_error(error)
@@ -611,7 +614,7 @@ def cancel_purge_request(request_id):
             request_id=request_id, requester_user_id=actor.id,
             reason=request.form.get("reason"),
         )
-        NotificationService.flash_success("Purge request đã được cancel.")
+        NotificationService.flash_success("Yêu cầu xóa vĩnh viễn đã được hủy.")
         return redirect(url_for("approval.purge_request_detail", request_id=summary.id))
     except PurgeRequestServiceError as error:
         return _purge_error(error)

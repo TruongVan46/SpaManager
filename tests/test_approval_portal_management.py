@@ -457,12 +457,12 @@ class TestApprovalPortalManagement(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         html = resp.get_data(as_text=True)
 
-        self.assertIn("Nhóm 1: Chủ spa / tài khoản đăng ký", html)
+        self.assertIn("Nhóm 1: Chủ cơ sở / tài khoản đăng ký", html)
         self.assertIn("google_owner", html)
         self.assertIn("Anh Bảy", html)
         self.assertIn("Spa Của Anh Bảy", html)
 
-        self.assertIn("Nhóm 2: Nhân viên/quản lý do Chủ spa tạo", html)
+        self.assertIn("Nhóm 2: Nhân viên/quản lý do Chủ cơ sở tạo", html)
         self.assertIn("staff_user", html)
         self.assertIn("Bích Trâm", html)
 
@@ -504,10 +504,10 @@ class TestApprovalPortalManagement(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         html = resp.get_data(as_text=True)
 
-        self.assertIn("Workspace: Spa A", html)
-        self.assertIn("Chủ spa: Owner A", html)
-        self.assertIn("Workspace: Spa B", html)
-        self.assertIn("Chủ spa: Owner B", html)
+        self.assertIn("Cơ sở: Spa A", html)
+        self.assertIn("Chủ cơ sở: Owner A", html)
+        self.assertIn("Cơ sở: Spa B", html)
+        self.assertIn("Chủ cơ sở: Owner B", html)
 
     def test_approval_owner_not_in_any_group(self):
         approver = self._create_approval_owner()

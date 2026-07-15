@@ -1,8 +1,11 @@
 from datetime import datetime
 import inspect
+import json
 from pathlib import Path
+import re
 import uuid
 
+from flask import message_flashed
 import pytest
 
 
@@ -11,6 +14,81 @@ pytestmark = pytest.mark.postgres_rehearsal
 
 def _marker():
     return uuid.uuid4().hex[:12]
+
+
+def _request_confirmation(workspace_slug):
+    return f"YÊU CẦU XÓA VĨNH VIỄN {workspace_slug}"
+
+
+def _approval_confirmation(workspace_slug, lifecycle_id):
+    return f"PHÊ DUYỆT YÊU CẦU XÓA VĨNH VIỄN {workspace_slug} {lifecycle_id}"
+
+
+def _execution_confirmation(workspace_id, request_id):
+    return f"XÓA VĨNH VIỄN CƠ SỞ {workspace_id} YÊU CẦU {request_id}"
+
+
+def _legacy_request_confirmation(workspace_slug):
+    return f"REQUEST PURGE {workspace_slug}"
+
+
+def _legacy_approval_confirmation(workspace_slug, lifecycle_id):
+    return f"APPROVE PURGE {workspace_slug} {lifecycle_id}"
+
+
+def _safe_route_text(value):
+    text = str(value)
+    text = re.sub(r"(?i)postgresql(?:\\+[a-z0-9_]+)?://\\S+", "[REDACTED_DB_URL]", text)
+    text = re.sub(r"(?i)(password|passwd|pwd)=\\S+", r"\\1=[REDACTED]", text)
+    return text
+
+
+def _emit_route_evidence(response, flashes, request_id, verification_state):
+    history_paths = []
+    for item in getattr(response, "history", ()):
+        request = getattr(item, "request", None)
+        path = getattr(request, "path", None)
+        if path:
+            history_paths.append(_safe_route_text(path))
+    final_request = getattr(response, "request", None)
+    final_path = getattr(final_request, "path", None) or "UNKNOWN"
+    expected_message = f"Yêu cầu xóa vĩnh viễn {request_id} đã hoàn tất."
+    safe_messages = [_safe_route_text(message) for _, message in flashes]
+    categories = [str(category) for category, _ in flashes]
+    success_present = any(
+        category == "success" and message == expected_message
+        for category, message in flashes
+    )
+    print(f"ROUTE_CAPTURED_FLASH_COUNT={len(flashes)}")
+    print(f"ROUTE_CAPTURED_FLASH_CATEGORIES={','.join(categories) or 'NONE'}")
+    print(f"ROUTE_CAPTURED_FLASH_MESSAGES={' || '.join(safe_messages) or 'NONE'}")
+    print(f"ROUTE_EXPECTED_SUCCESS_MESSAGE={_safe_route_text(expected_message)}")
+    print(f"ROUTE_SUCCESS_FLASH_PRESENT={'YES' if success_present else 'NO'}")
+    print(f"ROUTE_FINAL_STATUS={response.status_code}")
+    print(f"ROUTE_FINAL_PATH={_safe_route_text(final_path)}")
+    print(f"ROUTE_REDIRECT_PATHS={','.join(history_paths) or 'NONE'}")
+    print(f"ROUTE_REQUEST_STATUS={verification_state['request_status']}")
+    print(
+        "ROUTE_COMPLETED_AT_PRESENT="
+        + ("YES" if verification_state["completed_at"] else "NO")
+    )
+    print(
+        "ROUTE_WORKSPACE_PURGED_AT_PRESENT="
+        + ("YES" if verification_state["purged_at"] else "NO")
+    )
+    print(
+        "ROUTE_WORKSPACE_PURGE_REQUEST_ID_MATCH="
+        + ("YES" if verification_state["purge_request_id_match"] else "NO")
+    )
+    print(
+        "ROUTE_LIFECYCLE_COMPLETED="
+        + ("YES" if verification_state["lifecycle_completed"] else "NO")
+    )
+    print("ROUTE_POST_PURGE_ASSERTIONS=CAPTURED")
+
+
+def _legacy_execution_confirmation(workspace_id, request_id):
+    return f"PURGE WORKSPACE {workspace_id} REQUEST {request_id}"
 
 
 def _base_fixture(runtime, *, include_business=True, logo=None):
@@ -144,7 +222,7 @@ def test_request_creation_manifest_and_duplicate(postgres_case):
     request = service.create_purge_request(
         workspace_id=fixture["workspace_id"],
         requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}",
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]),
         now=datetime(2026, 2, 1),
     )
     request_id = request.id
@@ -178,7 +256,7 @@ def test_request_creation_manifest_and_duplicate(postgres_case):
         service.create_purge_request(
             workspace_id=fixture["workspace_id"],
             requester_user_id=fixture["actor_id"],
-            confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}",
+            confirmation_phrase=_request_confirmation(fixture["workspace_slug"]),
             now=datetime(2026, 2, 1),
         )
     assert getattr(error.value, "code", None) == "DUPLICATE_LIFECYCLE"
@@ -200,6 +278,26 @@ def test_request_creation_manifest_and_duplicate(postgres_case):
         verification.close()
 
 
+def test_legacy_english_confirmation_compatibility_is_explicit(postgres_case):
+    fixture = _base_fixture(postgres_case, include_business=False)
+    service = fixture["services"].PurgeRequestService
+    request = service.create_purge_request(
+        workspace_id=fixture["workspace_id"],
+        requester_user_id=fixture["actor_id"],
+        confirmation_phrase=_legacy_request_confirmation(fixture["workspace_slug"]),
+        now=datetime(2026, 2, 1),
+    )
+    approved = service.approve_purge_request(
+        request_id=request.id,
+        approver_user_id=fixture["actor_id"],
+        confirmation_phrase=_legacy_approval_confirmation(
+            fixture["workspace_slug"], request.lifecycle_id
+        ),
+        now=datetime(2026, 2, 1),
+    )
+    assert approved.status == "APPROVED"
+
+
 def test_approval_event_ordering_and_manifest_immutability(postgres_case):
     from sqlalchemy import select
     from models.purge import workspace_terminal_state_table
@@ -208,7 +306,7 @@ def test_approval_event_ordering_and_manifest_immutability(postgres_case):
     service = fixture["services"].PurgeRequestService
     request = service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
     )
     request_id = request.id
     lifecycle_id = request.lifecycle_id
@@ -225,7 +323,7 @@ def test_approval_event_ordering_and_manifest_immutability(postgres_case):
 
     service.approve_purge_request(
         request_id=request_id, approver_user_id=fixture["executor_id"],
-        confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}",
+        confirmation_phrase=_approval_confirmation(fixture["workspace_slug"], lifecycle_id),
         now=datetime(2026, 2, 1),
     )
 
@@ -258,7 +356,7 @@ def test_active_legal_hold_blocks_approval(postgres_case):
     service = fixture["services"].PurgeRequestService
     request = service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
     )
     request_id = request.id
     lifecycle_id = request.lifecycle_id
@@ -274,7 +372,7 @@ def test_active_legal_hold_blocks_approval(postgres_case):
     with pytest.raises(fixture["services"].PurgeRequestConflictError) as error:
         service.approve_purge_request(
             request_id=request_id, approver_user_id=fixture["executor_id"],
-            confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}",
+        confirmation_phrase=_approval_confirmation(fixture["workspace_slug"], lifecycle_id),
             now=datetime(2026, 2, 1),
         )
     assert getattr(error.value, "code", None) == "LEGAL_HOLD_UNRESOLVED"
@@ -315,7 +413,7 @@ def test_manifest_drift_fails_closed(postgres_case):
     service = fixture["services"].PurgeRequestService
     request = service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
     )
     request_id = request.id
     lifecycle_id = request.lifecycle_id
@@ -343,7 +441,7 @@ def test_manifest_drift_fails_closed(postgres_case):
     with pytest.raises(fixture["services"].PurgeRequestConflictError) as error:
         service.approve_purge_request(
             request_id=request_id, approver_user_id=fixture["executor_id"],
-            confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}",
+        confirmation_phrase=_approval_confirmation(fixture["workspace_slug"], lifecycle_id),
             now=datetime(2026, 2, 1),
         )
     assert getattr(error.value, "code", None) == "MANIFEST_MISMATCH"
@@ -372,7 +470,7 @@ def test_restore_invalidates_request(postgres_case):
     request_service = fixture["services"].PurgeRequestService
     request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
     )
     request_id = request.id
     postgres_case.prepare_scoped_session()
@@ -431,14 +529,14 @@ def test_execution_success_preserves_audit_and_terminal_tombstone(postgres_case)
     executor_user_id, executor_password = _distinct_execution_actor(fixture)
     request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
     )
     request_id = request.id
     lifecycle_id = request.lifecycle_id
 
     request_service.approve_purge_request(
         request_id=request_id, approver_user_id=approver_user_id,
-        confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_approval_confirmation(fixture["workspace_slug"], lifecycle_id), now=datetime(2026, 2, 1),
     )
     issuance = fixture["services"].PurgeReauthService.issue_local_authorization(
         purge_request_id=request_id,
@@ -541,19 +639,24 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
     request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"],
         requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}",
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]),
         now=datetime(2026, 2, 1),
     )
     request_service.approve_purge_request(
         request_id=request.id,
         approver_user_id=fixture["actor_id"],
-        confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {request.lifecycle_id}",
+        confirmation_phrase=_approval_confirmation(fixture["workspace_slug"], request.lifecycle_id),
         now=datetime(2026, 2, 1),
     )
 
     application.config["PERMANENT_PURGE_UI_ENABLED"] = True
     application.config["PERMANENT_PURGE_EXECUTION_ENABLED"] = True
     client = application.test_client()
+    captured_flashes = []
+
+    def capture_flash(sender, message, category, **extra):
+        captured_flashes.append((str(category), str(message)))
+
     try:
         login_response, csrf_token = login_test_client_with_csrf(
             client,
@@ -574,17 +677,18 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
             execute_csrf_token = session_data.get("_csrf_token")
         assert execute_csrf_token
 
-        execute_response = client.post(
-            f"/approval/purge-requests/{request.id}/execute",
-            data={
-                "csrf_token": execute_csrf_token,
-                "confirmation_phrase": f"PURGE WORKSPACE {fixture['workspace_id']} REQUEST {request.id}",
-            },
-            follow_redirects=True,
-        )
-        assert execute_response.status_code == 200
-        assert f"Purge request {request.id} completed." in execute_response.get_data(as_text=True)
-        assert "Purge execution failed" not in execute_response.get_data(as_text=True)
+        message_flashed.connect(capture_flash, application, weak=False)
+        try:
+            execute_response = client.post(
+                f"/approval/purge-requests/{request.id}/execute",
+                data={
+                    "csrf_token": execute_csrf_token,
+                    "confirmation_phrase": _execution_confirmation(fixture["workspace_id"], request.id),
+                },
+                follow_redirects=True,
+            )
+        finally:
+            message_flashed.disconnect(capture_flash, application)
     finally:
         runtime.db.session.remove()
         application.config["PERMANENT_PURGE_UI_ENABLED"] = previous_ui_flag
@@ -599,6 +703,31 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
                 workspace_terminal_state_table.c.id == fixture["workspace_id"]
             )
         ).mappings().one()
+        lifecycle_completed = verification.query(models.PurgeLifecycleEvent).filter_by(
+            request_id=request.id
+        ).count() >= 1
+        verification_state = {
+            "request_status": stored_request.status,
+            "completed_at": stored_request.completed_at is not None,
+            "purged_at": terminal["purged_at"] is not None,
+            "purge_request_id_match": terminal["purge_request_id"] == request.id,
+            "lifecycle_completed": lifecycle_completed,
+        }
+        _emit_route_evidence(
+            execute_response,
+            captured_flashes,
+            request.id,
+            verification_state,
+        )
+        expected_success_message = f"Yêu cầu xóa vĩnh viễn {request.id} đã hoàn tất."
+        assert execute_response.status_code == 200
+        assert (
+            "success",
+            expected_success_message,
+        ) in captured_flashes
+        rendered_success_message = json.dumps(expected_success_message, ensure_ascii=True)
+        assert rendered_success_message in execute_response.get_data(as_text=True)
+        assert "Purge execution failed" not in execute_response.get_data(as_text=True)
         assert stored_request.status == "COMPLETED"
         assert stored_request.completed_at is not None
         assert terminal["purged_at"] is not None
@@ -615,12 +744,76 @@ def test_execute_route_runs_real_workspace_purge_end_to_end(postgres_case):
         assert verification.query(models.Setting).filter_by(workspace_id=fixture["workspace_id"]).count() == 0
         assert verification.query(models.Workspace).filter_by(id=fixture["workspace_id"]).count() == 1
         assert verification.query(models.WorkspacePurgeRequest).filter_by(id=request.id).count() == 1
-        assert verification.query(models.PurgeLifecycleEvent).filter_by(request_id=request.id).count() >= 1
+        assert lifecycle_completed
         assert verification.get(models.Customer, unrelated_customer_id) is not None
         assert verification.get(models.Service, unrelated_service_id) is not None
         assert verification.get(models.Workspace, unrelated_workspace_id) is not None
     finally:
         verification.close()
+
+
+def test_vietnamese_request_and_approval_rejections_are_exact_and_non_destructive(postgres_case):
+    fixture = _base_fixture(postgres_case, include_business=False)
+    service = fixture["services"].PurgeRequestService
+    slug = fixture["workspace_slug"]
+
+    invalid_request_phrases = (
+        f"YÊU CẦU XÓA {slug}",
+        f"YEU CAU XOA VINH VIEN {slug}",
+        _request_confirmation(slug).lower(),
+        _request_confirmation("wrong-target"),
+    )
+    for phrase in invalid_request_phrases:
+        with pytest.raises(fixture["services"].PurgeRequestConflictError) as error:
+            service.create_purge_request(
+                workspace_id=fixture["workspace_id"],
+                requester_user_id=fixture["actor_id"],
+                confirmation_phrase=phrase,
+                now=datetime(2026, 2, 1),
+            )
+        assert getattr(error.value, "code", None) == "INVALID_CONFIRMATION"
+
+    verification = postgres_case.new_session()
+    try:
+        assert verification.query(fixture["models"].WorkspacePurgeRequest).count() == 0
+    finally:
+        verification.close()
+    request = service.create_purge_request(
+        workspace_id=fixture["workspace_id"],
+        requester_user_id=fixture["actor_id"],
+        confirmation_phrase=_request_confirmation(slug),
+        now=datetime(2026, 2, 1),
+    )
+    lifecycle_id = request.lifecycle_id
+    invalid_approval_phrases = (
+        f"PHÊ DUYỆT YÊU CẦU {slug} {lifecycle_id}",
+        f"PHE DUYET YEU CAU XOA VINH VIEN {slug} {lifecycle_id}",
+        _approval_confirmation(slug, lifecycle_id).lower(),
+        _approval_confirmation("wrong-target", lifecycle_id),
+    )
+    for phrase in invalid_approval_phrases:
+        with pytest.raises(fixture["services"].PurgeRequestConflictError) as error:
+            service.approve_purge_request(
+                request_id=request.id,
+                approver_user_id=fixture["actor_id"],
+                confirmation_phrase=phrase,
+                now=datetime(2026, 2, 1),
+            )
+        assert getattr(error.value, "code", None) == "INVALID_CONFIRMATION"
+
+    verification = postgres_case.new_session()
+    try:
+        stored = verification.get(fixture["models"].WorkspacePurgeRequest, request.id)
+        assert stored.status == "PENDING_APPROVAL"
+    finally:
+        verification.close()
+
+    service.approve_purge_request(
+        request_id=request.id,
+        approver_user_id=fixture["actor_id"],
+        confirmation_phrase=_approval_confirmation(slug, lifecycle_id),
+        now=datetime(2026, 2, 1),
+    )
 
 
 def test_route_e2e_cross_workspace_verification_uses_stable_scalar_ids():
@@ -712,14 +905,14 @@ def test_execution_rolls_back_after_mutation(postgres_case, monkeypatch):
     }
     request = request_service.create_purge_request(
         workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-        confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
     )
     request_id = request.id
     lifecycle_id = request.lifecycle_id
 
     request_service.approve_purge_request(
         request_id=request_id, approver_user_id=approver_user_id,
-        confirmation_phrase=f"APPROVE PURGE {fixture['workspace_slug']} {lifecycle_id}", now=datetime(2026, 2, 1),
+        confirmation_phrase=_approval_confirmation(fixture["workspace_slug"], lifecycle_id), now=datetime(2026, 2, 1),
     )
     issuance = fixture["services"].PurgeReauthService.issue_local_authorization(
         purge_request_id=request_id,
@@ -785,6 +978,6 @@ def test_logo_reference_blocks_without_filesystem_operation(postgres_case):
     with pytest.raises(fixture["services"].PurgeRequestConflictError) as error:
         fixture["services"].PurgeRequestService.create_purge_request(
             workspace_id=fixture["workspace_id"], requester_user_id=fixture["actor_id"],
-            confirmation_phrase=f"REQUEST PURGE {fixture['workspace_slug']}", now=datetime(2026, 2, 1),
+            confirmation_phrase=_request_confirmation(fixture["workspace_slug"]), now=datetime(2026, 2, 1),
         )
     assert getattr(error.value, "code", None) == "WORKSPACE_LOGO_PRESENT"

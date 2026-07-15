@@ -41,7 +41,7 @@
                             {% if user.auth_provider %}
                             <span class="badge bg-info text-dark text-uppercase">{{ user.auth_provider }}</span>
                             {% else %}
-                            <span class="text-muted">local</span>
+                            <span class="text-muted">Cục bộ</span>
                             {% endif %}
                             {% if user.email_verified %}
                             <span class="badge bg-success ms-1">Email đã xác minh</span>
@@ -51,7 +51,7 @@
                         </td>
                         <td class="text-center">
                             {% set created_local = user.created_at | vietnam_time if user.created_at else None %}
-                            {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'N/A' }}
+                        {{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'Không có' }}
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm" role="group">

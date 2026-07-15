@@ -249,14 +249,14 @@ class ImportService:
 
                 # Validate
                 if not name:
-                    row_errors.append('H? t?n kh?ng ???c ?? tr?ng')
+                    row_errors.append('Họ tên không được để trống')
 
                 normalized_phone = CustomerService.normalize_customer_phone(phone)
                 normalized_email = CustomerService.normalize_customer_email(email)
 
                 if phone:
                     if not ImportService._is_valid_phone(phone):
-                        row_errors.append('S? ?i?n tho?i ph?i g?m ??ng 10 ch? s? v? b?t ??u b?ng s? 0')
+                        row_errors.append('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
                     elif normalized_phone:
                         phone_conflicts = CustomerService.find_duplicate_conflicts(
                             phone=normalized_phone,
@@ -269,13 +269,13 @@ class ImportService:
                             dup_reasons.extend(CustomerService._build_duplicate_messages(phone_conflicts))
                         if normalized_phone in seen_phones:
                             is_duplicate = True
-                            dup_reasons.append(f'S? ?i?n tho?i tr?ng v?i d?ng {seen_phones[normalized_phone]}')
+                            dup_reasons.append(f'Số điện thoại trùng với dòng {seen_phones[normalized_phone]}')
                         else:
                             seen_phones[normalized_phone] = idx
 
                 if email:
                     if not ImportService._is_valid_email(email):
-                        row_errors.append('Email kh?ng ??ng ??nh d?ng')
+                        row_errors.append('Email không đúng định dạng')
                     elif normalized_email:
                         email_conflicts = CustomerService.find_duplicate_conflicts(
                             phone=None,
@@ -288,7 +288,7 @@ class ImportService:
                             dup_reasons.extend(CustomerService._build_duplicate_messages(email_conflicts))
                         if normalized_email in seen_emails:
                             is_duplicate = True
-                            dup_reasons.append(f'Email tr?ng v?i d?ng {seen_emails[normalized_email]}')
+                            dup_reasons.append(f'Email trùng với dòng {seen_emails[normalized_email]}')
                         else:
                             seen_emails[normalized_email] = idx
 
@@ -483,7 +483,7 @@ class ImportService:
                     if is_dup:
                         if duplicate_action == 'skip' or duplicate_action == 'insert_only':
                             report['skipped'] += 1
-                            report['errors'].append({'row': row_idx, 'message': f'B? qua d?ng do tr?ng th?ng tin (S?T: {phone}, Email: {email})'})
+                            report['errors'].append({'row': row_idx, 'message': f'Bỏ qua dòng do trùng thông tin (SĐT: {phone}, Email: {email})'})
                             continue
                         elif duplicate_action == 'overwrite':
                             existing = None
@@ -508,7 +508,7 @@ class ImportService:
                                 report['overwritten'] += 1
                             elif has_deleted_duplicate:
                                 report['skipped'] += 1
-                                report['errors'].append({'row': row_idx, 'message': f'B? qua d?ng do tr?ng v?i kh?ch h?ng trong th?ng r?c (S?T: {phone}, Email: {email})'})
+                                report['errors'].append({'row': row_idx, 'message': f'Bỏ qua dòng do trùng với khách hàng trong thùng rác (SĐT: {phone}, Email: {email})'})
                             else:
                                 customer = Customer(name=name, phone=phone, email=email, address=address, workspace_id=current_workspace_id)
                                 db.session.add(customer)

@@ -291,9 +291,9 @@ class CustomerService:
     @staticmethod
     def check_duplicate(phone=None, email=None, exclude_customer_id=None, include_deleted=True, customer_records=None):
         """
-        Ki?m tra tr?ng s? ?i?n tho?i v? email trong s? c?c kh?ch h?ng.
-        Lo?i tr? customer c? ID b?ng exclude_customer_id (khi update).
-        Tr? v? dictionary ch?a k?t qu? ki?m tra.
+        Kiểm tra trùng số điện thoại và email trong số các khách hàng.
+        Loại trừ khách hàng có ID bằng exclude_customer_id (khi cập nhật).
+        Trả về dictionary chứa kết quả kiểm tra.
         """
         conflicts = CustomerService.find_duplicate_conflicts(
             phone=phone,
@@ -418,7 +418,7 @@ class CustomerService:
 
     @staticmethod
     def delete(customer_id, actor=None):
-        """X?a m?m kh?ch h?ng v? chuy?n v?o th?ng r?c"""
+        """Xóa mềm khách hàng và chuyển vào thùng rác."""
         from services.workspace_service import WorkspaceService
         customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
         if not customer or customer.deleted_at is not None:
@@ -455,11 +455,11 @@ class CustomerService:
 
     @staticmethod
     def restore(customer_id, actor=None):
-        """Kh?i ph?c kh?ch h?ng t? th?ng r?c"""
+        """Khôi phục khách hàng từ thùng rác."""
         from services.workspace_service import WorkspaceService
         customer = WorkspaceService.scoped_query(Customer).filter(Customer.id == customer_id).first()
         if not customer or customer.deleted_at is None:
-            raise NotFoundException("Kh?ng t?m th?y kh?ch h?ng trong Th?ng r?c.")
+            raise NotFoundException("Không tìm thấy khách hàng trong thùng rác.")
 
         try:
             actor_name = actor
@@ -480,11 +480,11 @@ class CustomerService:
             ActivityLogService.write_log(
                 module=ActivityLogService.MODULE_CUSTOMER,
                 action=ActivityLogService.ACTION_UPDATE,
-                description=f'{actor_name} kh?i ph?c kh?ch h?ng "{customer.name}" t? Th?ng r?c',
+                description=f'{actor_name} khôi phục khách hàng "{customer.name}" từ thùng rác',
                 reference_id=customer_id,
                 session_override=db.session,
                 commit=False,
-                user_id_override=current_user.id if current_user and actor_name != "H? th?ng" else None
+                user_id_override=current_user.id if current_user and actor_name != "Hệ thống" else None
             )
             db.session.commit()
         except Exception:

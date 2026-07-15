@@ -355,7 +355,7 @@
                 body: JSON.stringify({ id: id, status: newStatus })
             });
             const data = await resp.json();
-            if (!resp.ok) throw new Error(data.error || 'Failed');
+            if (!resp.ok) throw new Error(data.error || 'Không thể cập nhật lịch hẹn');
 
             // Refresh calendar
             if (calendarInstance) {

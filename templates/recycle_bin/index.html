@@ -111,7 +111,7 @@
                     <tbody>
                         {% for item in items.items %}
                         {% set local_dt = item.deleted_at | vietnam_time if item.deleted_at else None %}
-                        {% set formatted_time = local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else 'N/A' %}
+                    {% set formatted_time = local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else 'Không có' %}
                         <tr>
                             <td>
                                 <span class="app-badge {{ item.badge_class }}">{{ item.vn_name | upper }}</span>
@@ -163,7 +163,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="restoreConfirmModalLabel">Xác nhận khôi phục</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body text-center py-4">
                 <i class="bi bi-arrow-counterclockwise text-success" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
