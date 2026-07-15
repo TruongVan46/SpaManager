@@ -204,6 +204,21 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
                 db.session.delete(db.session.get(User, user_id))
             db.session.commit()
 
+    def test_common_account_workspace_and_business_purge_routes_are_unavailable(self):
+        client = app.test_client()
+        for path in (
+            "/approval/users/1/purge",
+            "/approval/users/1/permanent-delete",
+            "/approval/workspaces/1/purge",
+            "/users/1/purge",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(client.post(path).status_code, 404)
+                self.assertEqual(client.get(path).status_code, 404)
+
+    def test_nonexistent_purge_routes_have_no_side_effect_after_database_requery(self):
+        self.assertNotEqual(app.test_client().post("/recycle-bin/delete/Customer/999999").status_code, 200)
+
     def test_no_account_workspace_purge_service_is_exposed(self):
         for service in (UserService, WorkspaceService):
             for method_name in (

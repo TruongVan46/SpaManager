@@ -5,6 +5,10 @@ from models.invoice import Invoice
 from models.invoice_detail import InvoiceDetail
 from datetime import datetime
 from core.exceptions import ValidationException
+from core.exceptions import NotFoundException
+from extensions import db
+from services.auth_service import AuthService
+from services.activity_log_service import ActivityLogService
 
 class PythonPagination:
     """A pagination helper that mimics Flask-SQLAlchemy's Pagination object."""
@@ -51,6 +55,170 @@ class RecycleBinRegistry:
 
 
 class RecycleBinService:
+    _PERMANENT_DELETE_MODELS = {
+        'Customer': Customer,
+        'Service': Service,
+        'Appointment': Appointment,
+        'Invoice': Invoice,
+    }
+
+    _PERMANENT_DELETE_LABELS = {
+        'Customer': 'KHÁCH HÀNG',
+        'Service': 'DỊCH VỤ',
+        'Appointment': 'LỊCH HẸN',
+        'Invoice': 'HÓA ĐƠN',
+    }
+
+    @classmethod
+    def permanent_delete_phrase(cls, item_type, item_id):
+        label = cls._PERMANENT_DELETE_LABELS.get(item_type)
+        if label is None:
+            return None
+        return f"XÓA VĨNH VIỄN {label} {item_id}"
+
+    @classmethod
+    def _dependency_status(cls, item_type, item_id, workspace_id):
+        if item_type == 'Customer':
+            appointment_count = Appointment.query.filter(
+                Appointment.customer_id == item_id,
+                Appointment.workspace_id == workspace_id,
+            ).count()
+            invoice_count = Invoice.query.filter(
+                Invoice.customer_id == item_id,
+                Invoice.workspace_id == workspace_id,
+            ).count()
+            can_delete = appointment_count == 0 and invoice_count == 0
+            reason = (
+                f"Không thể xóa vĩnh viễn khách hàng vì còn "
+                f"{appointment_count} lịch hẹn và {invoice_count} hóa đơn liên quan."
+                if not can_delete else ""
+            )
+            return {
+                'can_delete': can_delete,
+                'reason': reason,
+                'appointment_count': appointment_count,
+                'invoice_count': invoice_count,
+            }
+
+        if item_type == 'Service':
+            appointment_count = Appointment.query.filter(
+                Appointment.service_id == item_id,
+                Appointment.workspace_id == workspace_id,
+            ).count()
+            invoice_detail_count = InvoiceDetail.query.join(
+                Invoice, Invoice.id == InvoiceDetail.invoice_id
+            ).filter(
+                InvoiceDetail.service_id == item_id,
+                Invoice.workspace_id == workspace_id,
+            ).count()
+            can_delete = appointment_count == 0 and invoice_detail_count == 0
+            reason = (
+                f"Không thể xóa vĩnh viễn dịch vụ vì còn "
+                f"{appointment_count} lịch hẹn và {invoice_detail_count} "
+                f"chi tiết hóa đơn liên quan."
+                if not can_delete else ""
+            )
+            return {
+                'can_delete': can_delete,
+                'reason': reason,
+                'appointment_count': appointment_count,
+                'invoice_detail_count': invoice_detail_count,
+            }
+
+        return {'can_delete': True, 'reason': ''}
+
+    @classmethod
+    def get_permanent_delete_status(cls, item_type, item_id, workspace_id=None):
+        """Return safe, workspace-scoped delete readiness for the recycle-bin UI."""
+        model = cls._PERMANENT_DELETE_MODELS.get(item_type)
+        if model is None or not isinstance(item_id, int) or isinstance(item_id, bool):
+            return {'can_delete': False, 'reason': 'Loại dữ liệu không hợp lệ.'}
+
+        if workspace_id is None:
+            from services.workspace_service import WorkspaceService
+            workspace_id = WorkspaceService.get_current_workspace_id()
+        if workspace_id is None:
+            return {'can_delete': False, 'reason': 'Không xác định được workspace hiện tại.'}
+
+        record = model.query.filter(
+            model.id == item_id,
+            model.workspace_id == workspace_id,
+        ).first()
+        if record is None:
+            return {'can_delete': False, 'reason': 'Không tìm thấy bản ghi trong workspace hiện tại.'}
+        if record.deleted_at is None:
+            return {'can_delete': False, 'reason': 'Chỉ bản ghi đã xóa mềm mới được xóa vĩnh viễn.'}
+
+        return cls._dependency_status(item_type, item_id, workspace_id)
+
+    @classmethod
+    def permanent_delete(cls, item_type, item_id, actor=None):
+        """Permanently delete one soft-deleted, workspace-scoped business record."""
+        model = cls._PERMANENT_DELETE_MODELS.get(item_type)
+        if model is None or not isinstance(item_id, int) or isinstance(item_id, bool):
+            raise NotFoundException('Loại dữ liệu hoặc mã bản ghi không hợp lệ.')
+
+        from services.workspace_service import WorkspaceService
+        workspace_id = WorkspaceService.require_current_workspace_id()
+        target = model.query.filter(
+            model.id == item_id,
+            model.workspace_id == workspace_id,
+        ).with_for_update().first()
+        if target is None:
+            raise NotFoundException('Không tìm thấy bản ghi trong workspace hiện tại.')
+        if target.deleted_at is None:
+            raise ValidationException('Chỉ bản ghi đã xóa mềm mới được xóa vĩnh viễn.')
+
+        status = cls._dependency_status(item_type, item_id, workspace_id)
+        if not status['can_delete']:
+            raise ValidationException(status['reason'])
+
+        current_user = AuthService.get_current_user()
+        actor_name = actor
+        if actor_name is None or not str(actor_name).strip():
+            actor_name = AuthService.require_current_username()
+        snapshot_name = getattr(target, 'name', None)
+        if snapshot_name is None and item_type == 'Appointment':
+            snapshot_name = f'Lịch hẹn #{target.id}'
+        if snapshot_name is None and item_type == 'Invoice':
+            snapshot_name = f'Hóa đơn HD{target.id:06d}'
+
+        try:
+            if item_type == 'Invoice':
+                details = InvoiceDetail.query.filter(
+                    InvoiceDetail.invoice_id == target.id
+                ).with_for_update().all()
+                for detail in details:
+                    db.session.delete(detail)
+
+            db.session.delete(target)
+            audit_ok = ActivityLogService.write_log(
+                module=item_type,
+                action=ActivityLogService.ACTION_PERMANENT_DELETE,
+                description=(
+                    f'{actor_name} xóa vĩnh viễn {item_type} '
+                    f'"{snapshot_name}" (id={item_id}, workspace_id={workspace_id})'
+                ),
+                reference_id=item_id,
+                session_override=db.session,
+                commit=False,
+                user_id_override=(current_user.id if current_user else None),
+                workspace_id=workspace_id,
+            )
+            if not audit_ok:
+                raise ValidationException('Không thể ghi nhật ký xóa vĩnh viễn; thao tác đã được hoàn tác.')
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+        return {
+            'item_type': item_type,
+            'item_id': item_id,
+            'workspace_id': workspace_id,
+            'name': snapshot_name,
+        }
+
     @staticmethod
     def get_statistics():
         """Retrieve count of all registered deleted items generically."""
@@ -82,6 +250,11 @@ class RecycleBinService:
             model = config['model_class']
             deleted_records = WorkspaceService.scoped_query(model).filter(model.deleted_at.isnot(None)).all()
             for rec in deleted_records:
+                delete_status = RecycleBinService.get_permanent_delete_status(
+                    k,
+                    rec.id,
+                    workspace_id=getattr(rec, 'workspace_id', None),
+                )
                 items.append({
                     'id': rec.id,
                     'type': k,
@@ -89,7 +262,10 @@ class RecycleBinService:
                     'deleted_at': rec.deleted_at,
                     'deleted_by': rec.deleted_by,
                     'badge_class': config['badge_class'],
-                    'vn_name': config['vn_name']
+                    'vn_name': config['vn_name'],
+                    'can_permanently_delete': delete_status['can_delete'],
+                    'permanent_delete_reason': delete_status['reason'],
+                    'permanent_delete_phrase': RecycleBinService.permanent_delete_phrase(k, rec.id),
                 })
 
         # Apply search query (matching name, type, and Vietnamese translation)

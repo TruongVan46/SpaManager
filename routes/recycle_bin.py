@@ -64,6 +64,34 @@ def restore(item_type, item_id):
     except Exception:
         return jsonify({'success': False, 'message': 'Không thể khôi phục dữ liệu.'}), 500
 
+@recycle_bin_bp.route('/recycle-bin/delete/<string:item_type>/<int:item_id>', methods=['POST'])
+def permanent_delete(item_type, item_id):
+    """Permanently delete one approved soft-deleted business record."""
+    try:
+        payload = request.get_json(silent=True) or request.form
+        confirmation_phrase = payload.get('confirmation_phrase', '')
+        expected_phrase = RecycleBinService.permanent_delete_phrase(item_type, item_id)
+        if expected_phrase is None or confirmation_phrase != expected_phrase:
+            return jsonify({
+                'success': False,
+                'message': 'Cú pháp xác nhận không đúng.',
+            }), 400
+        result = RecycleBinService.permanent_delete(
+            item_type,
+            item_id,
+            actor=AuthService.require_current_username(),
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Đã xóa vĩnh viễn bản ghi.',
+            'item_type': result['item_type'],
+            'item_id': result['item_id'],
+        })
+    except BusinessException as be:
+        return jsonify({'success': False, 'message': be.message}), be.status_code
+    except Exception:
+        return jsonify({'success': False, 'message': 'Không thể xóa vĩnh viễn bản ghi.'}), 500
+
 @recycle_bin_bp.route('/recycle-bin/info/<string:item_type>/<int:item_id>', methods=['GET'])
 def get_info(item_type, item_id):
     """Retrieve details and dependent counts of a soft-deleted item before permanent deletion."""

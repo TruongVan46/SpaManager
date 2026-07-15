@@ -2,6 +2,7 @@ import os
 import re
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import date, datetime
 from pathlib import Path
 
@@ -149,11 +150,18 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         self.assertIsNotNone(match)
         return match.group(1)
 
-    def _post_legacy_delete(self, item_type, item_id, include_csrf=True):
+    def _post_legacy_delete(self, item_type, item_id, include_csrf=True, confirmation_phrase=None):
         headers = {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}
         if include_csrf:
             headers["X-CSRFToken"] = self._csrf_token()
-        return self.client.post(f"/recycle-bin/delete/{item_type}/{item_id}", headers=headers)
+        return self.client.post(
+            f"/recycle-bin/delete/{item_type}/{item_id}",
+            headers=headers,
+            json=(
+                {"confirmation_phrase": confirmation_phrase}
+                if confirmation_phrase is not None else {}
+            ),
+        )
 
     def _assert_fixture_rows_exist(self):
         db.session.expire_all()
@@ -163,7 +171,7 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         self.assertIsNotNone(db.session.get(Invoice, self.invoice_id))
         self.assertIsNotNone(db.session.get(InvoiceDetail, self.invoice_detail_id))
 
-    def test_legacy_route_is_unavailable_for_every_entity_and_role(self):
+    def test_permanent_delete_route_requires_manager_and_exact_confirmation(self):
         targets = {
             "Customer": self.customer_id,
             "Service": self.service_id,
@@ -179,13 +187,16 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
                         item_id,
                         include_csrf=role != "APPROVAL_OWNER",
                     )
-                    self.assertEqual(response.status_code, 404)
+                    self.assertEqual(
+                        response.status_code,
+                        302 if role == "APPROVAL_OWNER" else (403 if role == "STAFF" else 400),
+                    )
                     self._assert_fixture_rows_exist()
 
     def test_legacy_route_has_no_side_effect_without_csrf(self):
         self._login_as("OWNER")
         response = self._post_legacy_delete("Customer", self.customer_id, include_csrf=False)
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 400)
         self._assert_fixture_rows_exist()
 
     def test_active_and_soft_deleted_rows_are_protected_by_direct_services(self):
@@ -230,13 +241,18 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
 
     def test_cross_workspace_record_is_not_mutated(self):
         self._login_as("OWNER")
-        response = self._post_legacy_delete("Customer", self.other_customer_id)
+        response = self._post_legacy_delete(
+            "Customer",
+            self.other_customer_id,
+            confirmation_phrase=f"XÓA VĨNH VIỄN KHÁCH HÀNG {self.other_customer_id}",
+        )
         self.assertEqual(response.status_code, 404)
         db.session.expire_all()
         other_customer = db.session.get(Customer, self.other_customer_id)
         self.assertIsNotNone(other_customer)
         self.assertIsNone(other_customer.deleted_at)
 
+    @unittest.skip("superseded by the permanent-delete dependency-state contract")
     def test_recycle_bin_ui_keeps_restore_and_only_disabled_delete_placeholder(self):
         self.customer.deleted_at = datetime(2026, 7, 1, 8, 0)
         self.customer.deleted_by = "disabled_owner"
@@ -254,6 +270,23 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         self.assertNotIn("btn-confirm-delete", template)
         self.assertIn("btn-restore-item", template)
         self.assertIn("/recycle-bin/restore/", template)
+
+    def test_recycle_bin_ui_keeps_restore_and_dependency_delete_state(self):
+        self.customer.deleted_at = datetime(2026, 7, 1, 8, 0)
+        self.customer.deleted_by = "disabled_owner"
+        db.session.commit()
+        self._login_as("OWNER")
+        response = self.client.get("/recycle-bin")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        template = Path("templates/recycle_bin/index.html").read_text(encoding="utf-8")
+        self.assertIn("permanent_delete_phrase", template)
+        self.assertIn("btn-permanent-delete-item", template)
+        self.assertIn("btn-confirm-permanent-delete", template)
+        self.assertIn("/recycle-bin/delete/", template)
+        self.assertIn("btn-restore-item", template)
+        self.assertIn("disabled", html)
+        self.assertIn("Đặt lại bộ lọc", template)
 
     def test_customer_restore_regression(self):
         self.customer.deleted_at = datetime(2026, 7, 1, 8, 0)
@@ -275,6 +308,50 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         self.assertIsNotNone(customer)
         self.assertIsNone(customer.deleted_at)
         self.assertIsNone(customer.deleted_by)
+
+    def test_soft_deleted_appointment_and_invoice_are_deleted_with_audit(self):
+        self._login_as("OWNER")
+        lifecycle_time = datetime(2026, 7, 1, 8, 0)
+        self.appointment.deleted_at = lifecycle_time
+        self.invoice.deleted_at = lifecycle_time
+        db.session.commit()
+
+        appointment_response = self._post_legacy_delete(
+            "Appointment",
+            self.appointment_id,
+            confirmation_phrase=f"XÓA VĨNH VIỄN LỊCH HẸN {self.appointment_id}",
+        )
+        self.assertEqual(appointment_response.status_code, 200)
+        self.assertIsNone(db.session.get(Appointment, self.appointment_id))
+
+        invoice_response = self._post_legacy_delete(
+            "Invoice",
+            self.invoice_id,
+            confirmation_phrase=f"XÓA VĨNH VIỄN HÓA ĐƠN {self.invoice_id}",
+        )
+        self.assertEqual(invoice_response.status_code, 200)
+        self.assertIsNone(db.session.get(Invoice, self.invoice_id))
+        self.assertIsNone(db.session.get(InvoiceDetail, self.invoice_detail_id))
+        self.assertEqual(
+            ActivityLog.query.filter_by(action="PERMANENT_DELETE").count(),
+            2,
+        )
+
+    def test_audit_failure_rolls_back_permanent_delete(self):
+        self._login_as("OWNER")
+        self.appointment.deleted_at = datetime(2026, 7, 1, 8, 0)
+        db.session.commit()
+        with patch(
+            "services.recycle_bin_service.ActivityLogService.write_log",
+            return_value=False,
+        ):
+            response = self._post_legacy_delete(
+                "Appointment",
+                self.appointment_id,
+                confirmation_phrase=f"XÓA VĨNH VIỄN LỊCH HẸN {self.appointment_id}",
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIsNotNone(db.session.get(Appointment, self.appointment_id))
 
 
 if __name__ == "__main__":

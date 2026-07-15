@@ -65,8 +65,8 @@
                             <i class="bi bi-funnel-fill"></i> Lọc
                         </button>
                         {% if q or item_type or sort_by != 'newest_deleted' or per_page != 10 %}
-                        <a href="{{ url_for('recycle_bin.index') }}" class="app-btn app-btn-outline-danger btn btn-sm btn-outline-danger" id="btn-reset-filters" title="Xóa bộ lọc" aria-label="Reset bộ lọc về mặc định">
-                            <i class="bi bi-x-circle"></i> Xóa
+                        <a href="{{ url_for('recycle_bin.index') }}" class="app-btn app-btn-outline-secondary btn btn-sm btn-outline-secondary" id="btn-reset-filters" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc về mặc định">
+                            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại bộ lọc
                         </a>
                         {% endif %}
                     </div>
@@ -133,9 +133,15 @@
                                     <button type="button" class="btn btn-sm btn-outline-success me-1 d-inline-flex align-items-center btn-restore-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" title="Khôi phục" aria-label="Khôi phục dữ liệu">
                                         <i class="bi bi-arrow-counterclockwise me-1"></i> Khôi phục
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center" disabled title="Xóa vĩnh viễn hiện chưa được hỗ trợ" aria-label="Xóa vĩnh viễn hiện chưa được hỗ trợ">
+                                    {% if item.can_permanently_delete %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center btn-permanent-delete-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" data-phrase="{{ item.permanent_delete_phrase }}" title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn {{ item.name }}">
                                         <i class="bi bi-trash me-1"></i> Xóa vĩnh viễn
                                     </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center" disabled title="{{ item.permanent_delete_reason }}" aria-label="{{ item.permanent_delete_reason }}">
+                                        <i class="bi bi-trash me-1"></i> Xóa vĩnh viễn
+                                    </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -150,6 +156,29 @@
                 'sort_by': sort_by, 'per_page': per_page
             }) }}
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa vĩnh viễn -->
+<div class="modal fade" id="permanentDeleteConfirmModal" tabindex="-1" aria-labelledby="permanentDeleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="permanentDeleteConfirmModalLabel">Xác nhận xóa vĩnh viễn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger">Thao tác này không thể hoàn tác.</p>
+                <p>Nhập chính xác cụm từ sau để tiếp tục:</p>
+                <p class="fw-bold" id="permanent-delete-phrase"></p>
+                <input type="text" class="form-control" id="permanent-delete-confirmation" autocomplete="off" aria-label="Cụm từ xác nhận">
+                <div class="invalid-feedback" id="permanent-delete-validation">Cụm từ xác nhận chưa đúng.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-permanent-delete" disabled>Xóa vĩnh viễn</button>
+            </div>
         </div>
     </div>
 </div>
@@ -285,6 +314,66 @@
                     confirmRestoreBtn.innerHTML = 'Khôi phục';
                     showToast('Không thể khôi phục dữ liệu.', false);
                 });
+            });
+        }
+
+        const deleteModalEl = document.getElementById('permanentDeleteConfirmModal');
+        const confirmDeleteBtn = document.getElementById('btn-confirm-permanent-delete');
+        const deletePhraseEl = document.getElementById('permanent-delete-phrase');
+        const deleteInput = document.getElementById('permanent-delete-confirmation');
+        let itemToDelete = null;
+        let rowToDelete = null;
+
+        if (deleteModalEl && confirmDeleteBtn && deleteInput && typeof bootstrap !== 'undefined') {
+            const deleteModal = new bootstrap.Modal(deleteModalEl);
+            document.addEventListener('click', function(e) {
+                const deleteBtn = e.target.closest('.btn-permanent-delete-item');
+                if (!deleteBtn) return;
+                itemToDelete = {
+                    id: deleteBtn.getAttribute('data-id'),
+                    type: deleteBtn.getAttribute('data-type'),
+                    phrase: deleteBtn.getAttribute('data-phrase')
+                };
+                rowToDelete = deleteBtn.closest('tr');
+                deletePhraseEl.textContent = itemToDelete.phrase;
+                deleteInput.value = '';
+                deleteInput.classList.remove('is-invalid');
+                confirmDeleteBtn.disabled = true;
+                deleteModal.show();
+            });
+            deleteInput.addEventListener('input', function() {
+                confirmDeleteBtn.disabled = !itemToDelete || deleteInput.value !== itemToDelete.phrase;
+                deleteInput.classList.remove('is-invalid');
+            });
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (!itemToDelete || deleteInput.value !== itemToDelete.phrase) {
+                    deleteInput.classList.add('is-invalid');
+                    return;
+                }
+                confirmDeleteBtn.disabled = true;
+                csrfFetch(`/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({confirmation_phrase: itemToDelete.phrase})
+                }).then(response => response.json()).then(data => {
+                    deleteModal.hide();
+                    if (!data.success) {
+                        showToast(data.message || 'Không thể xóa vĩnh viễn bản ghi.', false);
+                        return;
+                    }
+                    showToast(data.message || 'Đã xóa vĩnh viễn bản ghi.', true);
+                    if (rowToDelete) {
+                        rowToDelete.style.opacity = '0';
+                        setTimeout(() => {
+                            rowToDelete.remove();
+                            updateStatsBar(itemToDelete.type);
+                            if (!document.querySelectorAll('.recycle-bin-table tbody tr').length) window.location.reload();
+                        }, 400);
+                    }
+                }).catch(() => {
+                    deleteModal.hide();
+                    showToast('Không thể xóa vĩnh viễn bản ghi.', false);
+                }).finally(() => { confirmDeleteBtn.disabled = false; });
             });
         }
 
