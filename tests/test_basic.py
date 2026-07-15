@@ -58,6 +58,7 @@ from services.invoice_service import InvoiceService
 from services.service_service import ServiceService
 from services.auth_service import AuthService
 from services.user_service import UserService
+from services.workspace_service import WorkspaceService
 from services.backup_service import BackupService
 from services.data_audit_service import run_data_consistency_audit
 from services.data_repair_service import run_controlled_repair
@@ -2120,7 +2121,13 @@ class BasicTestCase(unittest.TestCase):
     def test_user_toggle_active_route_enforces_state_changes_and_blocks_self_disable(self):
         owner = self.create_user("users-toggle-owner", password="owner-pass", full_name="Users Toggle Owner", role="OWNER")
         target = self.create_user("users-toggle-target", password="target-pass", full_name="Users Toggle Target", role="STAFF")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        WorkspaceService.add_member_for_user(workspace.id, target, "STAFF")
+        db.session.commit()
         self.login_as(owner)
+        with self.client.session_transaction() as sess:
+            sess["_enable_workspace_isolation"] = True
+            sess["current_workspace_id"] = workspace.id
 
         deactivate_response = self.post_with_csrf(
             f"/users/{target.id}/toggle-active",

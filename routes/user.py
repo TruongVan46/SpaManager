@@ -1,7 +1,7 @@
 from flask import jsonify, redirect, render_template, request, url_for, abort
 
 from core.auth.permissions import can_manage_users, is_owner, is_admin
-from core.exceptions import BusinessException, ValidationException
+from core.exceptions import BusinessException, NotFoundException, ValidationException
 from routes import user_bp
 from services.auth_service import AuthService
 from services.notification_service import NotificationService
@@ -333,7 +333,7 @@ def toggle_active(user_id):
 
 @user_bp.route('/users/<int:user_id>/soft-delete', methods=['POST'])
 def soft_delete(user_id):
-    actor = _require_owner()
+    actor = _require_manager()
     payload = _extract_payload()
     reason = payload.get('reason', '').strip() or None
     try:
@@ -346,7 +346,7 @@ def soft_delete(user_id):
 
 @user_bp.route('/users/<int:user_id>/restore', methods=['POST'])
 def restore(user_id):
-    actor = _require_owner()
+    actor = _require_manager()
     try:
         UserService.restore_user(actor=actor, user_id=user_id)
         NotificationService.flash_success('Đã khôi phục nhân viên vào workspace.')

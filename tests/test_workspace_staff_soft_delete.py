@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -97,6 +98,40 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             if workspace_id:
                 sess["current_workspace_id"] = workspace_id
 
+    def _csrf_token(self):
+        response = self.client.get("/users", follow_redirects=True)
+        html = response.get_data(as_text=True)
+        match = re.search(r'name="csrf-token" content="([^"]+)"', html)
+        if not match:
+            match = re.search(r'name="csrf_token" value="([^"]+)"', html)
+        self.assertIsNotNone(match, "CSRF token not found in response HTML")
+        return match.group(1)
+
+    def _post_form_as(self, actor, workspace_id, url, payload):
+        self._login_as(actor, workspace_id)
+        return self.client.post(
+            url,
+            data=payload,
+            headers={"X-CSRFToken": self._csrf_token()},
+            follow_redirects=False,
+        )
+
+    def _post_json_as(self, actor, workspace_id, url, payload):
+        self._login_as(actor, workspace_id)
+        return self.client.post(
+            url,
+            json=payload,
+            headers={
+                "X-CSRFToken": self._csrf_token(),
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            follow_redirects=False,
+        )
+
+    def _flashed_messages(self):
+        with self.client.session_transaction() as sess:
+            return [message for _, message in sess.get("_flashes", [])]
+
     def test_soft_delete_and_restore_workflow(self):
         # 1. Create OWNER + workspace + STAFF
         owner = self._create_user("owner_1", "OWNER")
@@ -177,6 +212,209 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             logs = ActivityLog.query.filter_by(action="RESTORE_USER").all()
             self.assertEqual(len(logs), 1)
             self.assertEqual(logs[0].reference_id, staff.id)
+
+    def test_owner_and_admin_role_hierarchy_matrix(self):
+        owner = self._create_user("matrix_owner", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        admin = self._create_user("matrix_admin", "ADMIN")
+        second_admin = self._create_user("matrix_second_admin", "ADMIN")
+        staff = self._create_user("matrix_staff", "STAFF")
+        second_owner = self._create_user("matrix_second_owner", "OWNER")
+
+        for user, role in (
+            (admin, "ADMIN"),
+            (second_admin, "ADMIN"),
+            (staff, "STAFF"),
+            (second_owner, "OWNER"),
+        ):
+            WorkspaceService.add_member_for_user(workspace.id, user, role)
+        approval_membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=self.approval_owner.id,
+            role="approval_owner",
+            status="active",
+        )
+        db.session.add(approval_membership)
+        db.session.commit()
+
+        with app.test_request_context():
+            session["auth_user_id"] = owner.id
+            session["_enable_workspace_isolation"] = True
+            session["current_workspace_id"] = workspace.id
+
+            UserService.toggle_active(actor=owner, user_id=admin.id, is_active=False)
+            UserService.toggle_active(actor=owner, user_id=admin.id, is_active=True)
+            UserService.toggle_active(actor=owner, user_id=staff.id, is_active=False)
+            UserService.toggle_active(actor=owner, user_id=staff.id, is_active=True)
+            UserService.soft_delete_user(actor=owner, user_id=admin.id)
+            UserService.restore_user(actor=owner, user_id=admin.id)
+            UserService.soft_delete_user(actor=owner, user_id=staff.id)
+            UserService.restore_user(actor=owner, user_id=staff.id)
+
+            for target in (owner, second_owner, self.approval_owner):
+                with self.assertRaises(Exception):
+                    UserService.soft_delete_user(actor=owner, user_id=target.id)
+
+            with self.assertRaises(Exception):
+                UserService.toggle_active(actor=owner, user_id=owner.id, is_active=False)
+
+            session["auth_user_id"] = admin.id
+            for target in (owner, second_owner, second_admin, self.approval_owner, admin):
+                before_active = User.query.get(target.id).is_active
+                with self.assertRaises(Exception):
+                    UserService.toggle_active(actor=admin, user_id=target.id, is_active=False)
+                self.assertEqual(User.query.get(target.id).is_active, before_active)
+
+            UserService.toggle_active(actor=admin, user_id=staff.id, is_active=False)
+            UserService.toggle_active(actor=admin, user_id=staff.id, is_active=True)
+            UserService.soft_delete_user(actor=admin, user_id=staff.id)
+            UserService.restore_user(actor=admin, user_id=staff.id)
+
+    def test_direct_post_denials_have_no_success_and_allowed_controls_work(self):
+        owner = self._create_user("post_owner", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        admin = self._create_user("post_admin", "ADMIN")
+        admin_target = self._create_user("post_admin_target", "ADMIN")
+        staff = self._create_user("post_staff", "STAFF")
+        owner_target = self._create_user("post_owner_target", "OWNER")
+        restore_owner = self._create_user("post_restore_owner", "OWNER")
+        restore_admin = self._create_user("post_restore_admin", "ADMIN")
+        other_owner = self._create_user("post_other_owner", "OWNER")
+        other_workspace = WorkspaceService.ensure_workspace_for_approved_owner(other_owner)
+        cross_staff = self._create_user("post_cross_staff", "STAFF")
+
+        for user, role in (
+            (admin, "ADMIN"),
+            (admin_target, "ADMIN"),
+            (staff, "STAFF"),
+            (owner_target, "OWNER"),
+            (restore_owner, "OWNER"),
+            (restore_admin, "ADMIN"),
+        ):
+            WorkspaceService.add_member_for_user(workspace.id, user, role)
+        WorkspaceService.add_member_for_user(other_workspace.id, cross_staff, "STAFF")
+        WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=restore_owner.id).update({"status": "removed"})
+        WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=restore_admin.id).update({"status": "removed"})
+        db.session.add(WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=self.approval_owner.id,
+            role="approval_owner",
+            status="active",
+        ))
+        db.session.commit()
+
+        self._login_as(admin, workspace.id)
+        admin_html = self.client.get("/users").get_data(as_text=True)
+        self.assertNotIn(f"/users/{owner_target.id}/soft-delete", admin_html)
+        self.assertNotIn(f"/users/{admin_target.id}/soft-delete", admin_html)
+        self.assertIn(f"/users/{staff.id}/soft-delete", admin_html)
+
+        def assert_redirect_denied(response):
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response.headers["Location"].endswith("/users"))
+            follow_response = self.client.get(response.headers["Location"], follow_redirects=True)
+            html = follow_response.get_data(as_text=True)
+            self.assertTrue("Không" in html or "không" in html)
+            self.assertNotIn("Đã xóa mềm nhân viên khỏi workspace", html)
+            self.assertNotIn("Đã khôi phục nhân viên vào workspace", html)
+            self.assertNotIn("Đã vô hiệu hóa người dùng thành công", html)
+            self.assertNotIn("Đã kích hoạt người dùng thành công", html)
+
+        def assert_json_denied(response, expected_status):
+            self.assertEqual(response.status_code, expected_status)
+            self.assertTrue(response.is_json)
+            body = response.get_json()
+            self.assertIsInstance(body, dict)
+            self.assertTrue(body.get("error") or body.get("message"))
+            self.assertIsNot(body.get("success"), True)
+            body.setdefault("message", body.get("error", ""))
+            self.assertNotIn("Đã ", body["message"])
+
+        def assert_global_approval_owner_redirect(
+            response,
+            target,
+            before_active,
+            before_activity_log_count,
+        ):
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.headers.get("Location"), "/approval/pending")
+            with self.client.session_transaction() as sess:
+                flashes = sess.get("_flashes", [])
+            self.assertFalse(any(category == "success" for category, _ in flashes))
+            self.assertEqual(User.query.get(target.id).is_active, before_active)
+            self.assertEqual(ActivityLog.query.count(), before_activity_log_count)
+
+        def assert_redirect_success(response):
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response.headers["Location"].endswith("/users"))
+            with self.client.session_transaction() as sess:
+                flashes = sess.get("_flashes", [])
+            self.assertTrue(any(category == "success" for category, _ in flashes))
+
+        for target in (owner_target, admin_target, self.approval_owner):
+            before = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).first()
+            before_state = (before.status, before.removed_at, before.removed_by_id, before.removal_reason)
+            response = self._post_form_as(admin, workspace.id, f"/users/{target.id}/soft-delete", {"reason": "denied"})
+            assert_redirect_denied(response)
+            after = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).first()
+            self.assertEqual((after.status, after.removed_at, after.removed_by_id, after.removal_reason), before_state)
+
+        for target in (restore_owner, restore_admin):
+            response = self._post_form_as(admin, workspace.id, f"/users/{target.id}/restore", {})
+            assert_redirect_denied(response)
+            self.assertEqual(
+                WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).first().status,
+                "removed",
+            )
+
+        for target in (admin_target, self.approval_owner):
+            before_active = User.query.get(target.id).is_active
+            response = self._post_json_as(admin, workspace.id, f"/users/{target.id}/toggle-active", {"is_active": "0"})
+            assert_json_denied(response, 403 if target is self.approval_owner else 400)
+            self.assertEqual(User.query.get(target.id).is_active, before_active)
+
+        before_active = User.query.get(admin.id).is_active
+        response = self._post_json_as(admin, workspace.id, f"/users/{admin.id}/toggle-active", {"is_active": "0"})
+        assert_json_denied(response, 400)
+        self.assertEqual(User.query.get(admin.id).is_active, before_active)
+
+        response = self._post_json_as(admin, workspace.id, f"/users/{cross_staff.id}/toggle-active", {"is_active": "0"})
+        assert_json_denied(response, 404)
+        self.assertTrue(User.query.get(cross_staff.id).is_active)
+
+        response = self._post_json_as(owner, workspace.id, f"/users/{owner_target.id}/toggle-active", {"is_active": "0"})
+        assert_json_denied(response, 400)
+        response = self._post_json_as(owner, workspace.id, f"/users/{self.approval_owner.id}/toggle-active", {"is_active": "0"})
+        assert_json_denied(response, 403)
+        response = self._post_json_as(owner, workspace.id, f"/users/{owner.id}/toggle-active", {"is_active": "0"})
+        assert_json_denied(response, 400)
+
+        before_active = User.query.get(staff.id).is_active
+        before_activity_log_count = ActivityLog.query.count()
+        response = self._post_json_as(
+            self.approval_owner,
+            workspace.id,
+            f"/users/{staff.id}/toggle-active",
+            {"is_active": "0"},
+        )
+        assert_global_approval_owner_redirect(
+            response,
+            staff,
+            before_active,
+            before_activity_log_count,
+        )
+
+        response = self._post_form_as(owner, workspace.id, f"/users/{staff.id}/soft-delete", {"reason": "allowed"})
+        assert_redirect_success(response)
+        self.assertEqual(WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=staff.id).first().status, "removed")
+
+        response = self._post_form_as(owner, workspace.id, f"/users/{staff.id}/restore", {})
+        assert_redirect_success(response)
+
+        response = self._post_form_as(admin, workspace.id, f"/users/{admin_target.id}/soft-delete", {"reason": "denied"})
+        assert_redirect_denied(response)
+        response = self._post_form_as(admin, workspace.id, f"/users/{staff.id}/soft-delete", {"reason": "allowed"})
+        assert_redirect_success(response)
 
     def test_soft_delete_restrictions(self):
         # Create OWNER + workspace + STAFF + another OWNER/workspace

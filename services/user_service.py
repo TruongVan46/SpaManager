@@ -115,6 +115,62 @@ class UserService:
         return query.count()
 
     @staticmethod
+    def _authorize_workspace_user_action(actor, user_id, action):
+        """Authorize a workspace-scoped destructive user action."""
+        from models.workspace import WorkspaceMember
+
+        try:
+            workspace_id = UserService._resolve_current_workspace_id_for_create()
+        except Exception:
+            workspace_id = None
+        if not workspace_id:
+            raise ValidationException("Không có workspace hiện tại.")
+
+        actor_membership = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id,
+            user_id=actor.id,
+            status="active",
+        ).first()
+        if not actor_membership:
+            raise ValidationException("Người thực hiện không thuộc workspace hiện tại.")
+
+        actor_role = normalize_role_value(actor_membership.role)
+        if actor_role not in UserService.MANAGER_ROLES:
+            raise ValidationException("Chỉ owner hoặc admin mới có quyền quản lý người dùng.")
+        if actor_role != normalize_role_value(actor.role):
+            raise ValidationException("Vai trò workspace không khớp với tài khoản người thực hiện.")
+
+        expected_status = "removed" if action == "restore" else "active"
+        membership = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            status=expected_status,
+        ).first()
+        if not membership:
+            raise NotFoundException("Không tìm thấy người dùng.")
+
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            raise NotFoundException("Không tìm thấy người dùng.")
+        if user.id == actor.id:
+            if action == "toggle":
+                message = "Không thể vô hiệu hóa chính mình."
+                raise ValidationException(message, field_errors={"is_active": message})
+            raise ValidationException("Không thể tự tác động lên chính mình.")
+
+        target_role = normalize_role_value(membership.role)
+        if target_role != normalize_role_value(user.role):
+            raise ValidationException("Vai trò workspace không khớp với tài khoản người dùng.")
+        if target_role == UserRole.APPROVAL_OWNER.value:
+            raise ValidationException("Không thể tác động tài khoản quản trị hệ thống.")
+        if target_role == UserRole.OWNER.value:
+            raise ValidationException("Không thể tác động tài khoản owner.")
+        if actor_role == UserRole.ADMIN.value and target_role != UserRole.STAFF.value:
+            raise ValidationException("Admin chỉ được tác động nhân viên.")
+
+        return user, membership
+
+    @staticmethod
     def _ensure_unique_fields(username, email, exclude_user_id=None):
         errors = {}
 
@@ -424,13 +480,8 @@ class UserService:
 
     @staticmethod
     def toggle_active(actor, user_id, is_active):
-        user = UserService._get_workspace_scoped_user_or_404(user_id)
-        if user.role == UserRole.APPROVAL_OWNER.value:
-            raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
+        user, _ = UserService._authorize_workspace_user_action(actor, user_id, "toggle")
         desired_active = UserService._normalize_bool(is_active)
-
-        if user.id == actor.id and not desired_active:
-            raise ValidationException("Không thể vô hiệu hóa chính mình.", field_errors={"is_active": "Không thể vô hiệu hóa chính mình."})
 
         if user.is_active and not desired_active and UserService._is_manager_role(user.role):
             if UserService._get_active_manager_count(exclude_user_id=user.id) <= 0:
@@ -681,48 +732,7 @@ class UserService:
 
     @staticmethod
     def soft_delete_user(actor, user_id, reason=None):
-        from models.workspace import WorkspaceMember
-
-        if actor.role != "OWNER":
-            raise ValidationException("Chỉ chủ spa mới có quyền xóa mềm nhân viên.")
-
-        user = User.query.get(user_id)
-        if not user:
-            raise NotFoundException("Không tìm thấy người dùng.")
-
-        if user.role == UserRole.APPROVAL_OWNER.value:
-            raise ValidationException("Không thể xóa tài khoản quản trị hệ thống.")
-
-        if user.role == UserRole.OWNER.value:
-            raise ValidationException("Không thể xóa tài khoản chủ spa.")
-
-        if user.id == actor.id:
-            raise ValidationException("Không thể tự xóa chính mình.")
-
-        workspace_id = None
-        try:
-            workspace_id = UserService._resolve_current_workspace_id_for_create()
-        except Exception:
-            pass
-
-        if not workspace_id:
-            member_own = WorkspaceMember.query.filter_by(
-                user_id=actor.id, role="owner", status="active"
-            ).first()
-            if member_own:
-                workspace_id = member_own.workspace_id
-
-        if not workspace_id:
-            raise ValidationException("Không có workspace hiện tại.")
-
-        membership = WorkspaceMember.query.filter_by(
-            workspace_id=workspace_id,
-            user_id=user.id,
-            status="active"
-        ).first()
-
-        if not membership:
-            raise ValidationException("Người dùng không thuộc workspace này hoặc đã bị xóa.")
+        user, membership = UserService._authorize_workspace_user_action(actor, user_id, "soft_delete")
 
         membership.status = "removed"
         membership.removed_at = utc_now()
@@ -746,39 +756,7 @@ class UserService:
 
     @staticmethod
     def restore_user(actor, user_id):
-        from models.workspace import WorkspaceMember
-
-        if actor.role != "OWNER":
-            raise ValidationException("Chỉ chủ spa mới có quyền khôi phục nhân viên.")
-
-        user = User.query.get(user_id)
-        if not user:
-            raise NotFoundException("Không tìm thấy người dùng.")
-
-        workspace_id = None
-        try:
-            workspace_id = UserService._resolve_current_workspace_id_for_create()
-        except Exception:
-            pass
-
-        if not workspace_id:
-            member_own = WorkspaceMember.query.filter_by(
-                user_id=actor.id, role="owner", status="active"
-            ).first()
-            if member_own:
-                workspace_id = member_own.workspace_id
-
-        if not workspace_id:
-            raise ValidationException("Không có workspace hiện tại.")
-
-        membership = WorkspaceMember.query.filter_by(
-            workspace_id=workspace_id,
-            user_id=user.id,
-            status="removed"
-        ).first()
-
-        if not membership:
-            raise ValidationException("Người dùng chưa bị xóa hoặc không thuộc workspace này.")
+        user, membership = UserService._authorize_workspace_user_action(actor, user_id, "restore")
 
         membership.status = "active"
         membership.removed_at = None
