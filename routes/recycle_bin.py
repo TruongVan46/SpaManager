@@ -68,14 +68,6 @@ def restore(item_type, item_id):
 def permanent_delete(item_type, item_id):
     """Permanently delete one approved soft-deleted business record."""
     try:
-        payload = request.get_json(silent=True) or request.form
-        confirmation_phrase = payload.get('confirmation_phrase', '')
-        expected_phrase = RecycleBinService.permanent_delete_phrase(item_type, item_id)
-        if expected_phrase is None or confirmation_phrase != expected_phrase:
-            return jsonify({
-                'success': False,
-                'message': 'Cú pháp xác nhận không đúng.',
-            }), 400
         result = RecycleBinService.permanent_delete(
             item_type,
             item_id,

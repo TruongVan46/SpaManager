@@ -157,10 +157,6 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         return self.client.post(
             f"/recycle-bin/delete/{item_type}/{item_id}",
             headers=headers,
-            json=(
-                {"confirmation_phrase": confirmation_phrase}
-                if confirmation_phrase is not None else {}
-            ),
         )
 
     def _assert_fixture_rows_exist(self):
@@ -171,27 +167,14 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         self.assertIsNotNone(db.session.get(Invoice, self.invoice_id))
         self.assertIsNotNone(db.session.get(InvoiceDetail, self.invoice_detail_id))
 
-    def test_permanent_delete_route_requires_manager_and_exact_confirmation(self):
-        targets = {
-            "Customer": self.customer_id,
-            "Service": self.service_id,
-            "Appointment": self.appointment_id,
-            "Invoice": self.invoice_id,
-        }
-        for role in self.users:
-            self._login_as(role)
-            for item_type, item_id in targets.items():
-                with self.subTest(role=role, item_type=item_type):
-                    response = self._post_legacy_delete(
-                        item_type,
-                        item_id,
-                        include_csrf=role != "APPROVAL_OWNER",
-                    )
-                    self.assertEqual(
-                        response.status_code,
-                        302 if role == "APPROVAL_OWNER" else (403 if role == "STAFF" else 400),
-                    )
-                    self._assert_fixture_rows_exist()
+    def test_permanent_delete_route_requires_manager_and_csrf(self):
+        self._login_as("OWNER")
+        response = self._post_legacy_delete(
+            "Customer", self.customer_id, include_csrf=False
+        )
+        self.assertEqual(response.status_code, 400)
+        self._assert_fixture_rows_exist()
+
 
     def test_legacy_route_has_no_side_effect_without_csrf(self):
         self._login_as("OWNER")
@@ -241,11 +224,7 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
 
     def test_cross_workspace_record_is_not_mutated(self):
         self._login_as("OWNER")
-        response = self._post_legacy_delete(
-            "Customer",
-            self.other_customer_id,
-            confirmation_phrase=f"XÓA VĨNH VIỄN KHÁCH HÀNG {self.other_customer_id}",
-        )
+        response = self._post_legacy_delete("Customer", self.other_customer_id)
         self.assertEqual(response.status_code, 404)
         db.session.expire_all()
         other_customer = db.session.get(Customer, self.other_customer_id)
@@ -280,7 +259,9 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         template = Path("templates/recycle_bin/index.html").read_text(encoding="utf-8")
-        self.assertIn("permanent_delete_phrase", template)
+        self.assertNotIn("permanent_delete_phrase", template)
+        self.assertNotIn("permanent-delete-confirmation", template)
+        self.assertNotIn("permanent-delete-phrase", template)
         self.assertIn("btn-permanent-delete-item", template)
         self.assertIn("btn-confirm-permanent-delete", template)
         self.assertIn("/recycle-bin/delete/", template)

@@ -170,20 +170,14 @@ def _csrf_token(client):
     return match.group(1)
 
 
-def _post(client, item_type, item_id, phrase=None, csrf=True):
+def _post(client, item_type, item_id, csrf=True):
     headers = {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}
     if csrf:
         headers["X-CSRFToken"] = _csrf_token(client)
-    payload = {} if phrase is None else {"confirmation_phrase": phrase}
     return client.post(
         f"/recycle-bin/delete/{item_type}/{item_id}",
-        json=payload,
         headers=headers,
     )
-
-
-def _phrase(item_type, item_id):
-    return _recycle_bin_service().permanent_delete_phrase(item_type, item_id)
 
 
 def _service_call(runtime, fixture, item_type, item_id, workspace_id=None):
@@ -438,9 +432,9 @@ def test_route_csrf_and_authorization_contract(recycle_case):
     fixture = _seed(recycle_case, with_dependencies=False)
     _soft_delete(recycle_case, recycle_case.models.Customer, fixture["customer_id"])
     client = recycle_case.app.test_client()
-    assert _post(client, "Customer", fixture["customer_id"], _phrase("Customer", fixture["customer_id"]), csrf=False).status_code != 200
+    assert _post(client, "Customer", fixture["customer_id"], csrf=False).status_code != 200
     _workspace_session(client, fixture, fixture["staff_id"])
-    assert _post(client, "Customer", fixture["customer_id"], _phrase("Customer", fixture["customer_id"])).status_code == 403
+    assert _post(client, "Customer", fixture["customer_id"]).status_code == 403
 
 
 def test_route_owner_json_success_and_audit(recycle_case):
@@ -448,7 +442,7 @@ def test_route_owner_json_success_and_audit(recycle_case):
     _soft_delete(recycle_case, recycle_case.models.Customer, fixture["customer_id"])
     client = recycle_case.app.test_client()
     _workspace_session(client, fixture, fixture["owner_id"])
-    response = _post(client, "Customer", fixture["customer_id"], _phrase("Customer", fixture["customer_id"]))
+    response = _post(client, "Customer", fixture["customer_id"])
     assert response.status_code == 200
     assert response.is_json
     assert response.get_json() == {
@@ -465,21 +459,19 @@ def test_route_admin_json_success(recycle_case):
     _soft_delete(recycle_case, recycle_case.models.Service, fixture["service_id"])
     client = recycle_case.app.test_client()
     _workspace_session(client, fixture, fixture["admin_id"])
-    response = _post(client, "Service", fixture["service_id"], _phrase("Service", fixture["service_id"]))
+    response = _post(client, "Service", fixture["service_id"])
     assert response.status_code == 200
     assert response.is_json
     assert response.get_json()["success"] is True
 
 
-def test_route_rejects_unsupported_missing_active_and_wrong_confirmation(recycle_case):
+def test_route_rejects_unsupported_missing_and_active_records(recycle_case):
     fixture = _seed(recycle_case, with_dependencies=False)
     client = recycle_case.app.test_client()
     _workspace_session(client, fixture, fixture["owner_id"])
-    assert _post(client, "Workspace", fixture["workspace_id"], "wrong").status_code == 400
-    assert _post(client, "Customer", 999999, "wrong").status_code == 400
-    assert _post(client, "Customer", fixture["customer_id"], "wrong").status_code == 400
-    assert _post(client, "Customer", fixture["customer_id"], "XOA VINH VIEN").status_code == 400
-    assert _post(client, "Customer", fixture["customer_id"], _phrase("Customer", fixture["customer_id"])).status_code == 400
+    assert _post(client, "Workspace", fixture["workspace_id"]).status_code == 404
+    assert _post(client, "Customer", 999999).status_code == 404
+    assert _post(client, "Customer", fixture["customer_id"]).status_code == 400
 
 
 def test_route_cross_workspace_dependency_error_is_json_and_fail_closed(recycle_case):
@@ -487,7 +479,7 @@ def test_route_cross_workspace_dependency_error_is_json_and_fail_closed(recycle_
     _soft_delete(recycle_case, recycle_case.models.Customer, fixture["other_customer_id"])
     client = recycle_case.app.test_client()
     _workspace_session(client, fixture, fixture["owner_id"])
-    response = _post(client, "Customer", fixture["other_customer_id"], _phrase("Customer", fixture["other_customer_id"]))
+    response = _post(client, "Customer", fixture["other_customer_id"])
     assert response.status_code == 404
     assert response.is_json
 
@@ -497,7 +489,7 @@ def test_route_dependency_error_json_preserves_target_and_dependencies(recycle_c
     _soft_delete(recycle_case, recycle_case.models.Customer, fixture["customer_id"])
     client = recycle_case.app.test_client()
     _workspace_session(client, fixture, fixture["owner_id"])
-    response = _post(client, "Customer", fixture["customer_id"], _phrase("Customer", fixture["customer_id"]))
+    response = _post(client, "Customer", fixture["customer_id"])
     assert response.status_code == 400
     assert response.is_json
     payload = response.get_json()
@@ -516,7 +508,9 @@ def test_client_toast_contract_is_static_and_csrf_aware():
     source = Path("templates/recycle_bin/index.html").read_text(encoding="utf-8")
     assert "/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}" in source
     assert "csrfFetch" in source
-    assert "JSON.stringify({confirmation_phrase: itemToDelete.phrase})" in source
+    assert "JSON.stringify({confirmation_phrase" not in source
+    assert "permanent-delete-confirmation" not in source
+    assert "permanent-delete-phrase" not in source
     assert ".then(response => response.json())" in source
     assert "if (!data.success)" in source
     assert "showToast(data.message" in source

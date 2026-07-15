@@ -70,13 +70,6 @@ class RecycleBinService:
     }
 
     @classmethod
-    def permanent_delete_phrase(cls, item_type, item_id):
-        label = cls._PERMANENT_DELETE_LABELS.get(item_type)
-        if label is None:
-            return None
-        return f"XÓA VĨNH VIỄN {label} {item_id}"
-
-    @classmethod
     def _dependency_status(cls, item_type, item_id, workspace_id):
         if item_type == 'Customer':
             appointment_count = Appointment.query.filter(
@@ -265,7 +258,6 @@ class RecycleBinService:
                     'vn_name': config['vn_name'],
                     'can_permanently_delete': delete_status['can_delete'],
                     'permanent_delete_reason': delete_status['reason'],
-                    'permanent_delete_phrase': RecycleBinService.permanent_delete_phrase(k, rec.id),
                 })
 
         # Apply search query (matching name, type, and Vietnamese translation)

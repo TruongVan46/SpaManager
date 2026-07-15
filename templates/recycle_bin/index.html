@@ -134,7 +134,7 @@
                                         <i class="bi bi-arrow-counterclockwise me-1"></i> Khôi phục
                                     </button>
                                     {% if item.can_permanently_delete %}
-                                    <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center btn-permanent-delete-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" data-phrase="{{ item.permanent_delete_phrase }}" title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn {{ item.name }}">
+                                    <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center btn-permanent-delete-item" data-id="{{ item.id }}" data-type="{{ item.type }}" data-name="{{ item.name }}" title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn {{ item.name }}">
                                         <i class="bi bi-trash me-1"></i> Xóa vĩnh viễn
                                     </button>
                                     {% else %}
@@ -160,6 +160,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block modals %}
 <!-- Modal xác nhận xóa vĩnh viễn -->
 <div class="modal fade" id="permanentDeleteConfirmModal" tabindex="-1" aria-labelledby="permanentDeleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -170,22 +173,16 @@
             </div>
             <div class="modal-body">
                 <p class="text-danger">Thao tác này không thể hoàn tác.</p>
-                <p>Nhập chính xác cụm từ sau để tiếp tục:</p>
-                <p class="fw-bold" id="permanent-delete-phrase"></p>
-                <input type="text" class="form-control" id="permanent-delete-confirmation" autocomplete="off" aria-label="Cụm từ xác nhận">
-                <div class="invalid-feedback" id="permanent-delete-validation">Cụm từ xác nhận chưa đúng.</div>
+                <p class="mb-0">Bản ghi sẽ bị xóa vĩnh viễn và không thể khôi phục.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-danger" id="btn-confirm-permanent-delete" disabled>Xóa vĩnh viễn</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-permanent-delete">Xóa vĩnh viễn</button>
             </div>
         </div>
     </div>
 </div>
 
-{% endblock %}
-
-{% block modals %}
 <!-- Modal Xác nhận Khôi phục -->
 <div class="modal fade" id="restoreConfirmModal" tabindex="-1" aria-labelledby="restoreConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -319,42 +316,26 @@
 
         const deleteModalEl = document.getElementById('permanentDeleteConfirmModal');
         const confirmDeleteBtn = document.getElementById('btn-confirm-permanent-delete');
-        const deletePhraseEl = document.getElementById('permanent-delete-phrase');
-        const deleteInput = document.getElementById('permanent-delete-confirmation');
         let itemToDelete = null;
         let rowToDelete = null;
 
-        if (deleteModalEl && confirmDeleteBtn && deleteInput && typeof bootstrap !== 'undefined') {
+        if (deleteModalEl && confirmDeleteBtn && typeof bootstrap !== 'undefined') {
             const deleteModal = new bootstrap.Modal(deleteModalEl);
             document.addEventListener('click', function(e) {
                 const deleteBtn = e.target.closest('.btn-permanent-delete-item');
                 if (!deleteBtn) return;
                 itemToDelete = {
                     id: deleteBtn.getAttribute('data-id'),
-                    type: deleteBtn.getAttribute('data-type'),
-                    phrase: deleteBtn.getAttribute('data-phrase')
+                    type: deleteBtn.getAttribute('data-type')
                 };
                 rowToDelete = deleteBtn.closest('tr');
-                deletePhraseEl.textContent = itemToDelete.phrase;
-                deleteInput.value = '';
-                deleteInput.classList.remove('is-invalid');
-                confirmDeleteBtn.disabled = true;
                 deleteModal.show();
             });
-            deleteInput.addEventListener('input', function() {
-                confirmDeleteBtn.disabled = !itemToDelete || deleteInput.value !== itemToDelete.phrase;
-                deleteInput.classList.remove('is-invalid');
-            });
             confirmDeleteBtn.addEventListener('click', function() {
-                if (!itemToDelete || deleteInput.value !== itemToDelete.phrase) {
-                    deleteInput.classList.add('is-invalid');
-                    return;
-                }
                 confirmDeleteBtn.disabled = true;
                 csrfFetch(`/recycle-bin/delete/${itemToDelete.type}/${itemToDelete.id}`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({confirmation_phrase: itemToDelete.phrase})
+                    headers: {'Content-Type': 'application/json'}
                 }).then(response => response.json()).then(data => {
                     deleteModal.hide();
                     if (!data.success) {
