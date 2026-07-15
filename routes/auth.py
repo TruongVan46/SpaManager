@@ -33,6 +33,13 @@ def _clear_stale_session():
 def login():
     denied_notice = request.args.get('denied') == '1'
     current_user = AuthService.get_current_user()
+    if current_user and current_user.role != "APPROVAL_OWNER":
+        if getattr(current_user, "is_pending_approval", False):
+            return redirect('/auth/pending')
+        from services.workspace_service import WorkspaceService
+        if not WorkspaceService.ensure_authenticated_workspace_access(current_user):
+            _clear_stale_session()
+            current_user = None
     if current_user:
         if getattr(current_user, "can_access_app", False):
             from core.auth.permissions import is_approval_owner
@@ -60,6 +67,8 @@ def login():
         try:
             success, user = AuthService.login(username, password, remember=remember, request_ip=request_ip)
         except AuthenticationException as exc:
+            if exc.code == "AUTH_NO_WORKSPACE_ACCESS":
+                AuthService.clear_authentication_session()
             payload = {
                 "success": False,
                 "message": exc.message,

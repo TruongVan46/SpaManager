@@ -427,12 +427,17 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
     # 7. test_export_without_workspace_returns_empty
     # ─────────────────────────────────────────────────────────────────────────
 
-    def test_export_without_workspace_returns_empty(self):
-        """Without workspace context, exports must not return global data."""
+    def test_export_auto_selects_single_active_workspace_and_remains_scoped(self):
+        """A sole active membership is selected and the export remains scoped."""
         ws_a, owner_a = self._create_workspace_and_owner("ws-noexp-a")
-        cust_a = self._create_customer(ws_a.id, "Global Leak Customer", "0901111111")
+        cust_a = self._create_customer(ws_a.id, "Selected Workspace Customer", "0901111111")
         svc_a = self._create_service(ws_a.id, "Global Leak Service", 100_000)
         self._create_invoice(ws_a.id, cust_a, svc_a, 100_000)
+
+        ws_b, _owner_b = self._create_workspace_and_owner("ws-noexp-b")
+        cust_b = self._create_customer(ws_b.id, "Other Workspace Customer", "0902222222")
+        svc_b = self._create_service(ws_b.id, "Other Workspace Service", 200_000)
+        self._create_invoice(ws_b.id, cust_b, svc_b, 200_000)
 
         # Create a staff member who cannot auto-provision/repair
         staff = User(
@@ -450,42 +455,78 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
         WorkspaceService.add_member_for_user(ws_a.id, staff, "STAFF")
         db.session.commit()
 
-        # Login as staff but WITHOUT setting current_workspace_id
-        # (and with isolation flag active → fail-closed).
+        # Login as staff but WITHOUT setting current_workspace_id.
+        # The global guard must select the sole active membership.
         with self.client.session_transaction() as sess:
             sess[AUTH_SESSION_KEY] = staff.id
             sess["_enable_workspace_isolation"] = True
-            # Deliberately NO current_workspace_id
+            # Deliberately no current_workspace_id
 
         # The export routes require login; without workspace they should either
         # redirect to login, return 403, or return an empty export — NOT global data.
         resp = self.client.get("/invoices/export/excel")
 
-        if resp.status_code == 200:
-            # If 200, the Excel must contain no real customer data.
-            from io import BytesIO
-            import openpyxl
-            wb = openpyxl.load_workbook(BytesIO(resp.data))
-            ws_sheet = wb.active
-            all_cell_values = [
-                str(cell.value)
-                for row in ws_sheet.iter_rows()
-                for cell in row
-                if cell.value
-            ]
-            content = " ".join(all_cell_values)
-            self.assertNotIn(
-                "Global Leak Customer",
-                content,
-                "Export without workspace context must not return global data",
-            )
-        else:
-            # Redirect / 403 is also acceptable (fail-closed).
-            self.assertIn(
-                resp.status_code,
-                (302, 401, 403),
-                f"Expected redirect or forbidden, got {resp.status_code}",
-            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.mimetype,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess.get("current_workspace_id"), ws_a.id)
+            self.assertEqual(sess.get(AUTH_SESSION_KEY), staff.id)
+            self.assertTrue(sess.get("_enable_workspace_isolation"))
+
+        from io import BytesIO
+        import openpyxl
+
+        wb = openpyxl.load_workbook(BytesIO(resp.data))
+        ws_sheet = wb.active
+        content = " ".join(
+            str(cell.value)
+            for row in ws_sheet.iter_rows()
+            for cell in row
+            if cell.value
+        )
+        self.assertIn("Selected Workspace Customer", content)
+        self.assertNotIn("Other Workspace Customer", content)
+        self.assertEqual(
+            WorkspaceMember.query.filter_by(user_id=staff.id).count(),
+            1,
+        )
+
+    def test_export_without_active_membership_is_denied(self):
+        """A user without an active membership cannot reach the export route."""
+        _workspace, _owner = self._create_workspace_and_owner("ws-no-membership")
+        staff = User(
+            username="staff_no_membership",
+            email="staff_no_membership@test.com",
+            role="STAFF",
+            full_name="Staff No Membership",
+            is_active=True,
+            approval_status="active",
+        )
+        staff.set_password("Password123!")
+        db.session.add(staff)
+        db.session.commit()
+
+        with self.client.session_transaction() as sess:
+            sess[AUTH_SESSION_KEY] = staff.id
+            sess["_enable_workspace_isolation"] = True
+
+        resp = self.client.get("/invoices/export/excel")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/login", resp.headers["Location"])
+        self.assertNotEqual(
+            resp.mimetype,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get(AUTH_SESSION_KEY))
+            self.assertIsNone(sess.get("current_workspace_id"))
+
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=staff.id).count(), 0)
 
     # ─────────────────────────────────────────────────────────────────────────
     # 8. test_settings_get_scoped_via_model_layer (unit test of Setting model)

@@ -30,8 +30,11 @@ from models.activity_log import ActivityLog
 from models.workspace import Workspace, WorkspaceMember
 from services.user_service import UserService
 from services.workspace_service import WorkspaceService
+from utils.timezone_utils import utc_now
 from flask import session
 from core.auth.enums import UserRole
+from core.auth.constants import AUTH_SESSION_KEY
+from core.exceptions import AuthenticationException
 
 
 class TestWorkspaceContextRegression(unittest.TestCase):
@@ -156,25 +159,111 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         resp = self.client.get('/statistics')
         self.assertEqual(resp.status_code, 200)
 
-    def test_owner_without_workspace_gets_safe_repair_or_clear_error(self):
+    def test_new_owner_without_membership_bootstraps_on_login(self):
         owner = self._create_user("owner_legacy", "OWNER", auth_provider="local")
         db.session.commit()
 
-        # Verify no workspace exists initially
-        owner_membership = WorkspaceMember.query.filter_by(user_id=owner.id).first()
-        self.assertIsNone(owner_membership)
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=owner.id).count(), 0)
 
-        # Login and verify workspace is auto-provisioned/repaired via request client flow
-        self._login_as(owner)
-        resp = self.client.get('/statistics')
-        self.assertEqual(resp.status_code, 200)
+        with app.test_request_context("/login", method="POST"):
+            from services.auth_service import AuthService
+            success, logged_in = AuthService.login("owner_legacy", "Password123!")
+            self.assertTrue(success)
+            self.assertEqual(logged_in.id, owner.id)
+            self.assertIsNotNone(session.get("current_workspace_id"))
 
-        # Check DB to confirm workspace and membership are created
-        owner_membership = WorkspaceMember.query.filter_by(user_id=owner.id, role="owner", status="active").first()
-        self.assertIsNotNone(owner_membership)
-        workspace = owner_membership.workspace
-        self.assertIsNotNone(workspace)
-        self.assertEqual(workspace.name, "Spa của Owner_Legacy")
+        memberships = WorkspaceMember.query.filter_by(user_id=owner.id).all()
+        self.assertEqual(len(memberships), 1)
+        self.assertEqual(memberships[0].role, "owner")
+        self.assertEqual(memberships[0].status, "active")
+
+        with app.test_request_context("/login", method="POST"):
+            success, logged_in = AuthService.login("owner_legacy", "Password123!")
+            self.assertTrue(success)
+            self.assertEqual(logged_in.id, owner.id)
+
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=owner.id).count(), 1)
+
+    def test_removed_owner_without_active_membership_is_not_bootstrapped(self):
+        owner = self._create_user("removed_owner", "OWNER")
+        workspace = Workspace(name="Removed Owner Workspace", slug="removed-owner-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=owner.id,
+            role="owner",
+            status="removed",
+            removed_at=utc_now(),
+            removed_by_id=self.approval_owner.id,
+        )
+        db.session.add(membership)
+        db.session.commit()
+        removed_at = membership.removed_at
+        removed_by_id = membership.removed_by_id
+
+        with app.test_request_context("/login", method="POST"):
+            from services.auth_service import AuthService
+            with self.assertRaises(AuthenticationException) as raised:
+                AuthService.login("removed_owner", "Password123!")
+            self.assertEqual(raised.exception.code, "AUTH_NO_WORKSPACE_ACCESS")
+            self.assertIsNone(session.get(AUTH_SESSION_KEY))
+
+        db.session.refresh(membership)
+        self.assertEqual(membership.status, "removed")
+        self.assertEqual(membership.removed_at, removed_at)
+        self.assertEqual(membership.removed_by_id, removed_by_id)
+        self.assertEqual(Workspace.query.filter_by(id=workspace.id).count(), 1)
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=owner.id).count(), 1)
+        self.assertEqual(ActivityLog.query.filter_by(action="LOGIN").count(), 0)
+
+    def test_google_new_owner_without_membership_bootstraps_on_login(self):
+        owner = self._create_user("google_new_owner", "OWNER")
+        owner.auth_provider = "google"
+        owner.oauth_id = "google-new-owner"
+        db.session.commit()
+
+        with app.test_request_context("/auth/google/callback"):
+            from core.auth.google_oauth import _login_active_google_user
+            response = _login_active_google_user(owner)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.location, "/")
+            self.assertEqual(session.get(AUTH_SESSION_KEY), owner.id)
+            self.assertIsNotNone(session.get("current_workspace_id"))
+
+        memberships = WorkspaceMember.query.filter_by(user_id=owner.id).all()
+        self.assertEqual(len(memberships), 1)
+        self.assertEqual(memberships[0].status, "active")
+
+    def test_google_removed_owner_is_denied_without_reactivation(self):
+        owner = self._create_user("google_removed_owner", "OWNER")
+        owner.auth_provider = "google"
+        owner.oauth_id = "google-removed-owner"
+        workspace = Workspace(name="Google Removed Owner", slug="google-removed-owner")
+        db.session.add(workspace)
+        db.session.flush()
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=owner.id,
+            role="owner",
+            status="removed",
+            removed_at=utc_now(),
+            removed_by_id=self.approval_owner.id,
+        )
+        db.session.add(membership)
+        db.session.commit()
+
+        with app.test_request_context("/auth/google/callback"):
+            from core.auth.google_oauth import _login_active_google_user
+            response = _login_active_google_user(owner)
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login", response.location)
+            self.assertIsNone(session.get(AUTH_SESSION_KEY))
+            self.assertIsNone(session.get("current_workspace_id"))
+
+        db.session.refresh(membership)
+        self.assertEqual(membership.status, "removed")
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=owner.id).count(), 1)
 
     def test_disabling_user_does_not_break_unrelated_owner_memberships(self):
         owner_a = self._create_user("owner_a", "OWNER")
@@ -201,6 +290,260 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         self.assertEqual(m_b.status, "active")
         m_owner_a = WorkspaceMember.query.filter_by(user_id=owner_a.id).first()
         self.assertEqual(m_owner_a.status, "active")
+
+    def test_password_login_denies_removed_member_without_session_or_reactivation(self):
+        staff = self._create_user("removed_login_staff", "STAFF")
+        workspace = Workspace(name="Removed Login Workspace", slug="removed-login-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=staff.id,
+            role="staff",
+            status="removed",
+        )
+        db.session.add(membership)
+        db.session.commit()
+
+        with app.test_request_context("/login", method="POST"):
+            with self.assertRaises(AuthenticationException) as raised:
+                from services.auth_service import AuthService
+                AuthService.login("removed_login_staff", "Password123!")
+            self.assertEqual(raised.exception.code, "AUTH_NO_WORKSPACE_ACCESS")
+            self.assertIsNone(session.get(AUTH_SESSION_KEY))
+            self.assertIsNone(session.get("current_workspace_id"))
+
+        db.session.refresh(membership)
+        self.assertEqual(membership.status, "removed")
+        self.assertEqual(ActivityLog.query.filter_by(action="LOGIN").count(), 0)
+
+    def test_regular_admin_and_staff_without_membership_are_denied(self):
+        from services.auth_service import AuthService
+
+        for role, username in (("ADMIN", "admin_without_workspace"), ("STAFF", "staff_without_workspace")):
+            user = self._create_user(username, role)
+            db.session.commit()
+            with app.test_request_context("/login", method="POST"):
+                with self.assertRaises(AuthenticationException) as raised:
+                    AuthService.login(username, "Password123!")
+                self.assertEqual(raised.exception.code, "AUTH_NO_WORKSPACE_ACCESS")
+                self.assertIsNone(session.get(AUTH_SESSION_KEY))
+                self.assertIsNone(session.get("current_workspace_id"))
+            self.assertEqual(WorkspaceMember.query.filter_by(user_id=user.id).count(), 0)
+
+    def test_password_login_selects_other_active_workspace_after_removal(self):
+        staff = self._create_user("multi_workspace_staff", "STAFF")
+        workspace_a = Workspace(name="Workspace A", slug="multi-a")
+        workspace_b = Workspace(name="Workspace B", slug="multi-b")
+        db.session.add_all([workspace_a, workspace_b])
+        db.session.flush()
+        membership_a = WorkspaceMember(
+            workspace_id=workspace_a.id,
+            user_id=staff.id,
+            role="staff",
+            status="removed",
+        )
+        membership_b = WorkspaceMember(
+            workspace_id=workspace_b.id,
+            user_id=staff.id,
+            role="staff",
+            status="active",
+        )
+        db.session.add_all([membership_a, membership_b])
+        db.session.commit()
+
+        with app.test_request_context("/login", method="POST"):
+            from services.auth_service import AuthService
+            success, logged_in = AuthService.login("multi_workspace_staff", "Password123!")
+            self.assertTrue(success)
+            self.assertEqual(logged_in.id, staff.id)
+            self.assertEqual(session.get("current_workspace_id"), workspace_b.id)
+
+        self.assertEqual(membership_a.status, "removed")
+        self.assertEqual(membership_b.status, "active")
+
+    def test_existing_removed_session_is_cleared_before_dashboard(self):
+        staff = self._create_user("stale_session_staff", "STAFF")
+        workspace = Workspace(name="Stale Session Workspace", slug="stale-session-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=staff.id,
+            role="staff",
+            status="active",
+        )
+        db.session.add(membership)
+        db.session.commit()
+        self._login_as(staff)
+        with self.client.session_transaction() as sess:
+            sess["current_workspace_id"] = workspace.id
+
+        membership.status = "removed"
+        db.session.commit()
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers["Location"])
+        with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get(AUTH_SESSION_KEY))
+            self.assertIsNone(sess.get("current_workspace_id"))
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=staff.id).one().status, "removed")
+
+    def test_existing_removed_session_returns_json_401_without_route_execution(self):
+        staff = self._create_user("stale_json_staff", "STAFF")
+        workspace = Workspace(name="Stale JSON Workspace", slug="stale-json-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=staff.id,
+            role="staff",
+            status="active",
+        )
+        db.session.add(membership)
+        db.session.commit()
+        self._login_as(staff)
+        with self.client.session_transaction() as sess:
+            sess["current_workspace_id"] = workspace.id
+
+        membership.status = "removed"
+        db.session.commit()
+        response = self.client.get(
+            "/api/dashboard/data",
+            headers={"Accept": "application/json"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.content_type, "application/json")
+        self.assertEqual(response.get_json()["error"], "unauthorized")
+        with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get(AUTH_SESSION_KEY))
+            self.assertIsNone(sess.get("current_workspace_id"))
+
+    def test_approval_owner_is_exempt_from_workspace_membership_requirement(self):
+        with app.test_request_context("/approval/pending"):
+            self.assertTrue(
+                WorkspaceService.ensure_authenticated_workspace_access(self.approval_owner)
+            )
+            self.assertIsNone(session.get("current_workspace_id"))
+
+    def test_google_login_denies_removed_member_without_reactivation(self):
+        google_user = self._create_user("removed_google_staff", "STAFF")
+        google_user.auth_provider = "google"
+        google_user.oauth_id = "removed-google-sub"
+        workspace = Workspace(name="Removed Google Workspace", slug="removed-google-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=google_user.id,
+            role="staff",
+            status="removed",
+        )
+        db.session.add(membership)
+        db.session.commit()
+
+        with app.test_request_context("/auth/google/callback"):
+            from core.auth.google_oauth import _login_active_google_user
+            response = _login_active_google_user(google_user)
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login", response.location)
+            self.assertIsNone(session.get(AUTH_SESSION_KEY))
+            self.assertIsNone(session.get("current_workspace_id"))
+
+        db.session.refresh(membership)
+        self.assertEqual(membership.status, "removed")
+
+    def test_explicit_restore_makes_removed_member_eligible_to_login(self):
+        owner = self._create_user("restore_owner", "OWNER")
+        staff = self._create_user("restore_login_staff", "STAFF")
+        workspace = Workspace(name="Restore Login Workspace", slug="restore-login-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        WorkspaceService.add_member_for_user(workspace.id, owner, "OWNER")
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=staff.id,
+            role="staff",
+            status="removed",
+            removed_at=utc_now(),
+            removed_by_id=owner.id,
+        )
+        db.session.add(membership)
+        db.session.commit()
+
+        with app.test_request_context("/login", method="POST"):
+            from services.auth_service import AuthService
+            with self.assertRaises(AuthenticationException):
+                AuthService.login("restore_login_staff", "Password123!")
+
+        with app.test_request_context(
+            f"/approval/users/{staff.id}/restore",
+            method="POST",
+        ):
+            session[AUTH_SESSION_KEY] = owner.id
+            session["current_workspace_id"] = workspace.id
+            session["_enable_workspace_isolation"] = True
+            UserService.restore_user(owner, staff.id)
+
+        db.session.refresh(membership)
+        self.assertEqual(membership.status, "active")
+        self.assertIsNone(membership.removed_at)
+        self.assertIsNone(membership.removed_by_id)
+        self.assertEqual(ActivityLog.query.filter_by(action="RESTORE_USER").count(), 1)
+
+        with app.test_request_context("/login", method="POST"):
+            success, logged_in = AuthService.login("restore_login_staff", "Password123!")
+            self.assertTrue(success)
+            self.assertEqual(logged_in.id, staff.id)
+            self.assertEqual(session.get("current_workspace_id"), workspace.id)
+
+        self.assertEqual(
+            WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=staff.id).count(),
+            1,
+        )
+
+    def test_google_login_selects_other_active_workspace_after_removal(self):
+        google_user = self._create_user("multi_google_staff", "STAFF")
+        google_user.auth_provider = "google"
+        google_user.oauth_id = "multi-google-sub"
+        workspace_a = Workspace(name="Google Workspace A", slug="google-multi-a")
+        workspace_b = Workspace(name="Google Workspace B", slug="google-multi-b")
+        db.session.add_all([workspace_a, workspace_b])
+        db.session.flush()
+        membership_a = WorkspaceMember(
+            workspace_id=workspace_a.id,
+            user_id=google_user.id,
+            role="staff",
+            status="removed",
+            removed_at=utc_now(),
+            removed_by_id=self.approval_owner.id,
+        )
+        membership_b = WorkspaceMember(
+            workspace_id=workspace_b.id,
+            user_id=google_user.id,
+            role="staff",
+            status="active",
+        )
+        db.session.add_all([membership_a, membership_b])
+        db.session.commit()
+
+        with app.test_request_context("/auth/google/callback"):
+            from core.auth.google_oauth import _login_active_google_user
+            response = _login_active_google_user(google_user)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.location, "/")
+            self.assertEqual(session.get("auth_user_id"), google_user.id)
+            self.assertEqual(session.get("current_workspace_id"), workspace_b.id)
+
+        self.assertEqual(membership_a.status, "removed")
+        self.assertEqual(membership_b.status, "active")
+        self.assertEqual(
+            WorkspaceMember.query.filter_by(user_id=google_user.id).count(),
+            2,
+        )
+        self.assertEqual(ActivityLog.query.filter_by(action="RESTORE_USER").count(), 0)
 
     def test_approval_portal_grouping_does_not_change_memberships(self):
         owner_a = self._create_user("owner_a", "OWNER")

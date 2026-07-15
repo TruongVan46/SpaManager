@@ -48,19 +48,22 @@ class WorkspaceService:
         if user.role == "APPROVAL_OWNER":
             return None
 
-        # 1. Idempotency Check: check if user already has an 'owner' membership
-        existing_membership = WorkspaceMember.query.filter(
-            WorkspaceMember.user_id == user.id,
-            WorkspaceMember.role == "owner",
-        ).first()
-        if existing_membership:
-            if existing_membership.workspace.deleted_at is not None:
-                return None
-            if existing_membership.status != "active":
-                existing_membership.status = "active"
-                existing_membership.updated_at = utc_now()
-                db.session.flush()
-            return existing_membership.workspace
+        # Existing membership rows represent explicit lifecycle state. Only a
+        # genuinely new owner (with no membership rows at all) may bootstrap.
+        existing_memberships = WorkspaceMember.query.filter_by(user_id=user.id).all()
+        active_membership = next(
+            (
+                membership
+                for membership in existing_memberships
+                if membership.status == "active"
+                and membership.workspace.deleted_at is None
+            ),
+            None,
+        )
+        if active_membership:
+            return active_membership.workspace
+        if existing_memberships:
+            return None
         # 2. Workspace name & slug generation
         # Fallback order: full_name -> username -> email
         base_name = user.full_name or user.username or user.email or "Spa"
@@ -99,7 +102,7 @@ class WorkspaceService:
         return workspace
 
     @staticmethod
-    def ensure_current_workspace_session(user):
+    def ensure_current_workspace_session(user, allow_owner_creation=True):
         """
         Auto-select workspace for the user after successful login and set session["current_workspace_id"].
 
@@ -108,7 +111,8 @@ class WorkspaceService:
         - If user is pending/rejected/disabled, do not set workspace context.
         - If user has exactly one active workspace membership, set it.
         - If user has multiple active memberships, pick the oldest (deterministic, e.g. ordered by joined_at/id).
-        - If user has no active memberships, do not set workspace context (legacy compatibility).
+        - If user has no active memberships, do not set workspace context unless
+          the caller explicitly allows the legacy OWNER provisioning path.
         """
         from flask import session
 
@@ -124,7 +128,7 @@ class WorkspaceService:
             Workspace.deleted_at.is_(None)
         ).order_by(WorkspaceMember.joined_at.asc(), WorkspaceMember.id.asc()).all()
         if not memberships:
-            if user.role == "OWNER":
+            if allow_owner_creation and user.role == "OWNER":
                 workspace = WorkspaceService.ensure_workspace_for_approved_owner(user)
                 if workspace:
                     try:
@@ -136,10 +140,33 @@ class WorkspaceService:
                     return workspace
             return None
 
-        # Auto-select the first one (oldest joined or lowest ID)
+        current_workspace_id = session.get("current_workspace_id")
+        if current_workspace_id:
+            current_membership = next(
+                (
+                    membership
+                    for membership in memberships
+                    if membership.workspace_id == current_workspace_id
+                ),
+                None,
+            )
+            if current_membership is not None:
+                return current_membership.workspace
+
+        # Auto-select the first active one (oldest joined or lowest ID)
         selected_membership = memberships[0]
         session["current_workspace_id"] = selected_membership.workspace_id
         return selected_membership.workspace
+
+    @staticmethod
+    def ensure_authenticated_workspace_access(user):
+        """Validate regular-user workspace access without mutating membership state."""
+        if not user or user.role == "APPROVAL_OWNER":
+            return True
+        return WorkspaceService.ensure_current_workspace_session(
+            user,
+            allow_owner_creation=user.role == "OWNER",
+        ) is not None
 
     @staticmethod
     def get_current_workspace_from_session():

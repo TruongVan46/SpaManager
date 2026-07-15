@@ -182,16 +182,25 @@ def require_login():
 
     if getattr(current_user, "can_access_app", False):
         from core.auth.permissions import is_approval_owner
+        from services.workspace_service import WorkspaceService
+
+        if not is_approval_owner(current_user) and not WorkspaceService.ensure_authenticated_workspace_access(current_user):
+            AuthService.clear_authentication_session()
+            from core.error_handler import ErrorHandler
+            if ErrorHandler.is_json_request():
+                return jsonify({
+                    "status": "error",
+                    "error": "unauthorized",
+                    "message": "Tài khoản hiện không có quyền truy cập vào cơ sở nào.",
+                }), 401
+            return redirect(url_for('auth.login'))
+
         if is_approval_owner(current_user):
             if not (request.endpoint.startswith('approval.') or request.endpoint in ['auth.logout', 'static', 'favicon', 'media_file']):
                 return redirect(url_for('approval.pending'))
         else:
             if request.endpoint.startswith('approval.'):
                 abort(403)
-            # Auto-repair/ensure workspace session for active OWNER
-            if current_user.role == "OWNER" and not session.get("current_workspace_id"):
-                from services.workspace_service import WorkspaceService
-                WorkspaceService.ensure_current_workspace_session(current_user)
         return
 
     if not getattr(current_user, "can_access_app", False):

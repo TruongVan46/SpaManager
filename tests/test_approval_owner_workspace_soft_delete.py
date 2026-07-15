@@ -454,7 +454,20 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
 
     def test_non_approval_owner_route_cannot_restore_owner_workspace(self):
         owner = self._create_user("owner_denied_target", "OWNER")
-        actor = self._create_user("staff_denied_actor", "STAFF")
+        actor = self._create_user("staff_denied_actor", "OWNER")
+        workspace = Workspace(
+            name="Denied Owner Workspace",
+            slug="denied-owner-workspace",
+            status="active",
+        )
+        db.session.add(workspace)
+        db.session.flush()
+        db.session.add(WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=actor.id,
+            role="owner",
+            status="active",
+        ))
         owner.deleted_at = datetime.utcnow()
         db.session.commit()
         self._login_as(actor)

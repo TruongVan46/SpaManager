@@ -248,13 +248,20 @@ def _set_pending_session(user):
 
 
 def _login_active_google_user(user):
+    from services.auth_service import AuthService
+    from services.workspace_service import WorkspaceService
+    from core.auth.permissions import is_approval_owner
+
+    if not is_approval_owner(user) and not WorkspaceService.ensure_authenticated_workspace_access(user):
+        AuthService.clear_authentication_session()
+        flash("Tài khoản hiện không có quyền truy cập vào cơ sở nào.", "warning")
+        return redirect(url_for("auth.login"))
+
     session[AUTH_SESSION_KEY] = user.id
     session.permanent = False
     _rotate_session_csrf()
 
-    from services.auth_service import AuthService
     from utils.timezone_utils import utc_now
-    from core.auth.permissions import is_approval_owner
 
     user.last_login = utc_now()
     db.session.commit()

@@ -178,6 +178,25 @@ class BasicTestCase(unittest.TestCase):
         db.session.commit()
         return user
 
+    def grant_active_workspace_access(self, user, role=None, slug=None):
+        """Opt-in fixture helper for valid actors that need app access."""
+        workspace = Workspace(
+            name=f"Fixture Workspace {user.username}",
+            slug=slug or f"fixture-{user.username}",
+            status="active",
+        )
+        db.session.add(workspace)
+        db.session.flush()
+        member = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=user.id,
+            role=(role or user.role).lower(),
+            status="active",
+        )
+        db.session.add(member)
+        db.session.commit()
+        return workspace
+
     def login_as(self, user):
         with self.client.session_transaction() as sess:
             sess[AUTH_SESSION_KEY] = user.id
@@ -592,6 +611,15 @@ class BasicTestCase(unittest.TestCase):
         user.email_verified = True
         user.auth_provider = "google"
         user.oauth_id = "google-sub-active"
+        workspace = Workspace(name="Google Active Workspace", slug="google-active-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        db.session.add(WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=user.id,
+            role="staff",
+            status="active",
+        ))
         db.session.commit()
         self.assertIsNone(user.last_login)
 
@@ -772,7 +800,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("Location", response.headers)
 
     def test_login_post_succeeds_with_csrf_token(self):
-        self.create_user("login-ok", password="login-pass", full_name="Login OK", role="STAFF")
+        user = self.create_user("login-ok", password="login-pass", full_name="Login OK", role="STAFF")
+        self.grant_active_workspace_access(user, role="STAFF")
         csrf_token = self.get_csrf_token("/login")
 
         response = self.client.post(
@@ -988,7 +1017,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/login")
 
     def test_login_rejects_external_next_redirect(self):
-        self.create_user("login-next", password="login-pass", full_name="Login Next", role="STAFF")
+        user = self.create_user("login-next", password="login-pass", full_name="Login Next", role="STAFF")
+        self.grant_active_workspace_access(user, role="STAFF")
         csrf_token = self.get_csrf_token("/login")
 
         response = self.client.post(
@@ -1046,8 +1076,10 @@ class BasicTestCase(unittest.TestCase):
         self.assertFalse(any("wrong-pass" in log_entry for log_entry in captured_logs.output))
 
     def test_login_rate_limit_blocks_after_threshold_and_scopes_by_username_and_ip(self):
-        self.create_user("login-limit-a", password="login-pass-a", full_name="Login Limit A", role="STAFF")
-        self.create_user("login-limit-b", password="login-pass-b", full_name="Login Limit B", role="STAFF")
+        user_a = self.create_user("login-limit-a", password="login-pass-a", full_name="Login Limit A", role="STAFF")
+        user_b = self.create_user("login-limit-b", password="login-pass-b", full_name="Login Limit B", role="STAFF")
+        self.grant_active_workspace_access(user_a, role="STAFF", slug="fixture-login-limit-a")
+        self.grant_active_workspace_access(user_b, role="STAFF", slug="fixture-login-limit-b")
         csrf_token = self.get_csrf_token("/login")
         blocked_ip = "203.0.113.20"
         other_ip = "203.0.113.21"
@@ -1215,7 +1247,8 @@ class BasicTestCase(unittest.TestCase):
                 self.assertIn(rule.rule, allowed_read_only_get_routes)
 
     def test_csrf_token_rotates_after_login_and_old_token_stops_working(self):
-        self.create_user("rotate-user", password="rotate-pass", full_name="Rotate User", role="STAFF")
+        user = self.create_user("rotate-user", password="rotate-pass", full_name="Rotate User", role="STAFF")
+        self.grant_active_workspace_access(user, role="STAFF")
         old_token = self.get_csrf_token("/login")
 
         login_response = self.client.post(
@@ -1265,7 +1298,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(success_response.status_code, 302)
 
     def test_logout_clears_session_and_csrf_token(self):
-        self.create_user("logout-user", password="logout-pass", full_name="Logout User", role="STAFF")
+        user = self.create_user("logout-user", password="logout-pass", full_name="Logout User", role="STAFF")
+        self.grant_active_workspace_access(user, role="STAFF")
         login_token = self.get_csrf_token("/login")
 
         login_response = self.client.post(
@@ -1582,7 +1616,8 @@ class BasicTestCase(unittest.TestCase):
         self.assertEqual(reuse_result.message, "Mật khẩu mới không được giống mật khẩu hiện tại.")
 
     def test_change_password_route_enforces_shared_policy(self):
-        self.create_user("policy-change", password="old-pass-123", full_name="Policy Change", role="STAFF")
+        user = self.create_user("policy-change", password="old-pass-123", full_name="Policy Change", role="STAFF")
+        self.grant_active_workspace_access(user, role="STAFF")
         login_token = self.get_csrf_token("/login")
         login_response = self.client.post(
             "/login",
@@ -1681,6 +1716,8 @@ class BasicTestCase(unittest.TestCase):
     def test_admin_reset_password_route_uses_shared_policy(self):
         owner = self.create_user("policy-owner", password="owner-pass", full_name="Policy Owner", role="OWNER")
         target = self.create_user("policy-target", password="target-pass", full_name="Policy Target", role="STAFF")
+        self.grant_active_workspace_access(owner, role="OWNER")
+        self.grant_active_workspace_access(target, role="STAFF")
         self.login_as(owner)
 
         short_response = self.post_with_csrf(
@@ -1780,6 +1817,12 @@ class BasicTestCase(unittest.TestCase):
         admin = self.create_user("users-access-admin", password="admin-pass", full_name="Users Access Admin", role="ADMIN")
         staff = self.create_user("users-access-staff", password="staff-pass", full_name="Users Access Staff", role="STAFF")
         target = self.create_user("users-access-target", password="target-pass", full_name="Users Access Target", role="STAFF")
+        workspace = Workspace(name="Users Access Workspace", slug="users-access-workspace")
+        db.session.add(workspace)
+        db.session.flush()
+        for member, role in ((owner, "OWNER"), (admin, "ADMIN"), (staff, "STAFF"), (target, "STAFF")):
+            WorkspaceService.add_member_for_user(workspace.id, member, role)
+        db.session.commit()
 
         for manager in (owner, admin):
             self.login_as(manager)
@@ -1869,6 +1912,7 @@ class BasicTestCase(unittest.TestCase):
             is_active=True,
             approval_status="active",
         )
+        self.grant_active_workspace_access(admin, role="ADMIN")
 
         self.login_as(approval_owner)
         page = self.client.get("/approval/pending")
@@ -1902,6 +1946,7 @@ class BasicTestCase(unittest.TestCase):
         self.assertTrue(approved_user.is_active)
         self.assertEqual(approved_user.approved_by_id, approval_owner.id)
         self.assertIsNotNone(approved_user.approved_at)
+        self.grant_active_workspace_access(approved_user, role="STAFF")
 
         self.client.post("/logout", headers={"X-CSRFToken": self.get_csrf_token("/approval/pending")}, follow_redirects=False)
         login_token = self.get_csrf_token("/login")
@@ -1947,6 +1992,9 @@ class BasicTestCase(unittest.TestCase):
         admin = self.create_user("pending-admin-guard", password="admin-pass", full_name="Pending Admin Guard", role="ADMIN")
         staff = self.create_user("pending-staff-guard", password="staff-pass", full_name="Pending Staff Guard", role="STAFF")
         approval_owner = self.create_user("pending-approval-guard", password="owner-pass", full_name="Pending Approval Guard", role="APPROVAL_OWNER")
+        self.grant_active_workspace_access(owner, role="OWNER")
+        self.grant_active_workspace_access(admin, role="ADMIN")
+        self.grant_active_workspace_access(staff, role="STAFF")
 
         # 1. Non-approval owners blocked from /approval/pending (403)
         self.login_as(owner)
@@ -2271,6 +2319,7 @@ class BasicTestCase(unittest.TestCase):
     def test_dashboard_staff_hides_admin_summary_and_api_does_not_leak_sensitive_blocks(self):
         owner = AuthService.seed_owner_if_empty()
         staff = self.create_user("dashboard-staff", password="staff-pass", full_name="Dashboard Staff", role="STAFF")
+        self.grant_active_workspace_access(staff, role="STAFF")
         self.login_as(owner)
         backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Staff visibility backup")
 
@@ -3142,6 +3191,7 @@ class BasicTestCase(unittest.TestCase):
 
     def test_settings_staff_backup_subroutes_are_forbidden(self):
         staff = self.create_user("settings-backup-staff", password="staff-pass", full_name="Backup Staff", role="STAFF")
+        self.grant_active_workspace_access(staff, role="STAFF")
         self.login_as(staff)
         csrf_token = self.get_csrf_token("/customers")
 
@@ -3549,6 +3599,9 @@ class BasicTestCase(unittest.TestCase):
         owner = self.create_user("settings-owner", password="owner-pass", full_name="Settings Owner", role="OWNER")
         admin = self.create_user("settings-admin", password="admin-pass", full_name="Settings Admin", role="ADMIN")
         staff = self.create_user("settings-staff", password="staff-pass", full_name="Settings Staff", role="STAFF")
+        self.grant_active_workspace_access(owner, role="OWNER")
+        self.grant_active_workspace_access(admin, role="ADMIN")
+        self.grant_active_workspace_access(staff, role="STAFF")
 
         backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="Route access backup")
         import_file = self.create_customer_import_xlsx()
@@ -3933,6 +3986,9 @@ class BasicTestCase(unittest.TestCase):
         owner = self.create_user("perm-owner", password="owner-pass", full_name="Perm Owner", role="OWNER")
         admin = self.create_user("perm-admin", password="admin-pass", full_name="Perm Admin", role="ADMIN")
         staff = self.create_user("perm-staff", password="staff-pass", full_name="Perm Staff", role="STAFF")
+        self.grant_active_workspace_access(owner, role="OWNER", slug="fixture-perm-owner")
+        self.grant_active_workspace_access(admin, role="ADMIN", slug="fixture-perm-admin")
+        self.grant_active_workspace_access(staff, role="STAFF", slug="fixture-perm-staff")
 
         sensitive_pages = [
             ("/settings", "Cài đặt"),
@@ -5056,6 +5112,9 @@ class BasicTestCase(unittest.TestCase):
         owner = self.create_user("settings-backup-get-owner", password="owner-pass", full_name="Get Owner", role="OWNER")
         admin = self.create_user("settings-backup-get-admin", password="admin-pass", full_name="Get Admin", role="ADMIN")
         staff = self.create_user("settings-backup-get-staff", password="staff-pass", full_name="Get Staff", role="STAFF")
+        self.grant_active_workspace_access(owner, role="OWNER", slug="fixture-backup-owner")
+        self.grant_active_workspace_access(admin, role="ADMIN", slug="fixture-backup-admin")
+        self.grant_active_workspace_access(staff, role="STAFF", slug="fixture-backup-staff")
 
         # 1. Not logged in
         res = self.client.get("/settings/backup", follow_redirects=False)
@@ -5297,7 +5356,7 @@ class BasicTestCase(unittest.TestCase):
         with self.client.session_transaction() as sess:
             self.assertEqual(sess.get("current_workspace_id"), workspace.id)
 
-    def test_user_with_no_workspace_does_not_set_session(self):
+    def test_user_with_no_workspace_is_denied_without_setting_session(self):
         local_user = self.create_user("no-workspace-user", password="password", role="STAFF")
         db.session.commit()
 
@@ -5308,10 +5367,20 @@ class BasicTestCase(unittest.TestCase):
             json={"username": "no-workspace-user", "password": "password"},
             headers={"X-CSRFToken": csrf_token},
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(response.get_json()["success"])
+
+        persisted_user = db.session.get(User, local_user.id)
+        self.assertTrue(persisted_user.is_active)
+        self.assertEqual(persisted_user.approval_status, "active")
+        self.assertEqual(
+            WorkspaceMember.query.filter_by(user_id=local_user.id).count(),
+            0,
+        )
         
         # Assert no current_workspace_id
         with self.client.session_transaction() as sess:
+            self.assertIsNone(sess.get(AUTH_SESSION_KEY))
             self.assertIsNone(sess.get("current_workspace_id"))
 
     def test_approval_owner_does_not_set_workspace_session(self):

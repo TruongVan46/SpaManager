@@ -36,6 +36,7 @@ from flask import session
 from core.auth.constants import AUTH_SESSION_KEY
 from core.auth.enums import UserRole
 from models.user import User
+from models.workspace import Workspace, WorkspaceMember
 from core.auth.google_oauth import create_or_route_google_pending_user
 
 
@@ -65,6 +66,8 @@ class TestProfileUsername(unittest.TestCase):
     def setUp(self):
         db.session.remove()
         db.session.rollback()
+        WorkspaceMember.query.delete()
+        Workspace.query.delete()
         User.query.delete()
         db.session.commit()
         self.client = app.test_client()
@@ -76,6 +79,23 @@ class TestProfileUsername(unittest.TestCase):
     def _login_as(self, user):
         with self.client.session_transaction() as sess:
             sess[AUTH_SESSION_KEY] = user.id
+
+    def _grant_active_workspace_access(self, user):
+        workspace = Workspace(
+            name=f"Profile Workspace {user.username}",
+            slug=f"profile-{user.username}",
+            status="active",
+        )
+        db.session.add(workspace)
+        db.session.flush()
+        db.session.add(WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=user.id,
+            role=user.role.lower(),
+            status="active",
+        ))
+        db.session.commit()
+        return workspace
 
     def test_google_user_can_update_generated_username(self):
         user = User(
@@ -91,6 +111,7 @@ class TestProfileUsername(unittest.TestCase):
         user.set_password("random_password_hash")
         db.session.add(user)
         db.session.commit()
+        self._grant_active_workspace_access(user)
 
         self._login_as(user)
 
@@ -123,6 +144,7 @@ class TestProfileUsername(unittest.TestCase):
         user.set_password("random_password_hash")
         db.session.add(user)
         db.session.commit()
+        self._grant_active_workspace_access(user)
 
         # Update username first
         self._login_as(user)
@@ -167,6 +189,7 @@ class TestProfileUsername(unittest.TestCase):
 
         db.session.add_all([user_a, user_b])
         db.session.commit()
+        self._grant_active_workspace_access(user_b)
 
         self._login_as(user_b)
 
@@ -196,6 +219,7 @@ class TestProfileUsername(unittest.TestCase):
         user.set_password("pass_b")
         db.session.add(user)
         db.session.commit()
+        self._grant_active_workspace_access(user)
 
         self._login_as(user)
 
@@ -230,6 +254,7 @@ class TestProfileUsername(unittest.TestCase):
         user.set_password("pass_b")
         db.session.add(user)
         db.session.commit()
+        self._grant_active_workspace_access(user)
 
         self._login_as(user)
 
@@ -260,6 +285,7 @@ class TestProfileUsername(unittest.TestCase):
         user.set_password("pass")
         db.session.add(user)
         db.session.commit()
+        self._grant_active_workspace_access(user)
 
         self._login_as(user)
 

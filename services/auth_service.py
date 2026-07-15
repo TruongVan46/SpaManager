@@ -130,6 +130,15 @@ class AuthService:
                         status_code=401,
                         severity="WARNING",
                     )
+            from services.workspace_service import WorkspaceService
+            if not WorkspaceService.ensure_authenticated_workspace_access(user):
+                AuthService.clear_authentication_session()
+                raise AuthenticationException(
+                    "Tài khoản hiện không có quyền truy cập vào cơ sở nào.",
+                    code="AUTH_NO_WORKSPACE_ACCESS",
+                    status_code=401,
+                    severity="WARNING",
+                )
             from flask import has_request_context
             if has_request_context():
                 session[AUTH_SESSION_KEY] = user.id
@@ -155,6 +164,15 @@ class AuthService:
             description=f"Đăng nhập thất bại: username={sanitized_username}, ip={request_ip}, reason=invalid_credentials",
         )
         return False, None
+
+    @staticmethod
+    def clear_authentication_session():
+        """Clear authentication and workspace context without emitting a logout audit."""
+        from core.csrf import clear_csrf_token
+
+        session.pop(AUTH_SESSION_KEY, None)
+        session.pop("current_workspace_id", None)
+        clear_csrf_token()
 
     @staticmethod
     def logout():
