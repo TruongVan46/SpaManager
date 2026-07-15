@@ -69,7 +69,9 @@
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm flex-wrap" role="group">
                                     <a href="{{ url_for('user.edit', user_id=user.id) }}" class="btn btn-outline-primary" title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                                    {% if reset_allowed.get(user.id, False) %}
                                     <a href="{{ url_for('user.reset_password', user_id=user.id) }}" class="btn btn-outline-warning" title="Đặt lại mật khẩu"><i class="bi bi-key"></i></a>
+                                    {% endif %}
                                     {% set can_manage_target = (current_user.role == 'OWNER' and user.role in ['ADMIN', 'STAFF'] and user.id != current_user.id) or (current_user.role == 'ADMIN' and user.role == 'STAFF') %}
                                     {% if can_manage_target %}
                                     <form action="{{ url_for('user.toggle_active', user_id=user.id) }}" method="post" class="d-inline m-0">

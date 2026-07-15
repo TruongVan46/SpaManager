@@ -1716,9 +1716,20 @@ class BasicTestCase(unittest.TestCase):
     def test_admin_reset_password_route_uses_shared_policy(self):
         owner = self.create_user("policy-owner", password="owner-pass", full_name="Policy Owner", role="OWNER")
         target = self.create_user("policy-target", password="target-pass", full_name="Policy Target", role="STAFF")
-        self.grant_active_workspace_access(owner, role="OWNER")
-        self.grant_active_workspace_access(target, role="STAFF")
+        workspace = self.grant_active_workspace_access(owner, role="OWNER")
+        db.session.add(
+            WorkspaceMember(
+                workspace_id=workspace.id,
+                user_id=target.id,
+                role="staff",
+                status="active",
+            )
+        )
+        db.session.commit()
         self.login_as(owner)
+        with self.client.session_transaction() as sess:
+            sess["current_workspace_id"] = workspace.id
+            sess["_enable_workspace_isolation"] = True
 
         short_response = self.post_with_csrf(
             f"/users/{target.id}/reset-password",

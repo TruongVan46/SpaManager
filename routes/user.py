@@ -1,7 +1,7 @@
 from flask import jsonify, redirect, render_template, request, url_for, abort
 
 from core.auth.permissions import can_manage_users, is_owner, is_admin
-from core.exceptions import BusinessException, NotFoundException, ValidationException
+from core.exceptions import BusinessException, NotFoundException, PermissionDeniedException, ValidationException
 from routes import user_bp
 from services.auth_service import AuthService
 from services.notification_service import NotificationService
@@ -90,6 +90,10 @@ def index():
         page=1,
         per_page=50,
     )
+    reset_allowed = {
+        user.id: UserService.can_reset_password(actor, user)
+        for user in users.items
+    }
     return render_template(
         'user/index.html',
         users=users,
@@ -99,6 +103,7 @@ def index():
         sort_dir=sort_dir,
         role_labels=UserService.ROLE_LABELS,
         available_roles=_get_available_roles_for_actor(actor),
+        reset_allowed=reset_allowed,
     )
 
 
@@ -263,9 +268,14 @@ def edit(user_id):
 
 @user_bp.route('/users/<int:user_id>/reset-password', methods=['GET', 'POST'])
 def reset_password(user_id):
-    _require_manager()
-    user = UserService._get_workspace_scoped_user_or_404(user_id)
-    if user.role == 'APPROVAL_OWNER':
+    actor = _require_manager()
+    try:
+        UserService._ensure_reset_actor_can_manage(actor)
+        UserService._ensure_reset_target_is_not_protected(user_id)
+        user, _membership = UserService._authorize_workspace_user_action(
+            actor, user_id, "reset"
+        )
+    except PermissionDeniedException:
         abort(403)
     errors = {}
     form_data = {'new_password': '', 'confirm_password': ''}
@@ -283,7 +293,6 @@ def reset_password(user_id):
             return _render_or_json_error('user/reset_password.html', {'user': user, 'form_data': form_data}, errors)
 
         try:
-            actor = AuthService.require_manager_user()
             UserService.reset_password(actor=actor, user_id=user_id, new_password=form_data['new_password'])
             if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': True, 'message': 'Đã đặt lại mật khẩu thành công.'})

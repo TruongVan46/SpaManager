@@ -5,7 +5,7 @@ from extensions import db
 from core.auth.enums import UserRole, normalize_role_value
 from core.auth.security import PasswordPolicy
 from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
-from core.exceptions import ConflictException, NotFoundException, ValidationException
+from core.exceptions import ConflictException, NotFoundException, PermissionDeniedException, ValidationException
 from models.user import User
 from models.workspace import WorkspaceMember
 from utils.timezone_utils import utc_now
@@ -156,11 +156,17 @@ class UserService:
             if action == "toggle":
                 message = "Không thể vô hiệu hóa chính mình."
                 raise ValidationException(message, field_errors={"is_active": message})
+            if action == "reset":
+                raise PermissionDeniedException("Bạn không có quyền đặt lại mật khẩu tài khoản này.")
             raise ValidationException("Không thể tự tác động lên chính mình.")
 
         target_role = normalize_role_value(membership.role)
         if target_role != normalize_role_value(user.role):
             raise ValidationException("Vai trò workspace không khớp với tài khoản người dùng.")
+        if action == "reset" and not UserService._can_reset_password_role(
+            actor_role, target_role, actor.id, user.id
+        ):
+            raise PermissionDeniedException("Bạn không có quyền đặt lại mật khẩu tài khoản này.")
         if target_role == UserRole.APPROVAL_OWNER.value:
             raise ValidationException("Không thể tác động tài khoản quản trị hệ thống.")
         if target_role == UserRole.OWNER.value:
@@ -169,6 +175,43 @@ class UserService:
             raise ValidationException("Admin chỉ được tác động nhân viên.")
 
         return user, membership
+
+    @staticmethod
+    def _can_reset_password_role(actor_role, target_role, actor_id=None, target_id=None):
+        actor_role = normalize_role_value(actor_role)
+        target_role = normalize_role_value(target_role)
+        if actor_id is not None and target_id is not None and actor_id == target_id:
+            return False
+        if target_role in (UserRole.OWNER.value, UserRole.APPROVAL_OWNER.value):
+            return False
+        if actor_role == UserRole.OWNER.value:
+            return target_role in (UserRole.ADMIN.value, UserRole.STAFF.value)
+        if actor_role == UserRole.ADMIN.value:
+            return target_role == UserRole.STAFF.value
+        return False
+
+    @staticmethod
+    def _ensure_reset_actor_can_manage(actor):
+        if normalize_role_value(getattr(actor, "role", None)) == UserRole.APPROVAL_OWNER.value:
+            raise PermissionDeniedException("Tài khoản phê duyệt hệ thống không được quản lý mật khẩu workspace.")
+
+    @staticmethod
+    def _ensure_reset_target_is_not_protected(user_id):
+        protected = User.query.filter(
+            User.id == user_id,
+            User.role == UserRole.APPROVAL_OWNER.value,
+        ).first()
+        if protected:
+            raise PermissionDeniedException("Không thể đặt lại mật khẩu tài khoản phê duyệt hệ thống.")
+
+    @staticmethod
+    def can_reset_password(actor, target):
+        """Return the same role decision used by the reset authorization path."""
+        if not actor or not target or not getattr(actor, "is_active", False):
+            return False
+        return UserService._can_reset_password_role(
+            actor.role, target.role, actor.id, target.id
+        )
 
     @staticmethod
     def _ensure_unique_fields(username, email, exclude_user_id=None):
@@ -440,12 +483,23 @@ class UserService:
 
     @staticmethod
     def reset_password(actor, user_id, new_password):
-        user = UserService._get_workspace_scoped_user_or_404(user_id)
+        from flask import has_request_context
+
+        UserService._ensure_reset_actor_can_manage(actor)
+        UserService._ensure_reset_target_is_not_protected(user_id)
+        if has_request_context():
+            user, _membership = UserService._authorize_workspace_user_action(
+                actor, user_id, "reset"
+            )
+        else:
+            user = UserService._get_workspace_scoped_user_or_404(user_id)
+            if not UserService._can_reset_password_role(
+                actor.role, user.role, actor.id, user.id
+            ):
+                raise PermissionDeniedException("Bạn không có quyền đặt lại mật khẩu tài khoản này.")
         user = db.session.query(User).filter(User.id == user.id).with_for_update().one_or_none()
         if user is None:
             raise NotFoundException("User not found.")
-        if user.role == UserRole.APPROVAL_OWNER.value:
-            raise ValidationException("Không thể sửa đổi tài khoản phê duyệt hệ thống.")
         if not new_password:
             raise ValidationException("Mật khẩu mới không được để trống.", field_errors={"new_password": "Mật khẩu mới không được để trống."})
 
