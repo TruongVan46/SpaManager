@@ -431,42 +431,41 @@ class WorkspaceService:
             if not target_user.is_active or not target_user.is_approval_active:
                 continue
 
-            # Check if they already have an active WorkspaceMember in any workspace
+            # An existing membership in the repair workspace is explicit lifecycle
+            # state, including ``removed``. Never reactivate or replace it here.
+            existing = WorkspaceMember.query.filter_by(
+                workspace_id=workspace.id,
+                user_id=target_user.id,
+            ).first()
+            if existing:
+                continue
+
+            # Preserve the legacy guard against creating a second active
+            # membership when the user is already active elsewhere.
             has_active_membership = WorkspaceMember.query.filter(
                 WorkspaceMember.user_id == target_user.id,
                 WorkspaceMember.status == "active"
             ).first() is not None
 
             if not has_active_membership:
-                # Repair! Create or update WorkspaceMember
+                # Repair only a genuinely missing membership in this workspace.
                 role_map = {
                     "ADMIN": "admin",
                     "STAFF": "staff"
                 }
                 ws_role = role_map.get(target_user.role, "staff")
 
-                existing = WorkspaceMember.query.filter_by(
+                new_member = WorkspaceMember(
                     workspace_id=workspace.id,
-                    user_id=target_user.id
-                ).first()
-
-                if existing:
-                    existing.status = "active"
-                    existing.role = ws_role
-                    existing.invited_by_id = owner_user.id
-                    existing.updated_at = utc_now()
-                else:
-                    new_member = WorkspaceMember(
-                        workspace_id=workspace.id,
-                        user_id=target_user.id,
-                        role=ws_role,
-                        status="active",
-                        invited_by_id=owner_user.id,
-                        joined_at=utc_now(),
-                        created_at=utc_now(),
-                        updated_at=utc_now()
-                    )
-                    db.session.add(new_member)
+                    user_id=target_user.id,
+                    role=ws_role,
+                    status="active",
+                    invited_by_id=owner_user.id,
+                    joined_at=utc_now(),
+                    created_at=utc_now(),
+                    updated_at=utc_now()
+                )
+                db.session.add(new_member)
 
                 repaired_count += 1
 

@@ -31,6 +31,7 @@ from models.activity_log import ActivityLog
 from models.workspace import Workspace, WorkspaceMember
 from services.user_service import UserService
 from services.workspace_service import WorkspaceService
+from utils.timezone_utils import utc_now
 from flask import session
 from core.auth.enums import UserRole
 
@@ -212,6 +213,135 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             logs = ActivityLog.query.filter_by(action="RESTORE_USER").all()
             self.assertEqual(len(logs), 1)
             self.assertEqual(logs[0].reference_id, staff.id)
+
+    def test_soft_delete_followup_get_preserves_removed_membership(self):
+        owner = self._create_user("owner_followup", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        staff = self._create_user("staff_followup", "STAFF")
+        WorkspaceService.add_member_for_user(workspace.id, staff, "STAFF")
+        db.session.commit()
+
+        response = self._post_form_as(
+            owner,
+            workspace.id,
+            f"/users/{staff.id}/soft-delete",
+            {"reason": "Follow-up regression"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/users"))
+
+        removed = WorkspaceMember.query.filter_by(
+            workspace_id=workspace.id,
+            user_id=staff.id,
+        ).one()
+        removed_state = (removed.status, removed.removed_at, removed.removed_by_id)
+        self.assertEqual(removed.status, "removed")
+        self.assertIsNotNone(removed.removed_at)
+        self.assertEqual(removed.removed_by_id, owner.id)
+
+        followup = self.client.get(response.headers["Location"], follow_redirects=False)
+        self.assertEqual(followup.status_code, 200)
+        tables = re.findall(r"<table\b.*?</table>", followup.get_data(as_text=True), re.DOTALL)
+        self.assertEqual(len(tables), 2)
+        active_table, removed_table = tables
+        self.assertNotIn(staff.username, active_table)
+        self.assertIn(staff.username, removed_table)
+
+        db.session.expire_all()
+        removed = WorkspaceMember.query.filter_by(
+            workspace_id=workspace.id,
+            user_id=staff.id,
+        ).one()
+        self.assertEqual(
+            (removed.status, removed.removed_at, removed.removed_by_id),
+            removed_state,
+        )
+        self.assertIsNotNone(User.query.get(staff.id))
+        self.assertTrue(User.query.get(staff.id).is_active)
+        self.assertEqual(
+            ActivityLog.query.filter_by(
+                action="RESTORE_USER",
+                reference_id=staff.id,
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WorkspaceMember.query.filter_by(
+                workspace_id=workspace.id,
+                user_id=staff.id,
+            ).count(),
+            1,
+        )
+        self.assertEqual(ActivityLog.query.filter_by(action="REMOVE_USER", reference_id=staff.id).count(), 1)
+
+    def _legacy_repair_fixture(self, username):
+        owner = self._create_user(f"{username}_owner", "OWNER")
+        workspace = WorkspaceService.ensure_workspace_for_approved_owner(owner)
+        target = self._create_user(f"{username}_staff", "STAFF")
+        db.session.add(ActivityLog(
+            module="Users",
+            action="CREATE_USER",
+            description="legacy repair fixture",
+            reference_id=target.id,
+            user_id=owner.id,
+        ))
+        db.session.commit()
+        return owner, workspace, target
+
+    def test_legacy_repair_preserves_removed_membership(self):
+        owner, workspace, target = self._legacy_repair_fixture("repair_removed")
+        membership = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=target.id,
+            role="staff",
+            status="removed",
+            removed_at=utc_now(),
+            removed_by_id=owner.id,
+            removal_reason="explicit removal",
+        )
+        db.session.add(membership)
+        db.session.commit()
+        before = (membership.status, membership.removed_at, membership.removed_by_id, membership.removal_reason)
+
+        self.assertEqual(WorkspaceService.repair_legacy_owner_created_memberships(owner), 0)
+        db.session.expire_all()
+        after = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).one()
+        self.assertEqual((after.status, after.removed_at, after.removed_by_id, after.removal_reason), before)
+
+    def test_legacy_repair_does_not_mutate_active_membership(self):
+        owner, workspace, target = self._legacy_repair_fixture("repair_active")
+        WorkspaceService.add_member_for_user(workspace.id, target, "STAFF")
+        db.session.commit()
+        before = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).one()
+        before_state = (before.status, before.role, before.removed_at, before.removed_by_id)
+
+        self.assertEqual(WorkspaceService.repair_legacy_owner_created_memberships(owner), 0)
+        db.session.expire_all()
+        after = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).one()
+        self.assertEqual((after.status, after.role, after.removed_at, after.removed_by_id), before_state)
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=target.id).count(), 1)
+
+    def test_legacy_repair_creates_genuinely_missing_membership(self):
+        owner, workspace, target = self._legacy_repair_fixture("repair_missing")
+
+        self.assertEqual(WorkspaceService.repair_legacy_owner_created_memberships(owner), 1)
+        membership = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).one()
+        self.assertEqual(membership.status, "active")
+        self.assertEqual(membership.role, "staff")
+
+    def test_legacy_repair_is_idempotent(self):
+        owner, workspace, target = self._legacy_repair_fixture("repair_idempotent")
+
+        self.assertEqual(WorkspaceService.repair_legacy_owner_created_memberships(owner), 1)
+        db.session.commit()
+        membership = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).one()
+        before = (membership.status, membership.role, membership.created_at, membership.updated_at)
+
+        self.assertEqual(WorkspaceService.repair_legacy_owner_created_memberships(owner), 0)
+        db.session.expire_all()
+        after = WorkspaceMember.query.filter_by(workspace_id=workspace.id, user_id=target.id).one()
+        self.assertEqual((after.status, after.role, after.created_at, after.updated_at), before)
+        self.assertEqual(WorkspaceMember.query.filter_by(user_id=target.id).count(), 1)
 
     def test_owner_and_admin_role_hierarchy_matrix(self):
         owner = self._create_user("matrix_owner", "OWNER")
