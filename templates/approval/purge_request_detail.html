@@ -3,6 +3,7 @@
 {% block content %}
 <section class="card border-0 shadow-sm">
   <div class="card-body">
+    <a class="btn btn-sm btn-outline-secondary mb-3" href="{{ url_for('approval.purge_requests') }}">← Quay lại danh sách yêu cầu xóa vĩnh viễn</a>
     <div class="alert alert-danger" role="alert"><strong>Cảnh báo: không thể hoàn tác.</strong> Hãy kiểm tra kỹ cơ sở và bản kê trước khi phê duyệt.</div>
     <h1 class="h4">{{ summary.workspace_name }}</h1>
     <dl class="row small">

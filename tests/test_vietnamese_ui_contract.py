@@ -39,6 +39,21 @@ def test_approval_purge_and_legal_hold_templates_have_localized_actions():
         assert "Legal hold" not in source
 
 
+def test_permanent_purge_pages_have_explicit_back_navigation():
+    listing = _text("templates/approval/purge_requests.html")
+    detail = _text("templates/approval/purge_request_detail.html")
+
+    assert "← Quay lại Cổng phê duyệt" in listing
+    assert "url_for('approval.accounts', status='active')" in listing
+    assert "← Quay lại danh sách yêu cầu xóa vĩnh viễn" in detail
+    assert "url_for('approval.purge_requests')" in detail
+
+    for source in (listing, detail):
+        assert "history.back" not in source
+        assert "history.go" not in source
+        assert "javascript:" not in source
+
+
 def test_confirmation_contract_has_accented_display_and_legacy_compatibility():
     request_service = _text("services/purge_request_service.py")
     hold_service = _text("services/purge_legal_hold_service.py")
