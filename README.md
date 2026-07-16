@@ -235,10 +235,17 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 - PostgreSQL production cutover is now the deployment path.
 - SpaManager remains a local-first application with Railway production support.
 
+## Current release
+
+- Current version: `6.6`
+- Version 6.6 status: **CLOSED / DONE**
+- Current database revision: `0009_immediate_purge_eligibility`
+- [Version 6.6 closure](docs/workspace/VERSION_6_6_CLOSURE.md)
+- Next version: Not yet assigned
 
 ## PostgreSQL migration & production docs
 
-SpaManager production is now running on PostgreSQL as of v5.9.0. Detailed migration, cutover, backup, and validation notes are grouped here:
+SpaManager production has been running on PostgreSQL since v5.9.0. Detailed migration, cutover, backup, and validation notes are grouped here:
 
 - [PostgreSQL docs index](docs/postgresql/README.md)
 - [PostgreSQL-only product mode audit](docs/postgresql/POSTGRESQL_ONLY_PRODUCT_MODE_AUDIT.md)

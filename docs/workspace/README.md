@@ -4,6 +4,8 @@ This folder collects the planning and validation documents for workspace support
 
 ## Final Release & Closure
 
+- [SpaManager Version 6.6 — Permanent Workspace Purge Workflow Closure](VERSION_6_6_CLOSURE.md) (Closed / Done)
+
 - [SpaManager Version 6.5 — Workspace Tenant Isolation Closure](WORKSPACE_ISOLATION_CLOSURE.md) (Production Validated & Closed)
 
 ## Planning & Rehearsal Archive

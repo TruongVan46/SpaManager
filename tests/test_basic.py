@@ -2736,7 +2736,7 @@ class BasicTestCase(unittest.TestCase):
         )
         self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
         self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
-        self.assertEqual(config.APP_VERSION, "5.9.0")
+        self.assertEqual(config.APP_VERSION, "6.6")
 
     def test_local_config_can_use_explicit_legacy_sqlite_fallback(self):
         with patch.dict(
@@ -2794,9 +2794,29 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("GOOGLE_AUTH_ENABLED=false", env_example)
         self.assertIn("GOOGLE_ALLOWED_DOMAIN=", env_example)
         self.assertIn("# DATABASE_URL=<Railway PostgreSQL reference variable>", env_example)
-        self.assertIn("APP_VERSION=5.9.0", env_example)
+        self.assertIn("APP_VERSION=6.6", env_example)
         self.assertIn("v5.9.0", changelog)
-        self.assertIn("v5.9.0", readme)
+        self.assertIn("Current version: `6.6`", readme)
+        self.assertIn("Version 6.6 status: **CLOSED / DONE**", readme)
+        self.assertIn("0009_immediate_purge_eligibility", readme)
+        current_release_heading = readme.index("## Current release")
+        postgres_docs_heading = readme.index("## PostgreSQL migration & production docs")
+        self.assertLess(current_release_heading, postgres_docs_heading)
+        self.assertNotIn(
+            "## PostgreSQL migration & production docs\n\n## Current release",
+            readme,
+        )
+        self.assertIn(
+            "SpaManager production has been running on PostgreSQL since v5.9.0.",
+            readme,
+        )
+        self.assertNotIn("PostgreSQL as of Version 6.6", readme)
+        self.assertIn("PERMANENT_PURGE_EXECUTION_ENABLED=0", env_example)
+        self.assertIn(
+            "Destructive execution kill switch; keep disabled unless explicitly approved for the environment.",
+            env_example,
+        )
+        self.assertNotIn("No execution route exists", env_example)
         self.assertIn("change-this-to-a-strong-password", env_example)
         self.assertIn("CSRF_ENABLED=1", env_example)
         self.assertIn("Google OAuth is disabled by default", readme)
@@ -2924,17 +2944,37 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         response = self.client.get("/settings")
         html = response.get_data(as_text=True)
-        self.assertIn("SpaManager v5.9.0", html)
-        self.assertIn("v5.9.0", html)
-        self.assertIn(">5.9.0<", html)
+        self.assertIn("SpaManager v6.6", html)
+        self.assertIn("v6.6", html)
+        self.assertIn(">6.6<", html)
 
     def test_sidebar_footer_shows_current_version(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
         response = self.client.get("/")
         html = response.get_data(as_text=True)
-        self.assertIn("SpaManager v5.9.0", html)
+        self.assertIn("SpaManager v6.6", html)
+        self.assertNotIn("SpaManager v5.9.0", html)
         self.assertNotIn("SpaManager v4.0", html)
+
+    def test_version_6_6_closure_contract_is_documented(self):
+        closure = Path("docs/workspace/VERSION_6_6_CLOSURE.md").read_text(encoding="utf-8")
+        historical = Path("docs/workspace/WORKSPACE_ISOLATION_CLOSURE.md").read_text(encoding="utf-8")
+
+        self.assertIn("Version 6.6 — Permanent Workspace Purge Workflow", closure)
+        self.assertIn("Status: CLOSED / DONE", closure)
+        self.assertIn("9ce67182e92339c722f19329a395c9029ff6d6fe", closure)
+        self.assertIn("0009_immediate_purge_eligibility", closure)
+        self.assertIn("User rows are preserved.", closure)
+        self.assertIn("Terminal Workspace tombstones are preserved.", closure)
+        self.assertIn("ActivityLog/audit records are preserved.", closure)
+        self.assertIn("Purge workflow and lifecycle audit records are preserved.", closure)
+        self.assertIn("Permanent account purge", closure)
+        self.assertIn("Hard deletion of User rows", closure)
+        self.assertIn("Hard deletion of terminal Workspace tombstones", closure)
+        self.assertIn("Full UI/UX overhaul", closure)
+        self.assertNotIn("Hard-delete User rows are complete", closure)
+        self.assertIn("Version 6.5", historical)
 
     def test_workspace_models_expose_expected_metadata(self):
         self.assertEqual(Workspace.__tablename__, "workspaces")
@@ -3396,7 +3436,7 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="")
         try:
-            self.assertEqual(backup_meta["app_version"], "SpaManager v5.9.0")
+            self.assertEqual(backup_meta["app_version"], "SpaManager v6.6")
             self.assertIn("Backup ngày", backup_meta["display_name"])
             self.assertIn("Backup tạo lúc", backup_meta["notes"])
 
@@ -3514,9 +3554,9 @@ class BasicTestCase(unittest.TestCase):
 
         first_backup_meta["database_version"] = "v5.1.0"
         first_backup_meta["app_version"] = "SpaManager v5.1.0"
-        self.assertEqual(second_backup_meta["app_version"], "SpaManager v5.9.0")
+        self.assertEqual(second_backup_meta["app_version"], "SpaManager v6.6")
         second_backup_meta["database_version"] = "v5.9.0"
-        second_backup_meta["app_version"] = "SpaManager v5.9.0"
+        second_backup_meta["app_version"] = "SpaManager v6.6"
 
         try:
             BackupRepository.save(app, first_backup_id, first_backup_meta)
@@ -3529,7 +3569,7 @@ class BasicTestCase(unittest.TestCase):
             self.assertIn("Backup version 5.1 should stay visible", html)
             self.assertIn("Backup version 5.3 should stay visible", html)
             self.assertIn("SpaManager v5.1.0", html)
-            self.assertIn("SpaManager v5.9.0", html)
+            self.assertIn("SpaManager v6.6", html)
             self.assertNotIn("/app/database", html)
         finally:
             if first_backup_path.exists():
