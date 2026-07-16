@@ -8,6 +8,7 @@ from core.auth.permissions import can_manage_settings
 from extensions import db
 from models.activity_log import ActivityLog
 from models.user import User
+from models.workspace import WorkspaceMember
 from repositories.backup_repository import BackupRepository
 from routes import dashboard_bp
 from services.auth_service import AuthService
@@ -19,6 +20,12 @@ from utils.timezone_utils import format_local_datetime, to_local_datetime, utc_n
 def _build_admin_summary():
     current_user = AuthService.get_current_active_user()
     if not can_manage_settings(current_user):
+        return None
+
+    from services.workspace_service import WorkspaceService
+
+    workspace_id = WorkspaceService.get_current_workspace_id()
+    if workspace_id is None:
         return None
 
     app = current_app._get_current_object()
@@ -69,8 +76,23 @@ def _build_admin_summary():
         summary["backup"]["error"] = "Không thể tải trạng thái backup"
 
     try:
-        active_users = db.session.query(func.count(User.id)).filter(User.is_active.is_(True)).scalar() or 0
-        inactive_users = db.session.query(func.count(User.id)).filter(User.is_active.is_(False)).scalar() or 0
+        workspace_users = (
+            db.session.query(User)
+            .join(
+                WorkspaceMember,
+                (WorkspaceMember.user_id == User.id)
+                & (WorkspaceMember.workspace_id == workspace_id)
+                & (WorkspaceMember.status == "active")
+                & (WorkspaceMember.removed_at.is_(None)),
+            )
+            .filter(User.deleted_at.is_(None))
+        )
+        active_users = workspace_users.filter(User.is_active.is_(True)).with_entities(
+            func.count(func.distinct(User.id))
+        ).scalar() or 0
+        inactive_users = workspace_users.filter(User.is_active.is_(False)).with_entities(
+            func.count(func.distinct(User.id))
+        ).scalar() or 0
         summary["users"].update({
             "active": int(active_users),
             "inactive": int(inactive_users),
@@ -82,14 +104,17 @@ def _build_admin_summary():
     try:
         alert_cutoff = utc_now() - timedelta(days=7)
         warning_count = db.session.query(func.count(ActivityLog.id)).filter(
+            ActivityLog.workspace_id == workspace_id,
             ActivityLog.created_at >= alert_cutoff,
             ActivityLog.severity == "WARNING",
         ).scalar() or 0
         error_count = db.session.query(func.count(ActivityLog.id)).filter(
+            ActivityLog.workspace_id == workspace_id,
             ActivityLog.created_at >= alert_cutoff,
             ActivityLog.severity == "ERROR",
         ).scalar() or 0
         latest_alert = db.session.query(ActivityLog).filter(
+            ActivityLog.workspace_id == workspace_id,
             ActivityLog.created_at >= alert_cutoff,
             ActivityLog.severity.in_(["WARNING", "ERROR"]),
         ).order_by(ActivityLog.created_at.desc()).first()
