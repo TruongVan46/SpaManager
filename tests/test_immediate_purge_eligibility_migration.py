@@ -224,6 +224,59 @@ class ImmediatePurgeEligibilityMigrationTests(unittest.TestCase):
         self.assertIn("AND event_type = :event_type", source)
         self.assertNotIn("DELETE FROM purge_lifecycle_events WHERE request_id = :request_id", source)
 
+    def test_cross_lifecycle_historical_evidence_and_workspace_states(self):
+        base = {
+            "status": "PENDING_RETENTION",
+            "retention_policy_version": MIGRATION.OLD_POLICY,
+            "invalidated_at": datetime(2026, 1, 1),
+            "invalidated_by_restore": True,
+            "outcome_unknown": False,
+        }
+        exact = {
+            "restore_event_count": 1,
+            "restore_exact_count": 1,
+            "later_event_count": 0,
+            "migration_event_count": 0,
+        }
+        cases = {
+            "R01": MIGRATION._is_currently_restored({"deleted_at": None, "deleted_by_id": None, "purged_at": None, "purge_request_id": None}),
+            "R16": not MIGRATION._is_exact_historical_restore_invalidated(base, dict(exact, restore_exact_count=0)),
+            "R17": not MIGRATION._is_exact_historical_restore_invalidated(base, dict(exact, restore_event_count=2)),
+            "R18": not MIGRATION._is_exact_historical_restore_invalidated(base, dict(exact, later_event_count=1)),
+            "R19": not MIGRATION._is_exact_historical_restore_invalidated(base, dict(exact, migration_event_count=1)),
+            "R20": not MIGRATION._is_exact_historical_restore_invalidated(dict(base, outcome_unknown=True), exact),
+        }
+        for label, result in cases.items():
+            with self.subTest(label=label):
+                self.assertTrue(result)
+
+    def test_cross_lifecycle_source_contract_r02_to_r25(self):
+        source = MIGRATION_PATH.read_text(encoding="utf-8")
+        requirements = {
+            "R02": "def _classify_candidates(connection, rows):",
+            "R03": "def _verify_historical_unchanged",
+            "R04": "_verify_upgrade(connection, selected_ids)",
+            "R05": "def _restore_request",
+            "R06": "historical_snapshots",
+            "R07": "successor is missing or ambiguous",
+            "R08": "successor is unsafe",
+            "R09": "if len(matching) != 1:",
+            "R10": "or successor[\"lifecycle_id\"] == historical[\"lifecycle_id\"]",
+            "R11": "successor[\"target_deleted_at\"] != historical[\"deleted_at\"]",
+            "R12": "created[\"event_count\"] == 1",
+            "R13": "created[\"event_count\"] == 1",
+            "R14": "created[\"event_at\"] > historical[\"invalidated_at\"]",
+            "R15": "historical[\"deleted_at\"] <= historical[\"invalidated_at\"]",
+            "R21": "successor[\"workspace_id\"] != historical[\"workspace_id\"]",
+            "R22": "ORDER BY r.id",
+            "R23": "candidate classification does not reconcile",
+            "R24": "parsed, historical = _classify_candidates(connection, rows)",
+            "R25": "_validate_candidate(successor, connection)",
+        }
+        for label, required_text in requirements.items():
+            with self.subTest(label=label):
+                self.assertIn(required_text, source)
+
 
 if __name__ == "__main__":
     unittest.main()

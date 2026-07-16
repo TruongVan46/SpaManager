@@ -270,6 +270,113 @@ def _candidate_rows(connection):
     )).mappings().all()
 
 
+def _historical_evidence(connection, row):
+    return connection.execute(text(
+        "SELECT "
+        "(SELECT COUNT(*) FROM purge_lifecycle_events e WHERE e.request_id = :request_id "
+        "AND e.event_type = :restore_event) AS restore_event_count, "
+        "(SELECT COUNT(*) FROM purge_lifecycle_events e WHERE e.request_id = :request_id "
+        "AND e.event_type = :restore_event AND e.lifecycle_id_snapshot = :lifecycle_id "
+        "AND e.workspace_id = :workspace_id AND e.status_before = :status "
+        "AND e.status_after = :status AND e.actor_id IS NOT NULL AND e.actor_snapshot IS NOT NULL "
+        "AND e.reason_code = :reason_code AND e.sanitized_summary = :summary) AS restore_exact_count, "
+        "(SELECT COUNT(*) FROM purge_lifecycle_events e JOIN purge_lifecycle_events later "
+        "ON later.request_id = e.request_id AND later.event_sequence > e.event_sequence "
+        "WHERE e.request_id = :request_id AND e.event_type = :restore_event) AS later_event_count, "
+        "(SELECT COUNT(*) FROM purge_lifecycle_events e WHERE e.request_id = :request_id "
+        "AND e.event_type = :migration_event) AS migration_event_count"
+    ), {
+        "request_id": row["id"], "restore_event": "manifest_invalidated",
+        "lifecycle_id": row["lifecycle_id"], "workspace_id": row["workspace_id"],
+        "status": row["status"], "reason_code": "MANIFEST_INVALIDATED",
+        "summary": "Workspace restored; prior deletion lifecycle is invalidated.",
+        "migration_event": MIGRATION_EVENT,
+    }).mappings().one()
+
+
+def _is_exact_historical_restore_invalidated(row, evidence):
+    return (
+        row["status"] == "PENDING_RETENTION"
+        and row["retention_policy_version"] == OLD_POLICY
+        and row["invalidated_at"] is not None
+        and row["invalidated_by_restore"] is True
+        and row["outcome_unknown"] is False
+        and evidence["restore_event_count"] == 1
+        and evidence["restore_exact_count"] == 1
+        and evidence["later_event_count"] == 0
+        and evidence["migration_event_count"] == 0
+    )
+
+
+def _is_currently_restored(row):
+    return (
+        row["deleted_at"] is None
+        and row["deleted_by_id"] is None
+        and row["purged_at"] is None
+        and row["purge_request_id"] is None
+    )
+
+
+def _request_created_evidence(connection, request_id):
+    return connection.execute(text(
+        "SELECT COUNT(*) AS event_count, MIN(event_at) AS event_at "
+        "FROM purge_lifecycle_events WHERE request_id = :request_id "
+        "AND event_type = :event_type"
+    ), {"request_id": request_id, "event_type": "request_created"}).mappings().one()
+
+
+def _is_matching_successor(connection, historical, successor):
+    if (
+        successor["id"] == historical["id"]
+        or successor["workspace_id"] != historical["workspace_id"]
+        or successor["lifecycle_id"] == historical["lifecycle_id"]
+        or successor["target_deleted_at"] != historical["deleted_at"]
+        or successor["target_deleted_by_id"] != historical["deleted_by_id"]
+        or historical["deleted_at"] is None
+        or historical["deleted_at"] <= historical["invalidated_at"]
+    ):
+        return False
+    created = _request_created_evidence(connection, successor["id"])
+    return (
+        created["event_count"] == 1
+        and created["event_at"] is not None
+        and created["event_at"] > historical["invalidated_at"]
+    )
+
+
+def _classify_candidates(connection, rows):
+    parsed = []
+    historical = []
+    for row in rows:
+        marker_pair = row["invalidated_at"] is not None or row["invalidated_by_restore"]
+        if not marker_pair:
+            parsed.append((row, _validate_candidate(row, connection)))
+            continue
+        evidence = _historical_evidence(connection, row)
+        if not _is_exact_historical_restore_invalidated(row, evidence):
+            raise RuntimeError("0009 historical request has malformed lifecycle evidence.")
+        if _is_currently_restored(row):
+            historical.append(row)
+            continue
+        if row["deleted_at"] is None or row["purged_at"] is not None or row["purge_request_id"] is not None or row["deleted_at"] <= row["invalidated_at"]:
+            raise RuntimeError("0009 historical request has unsafe current workspace state.")
+        matching = [candidate for candidate in rows if _is_matching_successor(connection, row, candidate)]
+        if len(matching) != 1:
+            raise RuntimeError("0009 historical re-delete successor is missing or ambiguous.")
+        successor = matching[0]
+        try:
+            _validate_candidate(successor, connection)
+        except RuntimeError as error:
+            raise RuntimeError("0009 historical re-delete successor is unsafe.") from error
+        historical.append(row)
+    selected_ids = {row["id"] for row, _payload in parsed}
+    if any(row["id"] in selected_ids for row in historical):
+        raise RuntimeError("0009 candidate classification is not disjoint.")
+    if len(selected_ids) + len(historical) != len(rows):
+        raise RuntimeError("0009 candidate classification does not reconcile.")
+    return parsed, historical
+
+
 def _validate_candidate(row, connection):
     if row["deleted_at"] is None or row["purged_at"] is not None or row["purge_request_id"] is not None:
         raise RuntimeError("0009 candidate workspace is not safely soft-deleted.")
@@ -361,6 +468,23 @@ def _verify_upgrade(connection, selected_ids):
             raise RuntimeError("0009 provenance event verification failed.")
 
 
+def _verify_historical_unchanged(connection, snapshots):
+    for request_id, snapshot in snapshots.items():
+        row = connection.execute(text(
+            "SELECT eligible_at, retention_policy_version, manifest_canonical_text, manifest_hash, "
+            "invalidated_at, invalidated_by_restore, outcome_unknown "
+            "FROM workspace_purge_requests WHERE id = :request_id"
+        ), {"request_id": request_id}).mappings().one()
+        if tuple(row[key] for key in snapshot) != tuple(snapshot.values()):
+            raise RuntimeError("0009 historical request changed during migration.")
+        event_count = connection.execute(text(
+            "SELECT COUNT(*) FROM purge_lifecycle_events WHERE request_id = :request_id "
+            "AND event_type = :event_type"
+        ), {"request_id": request_id, "event_type": MIGRATION_EVENT}).scalar_one()
+        if event_count != 0:
+            raise RuntimeError("0009 historical request received migration provenance.")
+
+
 def _reversible_events(connection):
     return connection.execute(text(
         "SELECT e.id AS event_id, e.request_id, e.event_sequence, "
@@ -417,16 +541,26 @@ def upgrade():
     with db.engine.begin() as connection:
         required = {
             REQUEST_TABLE: {"id", "lifecycle_id", "workspace_id", "status", "target_deleted_at", "target_deleted_by_id", "eligible_at", "retention_policy_version", "manifest_canonical_text", "manifest_hash", "invalidated_at", "invalidated_by_restore", "outcome_unknown"},
-            WORKSPACE_TABLE: {"id", "name", "deleted_at", "purged_at", "purge_request_id"},
-            EVENT_TABLE: {"id", "request_id", "event_sequence", "event_type", "actor_id", "actor_snapshot", "metadata_canonical_text", "metadata_hash"},
+            WORKSPACE_TABLE: {"id", "name", "deleted_at", "deleted_by_id", "purged_at", "purge_request_id"},
+            EVENT_TABLE: {"id", "request_id", "lifecycle_id_snapshot", "workspace_id", "event_sequence", "event_type", "event_at", "actor_id", "actor_snapshot", "status_before", "status_after", "reason_code", "sanitized_summary", "metadata_canonical_text", "metadata_hash"},
         }
         for table_name, columns in required.items():
             if not inspect(connection).has_table(table_name) or not columns.issubset(_columns(connection, table_name)):
                 raise RuntimeError(f"0009 required schema missing: {table_name}.")
         rows = _candidate_rows(connection)
-        parsed = []
-        for row in rows:
-            parsed.append((row, _validate_candidate(row, connection)))
+        parsed, historical = _classify_candidates(connection, rows)
+        historical_snapshots = {
+            row["id"]: {
+                "eligible_at": row["eligible_at"],
+                "retention_policy_version": row["retention_policy_version"],
+                "manifest_canonical_text": row["manifest_canonical_text"],
+                "manifest_hash": row["manifest_hash"],
+                "invalidated_at": row["invalidated_at"],
+                "invalidated_by_restore": row["invalidated_by_restore"],
+                "outcome_unknown": row["outcome_unknown"],
+            }
+            for row in historical
+        }
         _assert_postgres_event_constraint(connection, OLD_EVENT_TYPES, "pre-drop")
         _replace_event_constraint(connection, _event_constraint_sql())
         _assert_postgres_event_constraint(connection, EVENT_TYPES, "post-create")
@@ -435,6 +569,7 @@ def upgrade():
             _replace_request(connection, row, payload)
             selected_ids.append(row["id"])
         _verify_upgrade(connection, selected_ids)
+        _verify_historical_unchanged(connection, historical_snapshots)
 
 
 def downgrade():
