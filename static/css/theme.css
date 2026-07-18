@@ -961,6 +961,32 @@ body.dark-theme {
     --wizard-progress-surface: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
 }
 
+/* Approval Portal semantic roles. Presentation-only tokens; workflow contracts stay in Jinja. */
+:root {
+    --approval-canvas: color-mix(in srgb, var(--color-canvas) 92%, var(--color-primary));
+    --approval-surface: var(--color-surface);
+    --approval-surface-raised: var(--color-surface-elevated);
+    --approval-border: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+    --approval-border-strong: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+    --approval-ink: var(--color-text-strong);
+    --approval-muted: var(--color-text-muted);
+    --approval-brand: var(--color-primary);
+    --approval-brand-soft: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    --approval-success-soft: var(--status-success-surface, color-mix(in srgb, var(--color-success) 10%, var(--color-surface)));
+    --approval-warning-soft: var(--status-warning-surface, color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)));
+    --approval-danger-soft: var(--status-danger-surface, color-mix(in srgb, var(--color-danger) 10%, var(--color-surface)));
+    --approval-radius: 14px;
+    --approval-radius-sm: 10px;
+    --approval-shadow: 0 16px 40px color-mix(in srgb, var(--color-text-strong) 9%, transparent);
+}
+
+body.dark-theme {
+    --approval-canvas: color-mix(in srgb, var(--color-canvas) 86%, var(--color-primary));
+    --approval-border: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+    --approval-border-strong: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+    --approval-brand-soft: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+}
+
 /* Toast presentation overrides the existing component stylesheet without changing its API or timing. */
 #toast-container .spa-toast {
     background-color: var(--component-surface);

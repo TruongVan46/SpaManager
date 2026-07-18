@@ -1,7 +1,7 @@
 {% extends 'layout/approval_base.html' %}
 {% block title %}Giữ dữ liệu pháp lý - SpaManager{% endblock %}
 {% block content %}
-<section class="card border-0 shadow-sm">
+<section class="approval-hold-management card border-0 shadow-sm">
   <div class="card-body">
     <h1 class="h4">Giữ dữ liệu pháp lý — {{ workspace_target.name }}</h1>
     <p class="small text-muted">Mã cơ sở: <code>{{ workspace_target.slug }}</code></p>
@@ -11,7 +11,7 @@
     <h2 class="h6 mt-4">Các lệnh giữ hiện tại</h2>
     {% if legal_holds %}
       {% for hold in legal_holds %}
-        <div class="border rounded p-3 mb-2">
+        <div class="approval-hold-card border rounded p-3 mb-2">
           <div><strong>{{ hold.hold_id }}</strong> — {{ hold.hold_type }} — {{ display_status(hold.status) }}</div>
           <div class="small text-muted">{{ hold.reason }} · tạo bởi {{ hold.placed_by_snapshot }}</div>
           {% if hold.status == 'ACTIVE' and not workspace_target.purged %}

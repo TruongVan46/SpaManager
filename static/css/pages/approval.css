@@ -1,0 +1,392 @@
+/* SpaManager Approval Portal — dense, calm enterprise presentation layer. */
+.approval-portal {
+    background: var(--approval-canvas);
+    color: var(--approval-ink);
+}
+
+.approval-portal .approval-shell {
+    width: min(100% - 32px, 1440px);
+    margin: 0 auto;
+    padding: 24px 0 48px;
+}
+
+.approval-portal .approval-surface,
+.approval-portal .app-card,
+.approval-portal .card,
+.approval-portal .approval-group,
+.approval-portal .approval-form-panel {
+    background: var(--approval-surface);
+    border: 1px solid var(--approval-border);
+    border-radius: var(--approval-radius);
+    box-shadow: var(--approval-shadow);
+}
+
+.approval-portal .approval-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: center;
+    padding: 18px 22px;
+    margin-bottom: 28px;
+}
+
+.approval-portal .approval-brand,
+.approval-portal .approval-account-bar,
+.approval-portal .approval-header .approval-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.approval-portal .approval-brand {
+    color: var(--approval-brand);
+    font-size: 1.05rem;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+}
+
+.approval-portal .approval-brand i {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--approval-brand-soft);
+    font-size: 1.15rem;
+}
+
+.approval-portal .approval-main {
+    min-width: 0;
+}
+
+.approval-portal .app-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.approval-portal .app-page-header > div:first-child {
+    max-width: 76ch;
+}
+
+.approval-portal .app-title,
+.approval-portal h1,
+.approval-portal h2 {
+    color: var(--approval-ink);
+    letter-spacing: -0.025em;
+}
+
+.approval-portal .app-title,
+.approval-portal .app-page-header h2 {
+    font-size: clamp(1.45rem, 2vw, 2rem);
+    font-weight: 760;
+}
+
+.approval-portal .app-page-header p,
+.approval-portal .text-muted {
+    color: var(--approval-muted);
+}
+
+.approval-portal .app-card,
+.approval-portal .card {
+    overflow: hidden;
+}
+
+.approval-portal .app-card-header,
+.approval-portal .card-header {
+    background: var(--approval-brand-soft);
+    border-bottom: 1px solid var(--approval-border);
+    padding: 17px 22px;
+}
+
+.approval-portal .app-card-body,
+.approval-portal .card-body {
+    padding: 22px;
+}
+
+.approval-portal .nav-pills {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 4px 2px 10px;
+    margin-bottom: 20px;
+    scrollbar-width: thin;
+}
+
+.approval-portal .nav-pills .nav-item {
+    flex: 0 0 auto;
+}
+
+.approval-portal .nav-pills .nav-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--approval-border);
+    border-radius: 999px;
+    color: var(--approval-muted);
+    background: var(--approval-surface);
+    white-space: nowrap;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.approval-portal .nav-pills .nav-link:hover {
+    color: var(--approval-brand);
+    border-color: var(--approval-border-strong);
+    transform: translateY(-1px);
+}
+
+.approval-portal .nav-pills .nav-link.active {
+    color: var(--color-on-primary, #fff);
+    background: var(--approval-brand);
+    border-color: var(--approval-brand);
+}
+
+.approval-portal .approval-desktop-table,
+.approval-portal .approval-mobile-cards {
+    min-width: 0;
+}
+
+.approval-portal .approval-desktop-table > div,
+.approval-portal .approval-mobile-cards .card,
+.approval-portal .approval-desktop-table .card {
+    border-color: var(--approval-border);
+    border-radius: var(--approval-radius-sm);
+    box-shadow: none;
+}
+
+.approval-portal .approval-desktop-table > div > h5 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 12px;
+    border-bottom-color: var(--approval-border);
+    color: var(--approval-ink);
+    font-size: 1rem;
+    font-weight: 720;
+}
+
+.approval-portal .approval-desktop-table .card-header {
+    color: var(--approval-ink);
+    background: var(--approval-brand-soft);
+}
+
+.approval-portal .table-responsive {
+    border: 1px solid var(--approval-border);
+    border-radius: var(--approval-radius-sm);
+    background: var(--approval-surface);
+    scrollbar-color: var(--approval-border-strong) transparent;
+}
+
+.approval-portal .app-table {
+    margin-bottom: 0;
+    min-width: 760px;
+    color: var(--approval-ink);
+}
+
+.approval-portal .app-table thead th {
+    background: var(--approval-brand-soft);
+    color: var(--approval-muted);
+    border-bottom-color: var(--approval-border);
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.approval-portal .app-table td {
+    border-color: var(--approval-border);
+    vertical-align: middle;
+}
+
+.approval-portal .app-table tbody tr:hover {
+    background: var(--approval-brand-soft);
+}
+
+.approval-portal .approval-method-stack,
+.approval-portal .approval-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.approval-portal .approval-method-stack {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.approval-portal .approval-action-group {
+    justify-content: flex-end;
+}
+
+.approval-portal .approval-action-btn {
+    min-height: 40px;
+    min-width: 104px;
+    height: auto;
+    padding: 8px 12px;
+    border-radius: 9px;
+    white-space: normal;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.approval-portal .approval-mobile-cards .card {
+    height: 100%;
+    background: var(--approval-surface);
+}
+
+.approval-portal .approval-mobile-cards .small,
+.approval-portal .approval-desktop-table td,
+.approval-portal .approval-desktop-table th {
+    overflow-wrap: anywhere;
+}
+
+.approval-portal .badge {
+    border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    font-weight: 650;
+}
+
+.approval-portal .alert {
+    border-radius: var(--approval-radius-sm);
+    border-width: 1px;
+}
+
+.approval-portal .alert-danger,
+.approval-portal .approval-danger-zone {
+    background: var(--approval-danger-soft);
+    border-color: color-mix(in srgb, var(--color-danger) 34%, var(--approval-border));
+}
+
+.approval-portal .alert-warning {
+    background: var(--approval-warning-soft);
+}
+
+.approval-portal .approval-danger-zone {
+    border: 1px solid color-mix(in srgb, var(--color-danger) 36%, var(--approval-border));
+    border-left: 4px solid var(--color-danger);
+    border-radius: var(--approval-radius);
+    padding: 20px;
+}
+
+.approval-portal .approval-workflow-grid,
+.approval-portal .approval-summary-grid,
+.approval-portal .approval-actor-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.approval-portal .approval-summary-card,
+.approval-portal .approval-actor-card,
+.approval-portal .approval-hold-card,
+.approval-portal .approval-policy-panel {
+    min-width: 0;
+    padding: 16px;
+    background: var(--approval-surface-raised);
+    border: 1px solid var(--approval-border);
+    border-radius: var(--approval-radius-sm);
+}
+
+.approval-portal .approval-summary-card { grid-column: span 4; }
+.approval-portal .approval-actor-card { grid-column: span 4; }
+.approval-portal .approval-hold-card { margin-bottom: 12px; }
+
+.approval-portal .approval-eyebrow {
+    color: var(--approval-muted);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.approval-portal .approval-mono,
+.approval-portal code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.approval-portal .approval-confirmation-box {
+    padding: 12px 14px;
+    margin: 10px 0 14px;
+    border: 1px dashed var(--approval-border-strong);
+    border-radius: var(--approval-radius-sm);
+    background: var(--approval-brand-soft);
+}
+
+.approval-portal .approval-confirmation-box code {
+    display: block;
+    color: var(--approval-ink);
+    white-space: normal;
+}
+
+.approval-portal form.border,
+.approval-portal .approval-form-panel {
+    border-color: var(--approval-border);
+    background: var(--approval-surface-raised);
+    border-radius: var(--approval-radius-sm);
+}
+
+.approval-portal .form-control,
+.approval-portal .form-select {
+    min-height: 44px;
+    border-color: var(--approval-border-strong);
+    background: var(--approval-surface);
+    color: var(--approval-ink);
+}
+
+.approval-portal textarea.form-control {
+    min-height: 112px;
+}
+
+.approval-portal .form-control:focus,
+.approval-portal .form-select:focus,
+.approval-portal .btn:focus-visible,
+.approval-portal a:focus-visible {
+    border-color: var(--component-focus, var(--approval-brand));
+    outline: 2px solid var(--component-focus, var(--approval-brand));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--component-focus, var(--approval-brand)) 18%, transparent);
+}
+
+.approval-portal .pagination,
+.approval-portal nav[aria-label] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+@media (max-width: 991.98px) {
+    .approval-portal .approval-shell { width: min(100% - 24px, 900px); padding-top: 14px; }
+    .approval-portal .approval-header { grid-template-columns: 1fr; }
+    .approval-portal .approval-account-bar { justify-content: space-between; }
+    .approval-portal .approval-summary-card,
+    .approval-portal .approval-actor-card { grid-column: span 6; }
+}
+
+@media (max-width: 767.98px) {
+    .approval-portal .approval-shell { width: min(100% - 20px, 640px); padding-bottom: 32px; }
+    .approval-portal .approval-header,
+    .approval-portal .app-card-body,
+    .approval-portal .card-body { padding: 16px; }
+    .approval-portal .app-page-header { align-items: flex-start; flex-direction: column; gap: 10px; }
+    .approval-portal .approval-account-bar { align-items: stretch; flex-direction: column; }
+    .approval-portal .approval-account-bar form,
+    .approval-portal .approval-account-bar button { width: 100%; }
+    .approval-portal .approval-summary-card,
+    .approval-portal .approval-actor-card { grid-column: 1 / -1; }
+    .approval-portal .approval-action-group { justify-content: stretch; }
+    .approval-portal .approval-action-group > form,
+    .approval-portal .approval-action-group > a { flex: 1 1 100%; }
+    .approval-portal .approval-action-btn { width: 100%; }
+    .approval-portal .table-responsive { margin-inline: -4px; }
+    .approval-portal .app-table { min-width: 680px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .approval-portal *,
+    .approval-portal *::before,
+    .approval-portal *::after { scroll-behavior: auto; transition-duration: 0.01ms; animation-duration: 0.01ms; }
+}

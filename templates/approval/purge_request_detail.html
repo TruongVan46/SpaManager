@@ -1,10 +1,10 @@
 {% extends 'layout/approval_base.html' %}
 {% block title %}Chi tiết yêu cầu xóa vĩnh viễn - SpaManager{% endblock %}
 {% block content %}
-<section class="card border-0 shadow-sm">
+<section class="approval-purge-detail card border-0 shadow-sm">
   <div class="card-body">
     <a class="btn btn-sm btn-outline-secondary mb-3" href="{{ url_for('approval.purge_requests') }}">← Quay lại danh sách yêu cầu xóa vĩnh viễn</a>
-    <div class="alert alert-danger" role="alert"><strong>Cảnh báo: không thể hoàn tác.</strong> Hãy kiểm tra kỹ cơ sở và bản kê trước khi phê duyệt.</div>
+    <div class="approval-danger-zone alert alert-danger" role="alert"><strong>Cảnh báo: không thể hoàn tác.</strong> Hãy kiểm tra kỹ cơ sở và bản kê trước khi phê duyệt.</div>
     <h1 class="h4">{{ summary.workspace_name }}</h1>
     <dl class="row small">
       <dt class="col-sm-4">Mã cơ sở</dt><dd class="col-sm-8">{{ summary.workspace_slug }}</dd>
@@ -23,7 +23,7 @@
       <div class="alert alert-warning">Không thể tải lệnh giữ dữ liệu pháp lý; các thao tác thay đổi đang tạm khóa để xem xét.</div>
     {% elif legal_holds %}
       {% for hold in legal_holds %}
-        <div class="border rounded p-3 mb-2">
+        <div class="approval-hold-card border rounded p-3 mb-2">
           <div><strong>{{ hold.hold_id }}</strong> — {{ hold.hold_type }} — {{ display_status(hold.status) }}</div>
           <div class="small text-muted">{{ hold.reason }} · tạo bởi {{ hold.placed_by_snapshot }}</div>
           {% if hold.status == 'ACTIVE' %}
@@ -64,10 +64,10 @@
       <form method="post" action="{{ url_for('approval.cancel_purge_request', request_id=summary.id) }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-secondary" type="submit">Hủy yêu cầu</button></form>
     {% endif %}
     {% if mutation_allowed and summary.requested_by_id != current_user.id %}
-      <form method="post" action="{{ url_for('approval.reject_purge_request', request_id=summary.id) }}" class="border rounded p-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="reject-reason">Lý do từ chối</label><input id="reject-reason" name="reason" class="form-control"><button class="btn btn-outline-danger mt-2" type="submit">Từ chối yêu cầu</button></form>
+      <form method="post" action="{{ url_for('approval.reject_purge_request', request_id=summary.id) }}" class="approval-form-panel border rounded p-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="reject-reason">Lý do từ chối</label><input id="reject-reason" name="reason" class="form-control"><button class="btn btn-outline-danger mt-2" type="submit">Từ chối yêu cầu</button></form>
     {% endif %}
     {% if mutation_allowed and summary.status in ('PENDING_RETENTION', 'PENDING_APPROVAL') and summary.retention_reached and summary.manifest_valid %}
-      <form method="post" action="{{ url_for('approval.approve_purge_request', request_id=summary.id) }}" class="border rounded p-3 mb-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="approve-confirmation">Nhập chính xác: <code>PHÊ DUYỆT YÊU CẦU XÓA VĨNH VIỄN {{ summary.workspace_slug }} {{ summary.lifecycle_id }}</code></label><input id="approve-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required><button class="btn btn-warning mt-2" type="submit">Phê duyệt yêu cầu</button></form>
+      <form method="post" action="{{ url_for('approval.approve_purge_request', request_id=summary.id) }}" class="approval-form-panel border rounded p-3 mb-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="approve-confirmation">Nhập chính xác: <code>PHÊ DUYỆT YÊU CẦU XÓA VĨNH VIỄN {{ summary.workspace_slug }} {{ summary.lifecycle_id }}</code></label><input id="approve-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required><button class="btn btn-warning mt-2" type="submit">Phê duyệt yêu cầu</button></form>
     {% endif %}
     {% if config.get('PERMANENT_PURGE_UI_ENABLED') is sameas true and config.get('PERMANENT_PURGE_EXECUTION_ENABLED') is sameas true and summary.status == 'APPROVED' and not summary.invalidated_at and not summary.outcome_unknown and summary.manifest_valid and workspace_target and not workspace_target.purged %}
       <a class="btn btn-danger mt-3" href="{{ url_for('approval.confirm_purge_request', request_id=summary.id) }}">Xem xét thực hiện xóa vĩnh viễn</a>

@@ -1,9 +1,9 @@
 {% extends 'layout/approval_base.html' %}
 {% block title %}Xác nhận thực hiện xóa vĩnh viễn - SpaManager{% endblock %}
 {% block content %}
-<section class="card border-0 shadow-sm">
+<section class="approval-purge-execute card border-0 shadow-sm">
   <div class="card-body">
-    <div class="alert alert-danger" role="alert">
+    <div class="approval-danger-zone alert alert-danger" role="alert">
       <strong>Thao tác không thể hoàn tác.</strong> Thao tác này sẽ xóa vĩnh viễn dữ liệu nghiệp vụ của cơ sở đã được phê duyệt.
     </div>
     <h1 class="h4">Xác nhận thực hiện xóa vĩnh viễn</h1>
@@ -24,7 +24,7 @@
     <p class="small text-muted">Việc có route này không tự cấp quyền xóa production. Cả hai cờ xóa vẫn bắt buộc và quyền production được cấp riêng.</p>
     {% if not reauth_fresh %}
     <div class="alert alert-warning">Hãy xác thực mật khẩu cục bộ hiện tại trước bước xác nhận xóa.</div>
-    <form method="post" action="{{ url_for('approval.reauth_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
+    <form method="post" action="{{ url_for('approval.reauth_purge_request', request_id=summary.id) }}" class="approval-form-panel border rounded p-3 mt-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="form-label" for="current-password">Mật khẩu cục bộ hiện tại</label>
       <input id="current-password" name="current_password" type="password" class="form-control" autocomplete="current-password" required maxlength="512">
@@ -32,7 +32,7 @@
     </form>
     {% else %}
     <div class="alert alert-success">Đã xác thực danh tính. Quyền xóa có thời hạn ngắn và chỉ sử dụng một lần.</div>
-    <form method="post" action="{{ url_for('approval.execute_purge_request', request_id=summary.id) }}" class="border rounded p-3 mt-3">
+    <form method="post" action="{{ url_for('approval.execute_purge_request', request_id=summary.id) }}" class="approval-form-panel approval-danger-zone border rounded p-3 mt-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="form-label" for="execute-confirmation">Nhập chính xác: <code>{{ confirmation_phrase }}</code></label>
       <input id="execute-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>

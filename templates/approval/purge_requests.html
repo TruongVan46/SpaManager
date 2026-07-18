@@ -1,10 +1,10 @@
 {% extends 'layout/approval_base.html' %}
 {% block title %}Yêu cầu xóa vĩnh viễn - SpaManager{% endblock %}
 {% block content %}
-<section class="card border-0 shadow-sm">
+<section class="approval-purge-requests card border-0 shadow-sm">
   <div class="card-body">
     <a class="btn btn-sm btn-outline-secondary mb-3" href="{{ url_for('approval.accounts', status='active') }}">← Quay lại Cổng phê duyệt</a>
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="approval-page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
       <div>
         <h1 class="h4 mb-1">Yêu cầu xóa vĩnh viễn</h1>
         <p class="text-muted mb-0">Quy trình chỉ để xem xét; chưa cho phép thực hiện xóa.</p>
@@ -12,10 +12,10 @@
       <span class="badge text-bg-warning">Chưa thể thực hiện</span>
     </div>
     {% if workspace_target and not workspace_target.existing_request_id and not workspace_target.purged %}
-    <div class="alert alert-danger" role="alert">
+    <div class="approval-danger-zone alert alert-danger" role="alert">
       <strong>Cảnh báo thao tác không thể hoàn tác.</strong>
       <div>Target: {{ workspace_target.name }} ({{ workspace_target.slug }})</div>
-      <form method="post" action="{{ url_for('approval.create_purge_request', workspace_id=workspace_target.id) }}" class="mt-3">
+      <form method="post" action="{{ url_for('approval.create_purge_request', workspace_id=workspace_target.id) }}" class="approval-form-panel mt-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="form-label" for="request-confirmation">Nhập chính xác: <code>YÊU CẦU XÓA VĨNH VIỄN {{ workspace_target.slug }}</code></label>
         <input id="request-confirmation" name="confirmation_phrase" class="form-control" autocomplete="off" required>
@@ -24,8 +24,8 @@
     </div>
     {% endif %}
     {% if summaries %}
-    <div class="table-responsive">
-      <table class="table align-middle">
+    <div class="approval-request-table table-responsive">
+      <table class="app-table table align-middle">
         <thead><tr><th>Cơ sở</th><th>Trạng thái</th><th>Người tạo yêu cầu</th><th>Đủ điều kiện từ</th><th>Thao tác</th></tr></thead>
         <tbody>{% for item in summaries %}<tr>
           <td><strong>{{ item.workspace_name }}</strong><div class="small text-muted">{{ item.workspace_slug }}</div></td>

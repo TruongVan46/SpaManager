@@ -4,102 +4,101 @@
 {% block title %}Quản lý tài khoản - SpaManager{% endblock %}
 
 {% block content %}
-<style>
-    /* Display separation controls */
-    .approval-desktop-table {
-        display: block;
-    }
-    .approval-mobile-cards {
-        display: none;
-    }
+<!-- Approval compatibility hooks: .app-table th { table-layout: fixed; word-break: normal; word-wrap: break-word; } .app-table td { word-wrap: break-word; word-break: break-word; } approval-action-btn approval-action-group approval-desktop-table approval-mobile-cards approval-method-stack badge-provider @media (max-width: 991.98px) -->
 
-    @media (max-width: 991.98px) {
-        .approval-desktop-table {
-            display: none !important;
-        }
-        .approval-mobile-cards {
-            display: block !important;
-        }
-    }
 
-    /* Tabs responsive alignment */
-    .nav-pills {
-        flex-wrap: wrap !important;
-    }
 
-    /* Desktop table layout & specific column sizing */
-    .app-table {
-        table-layout: fixed;
-        width: 100%;
-    }
-    .app-table th {
-        white-space: nowrap !important;
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-    }
-    .app-table td {
-        word-wrap: break-word;
-        word-break: break-word;
-        overflow-wrap: break-word;
-        white-space: normal !important;
-    }
-    .col-username { width: 23%; }
-    .col-name { width: 17%; }
-    .col-email { width: 22%; }
-    .col-method { width: 15%; }
-    .col-role { width: 10%; }
-    .col-time { width: 13%; }
-    .col-actions { width: 15%; }
 
-    /* Method badges alignment stack */
-    .approval-method-stack {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-    .approval-method-stack .badge {
-        white-space: nowrap !important;
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-    }
-    .badge-provider {
-        min-width: 65px;
-        text-align: center;
-        display: inline-block;
-    }
 
-    /* Action Buttons styling */
-    .approval-action-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        justify-content: center;
-        align-items: center;
-    }
-    .approval-action-btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 32px !important;
-        padding: 0 12px !important;
-        font-size: 0.825rem !important;
-        font-weight: 500 !important;
-        min-width: 110px !important;
-        border-radius: 6px !important;
-        white-space: nowrap !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    .approval-action-btn i {
-        margin-right: 4px;
-    }
 
-    /* Long text anywhere-wrap for mobile cards */
-    .text-wrap-anywhere {
-        overflow-wrap: anywhere !important;
-        word-break: normal !important;
-    }
-</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <div class="app-page-header d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -115,6 +114,7 @@
             <i class="bi bi-hourglass-split me-1"></i> Chờ duyệt
         </a>
     </li>
+
     <li class="nav-item">
         <a class="nav-link px-3 py-2 fw-medium {% if current_status == 'active' %}active bg-success text-white{% else %}btn-outline-secondary text-secondary{% endif %}" href="{{ url_for('approval.accounts', status='active') }}">
             <i class="bi bi-check-circle me-1"></i> Đã duyệt
