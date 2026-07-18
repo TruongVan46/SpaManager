@@ -863,6 +863,31 @@ body.dark-theme {
     --primary-color-rgb: 210, 187, 161;
 }
 
+/* Shared operational table roles: presentation-only aliases for existing hooks. */
+:root {
+    --table-surface: var(--component-surface, var(--color-surface));
+    --table-surface-alt: color-mix(in srgb, var(--color-canvas) 72%, var(--color-surface));
+    --table-border: var(--component-border, var(--color-border));
+    --table-header-surface: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+    --table-header-text: var(--color-text-strong);
+    --table-row-hover: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+    --table-row-focus: color-mix(in srgb, var(--color-focus) 12%, var(--color-surface));
+    --table-sort-indicator: var(--color-primary);
+    --table-resize-handle: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    --table-filter-surface: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+    --table-pagination-active: var(--color-primary);
+    --table-pagination-disabled: var(--color-disabled);
+    --table-overflow-affordance: color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+body.dark-theme {
+    --table-surface-alt: color-mix(in srgb, var(--color-surface-elevated) 88%, var(--color-canvas));
+    --table-header-surface: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+    --table-row-hover: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+    --table-row-focus: color-mix(in srgb, var(--color-focus) 20%, var(--color-surface));
+    --table-filter-surface: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+}
+
 /* Toast presentation overrides the existing component stylesheet without changing its API or timing. */
 #toast-container .spa-toast {
     background-color: var(--component-surface);
