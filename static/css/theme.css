@@ -916,6 +916,31 @@ body.dark-theme {
     --confirmation-danger-surface: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
 }
 
+/* Dashboard and statistics roles: presentation-only aliases for frozen data hooks. */
+:root {
+    --dashboard-surface: var(--component-surface, var(--color-surface));
+    --dashboard-surface-subtle: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+    --dashboard-border: var(--component-border, var(--color-border));
+    --dashboard-value: var(--color-text-strong);
+    --dashboard-supporting: var(--component-text-muted, var(--color-text-muted));
+    --dashboard-icon-surface: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
+    --dashboard-chart-surface: var(--color-surface-elevated, var(--color-surface));
+    --dashboard-chart-loading: var(--component-loading-surface);
+    --statistics-comparison-surface: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+    --statistics-comparison-border: color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+    --statistics-positive: var(--status-success, var(--color-success));
+    --statistics-negative: var(--status-danger, var(--color-danger));
+    --statistics-neutral: var(--status-neutral, var(--color-text-muted));
+}
+
+body.dark-theme {
+    --dashboard-surface-subtle: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    --dashboard-icon-surface: color-mix(in srgb, var(--color-primary) 19%, var(--color-surface));
+    --dashboard-chart-surface: var(--color-surface-elevated, var(--color-surface));
+    --statistics-comparison-surface: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
+    --statistics-comparison-border: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+}
+
 /* Toast presentation overrides the existing component stylesheet without changing its API or timing. */
 #toast-container .spa-toast {
     background-color: var(--component-surface);

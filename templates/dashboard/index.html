@@ -5,47 +5,47 @@
 {% block content %}
 <div class="container-fluid app-page dashboard-page">
     <!-- Top Row: Stats -->
-    <div class="app-card-grid">
+    <div class="app-card-grid dashboard-kpi-grid">
         <!-- Doanh thu hôm nay -->
-        <div class="app-kpi-card app-kpi-border-primary">
+        <div class="app-kpi-card dashboard-kpi-card app-kpi-border-primary">
             <div class="app-card-body text-primary">
-                <div class="app-small text-uppercase mb-1 fw-medium text-primary">Doanh thu hôm nay</div>
-                <div class="h5 mb-0 fw-semibold app-title" id="kpi-revenue">{{ stats.revenue.value }}</div>
-                <i class="bi bi-graph-up-arrow app-kpi-icon text-primary"></i>
+                <div class="app-small dashboard-kpi-label text-uppercase mb-1 fw-medium text-primary">Doanh thu hôm nay</div>
+                <div class="h5 dashboard-kpi-value mb-0 fw-semibold app-title" id="kpi-revenue">{{ stats.revenue.value }}</div>
+                <i class="bi bi-graph-up-arrow dashboard-kpi-icon app-kpi-icon text-primary" aria-hidden="true"></i>
             </div>
         </div>
 
         <!-- Tổng khách hàng -->
-        <div class="app-kpi-card app-kpi-border-success">
+        <div class="app-kpi-card dashboard-kpi-card app-kpi-border-success">
             <div class="app-card-body text-success">
-                <div class="app-small text-uppercase mb-1 fw-medium text-success">Tổng khách hàng</div>
-                <div class="h5 mb-0 fw-semibold app-title" id="kpi-customers">{{ stats.customers.value }}</div>
-                <i class="bi bi-people app-kpi-icon text-success"></i>
+                <div class="app-small dashboard-kpi-label text-uppercase mb-1 fw-medium text-success">Tổng khách hàng</div>
+                <div class="h5 dashboard-kpi-value mb-0 fw-semibold app-title" id="kpi-customers">{{ stats.customers.value }}</div>
+                <i class="bi bi-people dashboard-kpi-icon app-kpi-icon text-success" aria-hidden="true"></i>
             </div>
         </div>
 
         <!-- Lịch hẹn hôm nay -->
-        <div class="app-kpi-card app-kpi-border-info">
+        <div class="app-kpi-card dashboard-kpi-card app-kpi-border-info">
             <div class="app-card-body text-info">
-                <div class="app-small text-uppercase mb-1 fw-medium text-info">Lịch hẹn hôm nay</div>
-                <div class="h5 mb-0 fw-semibold app-title" id="kpi-appointments">{{ stats.appointments.value }}</div>
-                <i class="bi bi-calendar-check app-kpi-icon text-info"></i>
+                <div class="app-small dashboard-kpi-label text-uppercase mb-1 fw-medium text-info">Lịch hẹn hôm nay</div>
+                <div class="h5 dashboard-kpi-value mb-0 fw-semibold app-title" id="kpi-appointments">{{ stats.appointments.value }}</div>
+                <i class="bi bi-calendar-check dashboard-kpi-icon app-kpi-icon text-info" aria-hidden="true"></i>
             </div>
         </div>
 
         <!-- Hóa đơn hôm nay -->
-        <div class="app-kpi-card app-kpi-border-warning">
+        <div class="app-kpi-card dashboard-kpi-card app-kpi-border-warning">
             <div class="app-card-body text-warning">
-                <div class="app-small text-uppercase mb-1 fw-medium text-warning">Hóa đơn hôm nay</div>
-                <div class="h5 mb-0 fw-semibold app-title" id="kpi-invoices">{{ stats.invoices.value }}</div>
-                <i class="bi bi-receipt app-kpi-icon text-warning"></i>
+                <div class="app-small dashboard-kpi-label text-uppercase mb-1 fw-medium text-warning">Hóa đơn hôm nay</div>
+                <div class="h5 dashboard-kpi-value mb-0 fw-semibold app-title" id="kpi-invoices">{{ stats.invoices.value }}</div>
+                <i class="bi bi-receipt dashboard-kpi-icon app-kpi-icon text-warning" aria-hidden="true"></i>
             </div>
         </div>
     </div>
 
     <!-- Today's Appointments Card -->
     <div class="app-section">
-        <div class="app-card">
+        <div class="app-card dashboard-appointments-card">
             <div class="app-card-header">
                 <h5 class="app-card-header-title card-title m-0"><i class="bi bi-calendar-check" style="font-size: 18px; margin-right: 8px;"></i>Lịch hẹn hôm nay</h5>
             </div>
@@ -75,13 +75,13 @@
 
     <!-- Revenue Chart Card -->
     <div class="app-section">
-        <div class="app-card chart-card">
+        <div class="app-card chart-card dashboard-chart-card">
             <div class="app-card-header">
                 <h5 class="app-card-header-title card-title m-0"><i class="bi bi-graph-up-arrow" style="font-size: 18px; margin-right: 8px;"></i>Biểu đồ doanh thu</h5>
             </div>
-            <div class="app-card-body position-relative" style="min-height: 320px;">
+            <div class="app-card-body dashboard-chart-body position-relative" style="min-height: 320px;">
                 <!-- pulsing skeleton overlay while loading chart -->
-                <div id="chart-skeleton" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-3" style="z-index: 10; background-color: var(--spa-white, #ffffff);">
+                <div id="chart-skeleton" class="dashboard-chart-skeleton position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-3" style="z-index: 10; background-color: var(--dashboard-chart-loading, var(--spa-white, #ffffff));">
                     <div class="d-flex justify-content-between mb-3">
                         <div class="stf-skeleton stf-skeleton-text" style="width: 120px; height: 20px;"></div>
                         <div class="stf-skeleton stf-skeleton-text" style="width: 160px; height: 20px;"></div>
@@ -103,13 +103,13 @@
 
     <!-- Recent Invoices Card -->
     <div class="app-section">
-        <div class="app-card">
+        <div class="app-card dashboard-invoices-card">
             <div class="app-card-header">
                 <h5 class="app-card-header-title card-title m-0"><i class="bi bi-receipt" style="font-size: 18px; margin-right: 8px;"></i>Hóa đơn gần nhất</h5>
             </div>
             <div class="app-card-body">
                 <div class="table-responsive app-table-container">
-                    <table class="app-table table table-hover">
+                    <table class="app-table dashboard-invoices-table table table-hover">
                         <thead>
                             <tr>
                                 <th scope="col">Mã HĐ</th>
@@ -133,7 +133,7 @@
                             {% endfor %}
                             {% if not latest_invoices %}
                             <tr id="invoices-empty-state">
-                                <td colspan="5" class="text-center py-4 text-muted">
+                                <td colspan="5" class="dashboard-empty-state text-center py-4 text-muted">
                                     <div class="mb-2"><i class="bi bi-receipt" style="font-size: 32px; color: #ccc;"></i></div>
                                     <p class="app-text m-0">Không có hóa đơn gần đây</p>
                                 </td>

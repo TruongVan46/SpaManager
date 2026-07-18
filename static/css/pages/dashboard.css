@@ -1,5 +1,98 @@
 /* dashboard.css - Dashboard only */
 
+.dashboard-page {
+    --dashboard-content-gap: clamp(1rem, 1.8vw, 1.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: var(--dashboard-content-gap);
+}
+
+.dashboard-page > .app-section {
+    margin-top: 0;
+}
+
+.dashboard-page .dashboard-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--dashboard-content-gap);
+}
+
+.dashboard-page .dashboard-kpi-card {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--dashboard-surface);
+    border-color: var(--dashboard-border);
+    box-shadow: var(--elevation-card, var(--spa-shadow-sm));
+}
+
+.dashboard-page .dashboard-kpi-card .app-card-body {
+    min-height: 8.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: 0.5rem 0.75rem;
+}
+
+.dashboard-page .dashboard-kpi-label {
+    grid-column: 1;
+    color: var(--dashboard-supporting);
+    letter-spacing: 0.045em;
+    line-height: 1.35;
+}
+
+.dashboard-page .dashboard-kpi-value {
+    grid-column: 1;
+    align-self: end;
+    color: var(--dashboard-value);
+    font-size: clamp(1.45rem, 2.4vw, 2rem);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+
+.dashboard-page .dashboard-kpi-icon {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: start;
+    width: 2.75rem;
+    height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-card, var(--spa-radius-md));
+    background: var(--dashboard-icon-surface);
+    font-size: 1.25rem;
+}
+
+.dashboard-page .dashboard-appointments-card,
+.dashboard-page .dashboard-chart-card,
+.dashboard-page .dashboard-invoices-card,
+.dashboard-page .dashboard-admin-summary-card {
+    background: var(--dashboard-surface);
+    border-color: var(--dashboard-border);
+    box-shadow: var(--elevation-card, var(--spa-shadow-sm));
+}
+
+.dashboard-page .dashboard-chart-body {
+    min-height: 20rem;
+    background: var(--dashboard-chart-surface);
+}
+
+.dashboard-page .dashboard-invoices-table td,
+.dashboard-page .dashboard-invoices-table th {
+    font-variant-numeric: tabular-nums;
+}
+
+.dashboard-page .dashboard-invoices-table td:nth-child(3) {
+    text-align: end;
+    white-space: nowrap;
+}
+
+.dashboard-page .dashboard-empty-state {
+    color: var(--dashboard-supporting);
+}
+
 .dashboard-page .stat-card.revenue .icon { background: var(--spa-primary-light); color: var(--spa-primary); }
 .dashboard-page .stat-card.customers .icon { background: var(--spa-info-light); color: var(--spa-info); }
 .dashboard-page .stat-card.appointments .icon { background: var(--spa-success-light); color: var(--spa-success); }
@@ -223,6 +316,19 @@
 }
 
 @media (max-width: 768px) {
+    .dashboard-page .dashboard-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-page .dashboard-kpi-card .app-card-body {
+        min-height: 7.5rem;
+        padding: 1rem;
+    }
+
+    .dashboard-page .dashboard-kpi-label {
+        font-size: 0.7rem;
+    }
+
     .dashboard-page .appointment-item,
     .dashboard-page .schedule-item {
         align-items: flex-start;
@@ -241,5 +347,22 @@
 
     .dashboard-page .admin-summary-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .dashboard-page .dashboard-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-page .dashboard-kpi-card .app-card-body {
+        min-height: 6.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-page .appointment-item,
+    .dashboard-page .schedule-item {
+        transition: none;
     }
 }

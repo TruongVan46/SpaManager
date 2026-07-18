@@ -73,37 +73,37 @@
     </div>
 
     <div class="statistics-kpi-grid">
-        <div class="app-kpi-card app-kpi-border-primary">
+        <div class="app-kpi-card statistics-kpi-card app-kpi-border-primary">
             <div class="app-card-body text-primary">
                 <div class="app-small text-uppercase mb-1 fw-medium text-primary">Tổng doanh thu</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.revenue | format_currency }}</div>
+                <div class="h5 statistics-kpi-value mb-0 fw-semibold app-title">{{ summary.revenue | format_currency }}</div>
                 <div class="statistics-kpi-caption">Theo khoảng thời gian đã chọn</div>
                 <i class="bi bi-graph-up-arrow app-kpi-icon text-primary"></i>
             </div>
         </div>
 
-        <div class="app-kpi-card app-kpi-border-success">
+        <div class="app-kpi-card statistics-kpi-card app-kpi-border-success">
             <div class="app-card-body text-success">
                 <div class="app-small text-uppercase mb-1 fw-medium text-success">Khách hàng</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.customer_count }}</div>
+                <div class="h5 statistics-kpi-value mb-0 fw-semibold app-title">{{ summary.customer_count }}</div>
                 <div class="statistics-kpi-caption">Khách hàng đang hoạt động</div>
                 <i class="bi bi-people app-kpi-icon text-success"></i>
             </div>
         </div>
 
-        <div class="app-kpi-card app-kpi-border-info">
+        <div class="app-kpi-card statistics-kpi-card app-kpi-border-info">
             <div class="app-card-body text-info">
                 <div class="app-small text-uppercase mb-1 fw-medium text-info">Tổng lịch hẹn</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.appointment_count }}</div>
+                <div class="h5 statistics-kpi-value mb-0 fw-semibold app-title">{{ summary.appointment_count }}</div>
                 <div class="statistics-kpi-caption">Theo khoảng thời gian đã chọn</div>
                 <i class="bi bi-calendar-check app-kpi-icon text-info"></i>
             </div>
         </div>
 
-        <div class="app-kpi-card app-kpi-border-warning">
+        <div class="app-kpi-card statistics-kpi-card app-kpi-border-warning">
             <div class="app-card-body text-warning">
                 <div class="app-small text-uppercase mb-1 fw-medium text-warning">Hóa đơn đã lập</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.invoice_count }}</div>
+                <div class="h5 statistics-kpi-value mb-0 fw-semibold app-title">{{ summary.invoice_count }}</div>
                 <div class="statistics-kpi-caption">Theo khoảng thời gian đã chọn</div>
                 <i class="bi bi-receipt app-kpi-icon text-warning"></i>
             </div>
@@ -179,7 +179,7 @@
                 }, page_param_name='cust_page', per_page_param_name='cust_per_page', module_name='customer_stats') }}
             </div>
             {% else %}
-            <div class="text-center py-5 text-muted">
+            <div class="statistics-empty-state text-center py-5 text-muted">
                 <div class="fs-1 mb-2"><i class="bi bi-people"></i></div>
                 <div>Không có dữ liệu khách hàng nào.</div>
             </div>
@@ -268,7 +268,7 @@
                 }, page_param_name='svc_page', per_page_param_name='svc_per_page', module_name='service_stats') }}
             </div>
             {% else %}
-            <div class="text-center py-5 text-muted">
+            <div class="statistics-empty-state text-center py-5 text-muted">
                 <div class="fs-1 mb-2"><i class="bi bi-scissors"></i></div>
                 <div>Không có dữ liệu dịch vụ nào.</div>
             </div>

@@ -3,7 +3,7 @@
 {% block title %}Chi tiết dịch vụ - Thống kê{% endblock %}
 
 {% block content %}
-<div class="container-fluid app-page statistics-page">
+<div class="container-fluid app-page statistics-page statistics-detail-page">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Trang chủ</a></li>
@@ -24,28 +24,28 @@
 
     <div class="row g-4">
         <div class="col-md-12">
-            <div class="app-card">
+            <div class="app-card statistics-detail-card">
                 <div class="app-card-header">
                     <h5 class="app-card-header-title card-title m-0">
                         <i class="bi bi-scissors" style="font-size: 18px; margin-right: 8px;"></i>Thông tin dịch vụ
                     </h5>
                 </div>
                 <div class="app-card-body">
-                    <p><strong>Mã dịch vụ:</strong> SV{{ service.id }}</p>
-                    <p><strong>Tên dịch vụ:</strong> {{ service.name }}</p>
-                    <p><strong>Đơn giá:</strong> {{ service.price | format_currency }}</p>
+                    <p class="statistics-detail-value"><strong>Mã dịch vụ:</strong> SV{{ service.id }}</p>
+                    <p class="statistics-detail-value"><strong>Tên dịch vụ:</strong> {{ service.name }}</p>
+                    <p class="statistics-detail-value"><strong>Đơn giá:</strong> {{ service.price | format_currency }}</p>
                     {% if service.duration %}
-                        <p><strong>Thời lượng:</strong> {{ service.duration }} phút</p>
+                        <p class="statistics-detail-value"><strong>Thời lượng:</strong> {{ service.duration }} phút</p>
                     {% endif %}
                     {% if service.description %}
-                        <p><strong>Mô tả:</strong> {{ service.description }}</p>
+                        <p class="statistics-detail-value"><strong>Mô tả:</strong> {{ service.description }}</p>
                     {% endif %}
                 </div>
             </div>
         </div>
 
         <div class="col-md-12">
-            <div class="app-card">
+            <div class="app-card statistics-detail-card">
                 <div class="app-card-header">
                     <h5 class="app-card-header-title card-title m-0">
                         <i class="bi bi-receipt" style="font-size: 18px; margin-right: 8px;"></i>Danh sách hóa đơn sử dụng dịch vụ
@@ -90,7 +90,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="text-center py-5 text-muted">
+                    <div class="statistics-empty-state text-center py-5 text-muted">
                         <div class="fs-1 mb-2"><i class="bi bi-receipt"></i></div>
                         <div>Không có hóa đơn nào sử dụng dịch vụ này trong khoảng thời gian đã chọn.</div>
                     </div>

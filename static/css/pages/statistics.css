@@ -6,6 +6,76 @@
     gap: 1.25rem;
 }
 
+.statistics-page .statistics-filter-card,
+.statistics-page .statistics-table-card,
+.statistics-page .statistics-chart-card {
+    background: var(--component-surface, var(--color-surface));
+    border-color: var(--component-border, var(--color-border));
+    box-shadow: var(--elevation-card, var(--spa-shadow-sm));
+}
+
+.statistics-page .statistics-kpi-card {
+    min-width: 0;
+}
+
+.statistics-page .statistics-kpi-card .app-card-body {
+    min-height: 8.75rem;
+}
+
+.statistics-page .statistics-kpi-value {
+    color: var(--color-text-strong, var(--spa-text-primary));
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+
+.statistics-page .statistics-card-note {
+    background: var(--statistics-comparison-surface);
+    border: 1px solid var(--statistics-comparison-border);
+    color: var(--color-text-default, var(--spa-text-primary));
+}
+
+.statistics-page .statistics-chart-card .app-card-body {
+    padding-top: 0.75rem;
+}
+
+.statistics-page .statistics-chart-wrap {
+    background: var(--dashboard-chart-surface);
+    border-radius: var(--radius-card, var(--spa-radius-md));
+    padding: 0.75rem;
+}
+
+.statistics-page .statistics-empty-state {
+    min-height: 11rem;
+    display: grid;
+    place-items: center;
+    gap: 0.5rem;
+    padding: 2rem 1rem;
+    color: var(--component-text-muted, var(--spa-text-secondary));
+    text-align: center;
+}
+
+.statistics-page .statistics-empty-state i {
+    color: var(--component-empty-icon, var(--spa-text-muted));
+}
+
+.statistics-page .statistics-detail-grid {
+    align-items: stretch;
+}
+
+.statistics-page .statistics-detail-card {
+    height: 100%;
+}
+
+.statistics-page .statistics-detail-value {
+    font-variant-numeric: tabular-nums;
+}
+
+.statistics-page .statistics-table-scroll {
+    scrollbar-color: var(--table-overflow-affordance) transparent;
+}
+
 .statistics-page-header {
     align-items: flex-start;
     gap: 1rem;
@@ -348,8 +418,18 @@
         grid-template-columns: 1fr;
     }
 
+    .statistics-page .statistics-kpi-card .app-card-body {
+        min-height: 7.5rem;
+    }
+
     .statistics-chart-wrap,
     .statistics-chart-wrap canvas {
         height: 280px !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .statistics-page * {
+        scroll-behavior: auto;
     }
 }
