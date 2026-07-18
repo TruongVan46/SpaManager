@@ -1,7 +1,7 @@
 <header class="topbar">
 
-    <button class="btn d-lg-none me-3 p-0 border-0" id="sidebar-toggle" aria-label="Mở menu" style="color: var(--spa-primary);">
-        <i class="bi bi-list" style="font-size: 26px;"></i>
+    <button class="btn d-lg-none me-3 p-0 border-0 topbar-menu-toggle" id="sidebar-toggle" aria-label="Mở menu" title="Mở menu">
+        <i class="bi bi-list" aria-hidden="true"></i>
     </button>
 
     <div class="topbar-left">
@@ -66,8 +66,8 @@
             </ul>
         </div>
 
-        <div class="dropdown">
-            <div class="profile" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer; user-select: none;">
+        <div class="dropdown profile-dropdown">
+            <button type="button" class="profile profile-trigger btn" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-controls="profile-menu" aria-label="Mở menu tài khoản">
                 {% set avatar_url = media_url(current_user.avatar, 'avatar') if current_user else None %}
                 {% if avatar_url %}
                     <img src="{{ avatar_url }}" alt="Ảnh đại diện" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" loading="lazy">
@@ -75,8 +75,8 @@
                     <i class="bi bi-person-circle" style="font-size: 30px; color: var(--spa-primary, #a67c52);"></i>
                 {% endif %}
                 <span>{{ current_user.full_name if current_user else 'Chủ Spa' }}</span>
-            </div>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="background: var(--spa-card-bg); border-radius: 12px; margin-top: 15px; border: 1px solid var(--spa-border-color) !important;">
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" id="profile-menu" style="background: var(--spa-card-bg); border-radius: 12px; margin-top: 15px; border: 1px solid var(--spa-border-color);">
                 <li>
                     <a class="dropdown-item py-2 px-3 d-flex align-items-center gap-2" href="{{ url_for('auth.profile') }}">
                         <i class="bi bi-person-circle" style="color: var(--spa-primary, #a67c52);"></i>

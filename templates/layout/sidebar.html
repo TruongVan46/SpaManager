@@ -1,64 +1,64 @@
-<aside class="sidebar">
+<aside class="sidebar" aria-label="Thanh điều hướng chính">
 
     <!-- Logo -->
-    <div class="logo">
-        <div class="logo-icon">
+    <div class="logo sidebar-brand">
+        <div class="logo-icon" aria-hidden="true">
             <i class="bi bi-flower1"></i>
         </div>
         <h3>SpaManager</h3>
         {% if current_workspace %}
-        <p style="font-size: 0.75rem; color: var(--accent-color, #70a1ff); font-weight: 600; text-transform: uppercase; margin-top: 2px;">{{ current_workspace.name }}</p>
+            <p class="sidebar-workspace" title="{{ current_workspace.name }}">{{ current_workspace.name }}</p>
         {% else %}
-        <p>Quản lý Spa • Nail • Makeup</p>
+            <p>Quản lý Spa • Nail • Makeup</p>
         {% endif %}
     </div>
 
     <!-- Menu -->
-    <nav class="menu">
-        <a href="{{ url_for('dashboard.index') }}" class="menu-item {% if active_page == 'dashboard.index' %}active{% endif %}">
+    <nav class="menu sidebar-nav" aria-label="Điều hướng ứng dụng">
+        <a href="{{ url_for('dashboard.index') }}" class="menu-item {% if active_page == 'dashboard.index' %}active{% endif %}"{% if active_page == 'dashboard.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-speedometer2"></i>
             <span>Trang chủ</span>
         </a>
 
-        <a href="{{ url_for('customer.index') }}" class="menu-item {% if active_page == 'customer.index' %}active{% endif %}">
+        <a href="{{ url_for('customer.index') }}" class="menu-item {% if active_page == 'customer.index' %}active{% endif %}"{% if active_page == 'customer.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-people"></i>
             <span>Khách hàng</span>
         </a>
 
-        <a href="{{ url_for('service.index') }}" class="menu-item {% if active_page == 'service.index' %}active{% endif %}">
+        <a href="{{ url_for('service.index') }}" class="menu-item {% if active_page == 'service.index' %}active{% endif %}"{% if active_page == 'service.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-scissors"></i>
             <span>Dịch vụ</span>
         </a>
 
-        <a href="{{ url_for('appointment.index') }}" class="menu-item {% if active_page == 'appointment.index' %}active{% endif %}">
+        <a href="{{ url_for('appointment.index') }}" class="menu-item {% if active_page == 'appointment.index' %}active{% endif %}"{% if active_page == 'appointment.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-calendar-check"></i>
             <span>Lịch hẹn</span>
         </a>
 
-        <a href="{{ url_for('invoice.index') }}" class="menu-item {% if active_page == 'invoice.index' %}active{% endif %}">
+        <a href="{{ url_for('invoice.index') }}" class="menu-item {% if active_page == 'invoice.index' %}active{% endif %}"{% if active_page == 'invoice.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-receipt"></i>
             <span>Hóa đơn</span>
         </a>
 
         {% if can_manage_settings(current_user) %}
-        <a href="{{ url_for('statistics.index') }}" class="menu-item {% if active_page == 'statistics.index' %}active{% endif %}">
+        <a href="{{ url_for('statistics.index') }}" class="menu-item {% if active_page == 'statistics.index' %}active{% endif %}"{% if active_page == 'statistics.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-graph-up-arrow"></i>
             <span>Thống kê</span>
         </a>
 
-        <a href="{{ url_for('activity_log.index') }}" class="menu-item {% if active_page == 'activity_log.index' %}active{% endif %}">
+        <a href="{{ url_for('activity_log.index') }}" class="menu-item {% if active_page == 'activity_log.index' %}active{% endif %}"{% if active_page == 'activity_log.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-clock-history"></i>
             <span>Nhật ký hoạt động</span>
         </a>
 
-        <a href="{{ url_for('recycle_bin.index') }}" class="menu-item {% if active_page == 'recycle_bin.index' %}active{% endif %}">
+        <a href="{{ url_for('recycle_bin.index') }}" class="menu-item {% if active_page == 'recycle_bin.index' %}active{% endif %}"{% if active_page == 'recycle_bin.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-trash3"></i>
             <span>Thùng rác</span>
         </a>
         {% endif %}
 
         {% if can_manage_users(current_user) %}
-        <a href="{{ url_for('user.index') }}" class="menu-item {% if active_page and active_page.startswith('user.') %}active{% endif %}">
+        <a href="{{ url_for('user.index') }}" class="menu-item {% if active_page and active_page.startswith('user.') %}active{% endif %}"{% if active_page and active_page.startswith('user.') %} aria-current="page"{% endif %}>
             <i class="bi bi-people-fill"></i>
             <span>Người dùng</span>
         </a>
@@ -67,7 +67,7 @@
 
     <div class="sidebar-bottom">
         {% if can_manage_settings(current_user) %}
-        <a href="{{ url_for('setting.index') }}" class="menu-item {% if active_page == 'setting.index' %}active{% endif %} sidebar-bottom-menu">
+        <a href="{{ url_for('setting.index') }}" class="menu-item {% if active_page == 'setting.index' %}active{% endif %} sidebar-bottom-menu"{% if active_page == 'setting.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-gear"></i>
             <span>Cài đặt</span>
         </a>
