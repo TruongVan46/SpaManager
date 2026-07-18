@@ -3,8 +3,8 @@
 {% block title %}Hồ sơ cá nhân - SpaManager{% endblock %}
 
 {% block content %}
-<div class="container-fluid app-page">
-    <div class="app-page-header">
+<div class="container-fluid app-page profile-page">
+    <div class="app-page-header profile-page-header">
         <h1 class="app-title mb-0">Thông tin cá nhân</h1>
         <span class="text-muted" style="font-size: 0.9rem;">Quản lý thông tin tài khoản chủ Spa</span>
     </div>
@@ -12,7 +12,7 @@
     <div class="row">
         <!-- Avatar card left -->
         <div class="col-lg-4 mb-4">
-            <div class="app-card text-center py-5">
+            <div class="app-card profile-avatar-card text-center py-5">
                 <div class="app-card-body">
                     <div class="avatar-upload-preview mb-4 position-relative d-inline-block">
                         {% set avatar_url = media_url(user.avatar, 'avatar') %}
@@ -36,13 +36,13 @@
 
         <!-- Details card right -->
         <div class="col-lg-8 mb-4">
-            <div class="app-card">
+            <div class="app-card profile-details-card">
                 <div class="app-card-header">
                     <h5 class="app-card-header-title card-title m-0">
                         <i class="bi bi-person-lines-fill me-2" style="color: var(--spa-primary);"></i>Thông tin tài khoản
                     </h5>
                 </div>
-                <div class="app-card-body">
+                <div class="app-card-body profile-form-shell">
                     <form id="profile-form" method="post" novalidate enctype="multipart/form-data">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Hidden input for file upload -->

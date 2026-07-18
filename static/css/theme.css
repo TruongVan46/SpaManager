@@ -941,6 +941,26 @@ body.dark-theme {
     --statistics-comparison-border: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
 }
 
+/* Settings, profile and recovery presentation roles. */
+:root {
+    --settings-surface: var(--component-surface, var(--color-surface));
+    --settings-section-surface: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+    --settings-section-border: var(--component-border, var(--color-border));
+    --settings-readonly-surface: var(--form-readonly-surface);
+    --profile-avatar-surface: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
+    --profile-metadata-surface: color-mix(in srgb, var(--color-information) 5%, var(--color-surface));
+    --wizard-surface: var(--modal-surface, var(--color-surface-elevated));
+    --wizard-step-surface: var(--component-surface, var(--color-surface));
+    --wizard-progress-surface: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+body.dark-theme {
+    --settings-section-surface: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    --profile-avatar-surface: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+    --profile-metadata-surface: color-mix(in srgb, var(--color-information) 14%, var(--color-surface));
+    --wizard-progress-surface: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+}
+
 /* Toast presentation overrides the existing component stylesheet without changing its API or timing. */
 #toast-container .spa-toast {
     background-color: var(--component-surface);

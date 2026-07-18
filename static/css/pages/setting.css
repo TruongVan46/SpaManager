@@ -392,3 +392,180 @@
     border-style: solid !important;
     box-shadow: 0 0 12px rgba(var(--bs-primary-rgb), 0.15);
 }
+
+/* Version 7 settings and profile presentation layer. */
+.settings-page,
+.profile-page {
+    min-width: 0;
+}
+
+.settings-page-header,
+.profile-page-header {
+    gap: var(--space-3, 12px);
+    margin-bottom: var(--space-6, 24px);
+}
+
+.settings-section-card,
+.profile-details-card,
+.profile-avatar-card {
+    background: var(--settings-surface);
+    border-color: var(--settings-section-border);
+}
+
+.settings-section-card .app-card-header,
+.profile-details-card .app-card-header {
+    gap: var(--space-4, 16px);
+    padding: var(--space-4, 16px) var(--space-6, 24px);
+}
+
+.settings-section-card .app-card-body,
+.profile-details-card .app-card-body {
+    padding: var(--space-6, 24px);
+}
+
+.settings-form-shell .form-label,
+.profile-form-shell .form-label {
+    color: var(--color-text-strong);
+    line-height: var(--line-height-body, 1.5);
+}
+
+.settings-form-shell .form-control,
+.profile-form-shell .form-control {
+    min-height: 44px;
+}
+
+.settings-form-shell .form-control.app-bg-main,
+.profile-form-shell .form-control.app-bg-main {
+    background-color: var(--settings-readonly-surface);
+}
+
+.settings-content-shell,
+.backup-center-card .app-card-body {
+    background: var(--settings-section-surface);
+    border-radius: var(--radius-card, 8px);
+}
+
+.backup-center-card .backup-toolbar {
+    gap: var(--space-3, 12px);
+    align-items: center;
+}
+
+.backup-center-card .backup-table-container {
+    border: 1px solid var(--settings-section-border);
+    border-radius: var(--radius-card, 8px);
+    background: var(--settings-surface);
+}
+
+.backup-center-card .backup-table {
+    margin-bottom: 0;
+}
+
+.backup-postgresql-readonly {
+    background: var(--settings-readonly-surface);
+    border: 1px solid var(--settings-section-border);
+    border-radius: var(--radius-card, 8px);
+    padding: var(--space-4, 16px);
+}
+
+.backup-postgresql-readonly .border {
+    border-color: var(--settings-section-border);
+    background: var(--settings-surface);
+}
+
+.profile-avatar-card .app-card-body {
+    padding: var(--space-8, 32px) var(--space-6, 24px);
+}
+
+.profile-avatar-card .avatar-upload-preview {
+    padding: var(--space-2, 8px);
+    border-radius: 50%;
+    background: var(--profile-avatar-surface);
+}
+
+.profile-avatar-card #profile-avatar-preview,
+.profile-avatar-card #profile-avatar-placeholder {
+    border-color: var(--settings-section-border);
+}
+
+.profile-form-shell .form-text {
+    line-height: var(--line-height-body, 1.5);
+}
+
+.profile-form-shell hr {
+    border-color: var(--settings-section-border);
+}
+
+.restoreWizardModal .modal-content,
+#importWizardModal .modal-content {
+    background: var(--wizard-surface);
+    border-color: var(--settings-section-border);
+}
+
+.restoreWizardModal .wizard-step,
+#importWizardModal .import-wizard-content-step {
+    background: var(--wizard-step-surface);
+    border-radius: var(--radius-card, 8px);
+}
+
+#importWizardModal .import-progress-header {
+    background: var(--wizard-progress-surface);
+    border-color: var(--settings-section-border);
+    padding: var(--space-3, 12px);
+    border-radius: var(--radius-card, 8px);
+}
+
+#importWizardModal .modal-footer,
+#restoreWizardModal .modal-footer {
+    gap: var(--space-2, 8px);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .settings-section-card .app-card-header,
+    .profile-details-card .app-card-header,
+    .settings-section-card .app-card-body,
+    .profile-details-card .app-card-body {
+        padding: var(--space-4, 16px);
+    }
+
+    .backup-center-card .backup-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .backup-center-card .backup-toolbar-left,
+    .backup-center-card .backup-toolbar-right,
+    .backup-center-card .search-box-container {
+        width: 100%;
+    }
+
+    #importWizardModal .modal-body,
+    #restoreWizardModal .modal-body {
+        padding: var(--space-4, 16px);
+    }
+}
+
+@media (max-width: 576px) {
+    #importWizardModal .import-progress-header {
+        gap: var(--space-2, 8px);
+        overflow-x: auto;
+    }
+
+    #importWizardModal .progress-step-item {
+        min-width: 76px;
+    }
+
+    #importWizardModal .modal-footer button,
+    #restoreWizardModal .modal-footer button {
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-page *,
+    .profile-page *,
+    #importWizardModal *,
+    #restoreWizardModal * {
+        scroll-behavior: auto;
+    }
+}
