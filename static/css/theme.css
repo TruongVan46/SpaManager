@@ -686,3 +686,144 @@ textarea:focus-visible,
     outline: 2px solid var(--spa-primary) !important;
     outline-offset: 2px !important;
 }
+
+/* ===========================================================================
+   Version 7 foundation tokens
+   Semantic aliases keep the existing SpaManager variables and hooks stable.
+   =========================================================================== */
+:root {
+    /* Semantic color roles */
+    --color-canvas: #f7f8fc;
+    --color-surface: #ffffff;
+    --color-surface-elevated: #ffffff;
+    --color-sidebar-surface: #ffffff;
+    --color-primary: #8e6843;
+    --color-primary-hover: #6f4b2f;
+    --color-primary-active: #5d3e27;
+    --color-text-strong: #20252b;
+    --color-text-default: #3f4752;
+    --color-text-muted: #5f6b7a;
+    --color-border: #dfe4ea;
+    --color-divider: #e9ecef;
+    --color-focus: #8e6843;
+    --color-success: #137a6d;
+    --color-warning: #995b00;
+    --color-danger: #b42318;
+    --color-information: #006b7a;
+    --color-disabled: #667085;
+    --color-overlay: rgba(15, 23, 42, 0.5);
+
+    /* Typography */
+    --font-family-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-size-body: 1rem;
+    --font-size-body-sm: 0.875rem;
+    --font-size-label: 0.875rem;
+    --font-size-card-title: 1.125rem;
+    --font-size-section-title: 1.5rem;
+    --font-size-page-title: 2rem;
+    --line-height-body: 1.5;
+    --line-height-heading: 1.25;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* 4px / 8px spacing rhythm */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* Shape, border and elevation */
+    --radius-control: 4px;
+    --radius-card: 8px;
+    --radius-modal: 12px;
+    --radius-surface: 16px;
+    --border-width-default: 1px;
+    --border-width-focus: 2px;
+    --elevation-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+    --elevation-dropdown: 0 8px 24px rgba(15, 23, 42, 0.12);
+    --elevation-modal: 0 16px 48px rgba(15, 23, 42, 0.18);
+
+    /* Motion and layering */
+    --motion-duration-fast: 150ms;
+    --motion-duration-standard: 200ms;
+    --motion-duration-slow: 300ms;
+    --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --z-layer-base: 0;
+    --z-layer-content: 10;
+    --z-layer-sticky: 20;
+    --z-layer-overlay: 40;
+    --z-layer-dropdown: 1000;
+    --z-layer-modal: 1100;
+}
+
+body.light-theme,
+:root {
+    --color-canvas: #f7f8fc;
+    --color-surface: #ffffff;
+    --color-surface-elevated: #ffffff;
+    --color-sidebar-surface: #ffffff;
+}
+
+body.dark-theme {
+    --color-canvas: #121212;
+    --color-surface: #1e1e1e;
+    --color-surface-elevated: #252525;
+    --color-sidebar-surface: #1e1e1e;
+    --color-primary: #d2bba1;
+    --color-primary-hover: #e4d2bd;
+    --color-primary-active: #f0e3d4;
+    --color-text-strong: #ffffff;
+    --color-text-default: #f5f5f5;
+    --color-text-muted: #c1c7d0;
+    --color-border: #3a3f46;
+    --color-divider: #2d3238;
+    --color-focus: #e4c39e;
+    --color-success: #63d6c7;
+    --color-warning: #ffca79;
+    --color-danger: #ff8c8c;
+    --color-information: #70d8e8;
+    --color-disabled: #a3aab5;
+    --color-overlay: rgba(0, 0, 0, 0.6);
+}
+
+/* Compatibility aliases: existing pages continue to resolve their old names. */
+body.light-theme,
+body.dark-theme,
+:root {
+    --spa-bg: var(--color-canvas);
+    --spa-bg-main: var(--color-canvas);
+    --spa-white: var(--color-surface);
+    --spa-card-bg: var(--color-surface);
+    --spa-primary: var(--color-primary);
+    --spa-primary-hover: var(--color-primary-hover);
+    --spa-text-primary: var(--color-text-default);
+    --spa-text-main: var(--color-text-default);
+    --spa-text-secondary: var(--color-text-muted);
+    --spa-text-muted: var(--color-text-muted);
+    --spa-border-color: var(--color-border);
+    --spa-secondary: var(--color-surface-elevated);
+    --spa-secondary-hover: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    --spa-success: var(--color-success);
+    --spa-warning: var(--color-warning);
+    --spa-danger: var(--color-danger);
+    --spa-info: var(--color-information);
+    --spa-radius-sm: var(--radius-control);
+    --spa-radius-md: var(--radius-card);
+    --spa-radius-lg: var(--radius-surface);
+    --spa-shadow-sm: var(--elevation-card);
+    --spa-shadow-md: var(--elevation-dropdown);
+    --spa-shadow-lg: var(--elevation-modal);
+    --spa-font: var(--font-family-sans);
+    --primary-color-rgb: 142, 104, 67;
+}
+
+body.dark-theme {
+    --primary-color-rgb: 210, 187, 161;
+}

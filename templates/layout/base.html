@@ -80,9 +80,9 @@
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/pages/dashboard.css') }}">
 
-    <link rel="stylesheet"
 
-    <link rel="stylesheet"
+
+
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/pages/appointment.css') }}">
@@ -115,6 +115,8 @@
 
 <body>
 
+<a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
+
 <!-- Page Loader Overlay -->
 <div id="page-loader" class="page-loader">
     <div class="spinner-border text-primary" role="status">
@@ -131,7 +133,7 @@
 
     {% include 'layout/sidebar.html' %}
 
-    <main class="main-content app-fade">
+    <main id="main-content" class="main-content app-fade" tabindex="-1">
 
         {% include 'layout/topbar.html' %}
 

@@ -1,15 +1,24 @@
 /* motion.css - Motion & Interaction System */
 
 :root {
-    --transition-fast: 150ms;
-    --transition-normal: 200ms;
-    --transition-slow: 250ms;
+    --motion-duration-fast: 150ms;
+    --motion-duration-standard: 200ms;
+    --motion-duration-slow: 300ms;
+    --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --transition-fast: var(--motion-duration-fast);
+    --transition-normal: var(--motion-duration-standard);
+    --transition-slow: var(--motion-duration-slow);
     --primary-color-rgb: 166, 124, 82; /* SpaManager primary brand color */
 }
 
 /* 1. Utility classes */
 .app-transition {
-    transition: all var(--transition-normal) ease-in-out;
+    transition: opacity var(--motion-duration-standard) var(--motion-ease-standard),
+                background-color var(--motion-duration-standard) var(--motion-ease-standard),
+                color var(--motion-duration-standard) var(--motion-ease-standard),
+                border-color var(--motion-duration-standard) var(--motion-ease-standard),
+                box-shadow var(--motion-duration-standard) var(--motion-ease-standard),
+                transform var(--motion-duration-standard) var(--motion-ease-standard);
 }
 
 .app-hover {
@@ -297,4 +306,19 @@
     .page-loader {
         display: none !important;
     }
+}
+
+/* Keyboard focus is explicit, high-contrast and separate from pointer focus. */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline: var(--border-width-focus, 2px) solid var(--color-focus, var(--spa-primary));
+    outline-offset: 2px;
+}
+
+.app-focus:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible {
+    outline: var(--border-width-focus, 2px) solid var(--color-focus, var(--spa-primary));
+    outline-offset: 1px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus, var(--spa-primary)) 24%, transparent);
 }

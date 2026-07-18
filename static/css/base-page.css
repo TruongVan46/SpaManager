@@ -140,6 +140,89 @@ body {
     color: var(--spa-text-muted) !important;
 }
 
+/* ===========================================================================
+   Version 7 foundation: readable type, canvas rhythm and skip navigation
+   =========================================================================== */
+body {
+    font-family: var(--font-family-sans, var(--spa-font));
+    font-size: var(--font-size-body, 1rem);
+    line-height: var(--line-height-body, 1.5);
+    color: var(--color-text-default, var(--spa-text-main));
+    background-color: var(--color-canvas, var(--spa-bg-main));
+    text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--color-text-strong, var(--spa-text-main));
+    line-height: var(--line-height-heading, 1.25);
+    font-weight: var(--font-weight-semibold, 600);
+}
+
+.app-title {
+    font-size: clamp(1.5rem, 1.2rem + 1vw, var(--font-size-page-title, 2rem));
+    line-height: var(--line-height-heading, 1.25);
+}
+
+.app-text,
+.app-body-text {
+    font-size: var(--font-size-body-sm, 0.875rem);
+    line-height: var(--line-height-body, 1.5);
+}
+
+.app-small,
+.app-muted,
+.app-small-text {
+    color: var(--color-text-muted, var(--spa-text-muted));
+}
+
+/* Keep operational figures stable as values update. */
+.app-kpi-value,
+.stat-value,
+[data-stat-count],
+.table td.numeric,
+.table th.numeric {
+    font-variant-numeric: tabular-nums;
+}
+
+.skip-link {
+    position: fixed;
+    top: var(--space-2, 8px);
+    left: var(--space-2, 8px);
+    z-index: var(--z-layer-modal, 1100);
+    padding: var(--space-2, 8px) var(--space-4, 16px);
+    border-radius: var(--radius-control, 4px);
+    background: var(--color-primary-active, var(--spa-primary));
+    color: var(--color-surface, #fff);
+    font-weight: var(--font-weight-semibold, 600);
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform var(--motion-duration-fast, 150ms) var(--motion-ease-standard, ease-out);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+    transform: translateY(0);
+}
+
+#main-content:focus:not(:focus-visible) {
+    outline: none;
+}
+
+@media (max-width: 767.98px) {
+    body {
+        font-size: 1rem;
+    }
+
+    .app-title {
+        font-size: 1.5rem;
+    }
+}
+
 /* ==========================================================================
    1. CARD SYSTEM (.app-card)
    ========================================================================== */
