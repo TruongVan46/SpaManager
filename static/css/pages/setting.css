@@ -279,6 +279,15 @@
     font-size: 2rem;
 }
 
+.about-app-icon .about-app-mark {
+    display: block;
+    width: 48px;
+    height: 48px;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
 .about-details {
     border-top: 1px solid var(--spa-border-color);
     padding-top: 16px;

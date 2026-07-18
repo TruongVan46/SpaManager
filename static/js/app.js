@@ -119,7 +119,7 @@
         
         function openSidebar() {
             if (!sidebar) return;
-            sidebar.classList.add('active');
+            sidebar.classList.add('active'); if (sidebarToggle) { sidebarToggle.setAttribute('aria-expanded', 'true'); sidebarToggle.setAttribute('aria-label', 'Đóng menu'); sidebarToggle.setAttribute('title', 'Đóng menu'); }
             if (sidebarOverlay) {
                 sidebarOverlay.style.display = 'block';
                 // Trigger reflow
@@ -131,7 +131,7 @@
         
         function closeSidebar() {
             if (!sidebar) return;
-            sidebar.classList.remove('active');
+            sidebar.classList.remove('active'); if (sidebarToggle) { sidebarToggle.setAttribute('aria-expanded', 'false'); sidebarToggle.setAttribute('aria-label', 'Mở menu'); sidebarToggle.setAttribute('title', 'Mở menu'); }
             if (sidebarOverlay) {
                 sidebarOverlay.classList.remove('active');
                 setTimeout(() => {
