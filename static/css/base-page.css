@@ -506,6 +506,189 @@ h6 {
     outline: none !important;
 }
 
+/* ==========================================================================
+   Version 7 core form and confirmation presentation
+   Presentation-only layer scoped to the frozen operational form hooks.
+   ========================================================================== */
+.app-core-form {
+    color: var(--form-text, var(--component-text, var(--spa-text-main)));
+}
+
+.app-core-form .form-group,
+.app-core-form .mb-3 {
+    min-width: 0;
+}
+
+.app-core-form .form-label,
+.app-core-form legend {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-1, 4px);
+    margin-bottom: var(--space-2, 8px);
+    color: var(--form-text, var(--component-text, var(--spa-text-main)));
+    font-size: var(--font-size-label, 0.875rem);
+    font-weight: var(--font-weight-semibold, 600);
+    line-height: 1.35;
+}
+
+.app-core-form .form-label .text-danger,
+.app-core-form legend .text-danger {
+    color: var(--required-marker, var(--color-danger));
+    font-weight: var(--font-weight-bold, 700);
+}
+
+.app-core-form .form-control,
+.app-core-form .form-select,
+.app-core-form textarea {
+    min-width: 0;
+    color: var(--form-text, var(--component-text, var(--spa-text-main)));
+    border-color: var(--form-border, var(--component-border, var(--spa-border-color)));
+    border-radius: var(--radius-control, var(--spa-radius-md));
+}
+
+.app-core-form .form-control:hover,
+.app-core-form .form-select:hover {
+    border-color: var(--form-border-hover, var(--spa-primary));
+}
+
+.app-core-form .form-control::placeholder {
+    color: var(--form-placeholder, var(--spa-text-muted));
+    opacity: 1;
+}
+
+.app-core-form .form-control:focus-visible,
+.app-core-form .form-select:focus-visible,
+.app-core-form .form-check-input:focus-visible,
+.app-core-form button:focus-visible {
+    outline: var(--border-width-focus, 2px) solid var(--form-focus, var(--component-focus, var(--spa-primary)));
+    outline-offset: 2px;
+}
+
+.app-core-form .form-text,
+.app-core-form .form-help,
+.app-core-form small:not(.text-danger) {
+    display: block;
+    margin-top: var(--space-1, 4px);
+    color: var(--form-help, var(--component-text-muted, var(--spa-text-muted)));
+    font-size: var(--font-size-body-sm, 0.875rem);
+    line-height: 1.45;
+}
+
+.app-core-form .invalid-feedback,
+.app-core-form .valid-feedback {
+    margin-top: var(--space-1, 4px);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.app-core-form .invalid-feedback {
+    color: var(--form-danger, var(--color-danger));
+}
+
+.app-core-form .valid-feedback {
+    color: var(--form-success, var(--color-success));
+}
+
+.app-core-form .form-control[readonly],
+.app-core-form .form-select[readonly] {
+    background-color: var(--form-readonly-surface, var(--form-surface-muted));
+    cursor: default;
+}
+
+.app-core-form .form-control:disabled,
+.app-core-form .form-select:disabled,
+.app-core-form .form-check-input:disabled {
+    background-color: var(--form-disabled-surface, var(--component-disabled-surface));
+    color: var(--form-disabled-text, var(--component-disabled-text));
+    cursor: not-allowed;
+}
+
+.app-core-form .row {
+    row-gap: var(--space-2, 8px);
+}
+
+.app-core-form button[type="submit"],
+.app-core-form .app-btn {
+    min-height: 44px;
+}
+
+.app-core-form > .text-end,
+.app-core-form .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2, 8px);
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.app-core-modal-content {
+    background-color: var(--modal-surface, var(--component-surface));
+    color: var(--form-text, var(--component-text));
+}
+
+.app-core-modal .modal-header,
+.app-core-modal .modal-body,
+.app-core-modal .modal-footer {
+    padding-inline: clamp(var(--space-4, 16px), 4vw, var(--space-6, 24px));
+}
+
+.app-core-modal .modal-header {
+    align-items: flex-start;
+    gap: var(--space-3, 12px);
+}
+
+.app-core-modal .modal-title {
+    line-height: var(--line-height-heading, 1.25);
+}
+
+.app-core-modal .modal-body {
+    max-height: min(70vh, 620px);
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+}
+
+.app-core-modal .modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2, 8px);
+}
+
+.app-core-modal .modal-footer > * {
+    min-height: 44px;
+}
+
+.app-core-modal .btn-close:focus-visible {
+    outline: var(--border-width-focus, 2px) solid var(--form-focus, var(--component-focus, var(--spa-primary)));
+    outline-offset: 2px;
+}
+
+body.dark-theme .app-core-form .form-control,
+body.dark-theme .app-core-form .form-select,
+body.dark-theme .app-core-form textarea,
+body.dark-theme .app-core-modal-content {
+    color: var(--form-text, var(--color-text-default));
+}
+
+@media (max-width: 575.98px) {
+    .app-core-form > .text-end,
+    .app-core-form .form-actions,
+    .app-core-modal .modal-footer {
+        align-items: stretch;
+        justify-content: stretch;
+    }
+
+    .app-core-form > .text-end > *,
+    .app-core-form .form-actions > *,
+    .app-core-modal .modal-footer > * {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .app-core-modal .modal-dialog {
+        margin-inline: var(--space-2, 8px);
+    }
+}
+
 textarea.app-form-control {
     height: auto !important;
     min-height: 80px !important;

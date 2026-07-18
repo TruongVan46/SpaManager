@@ -49,7 +49,7 @@
         </a>
     </div>
 
-    <form action="{{ url_for('invoice.create') }}" method="POST" id="invoice-form">
+    <form action="{{ url_for('invoice.create') }}" method="POST" id="invoice-form" class="app-core-form">
         {% if return_to %}
         <input type="hidden" name="return_to" value="{{ return_to }}">
         {% endif %}

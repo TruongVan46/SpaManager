@@ -888,6 +888,34 @@ body.dark-theme {
     --table-filter-surface: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
 }
 
+/* Core form and confirmation roles: presentation-only aliases for frozen forms. */
+:root {
+    --form-surface: var(--component-surface, var(--color-surface));
+    --form-surface-muted: color-mix(in srgb, var(--color-canvas) 72%, var(--color-surface));
+    --form-border: var(--component-border, var(--color-border));
+    --form-border-hover: color-mix(in srgb, var(--color-primary) 48%, var(--form-border));
+    --form-text: var(--component-text, var(--color-text-default));
+    --form-placeholder: var(--color-text-muted);
+    --form-focus: var(--component-focus, var(--color-focus));
+    --form-disabled-surface: var(--component-disabled-surface);
+    --form-readonly-surface: color-mix(in srgb, var(--color-information) 5%, var(--color-surface));
+    --form-disabled-text: var(--component-disabled-text, var(--color-disabled));
+    --form-help: var(--component-text-muted, var(--color-text-muted));
+    --form-success: var(--status-success, var(--color-success));
+    --form-warning: var(--status-warning, var(--color-warning));
+    --form-danger: var(--status-danger, var(--color-danger));
+    --modal-surface: var(--component-surface, var(--color-surface-elevated));
+    --modal-backdrop: var(--color-overlay);
+    --confirmation-danger-surface: color-mix(in srgb, var(--color-danger) 9%, var(--color-surface));
+    --required-marker: var(--color-danger);
+}
+
+body.dark-theme {
+    --form-surface-muted: color-mix(in srgb, var(--color-surface-elevated) 88%, var(--color-canvas));
+    --form-readonly-surface: color-mix(in srgb, var(--color-information) 14%, var(--color-surface));
+    --confirmation-danger-surface: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
+}
+
 /* Toast presentation overrides the existing component stylesheet without changing its API or timing. */
 #toast-container .spa-toast {
     background-color: var(--component-surface);

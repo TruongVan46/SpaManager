@@ -21,7 +21,7 @@
             </h5>
         </div>
         <div class="app-card-body">
-            <form action="{{ url_for('appointment.edit', id=appointment.id) }}" method="POST" id="editAppointmentForm" class="needs-validation" novalidate>
+            <form action="{{ url_for('appointment.edit', id=appointment.id) }}" method="POST" id="editAppointmentForm" class="app-core-form needs-validation" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if return_to %}
                 <input type="hidden" name="return_to" value="{{ return_to }}">

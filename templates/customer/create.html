@@ -18,7 +18,7 @@
             </h5>
         </div>
         <div class="app-card-body">
-            <form action="{{ url_for('customer.create') }}" method="POST" class="needs-validation {% if errors %}was-validated{% endif %}" novalidate>
+            <form action="{{ url_for('customer.create') }}" method="POST" class="app-core-form needs-validation {% if errors %}was-validated{% endif %}" novalidate>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
