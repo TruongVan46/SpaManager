@@ -17,8 +17,8 @@
             <h5 class="app-card-header-title card-title m-0">
                 <i class="bi bi-building" style="font-size: 18px; margin-right: 8px;"></i>Thông tin Spa
             </h5>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpaInfo" aria-expanded="true">
-                <i class="bi bi-chevron-up"></i>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpaInfo" aria-expanded="true" aria-label="Mở hoặc thu gọn thông tin Spa" title="Mở hoặc thu gọn thông tin Spa">
+                <i class="bi bi-chevron-up" aria-hidden="true"></i>
             </button>
         </div>
         <div class="collapse show" id="collapseSpaInfo">
@@ -123,8 +123,8 @@
             <h5 class="app-card-header-title card-title m-0">
                 <i class="bi bi-database" style="font-size: 18px; margin-right: 8px;"></i>Quản lý dữ liệu
             </h5>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDataMgmt" aria-expanded="true">
-                <i class="bi bi-chevron-up"></i>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDataMgmt" aria-expanded="true" aria-label="Mở hoặc thu gọn quản lý dữ liệu" title="Mở hoặc thu gọn quản lý dữ liệu">
+                <i class="bi bi-chevron-up" aria-hidden="true"></i>
             </button>
         </div>
         <div class="collapse show" id="collapseDataMgmt">
@@ -222,7 +222,7 @@
                 <i class="bi bi-shield-check" style="font-size: 18px; margin-right: 8px;"></i>Trung tâm sao lưu
             </h5>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBackupCenter" aria-expanded="true">
-                <i class="bi bi-chevron-up"></i>
+                <i class="bi bi-chevron-up" aria-hidden="true"></i><span class="visually-hidden">Mở hoặc thu gọn trung tâm sao lưu</span>
             </button>
         </div>
         <div class="collapse show" id="collapseBackupCenter">
@@ -318,7 +318,7 @@
                 <!-- Backup Table -->
                 <div class="table-responsive backup-table-container">
                     <table class="app-table table table-hover align-middle stf-table backup-table" id="backup-table">
-                        <thead class="app-table-header">
+                        <caption class="visually-hidden">Danh sách các bản sao lưu</caption><thead class="app-table-header">
                             <tr>
                                 <th style="width: 18%;" scope="col">Tên bản sao lưu</th>
                                 <th style="width: 12%;" scope="col">Ngày tạo</th>
@@ -420,8 +420,8 @@
             <h5 class="app-card-header-title card-title m-0">
                 <i class="bi bi-info-circle" style="font-size: 18px; margin-right: 8px;"></i>Thông tin phần mềm
             </h5>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAbout" aria-expanded="true">
-                <i class="bi bi-chevron-up"></i>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAbout" aria-expanded="true" aria-label="Mở hoặc thu gọn thông tin phần mềm" title="Mở hoặc thu gọn thông tin phần mềm">
+                <i class="bi bi-chevron-up" aria-hidden="true"></i>
             </button>
         </div>
         <div class="collapse show" id="collapseAbout">
@@ -840,7 +840,7 @@
                     
                     <div class="table-responsive border rounded mb-3" style="max-height: 350px;">
                         <table class="table table-hover table-sm align-middle m-0" style="font-size: 0.85rem;" id="previewTable">
-                            <thead class="app-table-header sticky-top">
+                            <caption class="visually-hidden">Bản xem trước dữ liệu nhập</caption><thead class="app-table-header sticky-top">
                                 <tr id="previewTableHeader">
                                     <!-- Header rows filled by JS -->
                                 </tr>

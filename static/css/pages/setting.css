@@ -418,6 +418,14 @@
     padding: var(--space-4, 16px) var(--space-6, 24px);
 }
 
+.settings-section-card .app-card-header > button[data-bs-toggle="collapse"] {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .settings-section-card .app-card-body,
 .profile-details-card .app-card-body {
     padding: var(--space-6, 24px);

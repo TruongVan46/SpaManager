@@ -150,6 +150,7 @@
 
             <div class="table-responsive app-table-container activity-log-table-container">
                 <table class="app-table table table-hover align-middle activity-log-table">
+                    <caption class="visually-hidden">Danh sách nhật ký hoạt động</caption>
                     <thead class="app-table-header">
                         <tr>
                             <th class="col-time" scope="col">Thời gian</th>
@@ -187,7 +188,6 @@
                             data-severity="{{ log.severity }}"
                             data-description="{{ log.description }}"
                             data-reference="{{ log.reference_id if log.reference_id is not none else '-' }}"
-                            tabindex="0"
                             aria-label="Xem chi tiết nhật ký ngày {{ formatted_time }}">
                             <td class="col-time">
                                 {% if local_dt %}

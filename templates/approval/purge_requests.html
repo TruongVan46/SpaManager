@@ -26,7 +26,8 @@
     {% if summaries %}
     <div class="approval-request-table table-responsive">
       <table class="app-table table align-middle">
-        <thead><tr><th>Cơ sở</th><th>Trạng thái</th><th>Người tạo yêu cầu</th><th>Đủ điều kiện từ</th><th>Thao tác</th></tr></thead>
+        <caption class="visually-hidden">Danh sách yêu cầu xóa vĩnh viễn</caption>
+        <thead><tr><th scope="col">Cơ sở</th><th scope="col">Trạng thái</th><th scope="col">Người tạo yêu cầu</th><th scope="col">Đủ điều kiện từ</th><th scope="col">Thao tác</th></tr></thead>
         <tbody>{% for item in summaries %}<tr>
           <td><strong>{{ item.workspace_name }}</strong><div class="small text-muted">{{ item.workspace_slug }}</div></td>
           <td><span class="badge text-bg-secondary">{{ display_status(item.status) }}</span></td>
