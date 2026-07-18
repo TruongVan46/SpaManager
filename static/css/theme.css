@@ -793,6 +793,41 @@ body.dark-theme {
     --color-overlay: rgba(0, 0, 0, 0.6);
 }
 
+/* Shared component roles: presentation-only aliases for the frozen UI hooks. */
+:root {
+    --component-surface: var(--color-surface);
+    --component-surface-subtle: var(--color-canvas);
+    --component-border: var(--color-border);
+    --component-text: var(--color-text-default);
+    --component-text-muted: var(--color-text-muted);
+    --component-focus: var(--color-focus);
+    --component-disabled-surface: rgba(15, 23, 42, 0.06);
+    --component-disabled-text: var(--color-disabled);
+    --status-neutral: var(--color-text-muted);
+    --status-neutral-surface: rgba(15, 23, 42, 0.05);
+    --status-neutral-border: var(--color-border);
+    --status-success: var(--color-success);
+    --status-success-surface: rgba(19, 122, 109, 0.12);
+    --status-success-border: rgba(19, 122, 109, 0.32);
+    --status-information: var(--color-information);
+    --status-information-surface: rgba(0, 107, 122, 0.12);
+    --status-information-border: rgba(0, 107, 122, 0.32);
+    --status-warning: var(--color-warning);
+    --status-warning-surface: rgba(153, 91, 0, 0.12);
+    --status-warning-border: rgba(153, 91, 0, 0.32);
+    --status-danger: var(--color-danger);
+    --status-danger-surface: rgba(180, 35, 24, 0.12);
+    --status-danger-border: rgba(180, 35, 24, 0.32);
+    --component-loading-surface: rgba(255, 255, 255, 0.9);
+    --component-empty-icon: var(--color-text-muted);
+}
+
+body.dark-theme {
+    --component-disabled-surface: rgba(255, 255, 255, 0.08);
+    --status-neutral-surface: rgba(255, 255, 255, 0.08);
+    --component-loading-surface: rgba(18, 18, 18, 0.92);
+}
+
 /* Compatibility aliases: existing pages continue to resolve their old names. */
 body.light-theme,
 body.dark-theme,
@@ -826,4 +861,46 @@ body.dark-theme,
 
 body.dark-theme {
     --primary-color-rgb: 210, 187, 161;
+}
+
+/* Toast presentation overrides the existing component stylesheet without changing its API or timing. */
+#toast-container .spa-toast {
+    background-color: var(--component-surface);
+    border-color: var(--component-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--elevation-dropdown);
+}
+
+#toast-container .spa-toast-success {
+    background-color: var(--status-success-surface);
+    border-color: var(--status-success-border);
+    color: var(--status-success);
+}
+
+#toast-container .spa-toast-error {
+    background-color: var(--status-danger-surface);
+    border-color: var(--status-danger-border);
+    color: var(--status-danger);
+}
+
+#toast-container .spa-toast-warning {
+    background-color: var(--status-warning-surface);
+    border-color: var(--status-warning-border);
+    color: var(--status-warning);
+}
+
+#toast-container .spa-toast-info {
+    background-color: var(--status-information-surface);
+    border-color: var(--status-information-border);
+    color: var(--status-information);
+}
+
+#toast-container .spa-toast-close {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+#toast-container .spa-toast-close:focus-visible {
+    outline: var(--border-width-focus) solid var(--component-focus);
+    outline-offset: -2px;
 }
