@@ -1,0 +1,2132 @@
+{
+  "hooks": [
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:78",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".app-card",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:311",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".app-card-body",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:87",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".app-table, .stf-table",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:852",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".app-table-wrapper, .app-table-container, .table-responsive",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:102",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".bi-check",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:294",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".bi-exclamation-circle-fill",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:313",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-close",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:818",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-create-backup",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:546",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-danger",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:594",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-delete",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/appointment.js:167",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-delete-backup",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:1164",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-delete-row",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:71",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-edit-backup-note",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:714",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-open-import-wizard",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:214",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-restore-backup",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:865",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".btn-success",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:594",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".cal-day-popover:hover",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:147",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".cal-oc-status-dropdown .dropdown-item",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:333",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".cal-popover, .cal-day-popover",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:81",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".cal-popover, .cal-day-popover, .spa-summary-card, .fc-event",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/appointment-calendar.js:604",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".cal-popover:hover",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:513",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".command-palette-container",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:140",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".command-palette-item",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:219",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".d-flex",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:316",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".dropdown-item",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:262",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".fc-daygrid-day",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:117",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".fc-daygrid-day-frame",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:162",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".fc-event",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:532",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".item-price",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:27",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".item-qty",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:28",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".item-service",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:68",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".item-service:invalid",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:123",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".item-total",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:102",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".menu-item",
+      "purpose": "static DOM query",
+      "source": "static/js/app.js:211",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".modal.show",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:63",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".modal.show, .offcanvas.show",
+      "purpose": "static DOM query",
+      "source": "static/js/app.js:93",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".offcanvas-body",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:216",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".offcanvas-title",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:215",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".page-item.disabled",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/customer-detail.js:60",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".pagination .page-link[href]",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:315",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".row-number",
+      "purpose": "static DOM query",
+      "source": "static/js/invoice.js:18",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".sidebar",
+      "purpose": "static DOM query",
+      "source": "static/js/app.js:116",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".spa-summary-card",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment-calendar.js:113",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".spa-toast-close",
+      "purpose": "static DOM query",
+      "source": "static/js/notification.js:122",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".spa-toast-message",
+      "purpose": "static DOM query",
+      "source": "static/js/notification.js:82",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".spa-toast-progress-bar",
+      "purpose": "static DOM query",
+      "source": "static/js/notification.js:129",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".status-badge-btn",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:258",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".status-dropdown",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/appointment.js:257",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".status-dropdown .dropdown-item",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/appointment.js:253",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".step-num",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:242",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".stf-footer",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:125",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".stf-skeleton",
+      "purpose": "static DOM query",
+      "source": "static/js/dashboard.js:20",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".stf-table-wrap",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:571",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".stf-table-wrap, .table-responsive, .app-table-container",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:280",
+      "type": "CLASS"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": ".theme-check-icon",
+      "purpose": "static DOM query",
+      "source": "static/js/core/theme-manager.js:154",
+      "type": "CLASS"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-action",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-action-card",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-action-header",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-actor",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-backup-engine",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-backdrop",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-boundary",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-dismiss",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-keyboard",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-placement",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-popper-config",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-bs-target",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:81",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-bs-toggle",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-chart",
+      "purpose": "data contract read",
+      "source": "static/js/statistics.js:6",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-clear-injected",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:728",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-col-key",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:236",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-command-palette-close",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-command-palette-open",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-current-status",
+      "purpose": "data contract read",
+      "source": "static/js/appointment.js:264",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-date",
+      "purpose": "data contract read",
+      "source": "static/js/appointment-calendar.js:118",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-denied-notice",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-description",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-draw",
+      "purpose": "dataset contract read",
+      "source": "static/js/libs/chart.js:13",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-filename",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:614",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-group",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-id",
+      "purpose": "data contract read",
+      "source": "static/js/appointment.js:261",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-import-type",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:216",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-label",
+      "purpose": "dataset contract read",
+      "source": "static/js/dashboard.js:72",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-login-url",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-management",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-module",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-name",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:613",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-notes",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:615",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-p",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-range",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-reference",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-revenue-chart",
+      "purpose": "data contract read",
+      "source": "static/js/dashboard.js:153",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-severity",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-size",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:636",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-sort-field",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:530",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-source",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stat-count",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stat-icon",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stat-info",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stat-item",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stat-label",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stats-grid",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-status",
+      "purpose": "data contract read",
+      "source": "static/js/appointment-calendar.js:336",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-base-html",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:227",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stf-col-vis-menu",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stf-filter",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-live-bound",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:340",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stf-live-empty",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-live-search",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:342",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stf-per-page",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-per-page-bound",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:815",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-per-page-module",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:124",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-per-page-param",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:140",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-stf-search",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-stf-search-param",
+      "purpose": "dataset contract read",
+      "source": "static/js/shared-table.js:299",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-target",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-template-url",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:217",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-theme",
+      "purpose": "data contract read",
+      "source": "static/js/core/theme-manager.js:153",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-time",
+      "purpose": "data contract read",
+      "source": "static/js/setting.js:632",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-tooltip",
+      "purpose": "dataset contract read",
+      "source": "static/js/libs/chart.js:13",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "UNRESOLVED_HIGH_RISK",
+      "expression": "data-type",
+      "purpose": "data attribute retained for contract review",
+      "source": "MARKUP_ONLY",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-update-control-points",
+      "purpose": "dataset contract read",
+      "source": "static/js/libs/chart.js:13",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-value",
+      "purpose": "data contract read",
+      "source": "static/js/appointment.js:263",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-version-app",
+      "purpose": "dataset contract read",
+      "source": "static/js/setting.js:875",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-version-db",
+      "purpose": "dataset contract read",
+      "source": "static/js/setting.js:874",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "data-view-mode",
+      "purpose": "data contract read",
+      "source": "static/js/appointment.js:57",
+      "type": "DATA_ATTRIBUTE"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "#appointment-history a.page-link, #invoice-history a.page-link",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/customer-detail.js:59",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "#appointment-history select[name=",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/customer-detail.js:76",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": ".btn-delete-backup[data-id=\"${activeBackupId}\"]",
+      "purpose": "dynamic selector construction rule",
+      "source": "static/js/setting.js:runtime-construction",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": ".btn-edit-backup-note[data-id=\"${activeBackupId}\"]",
+      "purpose": "dynamic selector construction rule",
+      "source": "static/js/setting.js:runtime-construction",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-bs-toggle=",
+      "purpose": "static DOM query",
+      "source": "static/js/app.js:17",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-command-palette-close]",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:146",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-command-palette-open]",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:614",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-stf-col-vis-menu=",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:652",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-stf-filter]",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:806",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-stf-live-empty=",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:283",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-stf-per-page-module=",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:124",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-stf-per-page]",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:819",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-stf-search]",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:83",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-theme]",
+      "purpose": "static DOM query",
+      "source": "static/js/core/theme-manager.js:151",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[data-view-mode]",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:50",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "[id$=",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/customer-detail.js:63",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "a.btn, button.btn, a.app-btn, button.app-btn, button.btn-topbar",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/app.js:55",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "a[href=",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:498",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "button[data-import-type=",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:578",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "button[type=",
+      "purpose": "static DOM query",
+      "source": "static/js/app.js:33",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "i",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:85",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "input",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:662",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "input[type=",
+      "purpose": "static DOM query",
+      "source": "static/js/command-palette.js:85",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "mark.search-highlight",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:220",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "table",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:89",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "tbody",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:93",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "tbody tr",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:349",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "td[colspan]",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:359",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "th.stf-sortable",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:529",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "thead th",
+      "purpose": "static DOM query",
+      "source": "static/js/shared-table.js:235",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "DYNAMIC_RUNTIME_HOOK",
+      "expression": "tr",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:97",
+      "type": "DYNAMIC_SELECTOR"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:DOMContentLoaded",
+      "purpose": "document event delegation",
+      "source": "static/js/app.js:9",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:change",
+      "purpose": "document event delegation",
+      "source": "static/js/customer-detail.js:99",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:click",
+      "purpose": "document event delegation",
+      "source": "static/js/app.js:54",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:keydown",
+      "purpose": "document event delegation",
+      "source": "static/js/app.js:89",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:mousemove",
+      "purpose": "document event delegation",
+      "source": "static/js/shared-table.js:603",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:mouseup",
+      "purpose": "document event delegation",
+      "source": "static/js/shared-table.js:609",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:submit",
+      "purpose": "document event delegation",
+      "source": "static/js/app.js:25",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:touchend",
+      "purpose": "document event delegation",
+      "source": "static/js/app.js:196",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:touchstart",
+      "purpose": "document event delegation",
+      "source": "static/js/app.js:192",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "document:visibilitychange",
+      "purpose": "document event delegation",
+      "source": "static/js/dashboard.js:302",
+      "type": "EVENT_DELEGATION_ROOT"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#activity-log-filter-form",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/shared-table.js:729",
+      "type": "FORM_SELECTOR"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "form",
+      "purpose": "delegated ancestor lookup",
+      "source": "static/js/app.js:264",
+      "type": "FORM_SELECTOR"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "input[name=",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:91",
+      "type": "FORM_SELECTOR"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "meta[name=",
+      "purpose": "static DOM query",
+      "source": "static/js/csrf.js:5",
+      "type": "FORM_SELECTOR"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "select[name=",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:92",
+      "type": "FORM_SELECTOR"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#add-row-btn",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:4",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#appointment-table tbody tr",
+      "purpose": "static DOM query",
+      "source": "static/js/appointment.js:204",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#backup-drag-drop-zone",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:883",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#backup-list-tbody",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:606",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#backup-list-tbody tr",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:1221",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#backup-search",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:604",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#backup-sort",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:605",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#backupFile",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:884",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#btn-close-import-wizard",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:170",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#btnConfirmCreateBackup",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:657",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#btnConfirmUploadBackup",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:887",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#btnDeleteLogo",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:14",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#btnRestore",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:99",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#calOffcanvas",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment-calendar.js:214",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#calendar",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment-calendar.js:416",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#calendar-view-container",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment-calendar.js:581",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#card-backup-center",
+      "purpose": "direct element lookup",
+      "source": "static/js/command-palette.js:562",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#chart-skeleton",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:11",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#command-palette-input",
+      "purpose": "direct element lookup",
+      "source": "static/js/command-palette.js:136",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#command-palette-overlay",
+      "purpose": "direct element lookup",
+      "source": "static/js/command-palette.js:133",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#command-palette-results",
+      "purpose": "direct element lookup",
+      "source": "static/js/command-palette.js:137",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#confirmDeleteBackupBtn",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:1161",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#confirmDeleteBtn",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:161",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#confirmRestore",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:101",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#confirmRestoreBackupBtn",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:102",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#createBackupForm",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:656",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#createBackupModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/command-palette.js:623",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#customDatesRow",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:10",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#dashboard-latest-invoices",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:231",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#dashboard-recent-activities",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:262",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#dashboard-schedule-list",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:187",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#deleteBackupConfirmCheck",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:1162",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#deleteBackupModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:1159",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#deleteBackupName",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:1160",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#deleteConfirmationModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:160",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#discount",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:6",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#discount-display",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:7",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#downloadErrorReportBtn",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:463",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#editBackupNoteForm",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:711",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#editBackupNoteModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:710",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#editBackupNotes",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:712",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#from_date",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:11",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#import-upload-alert",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:160",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#importAllOrNothing",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:424",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#importTemplateDownloadBtn",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:158",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#importWizardModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:145",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#importWizardTypeName",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:157",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#invoice-form",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:9",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#invoice-items",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:3",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#kpi-appointments",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:175",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#kpi-customers",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:174",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#kpi-invoices",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:176",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#kpi-revenue",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:173",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#list-view-container",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:51",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#logoInput",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:11",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#logoPlaceholder",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:13",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#logoPreview",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:12",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#page-loader",
+      "purpose": "direct element lookup",
+      "source": "static/js/app.js:11",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#periodSelect",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:9",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#preview-row-count-badge",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:321",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#previewTableBody",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:320",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#previewTableHeader",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:319",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#report-failed",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:459",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#report-overwritten",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:457",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#report-skipped",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:458",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#report-success",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:456",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#report-total",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:455",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restore-loading-overlay",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:1075",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restoreConfirmCheck",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:103",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restoreFileInput",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:98",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restoreForm",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:100",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restoreModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:112",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restoreWizardModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:777",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#restoreWizardModal .btn-close, #restoreWizardModal [data-bs-dismiss=",
+      "purpose": "static DOM query",
+      "source": "static/js/setting.js:850",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#revenueChart",
+      "purpose": "direct element lookup",
+      "source": "static/js/dashboard.js:4",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#selected-file-info",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:885",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#selected-filename",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:886",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#services-data",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:2",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#sidebar-overlay",
+      "purpose": "direct element lookup",
+      "source": "static/js/app.js:117",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#sidebar-toggle",
+      "purpose": "direct element lookup",
+      "source": "static/js/app.js:118",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#subtotal-display",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:5",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#summary-duplicate-rows",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:364",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#summary-error-rows",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:363",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#summary-total-rows",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:362",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#theme-current-icon",
+      "purpose": "direct element lookup",
+      "source": "static/js/core/theme-manager.js:141",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#theme-current-text",
+      "purpose": "direct element lookup",
+      "source": "static/js/core/theme-manager.js:142",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#theme-menu",
+      "purpose": "direct element lookup",
+      "source": "static/js/core/theme-manager.js:124",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#theme-switcher-btn",
+      "purpose": "direct element lookup",
+      "source": "static/js/core/theme-manager.js:123",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#to_date",
+      "purpose": "direct element lookup",
+      "source": "static/js/appointment.js:12",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#toast-container",
+      "purpose": "direct element lookup",
+      "source": "static/js/notification.js:25",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#total-display",
+      "purpose": "direct element lookup",
+      "source": "static/js/invoice.js:8",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#uploadBackupForm",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:888",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#uploadBackupModal",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:995",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#uploadNotes",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:992",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-back",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:166",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-cancel",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:162",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-close-finish",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:169",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-execute",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:168",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-import-another",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:163",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-next",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:167",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-btn-retry",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:164",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-report-desc",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:475",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-report-download-btn-container",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:462",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-report-icon",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:473",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-report-title",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:474",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-step-1-content",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:173",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-step-2-content",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:174",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-step-3-content",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:175",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#w-step-4-content",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:176",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-backup-app-version",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:791",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-backup-date",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:788",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-backup-db-version",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:790",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-backup-name",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:787",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-backup-notes",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:792",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-backup-size",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:789",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-btn-close-step4",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:819",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-btn-confirm",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:796",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-btn-continue-1",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:794",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-btn-continue-2",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:795",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-reload-container",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:822",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-result-icon-error",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:821",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-result-icon-success",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:820",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-result-msg",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:800",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-step-1",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:782",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-step-2",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:783",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-step-3",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:784",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-step-4",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:785",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-validation-result",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:798",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizard-warning-msg",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:799",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizardImportFile",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:159",
+      "type": "ID"
+    },
+    {
+      "classification": "FROZEN_JS_HOOK",
+      "expression": "#wizardRestoreConfirmCheck",
+      "purpose": "direct element lookup",
+      "source": "static/js/setting.js:797",
+      "type": "ID"
+    }
+  ]
+}

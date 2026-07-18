@@ -1,0 +1,1508 @@
+{
+  "rendered_templates": [
+    {
+      "line": "46",
+      "source": "routes/activity_log.py",
+      "template": "activity_log/index.html"
+    },
+    {
+      "line": "50",
+      "source": "routes/appointment.py",
+      "template": "appointment/index.html"
+    },
+    {
+      "line": "69",
+      "source": "routes/appointment.py",
+      "template": "appointment/create.html"
+    },
+    {
+      "line": "120",
+      "source": "routes/appointment.py",
+      "template": "appointment/create.html"
+    },
+    {
+      "line": "144",
+      "source": "routes/appointment.py",
+      "template": "appointment/edit.html"
+    },
+    {
+      "line": "206",
+      "source": "routes/appointment.py",
+      "template": "appointment/edit.html"
+    },
+    {
+      "line": "224",
+      "source": "routes/appointment.py",
+      "template": "appointment/detail.html"
+    },
+    {
+      "line": "111",
+      "source": "routes/approval.py",
+      "template": "approval/accounts.html"
+    },
+    {
+      "line": "128",
+      "source": "routes/approval.py",
+      "template": "approval/accounts.html"
+    },
+    {
+      "line": "320",
+      "source": "routes/approval.py",
+      "template": "approval/purge_requests.html"
+    },
+    {
+      "line": "349",
+      "source": "routes/approval.py",
+      "template": "approval/purge_request_detail.html"
+    },
+    {
+      "line": "378",
+      "source": "routes/approval.py",
+      "template": "approval/purge_request_execute.html"
+    },
+    {
+      "line": "540",
+      "source": "routes/approval.py",
+      "template": "approval/legal_holds.html"
+    },
+    {
+      "line": "97",
+      "source": "routes/auth.py",
+      "template": "auth/login.html"
+    },
+    {
+      "line": "116",
+      "source": "routes/auth.py",
+      "template": "auth/pending.html"
+    },
+    {
+      "line": "123",
+      "source": "routes/auth.py",
+      "template": "auth/account_status.html"
+    },
+    {
+      "line": "127",
+      "source": "routes/auth.py",
+      "template": "auth/account_status.html"
+    },
+    {
+      "line": "204",
+      "source": "routes/auth.py",
+      "template": "auth/profile.html"
+    },
+    {
+      "line": "37",
+      "source": "routes/customer.py",
+      "template": "customer/index.html"
+    },
+    {
+      "line": "83",
+      "source": "routes/customer.py",
+      "template": "customer/create.html"
+    },
+    {
+      "line": "113",
+      "source": "routes/customer.py",
+      "template": "DYNAMIC:CUSTOMER_DETAIL_PARTIAL_TEMPLATES[partial]"
+    },
+    {
+      "line": "118",
+      "source": "routes/customer.py",
+      "template": "customer/detail.html"
+    },
+    {
+      "line": "170",
+      "source": "routes/customer.py",
+      "template": "customer/edit.html"
+    },
+    {
+      "line": "153",
+      "source": "routes/dashboard.py",
+      "template": "dashboard/index.html"
+    },
+    {
+      "line": "75",
+      "source": "routes/invoice.py",
+      "template": "invoice/index.html"
+    },
+    {
+      "line": "177",
+      "source": "routes/invoice.py",
+      "template": "invoice/create.html"
+    },
+    {
+      "line": "195",
+      "source": "routes/invoice.py",
+      "template": "invoice/detail.html"
+    },
+    {
+      "line": "207",
+      "source": "routes/invoice.py",
+      "template": "invoice/print.html"
+    },
+    {
+      "line": "36",
+      "source": "routes/recycle_bin.py",
+      "template": "recycle_bin/index.html"
+    },
+    {
+      "line": "22",
+      "source": "routes/service.py",
+      "template": "service/index.html"
+    },
+    {
+      "line": "42",
+      "source": "routes/service.py",
+      "template": "service/create.html"
+    },
+    {
+      "line": "61",
+      "source": "routes/service.py",
+      "template": "service/edit.html"
+    },
+    {
+      "line": "83",
+      "source": "routes/setting.py",
+      "template": "setting/index.html"
+    },
+    {
+      "line": "120",
+      "source": "routes/setting.py",
+      "template": "setting/index.html"
+    },
+    {
+      "line": "124",
+      "source": "routes/statistics.py",
+      "template": "statistics/index.html"
+    },
+    {
+      "line": "163",
+      "source": "routes/statistics.py",
+      "template": "statistics/customer_detail.html"
+    },
+    {
+      "line": "188",
+      "source": "routes/statistics.py",
+      "template": "statistics/service_detail.html"
+    },
+    {
+      "line": "63",
+      "source": "routes/user.py",
+      "template": "DYNAMIC:template_name"
+    },
+    {
+      "line": "97",
+      "source": "routes/user.py",
+      "template": "user/index.html"
+    },
+    {
+      "line": "193",
+      "source": "routes/user.py",
+      "template": "user/create.html"
+    },
+    {
+      "line": "198",
+      "source": "routes/user.py",
+      "template": "user/create.html"
+    },
+    {
+      "line": "200",
+      "source": "routes/user.py",
+      "template": "user/create.html"
+    },
+    {
+      "line": "259",
+      "source": "routes/user.py",
+      "template": "user/edit.html"
+    },
+    {
+      "line": "264",
+      "source": "routes/user.py",
+      "template": "user/edit.html"
+    },
+    {
+      "line": "266",
+      "source": "routes/user.py",
+      "template": "user/edit.html"
+    },
+    {
+      "line": "306",
+      "source": "routes/user.py",
+      "template": "user/reset_password.html"
+    },
+    {
+      "line": "311",
+      "source": "routes/user.py",
+      "template": "user/reset_password.html"
+    },
+    {
+      "line": "313",
+      "source": "routes/user.py",
+      "template": "user/reset_password.html"
+    }
+  ],
+  "routes": [
+    {
+      "blueprint": "dashboard_bp",
+      "function": "index",
+      "line": 151,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/",
+      "source": "routes/dashboard.py"
+    },
+    {
+      "blueprint": "activity_log_bp",
+      "function": "index",
+      "line": 17,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/activity-logs",
+      "source": "routes/activity_log.py"
+    },
+    {
+      "blueprint": "dashboard_bp",
+      "function": "api_dashboard_data",
+      "line": 157,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/api/dashboard/data",
+      "source": "routes/dashboard.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "index",
+      "line": 29,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/appointments",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "create",
+      "line": 57,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/appointments/create",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "delete",
+      "line": 247,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/appointments/delete/<int:id>",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "detail",
+      "line": 217,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/appointments/detail/<int:id>",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "edit",
+      "line": 133,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/appointments/edit/<int:id>",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "get_events",
+      "line": 281,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/appointments/events",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "search",
+      "line": 266,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/appointments/search",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "appointment_bp",
+      "function": "update_status",
+      "line": 227,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/appointments/update_status",
+      "source": "routes/appointment.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "accounts",
+      "line": 120,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/approval/accounts",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "release_workspace_legal_hold",
+      "line": 565,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<hold_id>"
+      ],
+      "path": "/approval/legal-holds/<hold_id>/release",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "pending",
+      "line": 107,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/approval/pending",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "purge_requests",
+      "line": 309,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/approval/purge-requests",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "purge_request_detail",
+      "line": 331,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "approve_purge_request",
+      "line": 582,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/approve",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "cancel_purge_request",
+      "line": 610,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/cancel",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "execute_purge_request",
+      "line": 423,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/execute",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "confirm_purge_request",
+      "line": 357,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/execute/confirm",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "create_legal_hold",
+      "line": 491,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/legal-holds",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "release_legal_hold",
+      "line": 511,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>",
+        "<hold_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/legal-holds/<hold_id>/release",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "reauth_purge_request",
+      "line": 391,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/reauth",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "reject_purge_request",
+      "line": 596,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:request_id>"
+      ],
+      "path": "/approval/purge-requests/<int:request_id>/reject",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "approve",
+      "line": 137,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/approve",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "disable",
+      "line": 177,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/disable",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "enable",
+      "line": 197,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/enable",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "reject",
+      "line": 157,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/reject",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "restore_account",
+      "line": 238,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/restore",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "restore_owner_workspace",
+      "line": 285,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/restore-owner-workspace",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "soft_delete_account",
+      "line": 217,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/soft-delete",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "soft_delete_owner_workspace",
+      "line": 262,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/approval/users/<int:user_id>/soft-delete-owner-workspace",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "workspace_legal_holds",
+      "line": 529,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:workspace_id>"
+      ],
+      "path": "/approval/workspaces/<int:workspace_id>/legal-holds",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "create_workspace_legal_hold",
+      "line": 548,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:workspace_id>"
+      ],
+      "path": "/approval/workspaces/<int:workspace_id>/legal-holds",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "approval_bp",
+      "function": "create_purge_request",
+      "line": 476,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:workspace_id>"
+      ],
+      "path": "/approval/workspaces/<int:workspace_id>/purge-request",
+      "source": "routes/approval.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "google_callback",
+      "line": 154,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/auth/google/callback",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "google_start",
+      "line": 141,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/auth/google/start",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "pending",
+      "line": 106,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/auth/pending",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "change_password",
+      "line": 161,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/change-password",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "index",
+      "line": 27,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/customers",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "detail",
+      "line": 86,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/customers/<int:id>",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "check_can_delete",
+      "line": 173,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/customers/<int:id>/can-delete",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "delete",
+      "line": 188,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/customers/<int:id>/delete",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "edit",
+      "line": 121,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/customers/<int:id>/edit",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "create",
+      "line": 44,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/customers/create",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "customer_bp",
+      "function": "search",
+      "line": 208,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/customers/search",
+      "source": "routes/customer.py"
+    },
+    {
+      "blueprint": "app",
+      "function": "favicon",
+      "line": 101,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/favicon.ico",
+      "source": "app.py"
+    },
+    {
+      "blueprint": "app",
+      "function": "health_check",
+      "line": 120,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/health",
+      "source": "app.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "index",
+      "line": 47,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/invoices",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "detail",
+      "line": 188,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:invoice_id>"
+      ],
+      "path": "/invoices/<int:invoice_id>",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "create",
+      "line": 89,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/invoices/create",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "delete",
+      "line": 210,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:invoice_id>"
+      ],
+      "path": "/invoices/delete/<int:invoice_id>",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "export_excel",
+      "line": 236,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/invoices/export/excel",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "export_pdf",
+      "line": 271,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/invoices/export/pdf",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "invoice_bp",
+      "function": "print_invoice",
+      "line": 198,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:invoice_id>"
+      ],
+      "path": "/invoices/print/<int:invoice_id>",
+      "source": "routes/invoice.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "login",
+      "line": 33,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/login",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "logout",
+      "line": 135,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/logout",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "app",
+      "function": "media_file",
+      "line": 106,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<path:path>"
+      ],
+      "path": "/media/<path:path>",
+      "source": "app.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "pending",
+      "line": 106,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/pending",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "auth_bp",
+      "function": "profile",
+      "line": 178,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/profile",
+      "source": "routes/auth.py"
+    },
+    {
+      "blueprint": "recycle_bin_bp",
+      "function": "index",
+      "line": 18,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/recycle-bin",
+      "source": "routes/recycle_bin.py"
+    },
+    {
+      "blueprint": "recycle_bin_bp",
+      "function": "permanent_delete",
+      "line": 68,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<string:item_type>",
+        "<int:item_id>"
+      ],
+      "path": "/recycle-bin/delete/<string:item_type>/<int:item_id>",
+      "source": "routes/recycle_bin.py"
+    },
+    {
+      "blueprint": "recycle_bin_bp",
+      "function": "get_info",
+      "line": 88,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<string:item_type>",
+        "<int:item_id>"
+      ],
+      "path": "/recycle-bin/info/<string:item_type>/<int:item_id>",
+      "source": "routes/recycle_bin.py"
+    },
+    {
+      "blueprint": "recycle_bin_bp",
+      "function": "restore",
+      "line": 47,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<string:item_type>",
+        "<int:item_id>"
+      ],
+      "path": "/recycle-bin/restore/<string:item_type>/<int:item_id>",
+      "source": "routes/recycle_bin.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "index",
+      "line": 74,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/reports",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "service_bp",
+      "function": "index",
+      "line": 10,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/services",
+      "source": "routes/service.py"
+    },
+    {
+      "blueprint": "service_bp",
+      "function": "create",
+      "line": 30,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/services/create",
+      "source": "routes/service.py"
+    },
+    {
+      "blueprint": "service_bp",
+      "function": "delete",
+      "line": 64,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/services/delete/<int:id>",
+      "source": "routes/service.py"
+    },
+    {
+      "blueprint": "service_bp",
+      "function": "edit",
+      "line": 45,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [
+        "<int:id>"
+      ],
+      "path": "/services/edit/<int:id>",
+      "source": "routes/service.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "index",
+      "line": 64,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/settings",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "backup_center_view",
+      "line": 225,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/settings/backup",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "backup_database",
+      "line": 231,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/backup",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "delete_backup",
+      "line": 296,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<string:backup_id>"
+      ],
+      "path": "/settings/backup/delete/<string:backup_id>",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "download_backup",
+      "line": 272,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<string:backup_id>"
+      ],
+      "path": "/settings/backup/download/<string:backup_id>",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "update_notes",
+      "line": 308,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<string:backup_id>"
+      ],
+      "path": "/settings/backup/notes/<string:backup_id>",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "restore_from_backup",
+      "line": 322,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<string:backup_id>"
+      ],
+      "path": "/settings/backup/restore/<string:backup_id>",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "upload_backup",
+      "line": 365,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/backup/upload",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "delete_logo",
+      "line": 195,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/delete-logo",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "import_analyze",
+      "line": 623,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/import/analyze",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "download_import_errors",
+      "line": 690,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<string:filename>"
+      ],
+      "path": "/settings/import/errors/download/<string:filename>",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "import_execute",
+      "line": 662,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/import/execute",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "restore_database",
+      "line": 552,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/restore",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "restore_wizard_confirm",
+      "line": 524,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/restore-wizard/confirm",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "restore_wizard_validate",
+      "line": 516,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<string:backup_id>"
+      ],
+      "path": "/settings/restore-wizard/validate/<string:backup_id>",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "save_spa_info",
+      "line": 135,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/settings/save-spa-info",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "download_customer_template",
+      "line": 594,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/settings/template/customers",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "setting_bp",
+      "function": "download_service_template",
+      "line": 606,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/settings/template/services",
+      "source": "routes/setting.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "index",
+      "line": 74,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/statistics",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "api_revenue_chart",
+      "line": 144,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/statistics/api/revenue_chart",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "customer_detail",
+      "line": 155,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:customer_id>"
+      ],
+      "path": "/statistics/customer/<int:customer_id>",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "export_excel",
+      "line": 198,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/statistics/export/excel",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "export_pdf",
+      "line": 231,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/statistics/export/pdf",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "statistics_bp",
+      "function": "service_detail",
+      "line": 174,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [
+        "<int:service_id>"
+      ],
+      "path": "/statistics/service/<int:service_id>",
+      "source": "routes/statistics.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "index",
+      "line": 67,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/users",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "approve",
+      "line": 122,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/approve",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "edit",
+      "line": 204,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/edit",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "reject",
+      "line": 127,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/reject",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "reset_password",
+      "line": 270,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/reset-password",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "restore",
+      "line": 357,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/restore",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "soft_delete",
+      "line": 344,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/soft-delete",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "toggle_active",
+      "line": 317,
+      "methods": [
+        "POST"
+      ],
+      "parameters": [
+        "<int:user_id>"
+      ],
+      "path": "/users/<int:user_id>/toggle-active",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "create",
+      "line": 132,
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "parameters": [],
+      "path": "/users/create",
+      "source": "routes/user.py"
+    },
+    {
+      "blueprint": "user_bp",
+      "function": "pending",
+      "line": 111,
+      "methods": [
+        "GET"
+      ],
+      "parameters": [],
+      "path": "/users/pending",
+      "source": "routes/user.py"
+    }
+  ],
+  "verified_audit_counts": {
+    "canonical_behavior_hooks": 304,
+    "dynamic_runtime_hook_groups": 31,
+    "form_boundaries": 79,
+    "form_field_contracts": 80,
+    "frontend_route_contracts": 65,
+    "traceable_canonical_hooks": 266,
+    "unresolved_high_risk_hooks": 38
+  }
+}

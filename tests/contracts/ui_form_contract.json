@@ -1,0 +1,3550 @@
+{
+  "forms": [
+    {
+      "action": "{{ url_for('activity_log.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "search-input",
+          "name": "q",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ q or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "actor-input",
+          "name": "actor",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ actor or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "module-select",
+          "name": "module",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "action-select",
+          "name": "action",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "severity-select",
+          "name": "severity",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "time-range-select",
+          "name": "time_range",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "sort-select",
+          "name": "sort_by",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "from-date-input",
+          "name": "from_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ from_date or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "to-date-input",
+          "name": "to_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ to_date or '' }}"
+        }
+      ],
+      "id": "activity-log-filter-form",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/activity_log/index.html"
+    },
+    {
+      "action": "{{ url_for('appointment.create') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "return_to",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ return_to }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "customer_id",
+          "name": "customer_id",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "service_id",
+          "name": "service_id",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "appointment_date",
+          "name": "appointment_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ form_data.appointment_date if form_data else appointment_date }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "appointment_time",
+          "name": "appointment_time",
+          "tag": "input",
+          "type": "time",
+          "value": "{{ form_data.appointment_time if form_data else appointment_time }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "status",
+          "name": "status",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "notes",
+          "name": "notes",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/appointment/create.html"
+    },
+    {
+      "action": "{{ url_for('appointment.edit', id=appointment.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "return_to",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ return_to }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "customer_id",
+          "name": "customer_id",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "service_id",
+          "name": "service_id",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "appointment_time",
+          "name": "appointment_time",
+          "tag": "input",
+          "type": "datetime-local",
+          "value": "{{ appointment.appointment_time.strftime('%Y-%m-%dT%H:%M') if appointment.appointment_time else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "status",
+          "name": "status",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "notes",
+          "name": "notes",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "editAppointmentForm",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/appointment/edit.html"
+    },
+    {
+      "action": "{{ url_for('appointment.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "search",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ request.args.get('search', '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "periodSelect",
+          "name": "period",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "from_date",
+          "name": "from_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ request.args.get('from_date', '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "to_date",
+          "name": "to_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ request.args.get('to_date', '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "status",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "sort_by",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "order",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/appointment/index.html"
+    },
+    {
+      "action": "{{ url_for('appointment.delete', id=appointment.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/appointment/index.html"
+    },
+    {
+      "action": "{{ url_for('approval.disable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.soft_delete_owner_workspace', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.disable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 2,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.soft_delete_account', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 3,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.disable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 4,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.soft_delete_account', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 5,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.disable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 6,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.soft_delete_owner_workspace', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 7,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.disable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 8,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.soft_delete_account', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 9,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.disable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 10,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.soft_delete_account', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 11,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.restore_owner_workspace', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 12,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.restore_account', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 13,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.restore_owner_workspace', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 14,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.restore_account', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 15,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.approve', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 16,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.reject', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 17,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.enable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 18,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.enable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 19,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.approve', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 20,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.reject', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 21,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.enable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 22,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.enable', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 23,
+      "method": "POST",
+      "template": "templates/approval/accounts.html"
+    },
+    {
+      "action": "{{ url_for('approval.release_workspace_legal_hold', hold_id=hold.hold_id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "release-reason-{{ hold.id }}",
+          "name": "release_reason",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "release-confirmation-{{ hold.id }}",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/approval/legal_holds.html"
+    },
+    {
+      "action": "{{ url_for('approval.create_workspace_legal_hold', workspace_id=workspace_target.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "hold-type",
+          "name": "hold_type",
+          "tag": "input",
+          "type": "input",
+          "value": "LEGAL"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "hold-reason",
+          "name": "reason",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "hold-confirmation",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/approval/legal_holds.html"
+    },
+    {
+      "action": "{{ url_for('approval.approve', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/approval/pending.html"
+    },
+    {
+      "action": "{{ url_for('approval.reject', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/approval/pending.html"
+    },
+    {
+      "action": "{{ url_for('approval.release_legal_hold', request_id=summary.id, hold_id=hold.hold_id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "release-reason-{{ hold.id }}",
+          "name": "release_reason",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "release-confirmation-{{ hold.id }}",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/approval/purge_request_detail.html"
+    },
+    {
+      "action": "{{ url_for('approval.create_legal_hold', request_id=summary.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "hold-type",
+          "name": "hold_type",
+          "tag": "input",
+          "type": "input",
+          "value": "LEGAL"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "hold-reason",
+          "name": "reason",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "hold-confirmation",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/approval/purge_request_detail.html"
+    },
+    {
+      "action": "{{ url_for('approval.cancel_purge_request', request_id=summary.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 2,
+      "method": "POST",
+      "template": "templates/approval/purge_request_detail.html"
+    },
+    {
+      "action": "{{ url_for('approval.reject_purge_request', request_id=summary.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "reject-reason",
+          "name": "reason",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 3,
+      "method": "POST",
+      "template": "templates/approval/purge_request_detail.html"
+    },
+    {
+      "action": "{{ url_for('approval.approve_purge_request', request_id=summary.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "approve-confirmation",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 4,
+      "method": "POST",
+      "template": "templates/approval/purge_request_detail.html"
+    },
+    {
+      "action": "{{ url_for('approval.reauth_purge_request', request_id=summary.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "current-password",
+          "name": "current_password",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/approval/purge_request_execute.html"
+    },
+    {
+      "action": "{{ url_for('approval.execute_purge_request', request_id=summary.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "execute-confirmation",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/approval/purge_request_execute.html"
+    },
+    {
+      "action": "{{ url_for('approval.create_purge_request', workspace_id=workspace_target.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "request-confirmation",
+          "name": "confirmation_phrase",
+          "tag": "input",
+          "type": "input",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/approval/purge_requests.html"
+    },
+    {
+      "action": "{{ url_for('auth.logout') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/auth/account_status.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "username",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "password",
+          "name": "",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "remember_me",
+          "name": "",
+          "tag": "input",
+          "type": "checkbox",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "login-form",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/auth/login.html"
+    },
+    {
+      "action": "{{ url_for('auth.logout') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/auth/pending.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "avatar-input",
+          "name": "avatar",
+          "tag": "input",
+          "type": "file",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "username",
+          "name": "username",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ user.username }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "username",
+          "name": "username",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ user.username }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ display_role(user.role) }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "full_name",
+          "name": "full_name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ user.full_name }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ created_local.strftime('%d/%m/%Y %H:%M') if created_local else 'Chưa có' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ last_login_local.strftime('%d/%m/%Y %H:%M') if last_login_local else 'Chưa có' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ user.email if user.email else 'Chưa liên kết' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "input",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "btn-submit-profile",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "profile-form",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/auth/profile.html"
+    },
+    {
+      "action": "{{ url_for('customer.detail', id=customer.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "appointment_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ appointment_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "invoice_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ invoice_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "invoice_per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ invoice_history.per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "appointment_per_page",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/customer/_appointment_history.html"
+    },
+    {
+      "action": "{{ url_for('customer.detail', id=customer.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "appointment_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ appointment_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "appointment_per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ appointment_history.per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "invoice_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ invoice_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "invoice_per_page",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/customer/_invoice_history.html"
+    },
+    {
+      "action": "{{ url_for('customer.create') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "name",
+          "name": "name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.name if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "phone",
+          "name": "phone",
+          "tag": "input",
+          "type": "tel",
+          "value": "{{ form_data.phone if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "email",
+          "name": "email",
+          "tag": "input",
+          "type": "email",
+          "value": "{{ form_data.email if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "address",
+          "name": "address",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.address if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/customer/create.html"
+    },
+    {
+      "action": "{{ url_for('customer.detail', id=customer.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "appointment_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ appointment_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "invoice_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ invoice_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "invoice_per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ invoice_history.per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "appointment_per_page",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/customer/detail.html"
+    },
+    {
+      "action": "{{ url_for('customer.detail', id=customer.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "appointment_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ appointment_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "appointment_per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ appointment_history.per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "invoice_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ invoice_history.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "invoice_per_page",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "GET",
+      "template": "templates/customer/detail.html"
+    },
+    {
+      "action": "{{ url_for('customer.edit', id=customer.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "name",
+          "name": "name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.name if form_data is not none else customer.name }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "phone",
+          "name": "phone",
+          "tag": "input",
+          "type": "tel",
+          "value": "{{ form_data.phone if form_data is not none else (customer.phone or '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "email",
+          "name": "email",
+          "tag": "input",
+          "type": "email",
+          "value": "{{ form_data.email if form_data is not none else (customer.email or '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "address",
+          "name": "address",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.address if form_data is not none else (customer.address or '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/customer/edit.html"
+    },
+    {
+      "action": "{{ url_for('customer.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "sort_by",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ sort_by }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "sort_dir",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ sort_dir }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "q",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ q }}"
+        }
+      ],
+      "id": "customer-filter-form",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/customer/index.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "deleteCustomerForm",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/customer/index.html"
+    },
+    {
+      "action": "{{ url_for('invoice.create') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "return_to",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ return_to }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "customer_id",
+          "name": "customer_id",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "invoice_date",
+          "name": "invoice_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ today_date if today_date else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "payment_method",
+          "name": "payment_method",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "notes",
+          "name": "notes",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "add-row-btn",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "discount",
+          "name": "discount",
+          "tag": "input",
+          "type": "number",
+          "value": "0"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "invoice-form",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/invoice/create.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "return_url",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ back_url }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "deleteInvoiceForm",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/invoice/detail.html"
+    },
+    {
+      "action": "{{ url_for('invoice.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "q",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ q or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "from_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ from_date or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "to_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ to_date or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "payment_method",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "sort_by",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "order",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/invoice/index.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "confirmDeleteSubmitBtn",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "deleteInvoiceForm",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/invoice/index.html"
+    },
+    {
+      "action": "{{ url_for('auth.logout') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/layout/approval_base.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "current_password",
+          "name": "",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "new_password",
+          "name": "",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "confirm_password",
+          "name": "",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "btn-cancel-change-password",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "btn-submit-change-password",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "change-password-form",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/layout/change_password_modal.html"
+    },
+    {
+      "action": "{{ url_for('auth.logout') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/layout/topbar.html"
+    },
+    {
+      "action": "{{ url_for('recycle_bin.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "search-input",
+          "name": "q",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ q or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "type-select",
+          "name": "item_type",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "sort-select",
+          "name": "sort_by",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "recycle-bin-filter-form",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/recycle_bin/index.html"
+    },
+    {
+      "action": "{{ url_for('service.create') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "name",
+          "name": "name",
+          "tag": "input",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "category",
+          "name": "category",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "price",
+          "name": "price",
+          "tag": "input",
+          "type": "number",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "duration",
+          "name": "duration",
+          "tag": "input",
+          "type": "number",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "description",
+          "name": "description",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/service/create.html"
+    },
+    {
+      "action": "{{ url_for('service.edit', id=service.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "name",
+          "name": "name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ service.name }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "category",
+          "name": "category",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "price",
+          "name": "price",
+          "tag": "input",
+          "type": "number",
+          "value": "{{ service.price }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "duration",
+          "name": "duration",
+          "tag": "input",
+          "type": "number",
+          "value": "{{ service.duration or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "description",
+          "name": "description",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/service/edit.html"
+    },
+    {
+      "action": "{{ url_for('service.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "sort_by",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ sort_by }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "sort_dir",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ sort_dir }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "q",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ q or '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "service_type",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        }
+      ],
+      "id": "service-filter-form",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/service/index.html"
+    },
+    {
+      "action": "{{ url_for('service.delete', id=service.id) }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/service/index.html"
+    },
+    {
+      "action": "{{ url_for('setting.save_spa_info') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "logoInput",
+          "name": "spa_logo",
+          "tag": "input",
+          "type": "file",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "btnDeleteLogo",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ spa_info.spa_name }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_owner",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ spa_info.spa_owner }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_phone",
+          "tag": "input",
+          "type": "tel",
+          "value": "{{ spa_info.spa_phone }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_email",
+          "tag": "input",
+          "type": "email",
+          "value": "{{ spa_info.spa_email }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_address",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ spa_info.spa_address }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_open_time",
+          "tag": "input",
+          "type": "time",
+          "value": "{{ spa_info.spa_open_time }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "spa_close_time",
+          "tag": "input",
+          "type": "time",
+          "value": "{{ spa_info.spa_close_time }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/setting/index.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "backupNotes",
+          "name": "notes",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "backupType",
+          "name": "backup_type",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "btnConfirmCreateBackup",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "createBackupForm",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/setting/index.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "editBackupId",
+          "name": "",
+          "tag": "input",
+          "type": "hidden",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "editBackupNotes",
+          "name": "",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "editBackupNoteForm",
+      "index": 2,
+      "method": "POST",
+      "template": "templates/setting/index.html"
+    },
+    {
+      "action": "",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "backupFile",
+          "name": "backup_file",
+          "tag": "input",
+          "type": "file",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "uploadNotes",
+          "name": "notes",
+          "tag": "textarea",
+          "type": "textarea",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "btnConfirmUploadBackup",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "uploadBackupForm",
+      "index": 3,
+      "method": "POST",
+      "template": "templates/setting/index.html"
+    },
+    {
+      "action": "{{ url_for('statistics.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "cust_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ customer_statistics.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "cust_per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ customer_statistics.per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "cust_sort_by",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ cust_sort_by }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "cust_order",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ cust_order }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "svc_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ service_statistics.page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "svc_per_page",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ service_statistics.per_page }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "svc_sort_by",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ svc_sort_by }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "svc_order",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ svc_order }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "button",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "from_date",
+          "name": "from_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ from_date.strftime('%Y-%m-%d') if from_date else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "to_date",
+          "name": "to_date",
+          "tag": "input",
+          "type": "date",
+          "value": "{{ to_date.strftime('%Y-%m-%d') if to_date else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/statistics/index.html"
+    },
+    {
+      "action": "{{ url_for('user.create') }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "username",
+          "name": "username",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.username if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "full_name",
+          "name": "full_name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.full_name if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "email",
+          "name": "email",
+          "tag": "input",
+          "type": "email",
+          "value": "{{ form_data.email if form_data else '' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "role",
+          "name": "role",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "password",
+          "name": "password",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "confirm_password",
+          "name": "confirm_password",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "is_active",
+          "name": "is_active",
+          "tag": "input",
+          "type": "checkbox",
+          "value": "1"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/user/create.html"
+    },
+    {
+      "action": "{{ url_for('user.edit', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "username",
+          "name": "username",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.username if form_data else user.username }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "full_name",
+          "name": "full_name",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ form_data.full_name if form_data else user.full_name }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "email",
+          "name": "email",
+          "tag": "input",
+          "type": "email",
+          "value": "{{ form_data.email if form_data else (user.email or '') }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "role",
+          "name": "role",
+          "tag": "select",
+          "type": "select",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/user/edit.html"
+    },
+    {
+      "action": "{{ url_for('user.index') }}",
+      "fields": [
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "q",
+          "tag": "input",
+          "type": "text",
+          "value": "{{ q }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "GET",
+      "template": "templates/user/index.html"
+    },
+    {
+      "action": "{{ url_for('user.toggle_active', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": true,
+          "id": "",
+          "name": "is_active",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ '0' if user.is_active else '1' }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/user/index.html"
+    },
+    {
+      "action": "{{ url_for('user.soft_delete', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 2,
+      "method": "POST",
+      "template": "templates/user/index.html"
+    },
+    {
+      "action": "{{ url_for('user.restore', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 3,
+      "method": "POST",
+      "template": "templates/user/index.html"
+    },
+    {
+      "action": "{{ url_for('user.approve', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/user/pending.html"
+    },
+    {
+      "action": "{{ url_for('user.reject', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 1,
+      "method": "POST",
+      "template": "templates/user/pending.html"
+    },
+    {
+      "action": "{{ url_for('user.reset_password', user_id=user.id) }}",
+      "fields": [
+        {
+          "csrf": true,
+          "hidden": true,
+          "id": "",
+          "name": "csrf_token",
+          "tag": "input",
+          "type": "hidden",
+          "value": "{{ csrf_token() }}"
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "new_password",
+          "name": "new_password",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "confirm_password",
+          "name": "confirm_password",
+          "tag": "input",
+          "type": "password",
+          "value": ""
+        },
+        {
+          "csrf": false,
+          "hidden": false,
+          "id": "",
+          "name": "",
+          "tag": "button",
+          "type": "submit",
+          "value": ""
+        }
+      ],
+      "id": "",
+      "index": 0,
+      "method": "POST",
+      "template": "templates/user/reset_password.html"
+    }
+  ]
+}
