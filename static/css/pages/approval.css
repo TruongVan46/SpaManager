@@ -45,14 +45,12 @@
     letter-spacing: -0.01em;
 }
 
-.approval-portal .approval-brand i {
-    display: grid;
+.approval-portal .approval-brand-mark {
+    display: block;
+    flex: 0 0 36px;
     width: 36px;
     height: 36px;
-    place-items: center;
-    border-radius: 10px;
-    background: var(--approval-brand-soft);
-    font-size: 1.15rem;
+    object-fit: contain;
 }
 
 .approval-portal .approval-main {
@@ -383,6 +381,7 @@
     .approval-portal .approval-action-btn { width: 100%; }
     .approval-portal .table-responsive { margin-inline: -4px; }
     .approval-portal .app-table { min-width: 680px; }
+    .approval-portal .approval-brand-mark { flex-basis: 32px; width: 32px; height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

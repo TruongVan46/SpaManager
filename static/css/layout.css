@@ -643,3 +643,14 @@ body.sidebar-open {
     }
 }
 
+.logo-icon {
+    flex-shrink: 0;
+}
+
+.logo-mark {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
