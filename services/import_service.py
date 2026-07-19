@@ -404,6 +404,9 @@ class ImportService:
         validator.validate({'import_type': import_type, 'duplicate_action': duplicate_action})
         validator.raise_if_invalid("Thông tin nhập khẩu không hợp lệ.")
 
+        from services.workspace_service import WorkspaceService
+        current_workspace_id = WorkspaceService.get_current_workspace_id()
+
 
         report = {
             'total': 0,
@@ -415,11 +418,12 @@ class ImportService:
             'error_report_url': None
         }
 
-        # 1. Automatically create a backup ("Before Import")
-        try:
-            BackupService.create_backup(app, notes=f"Tự động sao lưu trước khi import {import_type}", backup_type="Before Import")
-        except Exception as e:
-            app_logger.error(f"Failed to create backup before import: {e}", module="IMPORT", exc_info=True)
+        # 1. Automatically create a backup ("Before Import") - SQLite only
+        if BackupService.is_sqlite_database(app):
+            try:
+                BackupService.create_backup(app, notes=f"Tự động sao lưu trước khi import {import_type}", backup_type="Before Import")
+            except Exception as e:
+                app_logger.error(f"Failed to create backup before import: {e}", module="IMPORT", exc_info=True)
 
         # 2. Run analysis to get duplicate and validation details
         analysis = ImportService.analyze_file(app, filepath, import_type)

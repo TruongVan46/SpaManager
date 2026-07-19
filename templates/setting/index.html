@@ -919,7 +919,12 @@
                             </div>
                             
                             <div class="alert alert-info small py-2">
-                                <i class="bi bi-info-circle me-1"></i> <strong>Lưu ý:</strong> Trước khi quá trình import diễn ra, SpaManager sẽ <strong>tự động tạo một bản sao lưu dữ liệu (Before Import)</strong> để đảm bảo bạn có thể khôi phục lại dữ liệu bất kỳ lúc nào nếu xảy ra sự cố.
+                                <i class="bi bi-info-circle me-1"></i> <strong>Lưu ý:</strong>
+                                {% if 'postgresql' in config.get('SQLALCHEMY_DATABASE_URI', '') %}
+                                Quá trình import chạy trong một giao dịch cơ sở dữ liệu được kiểm soát. Nếu chế độ "Tất cả hoặc không có gì" được bật, mọi lỗi xảy ra sẽ hoàn tác toàn bộ quá trình import.
+                                {% else %}
+                                Trước khi quá trình import diễn ra, SpaManager sẽ <strong>tự động tạo một bản sao lưu dữ liệu (Before Import)</strong> để đảm bảo bạn có thể khôi phục lại dữ liệu bất kỳ lúc nào nếu xảy ra sự cố.
+                                {% endif %}
                             </div>
                         </div>
                     </div>
