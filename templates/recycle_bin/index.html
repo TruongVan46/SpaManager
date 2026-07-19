@@ -78,13 +78,15 @@
                 <span class="recycle-bin-stats-bar">
                     Tổng: <strong>{{ stats.total }}</strong> | Khách hàng: <strong>{{ stats.customer }}</strong> | Dịch vụ: <strong>{{ stats.service }}</strong> | Lịch hẹn: <strong>{{ stats.appointment }}</strong> | Hóa đơn: <strong>{{ stats.invoice }}</strong>
                 </span>
-                <span class="text-muted small {% if items.total == 0 %}d-none{% endif %}" id="recycle-bin-pagination-info">
+                <span class="text-muted small {% if items.total == 0 %}d-none{% endif %}"
+                    id="recycle-bin-pagination-info">
                     Hiển thị từ <strong>{{ (items.page - 1) * items.per_page + 1 }}</strong> đến <strong>{{ [items.page * items.per_page, items.total]|min }}</strong> trong tổng số <strong>{{ items.total }}</strong> bản ghi.
                 </span>
             </div>
 
             <!-- Empty State -->
-            <div class="empty-state {% if items.total > 0 %}d-none{% endif %}" id="recycle-bin-empty-state">
+            <div class="empty-state {% if items.total > 0 %}d-none{% endif %}"
+                    id="recycle-bin-empty-state">
                 <div class="empty-state-icon">
                     <i class="bi bi-trash3"></i>
                 </div>
@@ -93,7 +95,8 @@
             </div>
 
             <!-- Data Table -->
-            <div class="table-responsive app-table-container recycle-bin-table-container {% if items.total == 0 %}d-none{% endif %}" id="recycle-bin-table-container">
+            <div class="table-responsive app-table-container recycle-bin-table-container {% if items.total == 0 %}d-none{% endif %}"
+                    id="recycle-bin-table-container">
                 <table class="app-table table table-hover align-middle recycle-bin-table">
                     <thead class="app-table-header">
                         <tr>

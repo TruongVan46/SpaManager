@@ -173,19 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Intercept form submit event for keypress and dynamic offcanvas form submissions
-        document.addEventListener('submit', function(e) {
-            const form = e.target.closest('form');
-            if (form && form.action && form.action.includes('/appointments/delete/')) {
-                e.preventDefault();
-                if (formToDelete !== form) {
-                    formToDelete = form;
-                    rowToDelete = form.closest('tr');
-                    bsDeleteModal.show();
-                }
-            }
-        });
-
         if (confirmDeleteBtn) {
             confirmDeleteBtn.addEventListener('click', function() {
                 if (formToDelete) {
@@ -205,40 +192,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         bsDeleteModal.hide();
                         confirmDeleteBtn.disabled = false;
                         confirmDeleteBtn.innerHTML = originalHtml;
-                        
+
                         if (data.success) {
                             Notification.success(data.message || 'Đã xóa lịch hẹn thành công.');
-                            if (data.counts) {
-                                for (const [kpiName, val] of Object.entries(data.counts)) {
-                                    const el = document.querySelector(`[data-kpi="${kpiName}"]`);
-                                    if (el) el.textContent = val;
-                                }
-                            }
-
-                            // Dismiss offcanvas if open
-                            const ocEl = document.getElementById('calOffcanvas');
-                            if (ocEl && typeof bootstrap !== 'undefined') {
-                                const ocInstance = bootstrap.Offcanvas.getInstance(ocEl);
-                                if (ocInstance) ocInstance.hide();
-                            }
-
-                            // Refresh calendar view if initialized
-                            if (window.spaCalendarInstance) {
-                                window.spaCalendarInstance.refetchEvents();
-                            }
-
-                            // Extract appointment ID to sync with list view table row
-                            const actionUrl = formToDelete.action;
-                            const idMatch = actionUrl.match(/\/appointments\/delete\/(\d+)/);
-                            const deletedId = idMatch ? idMatch[1] : null;
-
-                            if (!rowToDelete && deletedId) {
-                                const tableForm = document.querySelector(`#appointment-table form[action*="/appointments/delete/${deletedId}"]`);
-                                if (tableForm) {
-                                    rowToDelete = tableForm.closest('tr');
-                                }
-                            }
-
+                            _handleAppointmentDeleted(data, formToDelete, rowToDelete);
                             if (rowToDelete) {
                                 rowToDelete.style.transition = 'opacity 0.4s ease';
                                 rowToDelete.style.opacity = '0';
@@ -246,28 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     rowToDelete.remove();
                                     const remainingRows = document.querySelectorAll('#appointment-table tbody tr');
                                     if (remainingRows.length === 0) {
-                                        const urlParams = new URLSearchParams(window.location.search);
-                                        let currentPage = parseInt(urlParams.get('page')) || 1;
-                                        if (currentPage > 1) {
-                                            urlParams.set('page', currentPage - 1);
-                                            window.location.href = window.location.pathname + '?' + urlParams.toString();
-                                        } else {
-                                            const tbody = document.querySelector('#appointment-table tbody');
-                                            const emptyTr = document.createElement('tr');
-                                            emptyTr.id = 'appointment-empty-row';
-                                            emptyTr.innerHTML = `
-                                                <td colspan="6" class="text-center py-5">
-                                                    <div class="empty-state">
-                                                        <i class="bi bi-calendar-check text-muted d-block mb-3 empty-state-icon" style="font-size: 32px;"></i>
-                                                        <p class="text-muted mb-0">Không tìm thấy lịch hẹn nào phù hợp.</p>
-                                                        <small class="text-muted">Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc.</small>
-                                                    </div>
-                                                </td>
-                                            `;
-                                            tbody.appendChild(emptyTr);
-                                            const footer = document.querySelector('.stf-footer');
-                                            if (footer) footer.style.display = 'none';
-                                        }
+                                        window.location.href = window.location.pathname + (window.location.search || '');
                                     }
                                 }, 400);
                             }
@@ -395,3 +331,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
+// Intercept form submit event for keypress and dynamic offcanvas form submissions
+document.addEventListener('submit', function(e) {
+    var form = e.target.closest('form');
+    if (form && form.action && form.action.includes('/appointments/delete/')) {
+        e.preventDefault();
+        if (formToDelete !== form) {
+            formToDelete = form;
+            rowToDelete = form.closest('tr');
+            var modal = document.getElementById('deleteConfirmationModal');
+            if (modal) { new bootstrap.Modal(modal).show(); }
+        }
+    }
+});
+
+/**
+ * Handles side effects of a successful appointment AJAX soft-delete.
+ * Dismisses the offcanvas, refreshes the calendar, and resolves the deleted row
+ * from the action URL if rowToDelete was not set.
+ *
+ * @param {Object}      data         Server JSON response
+ * @param {HTMLElement} deletedForm  The form whose action was submitted
+ * @param {HTMLElement} deletedRow   The <tr> to animate away (may be null)
+ */
+function _handleAppointmentDeleted(data, deletedForm, deletedRow) {
+    // Dismiss offcanvas panel if open
+    var ocEl = document.getElementById('calOffcanvas');
+    if (ocEl && typeof bootstrap !== 'undefined') {
+        var ocInstance = bootstrap.Offcanvas.getInstance(ocEl);
+        if (ocInstance) { ocInstance.hide(); }
+    }
+
+    // Refresh FullCalendar if initialised
+    if (window.spaCalendarInstance) {
+        window.spaCalendarInstance.refetchEvents();
+    }
+
+    // Resolve the table row from the action URL if not already known
+    if (!deletedRow && deletedForm) {
+        var actionUrl = deletedForm.action;
+        var idMatch = actionUrl.match(/\/appointments\/delete\/(\d+)/);
+        if (idMatch) {
+            var deletedId = idMatch[1];
+            var rows = document.querySelectorAll('#appointment-table tbody tr');
+            for (var ri = 0; ri < rows.length; ri++) {
+                var rf = rows[ri].querySelector('form');
+                if (rf && rf.action && rf.action.includes('/appointments/delete/' + deletedId)) {
+                    rowToDelete = rows[ri];
+                    break;
+                }
+            }
+        }
+    }
+}

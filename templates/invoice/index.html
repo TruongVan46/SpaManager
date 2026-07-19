@@ -26,7 +26,7 @@
         <div class="app-kpi-card app-kpi-border-primary">
             <div class="app-card-body text-primary">
                 <div class="app-small text-uppercase mb-1 fw-medium text-primary">Tổng hóa đơn</div>
-                <div class="h5 mb-0 fw-semibold app-title" data-kpi="invoice_count">{{ summary.invoice_count }}</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.invoice_count }}</div>
                 <i class="bi bi-receipt app-kpi-icon text-primary"></i>
             </div>
         </div>
@@ -35,7 +35,7 @@
         <div class="app-kpi-card app-kpi-border-success">
             <div class="app-card-body text-success">
                 <div class="app-small text-uppercase mb-1 fw-medium text-success">Tổng doanh thu</div>
-                <div class="h5 mb-0 fw-semibold app-title" data-kpi="total_revenue">{{ "{:,.0f}".format(summary.total_revenue) }}đ</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ "{:,.0f}".format(summary.total_revenue) }}đ</div>
                 <i class="bi bi-cash-stack app-kpi-icon text-success"></i>
             </div>
         </div>
@@ -44,7 +44,7 @@
         <div class="app-kpi-card app-kpi-border-warning">
             <div class="app-card-body text-warning">
                 <div class="app-small text-uppercase mb-1 fw-medium text-warning">Giảm giá</div>
-                <div class="h5 mb-0 fw-semibold app-title" data-kpi="total_discount">{{ "{:,.0f}".format(summary.total_discount) }}đ</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ "{:,.0f}".format(summary.total_discount) }}đ</div>
                 <i class="bi bi-tag app-kpi-icon text-warning"></i>
             </div>
         </div>
@@ -53,7 +53,7 @@
         <div class="app-kpi-card app-kpi-border-info">
             <div class="app-card-body text-info">
                 <div class="app-small text-uppercase mb-1 fw-medium text-info">Giá trị TB/HĐ</div>
-                <div class="h5 mb-0 fw-semibold app-title" data-kpi="average_invoice">{{ "{:,.0f}".format(summary.average_invoice) }}đ</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ "{:,.0f}".format(summary.average_invoice) }}đ</div>
                 <i class="bi bi-calculator app-kpi-icon text-info"></i>
             </div>
         </div>
@@ -294,25 +294,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     Notification.success(data.message || 'Đã xóa hóa đơn thành công.');
                     
-                    function formatCurrency(val) {
-                        return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "đ";
-                    }
-
-                    if (data.counts) {
-                        if (document.querySelector('[data-kpi="invoice_count"]')) {
-                            document.querySelector('[data-kpi="invoice_count"]').textContent = data.counts.invoice_count;
-                        }
-                        if (document.querySelector('[data-kpi="total_revenue"]')) {
-                            document.querySelector('[data-kpi="total_revenue"]').textContent = formatCurrency(data.counts.total_revenue);
-                        }
-                        if (document.querySelector('[data-kpi="total_discount"]')) {
-                            document.querySelector('[data-kpi="total_discount"]').textContent = formatCurrency(data.counts.total_discount);
-                        }
-                        if (document.querySelector('[data-kpi="average_invoice"]')) {
-                            document.querySelector('[data-kpi="average_invoice"]').textContent = formatCurrency(data.counts.average_invoice);
-                        }
-                    }
-
                     const rowToDelete = window.__invoiceRowToDelete;
                     if (rowToDelete) {
                         rowToDelete.style.transition = 'opacity 0.4s ease';

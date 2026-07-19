@@ -213,21 +213,7 @@ def delete(invoice_id):
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
             if success:
-                q = request.args.get('q', '').strip()
-                from_date = request.args.get('from_date', '').strip()
-                to_date = request.args.get('to_date', '').strip()
-                payment_method = request.args.get('payment_method', '').strip()
-                summary = InvoiceService.get_invoice_summary(
-                    keyword=q if q else None,
-                    from_date=from_date if from_date else None,
-                    to_date=to_date if to_date else None,
-                    payment_method=payment_method if payment_method else None
-                )
-                return jsonify({
-                    'success': True,
-                    'message': 'Đã xóa hóa đơn thành công.',
-                    'counts': summary
-                })
+                return _ajax_invoice_delete_ok()
             else:
                 return jsonify({'success': False, 'message': 'Không tìm thấy hóa đơn để xóa.'})
 
@@ -323,3 +309,18 @@ def export_pdf():
         download_name=filename
     )
     return _apply_pdf_download_headers(response)
+
+
+def _ajax_invoice_delete_ok():
+    """Return a JSON success response for invoice soft-delete, including filtered KPI counts."""
+    q = request.args.get('q', '').strip()
+    from_date = request.args.get('from_date', '').strip()
+    to_date = request.args.get('to_date', '').strip()
+    payment_method = request.args.get('payment_method', '').strip()
+    summary = InvoiceService.get_invoice_summary(
+        keyword=q if q else None,
+        from_date=from_date if from_date else None,
+        to_date=to_date if to_date else None,
+        payment_method=payment_method if payment_method else None
+    )
+    return jsonify({'success': True, 'message': 'Đã xóa hóa đơn thành công.', 'counts': summary})
