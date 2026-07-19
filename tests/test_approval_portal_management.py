@@ -617,6 +617,13 @@ class TestApprovalPortalManagement(unittest.TestCase):
         self.assertIn("approval-mobile-cards", html)
         self.assertIn("@media (max-width: 991.98px)", html)
 
+    def test_approval_accounts_responsive_variants_have_exclusive_visibility(self):
+        css = (Path(__file__).parents[1] / "static" / "css" / "pages" / "approval.css").read_text(encoding="utf-8")
+        self.assertIn(".approval-portal .approval-desktop-table {\n    display: block;\n}", css)
+        self.assertIn(".approval-portal .approval-mobile-cards {\n    display: none;\n}", css)
+        self.assertIn(".approval-portal .approval-desktop-table { display: none; }", css)
+        self.assertIn(".approval-portal .approval-mobile-cards { display: block; }", css)
+
     def test_approval_accounts_no_mobile_header_word_break(self):
         approver = self._create_approval_owner()
         self._login_as(approver)

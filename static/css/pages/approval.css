@@ -148,6 +148,15 @@
     min-width: 0;
 }
 
+/* Keep the table and card markup as one accessible responsive presentation. */
+.approval-portal .approval-desktop-table {
+    display: block;
+}
+
+.approval-portal .approval-mobile-cards {
+    display: none;
+}
+
 .approval-portal .approval-desktop-table > div,
 .approval-portal .approval-mobile-cards .card,
 .approval-portal .approval-desktop-table .card {
@@ -362,6 +371,8 @@
     .approval-portal .approval-account-bar { justify-content: space-between; }
     .approval-portal .approval-summary-card,
     .approval-portal .approval-actor-card { grid-column: span 6; }
+    .approval-portal .approval-desktop-table { display: none; }
+    .approval-portal .approval-mobile-cards { display: block; }
 }
 
 @media (max-width: 767.98px) {
