@@ -138,7 +138,7 @@
 }
 
 .approval-portal .nav-pills .nav-link.active {
-    color: var(--color-on-primary, #fff);
+    color: var(--color-on-primary, var(--color-surface));
     background: var(--approval-brand);
     border-color: var(--approval-brand);
 }

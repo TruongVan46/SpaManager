@@ -31,11 +31,11 @@
                     type="button" 
                     data-bs-toggle="dropdown" 
                     aria-expanded="false" 
-                    style="background: var(--spa-card-bg); border-radius: 12px; padding: 10px 14px; color: var(--spa-text-primary); transition: none !important;">
+                    style="background: var(--color-surface); border-radius: 12px; padding: 10px 14px; color: var(--color-text-default); transition: none !important;">
                 <i id="theme-current-icon" class="bi bi-circle-half"></i>
                 <span id="theme-current-text" class="d-none d-sm-inline">Tự động</span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0" id="theme-menu" style="background: var(--spa-card-bg); border-radius: 12px; margin-top: 15px; border: 1px solid var(--spa-border-color) !important;">
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" id="theme-menu" style="background: var(--color-surface); border-radius: 12px; margin-top: 15px; border: 1px solid var(--color-border) !important;">
                 <li>
                     <button class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" type="button" data-theme="light">
                         <span class="d-flex align-items-center gap-2">
@@ -72,20 +72,20 @@
                 {% if avatar_url %}
                     <img src="{{ avatar_url }}" alt="Ảnh đại diện" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" loading="lazy">
                 {% else %}
-                    <i class="bi bi-person-circle" style="font-size: 30px; color: var(--spa-primary, #a67c52);"></i>
+                    <i class="bi bi-person-circle" style="font-size: 30px; color: var(--color-primary);"></i>
                 {% endif %}
                 <span>{{ current_user.full_name if current_user else 'Chủ Spa' }}</span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0" id="profile-menu" style="background: var(--spa-card-bg); border-radius: 12px; margin-top: 15px; border: 1px solid var(--spa-border-color);">
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" id="profile-menu" style="background: var(--color-surface); border-radius: 12px; margin-top: 15px; border: 1px solid var(--color-border);">
                 <li>
                     <a class="dropdown-item py-2 px-3 d-flex align-items-center gap-2" href="{{ url_for('auth.profile') }}">
-                        <i class="bi bi-person-circle" style="color: var(--spa-primary, #a67c52);"></i>
+                        <i class="bi bi-person-circle" style="color: var(--color-primary);"></i>
                         <span>Hồ sơ cá nhân</span>
                     </a>
                 </li>
                 <li>
                     <a class="dropdown-item py-2 px-3 d-flex align-items-center gap-2" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                        <i class="bi bi-shield-lock" style="color: var(--spa-primary, #a67c52);"></i>
+                        <i class="bi bi-shield-lock" style="color: var(--color-primary);"></i>
                         <span>Đổi mật khẩu</span>
                     </a>
                 </li>

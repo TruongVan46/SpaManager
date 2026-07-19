@@ -34,25 +34,25 @@
     gap: 10px;
     margin-top: 14px;
     padding-top: 10px;
-    border-top: 1px solid #edf2f9;
+    border-top: 1px solid var(--color-border);
 }
-.stf-info-text { font-size: .82rem; color: #6c757d; }
-.stf-per-page { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: #6c757d; }
+.stf-info-text { font-size: .82rem; color: var(--color-text-muted); }
+.stf-per-page { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--color-text-muted); }
 .stf-per-page select { width: auto; padding: 2px 24px 2px 8px; font-size: .82rem; }
 
 /* 3. SORTABLE COLUMNS */
 th.stf-sortable { cursor: pointer; user-select: none; white-space: nowrap; position: relative; padding-right: 22px !important; }
-th.stf-sortable:hover { background-color: rgba(13,110,253,.05); color: #0d6efd; }
-th.stf-sortable .stf-sort-icon { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: .72rem; color: #adb5bd; transition: color .2s; }
+th.stf-sortable:hover { background-color: var(--color-ink); color: var(--status-information); }
+th.stf-sortable .stf-sort-icon { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: .72rem; color: var(--color-text-subtle); transition: color .2s; }
 th.stf-sortable.stf-sort-asc .stf-sort-icon,
-th.stf-sortable.stf-sort-desc .stf-sort-icon { color: #0d6efd; }
+th.stf-sortable.stf-sort-desc .stf-sort-icon { color: var(--status-information); }
 
 /* 4. COLUMN RESIZE */
 .stf-table-wrap { position: relative; overflow-x: auto; overflow-y: hidden !important; }
 table.stf-table { table-layout: auto; min-width: 100%; }
 table.stf-table th { position: relative; overflow: hidden; white-space: nowrap; }
 .stf-resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 10; background: transparent; transition: background .15s; }
-.stf-resize-handle:hover, .stf-resize-handle.stf-resizing { background: rgba(13,110,253,.35); }
+.stf-resize-handle:hover, .stf-resize-handle.stf-resizing { background: var(--color-ink); }
 .stf-table-wrap.stf-col-resizing { cursor: col-resize !important; user-select: none; }
 .stf-table-wrap.stf-col-resizing * { user-select: none !important; }
 
@@ -60,32 +60,32 @@ table.stf-table th { position: relative; overflow: hidden; white-space: nowrap; 
 .stf-col-vis-btn { border-radius: 6px !important; font-size: .82rem !important; padding: 5px 10px !important; display: flex; align-items: center; gap: 4px; }
 .stf-col-vis-menu { min-width: 200px; padding: 8px 4px !important; font-size: .82rem; }
 .stf-col-vis-menu .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; cursor: pointer; border-radius: 4px; transition: background .1s; }
-.stf-col-vis-menu .dropdown-item:hover { background-color: rgba(13,110,253,.07); }
-.stf-col-vis-menu .dropdown-item input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: #0d6efd; flex-shrink: 0; }
+.stf-col-vis-menu .dropdown-item:hover { background-color: var(--color-ink); }
+.stf-col-vis-menu .dropdown-item input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--status-information); flex-shrink: 0; }
 .stf-col-hidden { display: none !important; }
 
 /* 6. LOADING SKELETON */
 @keyframes stf-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-.stf-skeleton-cell { display:inline-block; height:14px; border-radius:4px; background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size:200% 100%; animation:stf-shimmer 1.4s infinite; width:80%; }
+.stf-skeleton-cell { display:inline-block; height:14px; border-radius:4px; background:linear-gradient(90deg,var(--color-surface-muted) 25%,var(--color-border) 50%,var(--color-surface-muted) 75%); background-size:200% 100%; animation:stf-shimmer 1.4s infinite; width:80%; }
 .stf-skeleton-cell.w-40 { width:40%; }
 .stf-skeleton-cell.w-60 { width:60%; }
 .stf-skeleton-cell.w-100 { width:100%; }
 tr.stf-skeleton-row td { padding-top:12px; padding-bottom:12px; }
-.stf-loading-overlay { position:absolute; inset:0; background:rgba(var(--spa-card-bg-rgb),.7); display:flex; align-items:center; justify-content:center; z-index:20; border-radius:6px; pointer-events:none; opacity:0; transition:opacity .2s; }
+.stf-loading-overlay { position:absolute; inset:0; background:rgba(var(--color-surface-rgb),.7); display:flex; align-items:center; justify-content:center; z-index:20; border-radius:6px; pointer-events:none; opacity:0; transition:opacity .2s; }
 .stf-loading-overlay.visible { opacity:1; pointer-events:auto; }
 
 /* 7. EMPTY STATE */
 .stf-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:52px 24px; text-align:center; }
-.stf-empty-state-icon { font-size:2.8rem; color:var(--spa-text-muted); margin-bottom:14px; display:block; }
-.stf-empty-state-title { font-size:1rem; font-weight:600; color:var(--spa-text-primary); margin-bottom:6px; }
-.stf-empty-state-desc { font-size:.83rem; color:var(--spa-text-secondary); margin:0; }
+.stf-empty-state-icon { font-size:2.8rem; color:var(--color-text-subtle); margin-bottom:14px; display:block; }
+.stf-empty-state-title { font-size:1rem; font-weight:600; color:var(--color-text-default); margin-bottom:6px; }
+.stf-empty-state-desc { font-size:.83rem; color:var(--color-text-muted); margin:0; }
 
 /* 8. PAGINATION */
 .stf-pagination-wrap { display:flex; justify-content:center; margin-top:0; }
 .stf-pagination-wrap .pagination { margin:0; }
-.stf-pagination-wrap .page-link { font-size:.82rem; padding:4px 10px; border-radius:5px !important; border-color:var(--spa-border-color); color:var(--spa-primary); transition:background .15s,color .15s; }
-.stf-pagination-wrap .page-item.active .page-link { background-color:var(--spa-primary); border-color:var(--spa-primary); color:var(--spa-white); }
-.stf-pagination-wrap .page-item.disabled .page-link { color:var(--spa-text-muted); }
+.stf-pagination-wrap .page-link { font-size:.82rem; padding:4px 10px; border-radius:5px !important; border-color:var(--color-border); color:var(--color-primary); transition:background .15s,color .15s; }
+.stf-pagination-wrap .page-item.active .page-link { background-color:var(--color-primary); border-color:var(--color-primary); color:var(--color-surface); }
+.stf-pagination-wrap .page-item.disabled .page-link { color:var(--color-text-subtle); }
 
 /* 9. RESPONSIVE */
 @media(max-width:767.98px){
@@ -167,7 +167,7 @@ tr.stf-skeleton-row td { padding-top:12px; padding-bottom:12px; }
 
 .app-table > tbody > tr > td,
 .stf-table > tbody > tr > td {
-    color: var(--component-text, var(--spa-text-main));
+    color: var(--component-text, var(--color-text-default));
     font-size: 0.875rem;
     line-height: 1.45;
     padding: 12px 14px;
@@ -266,14 +266,14 @@ th.stf-sortable.stf-sort-desc .stf-sort-icon {
 
 .stf-per-page,
 .stf-info-text {
-    color: var(--component-text-muted, var(--spa-text-muted));
+    color: var(--component-text-muted, var(--color-text-subtle));
 }
 
 .stf-per-page select {
     min-height: 44px;
     border-color: var(--table-border);
     background-color: var(--table-surface);
-    color: var(--component-text, var(--spa-text-main));
+    color: var(--component-text, var(--color-text-default));
 }
 
 .stf-footer {
@@ -313,7 +313,7 @@ th.stf-sortable.stf-sort-desc .stf-sort-icon {
 
 .stf-empty-state {
     min-width: 100%;
-    color: var(--component-text-muted, var(--spa-text-muted));
+    color: var(--component-text-muted, var(--color-text-subtle));
 }
 
 .stf-empty-state-title {

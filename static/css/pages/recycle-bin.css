@@ -13,11 +13,11 @@
 .recycle-bin-page .recycle-bin-stats-bar {
     font-size: 14px;
     font-weight: 500;
-    color: var(--spa-text-muted);
+    color: var(--color-text-muted);
 }
 
 .recycle-bin-page .recycle-bin-stats-bar strong {
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
 }
 
 /* --------------------------------------------------------------------------
@@ -44,7 +44,7 @@
 
 .recycle-bin-page .filter-item label {
     font-weight: 600;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
 }
 
 .recycle-bin-page .filter-buttons {
@@ -71,7 +71,7 @@
 .recycle-bin-page .input-group-custom-search i {
     position: absolute;
     left: 12px;
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
     z-index: 10;
     pointer-events: none;
     font-size: 14px;
@@ -85,11 +85,11 @@
    3. Table
    -------------------------------------------------------------------------- */
 .recycle-bin-page .recycle-bin-table-container {
-    border: 1px solid var(--spa-border-color);
-    border-radius: var(--spa-radius-lg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
     overflow-x: auto;
-    background-color: var(--spa-white);
-    box-shadow: var(--spa-shadow-light);
+    background-color: var(--color-surface);
+    box-shadow: var(--elevation-card);
     position: relative;
 }
 
@@ -105,7 +105,7 @@
 }
 
 .recycle-bin-page .recycle-bin-table tbody tr:hover {
-    background-color: var(--spa-primary-light) !important;
+    background-color: var(--table-row-hover) !important;
 }
 
 /* Empty State Styling */
@@ -121,20 +121,20 @@
 
 .recycle-bin-page .empty-state-icon {
     font-size: 48px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-muted);
     opacity: 0.5;
 }
 
 .recycle-bin-page .empty-state-title {
     font-size: 20px;
     font-weight: 600;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     margin: 0;
 }
 
 .recycle-bin-page .empty-state-description {
     font-size: 14px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-muted);
     max-width: 400px;
     margin: 0 0 8px 0;
 }
@@ -144,34 +144,34 @@
    -------------------------------------------------------------------------- */
 /* Soft Data Type Badges */
 .recycle-bin-page .badge-type-customer {
-    background-color: var(--spa-info-light) !important;
-    color: var(--spa-info) !important;
-    border: 1px solid var(--spa-info-border) !important;
+    background-color: var(--status-information-surface) !important;
+    color: var(--status-information) !important;
+    border: 1px solid var(--status-information-border) !important;
 }
 
 .recycle-bin-page .badge-type-service {
-    background-color: var(--spa-warning-light) !important;
-    color: var(--spa-warning) !important;
-    border: 1px solid var(--spa-warning-border) !important;
+    background-color: var(--status-warning-surface) !important;
+    color: var(--status-warning) !important;
+    border: 1px solid var(--status-warning-border) !important;
 }
 
 .recycle-bin-page .badge-type-appointment {
-    background-color: var(--spa-info-light) !important;
-    color: var(--spa-info) !important;
-    border: 1px solid var(--spa-info-border) !important;
+    background-color: var(--status-information-surface) !important;
+    color: var(--status-information) !important;
+    border: 1px solid var(--status-information-border) !important;
 }
 
 .recycle-bin-page .badge-type-invoice {
-    background-color: var(--spa-success-light) !important;
-    color: var(--spa-success) !important;
-    border: 1px solid var(--spa-success-border) !important;
+    background-color: var(--status-success-surface) !important;
+    color: var(--status-success) !important;
+    border: 1px solid var(--status-success-border) !important;
 }
 
 /* Status badge (Red or gray) */
 .recycle-bin-page .badge-status-deleted {
-    background-color: var(--spa-danger-light) !important;
-    color: var(--spa-danger) !important;
-    border: 1px solid var(--spa-danger-border) !important;
+    background-color: var(--status-danger-surface) !important;
+    color: var(--status-danger) !important;
+    border: 1px solid var(--status-danger-border) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -265,6 +265,6 @@
         height: 38px;
     }
     .recycle-bin-page .recycle-bin-table-container {
-        border-radius: var(--spa-radius-md);
+        border-radius: var(--radius-control);
     }
 }

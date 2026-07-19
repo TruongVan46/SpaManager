@@ -13,7 +13,7 @@ function initDashboard() {
         if (typeof Chart === 'undefined') {
             console.error('Chart.js is not loaded.');
             if (skeleton) {
-                skeleton.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-exclamation-triangle" style="font-size: 32px; color: var(--spa-primary);"></i><p class="m-0 mt-2">Không thể tải biểu đồ doanh thu. Vui lòng kiểm tra kết nối mạng.</p></div>';
+                skeleton.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-exclamation-triangle" style="font-size: 32px; color: var(--color-primary);"></i><p class="m-0 mt-2">Không thể tải biểu đồ doanh thu. Vui lòng kiểm tra kết nối mạng.</p></div>';
                 skeleton.classList.remove('stf-skeleton');
                 skeleton.classList.remove('d-flex');
                 skeleton.classList.add('d-block');
@@ -38,10 +38,10 @@ function initDashboard() {
         }
 
         const style = getComputedStyle(document.body);
-        const primaryColor = style.getPropertyValue('--spa-primary').trim() || '#a67c52';
-        const primaryLight = style.getPropertyValue('--spa-primary-light').trim() || 'rgba(166, 124, 82, 0.1)';
-        const textSecondary = style.getPropertyValue('--spa-text-secondary').trim() || '#6c757d';
-        const borderColor = style.getPropertyValue('--spa-border-color').trim() || '#e9ecef';
+        const primaryColor = style.getPropertyValue('--color-primary').trim() || 'var(--color-primary)';
+        const primaryLight = style.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
+        const textSecondary = style.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
+        const borderColor = style.getPropertyValue('--color-border').trim() || 'var(--color-border)';
 
         revenueChartInstance = new Chart(canvas, {
             type: 'line',
@@ -112,10 +112,10 @@ function initDashboard() {
             window.ThemeManager.onThemeChanged(function() {
                 if (revenueChartInstance) {
                     const style = getComputedStyle(document.body);
-                    const primaryColor = style.getPropertyValue('--spa-primary').trim() || '#a67c52';
-                    const primaryLight = style.getPropertyValue('--spa-primary-light').trim() || 'rgba(166, 124, 82, 0.1)';
-                    const textSecondary = style.getPropertyValue('--spa-text-secondary').trim() || '#6c757d';
-                    const borderColor = style.getPropertyValue('--spa-border-color').trim() || '#e9ecef';
+                    const primaryColor = style.getPropertyValue('--color-primary').trim() || 'var(--color-primary)';
+                    const primaryLight = style.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
+                    const textSecondary = style.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
+                    const borderColor = style.getPropertyValue('--color-border').trim() || 'var(--color-border)';
 
                     // Update dataset colors
                     if (revenueChartInstance.data.datasets && revenueChartInstance.data.datasets[0]) {
@@ -214,7 +214,7 @@ function initDashboard() {
                         } else {
                             scheduleList.innerHTML = `
                                 <div class="text-center py-4 text-muted" id="schedule-empty-state">
-                                    <div class="mb-2"><i class="bi bi-calendar-check" style="font-size: 32px; color: #ccc;"></i></div>
+                                    <div class="mb-2"><i class="bi bi-calendar-check" style="font-size: 32px; color: var(--color-text-subtle);"></i></div>
                                     <p class="app-text m-0">Không có lịch hẹn nào cho hôm nay</p>
                                 </div>
                             `;
@@ -250,7 +250,7 @@ function initDashboard() {
                         invoicesTable.innerHTML = `
                             <tr id="invoices-empty-state">
                                 <td colspan="5" class="text-center py-4 text-muted">
-                                    <div class="mb-2"><i class="bi bi-receipt" style="font-size: 32px; color: #ccc;"></i></div>
+                                    <div class="mb-2"><i class="bi bi-receipt" style="font-size: 32px; color: var(--color-text-subtle);"></i></div>
                                     <p class="app-text m-0">Không có hóa đơn gần đây</p>
                                 </td>
                             </tr>
@@ -287,7 +287,7 @@ function initDashboard() {
                     } else {
                         activitiesTimeline.innerHTML = `
                             <div class="text-center py-4 text-muted" id="activities-empty-state">
-                                <div class="mb-2"><i class="bi bi-clock-history" style="font-size: 32px; color: #ccc;"></i></div>
+                                <div class="mb-2"><i class="bi bi-clock-history" style="font-size: 32px; color: var(--color-text-subtle);"></i></div>
                                 <p class="app-text m-0">Không có hoạt động nào gần đây</p>
                             </div>
                         `;

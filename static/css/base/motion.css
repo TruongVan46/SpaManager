@@ -8,7 +8,7 @@
     --transition-fast: var(--motion-duration-fast);
     --transition-normal: var(--motion-duration-standard);
     --transition-slow: var(--motion-duration-slow);
-    --primary-color-rgb: 166, 124, 82; /* SpaManager primary brand color */
+    --color-primary-rgb: 166, 124, 82; /* SpaManager primary brand color */
 }
 
 /* 1. Utility classes */
@@ -34,7 +34,7 @@
 }
 .app-card-hover:hover {
     transform: translateY(-2px);
-    box-shadow: var(--spa-shadow-lg) !important;
+    box-shadow: var(--elevation-modal) !important;
 }
 
 .app-btn-hover {
@@ -45,7 +45,7 @@
 }
 .app-btn-hover:hover {
     filter: brightness(0.95);
-    box-shadow: var(--spa-shadow-md);
+    box-shadow: var(--elevation-dropdown);
 }
 .app-btn-hover:active {
     transform: scale(0.98);
@@ -63,8 +63,8 @@
     transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
 .app-focus:focus {
-    border-color: rgba(var(--primary-color-rgb), 0.5) !important;
-    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.15) !important;
+    border-color: rgba(var(--color-primary-rgb), 0.5) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--color-primary-rgb), 0.15) !important;
     outline: 0;
 }
 
@@ -91,7 +91,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(var(--spa-white-rgb), 0.85);
+    background-color: rgba(var(--color-surface-rgb), 0.85);
     z-index: var(--z-index-loader);
     display: flex;
     align-items: center;
@@ -113,7 +113,7 @@
 }
 .btn:hover, .app-btn:hover {
     filter: brightness(0.95);
-    box-shadow: var(--spa-shadow-md);
+    box-shadow: var(--elevation-dropdown);
 }
 .btn:active, .app-btn:active {
     transform: scale(0.98);
@@ -125,7 +125,7 @@
 }
 .card:hover, .spa-kpi-card:hover, .dashboard-card:hover, .appointment-card:hover, .statistics-card:hover, .app-card:hover, .app-kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: var(--spa-shadow-lg) !important;
+    box-shadow: var(--elevation-modal) !important;
 }
 
 /* Badge hover */
@@ -144,21 +144,21 @@
                 box-shadow var(--transition-fast) ease;
 }
 .sidebar-link:hover, .sidebar-menu-item:hover, .nav-link-custom:hover, .page-link:hover {
-    background-color: rgba(var(--primary-color-rgb), 0.08) !important;
-    color: var(--spa-primary, var(--bs-primary)) !important;
-    border-color: rgba(var(--primary-color-rgb), 0.2) !important;
+    background-color: rgba(var(--color-primary-rgb), 0.08) !important;
+    color: var(--color-primary, var(--bs-primary)) !important;
+    border-color: rgba(var(--color-primary-rgb), 0.2) !important;
 }
 .sidebar-link:hover i, .sidebar-menu-item:hover i, .nav-link-custom:hover i {
-    color: var(--spa-primary, var(--bs-primary)) !important;
+    color: var(--color-primary, var(--bs-primary)) !important;
 }
 
 /* Active Menu styling */
 .sidebar-link.active, .sidebar-menu-item.active, .nav-link-custom.active {
-    background-color: var(--spa-primary, var(--bs-primary)) !important;
-    color: #fff !important;
+    background-color: var(--color-primary, var(--bs-primary)) !important;
+    color: var(--color-surface) !important;
 }
 .sidebar-link.active i, .sidebar-menu-item.active i, .nav-link-custom.active i {
-    color: #fff !important;
+    color: var(--color-surface) !important;
 }
 
 /* 5. Table Interaction */
@@ -166,10 +166,10 @@
     transition: background-color var(--transition-fast) ease;
 }
 .table-hover tbody tr:hover {
-    background-color: rgba(var(--spa-black-rgb), 0.02) !important;
+    background-color: rgba(var(--color-ink-rgb), 0.02) !important;
 }
 .table tbody tr.table-active, .table tbody tr.active-row {
-    background-color: rgba(var(--primary-color-rgb), 0.08) !important;
+    background-color: rgba(var(--color-primary-rgb), 0.08) !important;
 }
 
 /* 6. Input Focus */
@@ -177,8 +177,8 @@
     transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
 .form-control:focus, .form-select:focus {
-    border-color: rgba(var(--primary-color-rgb), 0.5) !important;
-    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.15) !important;
+    border-color: rgba(var(--color-primary-rgb), 0.5) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--color-primary-rgb), 0.15) !important;
 }
 
 /* 7. Dropdown animation (using margin-top to avoid overriding popper transform positioning) */
@@ -225,14 +225,14 @@
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--color-text-default);
 }
 ::-webkit-scrollbar-thumb {
-    background: #ccc;
+    background: var(--color-text-subtle);
     border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #999;
+    background: var(--color-text-subtle);
 }
 
 /* 11. Calendar Interactivity */
@@ -240,14 +240,14 @@
     transition: background-color var(--transition-fast) ease;
 }
 .fc-daygrid-day:hover {
-    background-color: rgba(var(--primary-color-rgb), 0.03) !important;
+    background-color: rgba(var(--color-primary-rgb), 0.03) !important;
 }
 .fc-event, .spa-summary-card {
     transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
 .fc-event:hover, .spa-summary-card:hover {
     transform: translateY(-1px);
-    box-shadow: var(--spa-shadow-md) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     cursor: pointer;
 }
 /* Click active event */
@@ -266,29 +266,29 @@
     padding: 2.5rem 1.5rem;
     text-align: center;
     border-radius: 8px;
-    background-color: var(--spa-bg);
-    border: 1px dashed var(--spa-border-color);
+    background-color: var(--color-canvas);
+    border: 1px dashed var(--color-border);
     transition: border-color var(--transition-normal) ease, background-color var(--transition-normal) ease;
 }
 .empty-state:hover {
-    border-color: rgba(var(--primary-color-rgb), 0.3);
-    background-color: rgba(var(--primary-color-rgb), 0.01);
+    border-color: rgba(var(--color-primary-rgb), 0.3);
+    background-color: rgba(var(--color-primary-rgb), 0.01);
 }
 .empty-state-icon {
     font-size: 32px !important;
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
     margin-bottom: 1rem;
     display: inline-block;
     transition: transform var(--transition-normal) ease, color var(--transition-normal) ease;
 }
 .empty-state:hover .empty-state-icon {
     transform: scale(1.05);
-    color: rgba(var(--primary-color-rgb), 0.5) !important;
+    color: rgba(var(--color-primary-rgb), 0.5) !important;
 }
 
 /* 14. Active states for calendar events */
 .fc-event.active-event, .spa-summary-card.active-card {
-    outline: 2px solid rgba(var(--primary-color-rgb), 1) !important;
+    outline: 2px solid rgba(var(--color-primary-rgb), 1) !important;
     outline-offset: 1px;
 }
 
@@ -310,7 +310,7 @@
 
 /* Keyboard focus is explicit, high-contrast and separate from pointer focus. */
 :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
-    outline: var(--border-width-focus, 2px) solid var(--color-focus, var(--spa-primary));
+    outline: var(--border-width-focus, 2px) solid var(--color-focus, var(--color-primary));
     outline-offset: 2px;
 }
 
@@ -318,7 +318,7 @@
 .form-control:focus-visible,
 .form-select:focus-visible,
 .form-check-input:focus-visible {
-    outline: var(--border-width-focus, 2px) solid var(--color-focus, var(--spa-primary));
+    outline: var(--border-width-focus, 2px) solid var(--color-focus, var(--color-primary));
     outline-offset: 1px;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus, var(--spa-primary)) 24%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus, var(--color-primary)) 24%, transparent);
 }

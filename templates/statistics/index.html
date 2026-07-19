@@ -369,13 +369,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Doanh thu (VND)',
                     data: data.values,
-                    borderColor: '#a67c52',
-                    backgroundColor: 'rgba(166, 124, 82, 0.1)',
+                    borderColor: 'var(--color-primary)',
+                    backgroundColor: 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)',
                     borderWidth: 3,
                     tension: 0,
                     fill: true,
                     pointRadius: 4,
-                    pointBackgroundColor: '#a67c52'
+                    pointBackgroundColor: 'var(--color-primary)'
                 }]
             },
             options: {
@@ -410,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         grid: {
                             drawBorder: false,
-                            color: 'rgba(0, 0, 0, 0.05)'
+                            color: 'color-mix(in srgb, var(--color-ink) 5.0%, transparent)'
                         }
                     },
                     x: {

@@ -133,7 +133,7 @@
                 <!-- Thống kê nhanh -->
                 <div class="data-stats-grid mb-4">
                     <div class="data-stat-item">
-                        <div class="data-stat-icon" style="background: rgba(54, 185, 204, 0.1); color: #36b9cc;">
+                        <div class="data-stat-icon" style="background: color-mix(in srgb, var(--status-information) 10.0%, transparent); color: var(--status-information);">
                             <i class="bi bi-people"></i>
                         </div>
                         <div class="data-stat-info">
@@ -142,7 +142,7 @@
                         </div>
                     </div>
                     <div class="data-stat-item">
-                        <div class="data-stat-icon" style="background: rgba(166, 124, 82, 0.1); color: #a67c52;">
+                        <div class="data-stat-icon" style="background: color-mix(in srgb, var(--color-primary) 10.0%, transparent); color: var(--color-primary);">
                             <i class="bi bi-scissors"></i>
                         </div>
                         <div class="data-stat-info">
@@ -151,7 +151,7 @@
                         </div>
                     </div>
                     <div class="data-stat-item">
-                        <div class="data-stat-icon" style="background: rgba(246, 194, 62, 0.1); color: #f6c23e;">
+                        <div class="data-stat-icon" style="background: color-mix(in srgb, var(--status-warning) 10.0%, transparent); color: var(--status-warning);">
                             <i class="bi bi-calendar-check"></i>
                         </div>
                         <div class="data-stat-info">
@@ -160,7 +160,7 @@
                         </div>
                     </div>
                     <div class="data-stat-item">
-                        <div class="data-stat-icon" style="background: rgba(28, 200, 138, 0.1); color: #1cc88a;">
+                        <div class="data-stat-icon" style="background: color-mix(in srgb, var(--status-success) 10.0%, transparent); color: var(--status-success);">
                             <i class="bi bi-receipt"></i>
                         </div>
                         <div class="data-stat-info">
@@ -259,7 +259,7 @@
                         <button type="button" class="btn btn-create-backup" data-bs-toggle="modal" data-bs-target="#createBackupModal" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL"{% endif %}>
                             <i class="bi bi-cloud-arrow-up-fill"></i> Tạo bản sao lưu
                         </button>
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL"{% endif %}>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal" style="border-radius: var(--radius-control); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;" {% if backup_engine == 'postgresql' %}disabled aria-disabled="true" title="Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL"{% endif %}>
                             <i class="bi bi-upload"></i> Nhập bản sao lưu
                         </button>
                     </div>
@@ -454,11 +454,11 @@
                         </div>
                         <div class="about-row">
                             <span class="about-label"><i class="bi bi-calendar-event me-2"></i>Ngày build</span>
-                            <span class="about-value">29/06/2026</span>
+                            <span class="about-value">26/06/2026</span>
                         </div>
                         <div class="about-row">
-                            <span class="about-label"><i class="bi bi-people me-2"></i>Nhóm thực hiện</span>
-                            <span class="about-value">Trường Văn</span>
+                            <span class="about-label"><i class="bi bi-people me-2"></i>Người thực hiện</span>
+                            <span class="about-value">Văn Công Trường</span>
                         </div>
                     </div>
                 </div>

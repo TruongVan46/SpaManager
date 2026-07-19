@@ -20,10 +20,10 @@
     display: inline-block;
     width: 120px;
     height: 120px;
-    border-radius: var(--spa-radius-lg);
+    border-radius: var(--radius-surface);
     overflow: hidden;
-    border: 2px dashed var(--spa-border-color);
-    background: var(--spa-secondary);
+    border: 2px dashed var(--color-border);
+    background: var(--color-surface-elevated);
     position: relative;
 }
 
@@ -40,7 +40,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     gap: 4px;
 }
 
@@ -66,21 +66,21 @@
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: var(--spa-secondary);
-    border-radius: var(--spa-radius-md);
-    border: 1px solid var(--spa-border-color);
-    transition: var(--spa-transition);
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+    transition: var(--motion-transition);
 }
 
 .data-stat-item:hover {
-    box-shadow: var(--spa-shadow-normal);
+    box-shadow: var(--elevation-dropdown);
     transform: translateY(-1px);
 }
 
 .data-stat-icon {
     width: 48px;
     height: 48px;
-    border-radius: var(--spa-radius-md);
+    border-radius: var(--radius-card);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -96,13 +96,13 @@
 .data-stat-count {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     line-height: 1.2;
 }
 
 .data-stat-label {
     font-size: 0.8rem;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     font-weight: 500;
 }
 
@@ -111,9 +111,9 @@
    ────────────────────────────────────────────── */
 .data-action-card {
     padding: 20px;
-    background: var(--spa-secondary);
-    border-radius: var(--spa-radius-md);
-    border: 1px solid var(--spa-border-color);
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
     height: 100%;
 }
 
@@ -145,20 +145,20 @@
 
 .import-step {
     padding: 12px;
-    border-radius: var(--spa-radius-sm);
-    background: var(--spa-white);
-    border: 1px solid var(--spa-border-color);
-    transition: var(--spa-transition);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    transition: var(--motion-transition);
 }
 
 .import-step.active {
-    border-color: var(--spa-primary);
-    background: var(--spa-primary-light);
+    border-color: var(--color-primary);
+    background: var(--color-primary-tint);
 }
 
 .import-step.completed {
-    border-color: var(--spa-success);
-    background: var(--spa-success-light);
+    border-color: var(--status-success);
+    background: var(--status-success-surface);
 }
 
 .step-indicator {
@@ -175,21 +175,21 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: var(--spa-primary);
-    color: var(--spa-white);
+    background: var(--color-primary);
+    color: var(--color-surface);
     font-size: 0.75rem;
     font-weight: 600;
     flex-shrink: 0;
 }
 
 .import-step.completed .step-badge {
-    background: var(--spa-success);
+    background: var(--status-success);
 }
 
 .step-title {
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
 }
 
 /* ──────────────────────────────────────────────
@@ -209,9 +209,9 @@
 .import-result-item {
     text-align: center;
     padding: 8px;
-    border-radius: var(--spa-radius-sm);
-    background: var(--spa-white);
-    border: 1px solid var(--spa-border-color);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
 }
 
 .import-result-item .result-number {
@@ -222,21 +222,21 @@
 
 .import-result-item .result-label {
     font-size: 0.7rem;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .import-result-item.success .result-number {
-    color: var(--spa-success);
+    color: var(--status-success);
 }
 
 .import-result-item.failed .result-number {
-    color: var(--spa-danger);
+    color: var(--status-danger);
 }
 
 .import-result-item.total .result-number {
-    color: var(--spa-info);
+    color: var(--status-information);
 }
 
 .import-error-list {
@@ -248,15 +248,15 @@
 .import-error-item {
     padding: 6px 10px;
     margin-bottom: 4px;
-    background: var(--spa-danger-light);
-    border-left: 3px solid var(--spa-danger);
-    border-radius: var(--spa-radius-sm);
+    background: var(--status-danger-surface);
+    border-left: 3px solid var(--status-danger);
+    border-radius: var(--radius-control);
     font-size: 0.8rem;
 }
 
 .import-error-item .error-row {
     font-weight: 600;
-    color: var(--spa-danger);
+    color: var(--status-danger);
 }
 
 /* ──────────────────────────────────────────────
@@ -271,11 +271,11 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--spa-primary), var(--spa-primary-hover));
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--spa-white);
+    color: var(--color-surface);
     font-size: 2rem;
 }
 
@@ -289,7 +289,7 @@
 }
 
 .about-details {
-    border-top: 1px solid var(--spa-border-color);
+    border-top: 1px solid var(--color-border);
     padding-top: 16px;
 }
 
@@ -298,7 +298,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid var(--spa-border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .about-row:last-child {
@@ -307,26 +307,26 @@
 
 .about-label {
     font-weight: 500;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     font-size: 0.9rem;
 }
 
 .about-value {
     font-weight: 600;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     font-size: 0.9rem;
 }
 
 /* Backup / Restore confirmation helpers */
 .backup-ux-hint {
-    border-radius: var(--spa-radius-md);
+    border-radius: var(--radius-card);
 }
 
 .restore-warning-box,
 .delete-warning-box {
-    border: 1px solid var(--spa-border-color);
-    border-radius: var(--spa-radius-md);
-    background: var(--spa-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-elevated);
     padding: 12px 14px;
 }
 
@@ -336,9 +336,9 @@
     align-items: flex-start;
     gap: 10px;
     padding: 12px 14px;
-    border-radius: var(--spa-radius-md);
-    border: 1px dashed var(--spa-border-color);
-    background: var(--spa-bg);
+    border-radius: var(--radius-card);
+    border: 1px dashed var(--color-border);
+    background: var(--color-canvas);
 }
 
 .restore-confirm-check .form-check-input,
@@ -396,16 +396,24 @@
 }
 
 #backup-drag-drop-zone.dragover {
-    background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
+    background-color: color-mix(in srgb, var(--color-primary) 8%, transparent) !important;
     border-color: var(--bs-warning) !important;
     border-style: solid !important;
-    box-shadow: 0 0 12px rgba(var(--bs-primary-rgb), 0.15);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
 /* Version 7 settings and profile presentation layer. */
 .settings-page,
 .profile-page {
     min-width: 0;
+}
+
+/* Keep the outer Backup Center surface dark and distinct from its nested
+   status/help cards when the Settings page is rendered in dark mode. */
+body.dark-theme .settings-page {
+    --settings-section-surface: var(--color-surface-elevated);
+    --settings-readonly-surface: var(--color-surface-elevated);
+    --settings-surface: var(--color-surface);
 }
 
 .settings-page-header,

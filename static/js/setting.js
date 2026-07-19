@@ -1027,7 +1027,7 @@ if (uploadBackupForm) {
 }
 
 // Step 1 -> Step 2: Validate backup
-wizardBtnContinue1.addEventListener('click', function () {
+if (wizardBtnContinue1) { wizardBtnContinue1.addEventListener('click', function () {
     if (!wizardBackupId) return;
     fetch(`/settings/restore-wizard/validate/${wizardBackupId}`)
         .then(res => res.json())
@@ -1050,17 +1050,17 @@ wizardBtnContinue1.addEventListener('click', function () {
             console.error(err);
             Notification.error('Lỗi khi kiểm tra backup.');
         });
-});
+}); }
 
 // Step 2 -> Step 3: Show warning / confirm
-wizardBtnContinue2.addEventListener('click', function () {
+if (wizardBtnContinue2) { wizardBtnContinue2.addEventListener('click', function () {
     wizardStep2.classList.add('d-none');
     wizardStep3.classList.remove('d-none');
     wizardWarningMsg.textContent = 'Bạn chắc chắn muốn khôi phục? Thao tác này sẽ ghi đè dữ liệu hiện tại.';
-});
+}); }
 
 // Confirm restore
-wizardBtnConfirm.addEventListener('click', function () {
+if (wizardBtnConfirm) { wizardBtnConfirm.addEventListener('click', function () {
     if (!wizardBackupId) return;
     if (wizardRestoreConfirmCheck && !wizardRestoreConfirmCheck.checked) return;
     
@@ -1143,16 +1143,16 @@ wizardBtnConfirm.addEventListener('click', function () {
             });
             if (restoreCloseHeader) restoreCloseHeader.style.display = 'block';
         });
-});
+}); }
 
 // Block close / escape during restore database execution
-restoreWizardModalEl.addEventListener('hide.bs.modal', function (e) {
+if (restoreWizardModalEl) { restoreWizardModalEl.addEventListener('hide.bs.modal', function (e) {
     if (isExecutingRestore) {
         e.preventDefault();
         Notification.warning("Đang khôi phục cơ sở dữ liệu, vui lòng chờ hoàn tất.");
         return;
     }
-});
+}); }
     // Duplicate simple restore modal handler deactivated in favor of Restore Wizard
 
     // Delete Backup buttons click

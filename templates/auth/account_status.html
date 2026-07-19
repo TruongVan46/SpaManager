@@ -56,13 +56,13 @@
     }
 
     .auth-card {
-        background: rgba(255, 255, 255, 0.85);
+        background: color-mix(in srgb, var(--color-surface) 85.0%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(166, 124, 82, 0.15);
+        border: 1px solid color-mix(in srgb, var(--color-primary) 15.0%, transparent);
         border-radius: 16px;
         padding: 40px 30px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 0 5px 15px rgba(166, 124, 82, 0.03);
+        box-shadow: 0 15px 35px color-mix(in srgb, var(--color-ink) 8.0%, transparent), 0 5px 15px color-mix(in srgb, var(--color-primary) 3.0%, transparent);
     }
 
     .auth-logo-icon {
@@ -70,23 +70,23 @@
         height: 70px;
         margin: 0 auto 15px;
         border-radius: 18px;
-        background: rgba(166, 124, 82, 0.15);
+        background: color-mix(in srgb, var(--color-primary) 15.0%, transparent);
         display: flex;
         justify-content: center;
         align-items: center;
         font-size: 32px;
-        color: var(--spa-primary, #a67c52);
+        color: var(--color-primary);
     }
 
     .auth-title {
         font-weight: 700;
         letter-spacing: 0.3px;
-        color: #333;
+        color: var(--color-text-default);
         font-size: 1.5rem;
     }
 
     .auth-subtitle {
-        color: #666;
+        color: var(--color-text-muted);
         font-size: 0.95rem;
         margin-bottom: 0;
     }

@@ -45,7 +45,7 @@
 .appointment-summary-value {
     font-size: 1.75rem;
     font-weight: 700;
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
     line-height: 1.2;
     margin-bottom: 0.25rem;
 }
@@ -58,28 +58,28 @@
 }
 
 .appointment-summary-icon i {
-    color: var(--spa-border-color);
+    color: var(--color-border);
 }
 
 /* Border colors for the left border */
 .appointment-summary-card.border-left-primary {
-    border-left: 4px solid var(--spa-info) !important;
+    border-left: 4px solid var(--status-information) !important;
 }
 
 .appointment-summary-card.border-left-warning {
-    border-left: 4px solid var(--spa-warning) !important;
+    border-left: 4px solid var(--status-warning) !important;
 }
 
 .appointment-summary-card.border-left-info {
-    border-left: 4px solid var(--spa-info) !important;
+    border-left: 4px solid var(--status-information) !important;
 }
 
 .appointment-summary-card.border-left-success {
-    border-left: 4px solid var(--spa-success) !important;
+    border-left: 4px solid var(--status-success) !important;
 }
 
 .appointment-summary-card.border-left-danger {
-    border-left: 4px solid var(--spa-danger) !important;
+    border-left: 4px solid var(--status-danger) !important;
 }
 
 /* Filter inputs specific layouts */
@@ -118,31 +118,31 @@
 
 .appointment-page .select2-container--default .select2-selection--single {
     height: 38px !important;
-    border: 1px solid var(--spa-border-color) !important;
-    border-radius: var(--spa-radius-md) !important;
-    background-color: var(--spa-white) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-card) !important;
+    background-color: var(--color-surface) !important;
     display: flex !important;
     align-items: center !important;
     box-shadow: none !important;
-    transition: var(--spa-transition) !important;
+    transition: var(--motion-transition) !important;
 
     .appointment-page .select2-container--default .select2-selection--single:focus,
     .appointment-page .select2-container--default .select2-selection--single[aria-expanded="true"] {
-        border-color: var(--spa-primary) !important;
-        box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.15) !important;
+        border-color: var(--color-primary) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15.0%, transparent) !important;
         outline: none !important;
     }
 
     .appointment-page .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: var(--spa-text-main) !important;
+        color: var(--color-text-default) !important;
         padding-left: 12px !important;
         padding-right: 30px !important;
         font-size: 14px !important;
-        font-family: var(--spa-font) !important;
+        font-family: var(--font-family-sans) !important;
         line-height: 26px !important;
 
         .appointment-page .select2-container--default .select2-selection--single .select2-selection__placeholder {
-            color: #6c757d !important;
+            color: var(--color-text-muted) !important;
         }
 
         .appointment-page .select2-container--default .select2-selection--single .select2-selection__arrow {
@@ -154,25 +154,25 @@
             width: 20px !important;
 
             .appointment-page .select2-dropdown {
-                border: 1px solid var(--spa-border-color) !important;
-                border-radius: var(--spa-radius-md) !important;
-                box-shadow: var(--spa-shadow-lg) !important;
+                border: 1px solid var(--color-border) !important;
+                border-radius: var(--radius-card) !important;
+                box-shadow: var(--elevation-modal) !important;
                 z-index: var(--z-index-popover) !important;
             }
 
             .appointment-page .select2-container--default .select2-results__option--highlighted[aria-selected] {
-                background-color: var(--spa-primary) !important;
-                color: var(--spa-white) !important;
+                background-color: var(--color-primary) !important;
+                color: var(--color-surface) !important;
             }
 
             .appointment-page .select2-container--default .select2-results__option[aria-selected="true"] {
-                background-color: #f8f9fa !important;
-                color: var(--spa-text-main) !important;
+                background-color: var(--color-canvas) !important;
+                color: var(--color-text-default) !important;
             }
 
             .appointment-page .select2-container--default .select2-search--dropdown .select2-search__field {
-                border: 1px solid var(--spa-border-color) !important;
-                border-radius: var(--spa-radius-sm) !important;
+                border: 1px solid var(--color-border) !important;
+                border-radius: var(--radius-control) !important;
                 outline: none !important;
             }
 
@@ -222,7 +222,7 @@
             /* Dropdown menu animation */
             .status-dropdown .dropdown-menu {
                 border-radius: 0.5rem;
-                box-shadow: var(--spa-shadow-lg) !important;
+                box-shadow: var(--elevation-modal) !important;
                 animation: dropdownFadeIn 0.15s ease-out;
                 max-height: 220px;
                 overflow-y: auto;
@@ -241,18 +241,18 @@
 
             .status-dropdown .dropdown-item {
                 font-size: 0.85rem;
-                color: #495057;
+                color: var(--color-text-muted);
                 transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
             }
 
             .status-dropdown .dropdown-item:hover:not(.disabled) {
-                background-color: #f8f9fa;
-                color: #212529;
+                background-color: var(--color-canvas);
+                color: var(--color-text-default);
             }
 
             .status-dropdown .dropdown-item.active {
-                background-color: #e9ecef;
-                color: #212529;
+                background-color: var(--color-border);
+                color: var(--color-text-default);
             }
 
 

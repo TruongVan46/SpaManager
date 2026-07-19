@@ -68,13 +68,13 @@
     }
 
     .auth-card {
-        background: rgba(255, 255, 255, 0.85);
+        background: color-mix(in srgb, var(--color-surface) 85.0%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(166, 124, 82, 0.15);
+        border: 1px solid color-mix(in srgb, var(--color-primary) 15.0%, transparent);
         border-radius: 16px;
         padding: 40px 30px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 0 5px 15px rgba(166, 124, 82, 0.03);
+        box-shadow: 0 15px 35px color-mix(in srgb, var(--color-ink) 8.0%, transparent), 0 5px 15px color-mix(in srgb, var(--color-primary) 3.0%, transparent);
     }
 
     .auth-logo-icon {
@@ -82,25 +82,25 @@
         height: 70px;
         margin: 0 auto 15px;
         border-radius: 18px;
-        background: rgba(166, 124, 82, 0.15);
+        background: color-mix(in srgb, var(--color-primary) 15.0%, transparent);
         display: flex;
         justify-content: center;
         align-items: center;
         font-size: 32px;
-        color: var(--spa-primary, #a67c52);
+        color: var(--color-primary);
         animation: pulse 2s infinite;
     }
 
     .auth-title {
         font-weight: 700;
         letter-spacing: 0.5px;
-        color: #333;
+        color: var(--color-text-default);
         margin-bottom: 2px;
         font-size: 1.5rem;
     }
 
     .auth-subtitle {
-        color: #888;
+        color: var(--color-text-subtle);
         font-size: 0.9rem;
         margin-bottom: 8px;
     }
@@ -111,7 +111,7 @@
     }
 
     .input-group-text {
-        border: 1px solid #ced4da;
+        border: 1px solid var(--color-border);
         border-radius: 8px;
     }
 
@@ -120,8 +120,8 @@
     }
 
     .app-form-control:focus {
-        border-color: var(--spa-primary, #a67c52);
-        box-shadow: 0 0 0 0.25rem rgba(166, 124, 82, 0.15);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-primary) 15.0%, transparent);
     }
 
     @keyframes fadeIn {

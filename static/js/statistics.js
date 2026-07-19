@@ -22,10 +22,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const style = getComputedStyle(document.body);
-    const primaryColor = style.getPropertyValue('--spa-primary').trim() || '#a67c52';
-    const primaryLight = style.getPropertyValue('--spa-primary-light').trim() || 'rgba(166, 124, 82, 0.1)';
-    const textSecondary = style.getPropertyValue('--spa-text-secondary').trim() || '#6c757d';
-    const borderColor = style.getPropertyValue('--spa-border-color').trim() || '#e9ecef';
+    const primaryColor = style.getPropertyValue('--color-primary').trim() || 'var(--color-primary)';
+    const primaryLight = style.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
+    const textSecondary = style.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
+    const borderColor = style.getPropertyValue('--color-border').trim() || 'var(--color-border)';
 
     // Create Line Chart
     const revenueChartInstance = new Chart(ctx, {
@@ -94,10 +94,10 @@ document.addEventListener("DOMContentLoaded", function () {
         window.ThemeManager.onThemeChanged(function() {
             if (revenueChartInstance) {
                 const currentStyle = getComputedStyle(document.body);
-                const currentPrimary = currentStyle.getPropertyValue('--spa-primary').trim() || '#a67c52';
-                const currentPrimaryLight = currentStyle.getPropertyValue('--spa-primary-light').trim() || 'rgba(166, 124, 82, 0.1)';
-                const currentTextSecondary = currentStyle.getPropertyValue('--spa-text-secondary').trim() || '#6c757d';
-                const currentBorder = currentStyle.getPropertyValue('--spa-border-color').trim() || '#e9ecef';
+                const currentPrimary = currentStyle.getPropertyValue('--color-primary').trim() || 'var(--color-primary)';
+                const currentPrimaryLight = currentStyle.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
+                const currentTextSecondary = currentStyle.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
+                const currentBorder = currentStyle.getPropertyValue('--color-border').trim() || 'var(--color-border)';
 
                 // Update dataset colors
                 if (revenueChartInstance.data.datasets && revenueChartInstance.data.datasets[0]) {

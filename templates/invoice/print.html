@@ -13,22 +13,22 @@
             font-family: 'Be Vietnam Pro', sans-serif;
             margin: 0;
             padding: 0;
-            color: #333;
-            background-color: #fff;
+            color: var(--color-text-default);
+            background-color: var(--color-surface);
         }
         .invoice-box {
             max-width: 800px;
             margin: auto;
             padding: 30px;
-            border: 1px solid #eee;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--color-border);
+            box-shadow: 0 0 10px color-mix(in srgb, var(--color-ink) 5.0%, transparent);
         }
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 30px;
-            border-bottom: 2px solid #333;
+            border-bottom: 2px solid var(--color-text-default);
             padding-bottom: 20px;
         }
         .spa-info {
@@ -45,12 +45,12 @@
             margin: 0;
             font-size: 24px;
             text-transform: uppercase;
-            color: #000;
+            color: var(--color-ink);
         }
         .spa-details p {
             margin: 2px 0;
             font-size: 14px;
-            color: #666;
+            color: var(--color-text-muted);
         }
         .invoice-title {
             text-align: right;
@@ -58,7 +58,7 @@
         .invoice-title h2 {
             margin: 0;
             font-size: 28px;
-            color: #333;
+            color: var(--color-text-default);
             text-transform: uppercase;
         }
         .invoice-title p {
@@ -73,7 +73,7 @@
         .customer-info h3, .date-info h3 {
             font-size: 16px;
             margin-bottom: 10px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid var(--color-border);
             display: inline-block;
             padding-bottom: 5px;
         }
@@ -87,15 +87,15 @@
             margin-bottom: 30px;
         }
         table th {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #ddd;
+            background-color: var(--color-canvas);
+            border-bottom: 2px solid var(--color-border);
             text-align: left;
             padding: 12px;
             font-size: 14px;
         }
         table td {
             padding: 12px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--color-border);
             font-size: 14px;
         }
         .text-right {
@@ -119,7 +119,7 @@
         .total-row.grand-total {
             font-weight: bold;
             font-size: 18px;
-            border-top: 2px solid #333;
+            border-top: 2px solid var(--color-text-default);
             padding-top: 10px;
             margin-top: 10px;
         }
@@ -127,7 +127,7 @@
             margin-top: 50px;
             text-align: center;
             font-size: 13px;
-            color: #888;
+            color: var(--color-text-subtle);
         }
         .signature-section {
             display: flex;
@@ -153,7 +153,7 @@
                 margin: 0;
             }
             body {
-                background-color: #fff;
+                background-color: var(--color-surface);
                 padding: 1.5cm;
             }
             .invoice-box {
@@ -173,7 +173,7 @@
                 bottom: 1.5cm;
                 right: 1.5cm;
                 font-size: 12px;
-                color: #666;
+                color: var(--color-text-muted);
                 font-family: 'Be Vietnam Pro', sans-serif;
             }
         }
@@ -188,41 +188,41 @@
         }
         .btn-print {
             padding: 10px 20px;
-            background-color: #a67c52;
-            color: #fff;
+            background-color: var(--color-primary);
+            color: var(--color-surface);
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-size: 15px;
             font-weight: 500;
-            box-shadow: 0 2px 8px rgba(166, 124, 82, 0.25);
+            box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 25.0%, transparent);
             display: inline-flex;
             align-items: center;
             text-decoration: none;
             transition: background-color 0.2s ease;
         }
         .btn-print:hover {
-            background-color: #8e663f;
+            background-color: var(--color-primary-hover);
         }
         .btn-back {
             padding: 10px 20px;
-            background-color: #ffffff;
-            color: #495057;
-            border: 1px solid #ced4da;
+            background-color: var(--color-surface);
+            color: var(--color-text-muted);
+            border: 1px solid var(--color-border);
             border-radius: 6px;
             cursor: pointer;
             font-size: 15px;
             font-weight: 500;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 5px color-mix(in srgb, var(--color-ink) 5.0%, transparent);
             display: inline-flex;
             align-items: center;
             text-decoration: none;
             transition: all 0.2s ease;
         }
         .btn-back:hover {
-            background-color: #f8f9fa;
-            color: #212529;
-            border-color: #adb5bd;
+            background-color: var(--color-canvas);
+            color: var(--color-text-default);
+            border-color: var(--color-text-subtle);
         }
     </style>
 </head>
@@ -295,7 +295,7 @@
                 <span>{{ "{:,.0f}".format(invoice.subtotal) }} đ</span>
             </div>
             {% if invoice.discount > 0 %}
-            <div class="total-row" style="color: red;">
+            <div class="total-row" style="color: var(--status-danger);">
                 <span>Giảm giá:</span>
                 <span>- {{ "{:,.0f}".format(invoice.discount) }} đ</span>
             </div>

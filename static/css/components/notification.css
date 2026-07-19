@@ -22,9 +22,9 @@
 .spa-toast {
     position: relative;
     width: 100%;
-    background-color: var(--spa-white, #ffffff);
-    border-radius: var(--spa-radius-md, 8px);
-    box-shadow: var(--spa-shadow-lg);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-card, 8px);
+    box-shadow: var(--elevation-modal);
     overflow: hidden;
     pointer-events: auto; /* Re-enable pointer events for interactions */
     display: flex;
@@ -111,7 +111,7 @@
 .spa-toast-progress {
     height: 3px;
     width: 100%;
-    background-color: rgba(var(--spa-black-rgb), 0.04);
+    background-color: rgba(var(--color-ink-rgb), 0.04);
 }
 
 /* Progress bar fill */
@@ -127,54 +127,54 @@
 
 /* Success Context (Light Green) */
 .spa-toast-success {
-    background-color: #e8f5e9;
-    border: 1px solid #c8e6c9;
-    color: #2e7d32;
+    background-color: var(--status-success-surface);
+    border: 1px solid var(--status-success-border);
+    color: var(--status-success);
 }
 .spa-toast-success .spa-toast-progress-bar {
-    background-color: #2e7d32;
+    background-color: var(--status-success);
 }
 .spa-toast-success .spa-toast-icon {
-    color: #2e7d32;
+    color: var(--status-success);
 }
 
 /* Error Context (Light Red) */
 .spa-toast-error {
-    background-color: #ffebee;
-    border: 1px solid #ffcdd2;
-    color: #c62828;
+    background-color: var(--status-danger-surface);
+    border: 1px solid var(--status-danger-border);
+    color: var(--status-danger);
 }
 .spa-toast-error .spa-toast-progress-bar {
-    background-color: #c62828;
+    background-color: var(--status-danger);
 }
 .spa-toast-error .spa-toast-icon {
-    color: #c62828;
+    color: var(--status-danger);
 }
 
 /* Warning Context (Light Orange) */
 .spa-toast-warning {
-    background-color: #fff3e0;
-    border: 1px solid #ffe0b2;
-    color: #e65100;
+    background-color: var(--status-warning-surface);
+    border: 1px solid var(--status-warning-border);
+    color: var(--status-warning);
 }
 .spa-toast-warning .spa-toast-progress-bar {
-    background-color: #e65100;
+    background-color: var(--status-warning);
 }
 .spa-toast-warning .spa-toast-icon {
-    color: #e65100;
+    color: var(--status-warning);
 }
 
 /* Info Context (Light Blue) */
 .spa-toast-info {
-    background-color: #e1f5fe;
-    border: 1px solid #b3e5fc;
-    color: #0277bd;
+    background-color: var(--status-information-surface);
+    border: 1px solid var(--status-information-border);
+    color: var(--status-information);
 }
 .spa-toast-info .spa-toast-progress-bar {
-    background-color: #0277bd;
+    background-color: var(--status-information);
 }
 .spa-toast-info .spa-toast-icon {
-    color: #0277bd;
+    color: var(--status-information);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -186,64 +186,64 @@ body.dark-theme .spa-toast,
 body.dark-mode .spa-toast,
 .dark-theme .spa-toast,
 .dark-mode .spa-toast {
-    background-color: #1e1e1e;
-    box-shadow: var(--spa-shadow-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--elevation-modal);
 }
 
 body.dark-theme .spa-toast-success,
 body.dark-mode .spa-toast-success,
 .dark-theme .spa-toast-success,
 .dark-mode .spa-toast-success {
-    border-color: rgba(46, 125, 50, 0.45);
-    color: #81c784;
+    border-color: color-mix(in srgb, var(--color-ink) 45.0%, transparent);
+    color: var(--status-success);
 }
 body.dark-theme .spa-toast-success .spa-toast-progress-bar,
 body.dark-mode .spa-toast-success .spa-toast-progress-bar,
 .dark-theme .spa-toast-success .spa-toast-progress-bar,
 .dark-mode .spa-toast-success .spa-toast-progress-bar {
-    background-color: #81c784;
+    background-color: var(--status-success);
 }
 
 body.dark-theme .spa-toast-error,
 body.dark-mode .spa-toast-error,
 .dark-theme .spa-toast-error,
 .dark-mode .spa-toast-error {
-    border-color: rgba(198, 40, 40, 0.45);
-    color: #e57373;
+    border-color: color-mix(in srgb, var(--color-ink) 45.0%, transparent);
+    color: var(--status-danger);
 }
 body.dark-theme .spa-toast-error .spa-toast-progress-bar,
 body.dark-mode .spa-toast-error .spa-toast-progress-bar,
 .dark-theme .spa-toast-error .spa-toast-progress-bar,
 .dark-mode .spa-toast-error .spa-toast-progress-bar {
-    background-color: #e57373;
+    background-color: var(--status-danger);
 }
 
 body.dark-theme .spa-toast-warning,
 body.dark-mode .spa-toast-warning,
 .dark-theme .spa-toast-warning,
 .dark-mode .spa-toast-warning {
-    border-color: rgba(230, 81, 0, 0.45);
-    color: #ffb74d;
+    border-color: color-mix(in srgb, var(--color-ink) 45.0%, transparent);
+    color: var(--status-warning);
 }
 body.dark-theme .spa-toast-warning .spa-toast-progress-bar,
 body.dark-mode .spa-toast-warning .spa-toast-progress-bar,
 .dark-theme .spa-toast-warning .spa-toast-progress-bar,
 .dark-mode .spa-toast-warning .spa-toast-progress-bar {
-    background-color: #ffb74d;
+    background-color: var(--status-warning);
 }
 
 body.dark-theme .spa-toast-info,
 body.dark-mode .spa-toast-info,
 .dark-theme .spa-toast-info,
 .dark-mode .spa-toast-info {
-    border-color: rgba(2, 119, 189, 0.45);
-    color: #64b5f6;
+    border-color: color-mix(in srgb, var(--color-ink) 45.0%, transparent);
+    color: var(--status-information);
 }
 body.dark-theme .spa-toast-info .spa-toast-progress-bar,
 body.dark-mode .spa-toast-info .spa-toast-progress-bar,
 .dark-theme .spa-toast-info .spa-toast-progress-bar,
 .dark-mode .spa-toast-info .spa-toast-progress-bar {
-    background-color: #64b5f6;
+    background-color: var(--status-information);
 }
 
 /* Mobile responsive adjustments */

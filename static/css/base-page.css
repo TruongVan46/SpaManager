@@ -2,157 +2,118 @@
    SpaManager Design System CSS (base-page.css)
    ========================================================================== */
 
-:root {
-    /* Color Palette */
-    --spa-primary: #a67c52;
-    --spa-primary-hover: #8e663f;
-    --spa-secondary: #f8f9fc;
-    --spa-secondary-hover: #eaecf4;
-    --spa-accent: #f6c23e;
-    --spa-white: #ffffff;
-    --spa-bg-main: #f8f9fa;
-    
-    /* Text Colors */
-    --spa-text-main: #2b2b2b;
-    --spa-text-muted: #858796;
-    
-    /* System Colors */
-    --spa-success: #1cc88a;
-    --spa-info: #36b9cc;
-    --spa-warning: #f6c23e;
-    --spa-danger: #e74a3b;
-    
-    /* Borders & Shadow System */
-    --spa-border-color: #e3e6f0;
-    --spa-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.04);
-    --spa-shadow-normal: 0 4px 12px rgba(0, 0, 0, 0.06);
-    
-    /* Border Radius System */
-    --spa-radius-lg: 12px;     /* Card, Modal, Dropdown, Table container */
-    --spa-radius-md: 8px;      /* Button, Input, Form fields */
-    --spa-radius-sm: 4px;      /* Badge, tiny UI elements */
-    
-    /* Transitions */
-    --spa-transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    --spa-font: 'Inter', sans-serif;
-}
-
 /* Base resets that respect Bootstrap but enforce branding */
 body {
-    font-family: var(--spa-font) !important;
-    background-color: var(--spa-bg-main);
-    color: var(--spa-text-main);
+    font-family: var(--font-family-sans) !important;
+    background-color: var(--color-canvas);
+    color: var(--color-text-default);
 }
 
 /* Typography Token Classes */
 .app-title {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 32px !important;
     font-weight: 600 !important; /* SemiBold */
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     line-height: 1.5 !important;
 }
 
 .app-subtitle {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 24px !important;
     font-weight: 600 !important; /* SemiBold */
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     line-height: 1.5 !important;
 }
 
 .app-section-title {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 24px !important;
     font-weight: 600 !important; /* SemiBold */
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     line-height: 1.5 !important;
 }
 
 .app-card-title {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 18px !important;
     font-weight: 600 !important; /* SemiBold */
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     line-height: 1.4 !important;
 }
 
 .app-text {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 14px !important;
     font-weight: 400 !important; /* Regular */
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     line-height: 1.5 !important;
 }
 
 .app-small {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 12px !important;
     font-weight: 400 !important; /* Regular */
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
     line-height: 1.5 !important;
 }
 
 .app-muted {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 12px !important;
     font-weight: 400 !important; /* Regular */
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
     line-height: 1.5 !important;
 }
 
 /* Backward compatibility for original styling */
 .app-h1 {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 32px !important;
     font-weight: 600 !important;
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
 }
 
 .app-h2 {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 24px !important;
     font-weight: 600 !important;
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
 }
 
 .app-label {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 14px !important;
     font-weight: 500 !important; /* Medium */
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     margin-bottom: 6px;
     display: inline-block;
 }
 
 .app-body-text {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 14px !important;
     font-weight: 400 !important;
-    color: var(--spa-text-main) !important;
+    color: var(--color-text-default) !important;
     line-height: 1.5 !important;
 }
 
 .app-small-text {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 12px !important;
     font-weight: 400 !important;
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
 }
 
 /* ===========================================================================
    Version 7 foundation: readable type, canvas rhythm and skip navigation
    =========================================================================== */
 body {
-    font-family: var(--font-family-sans, var(--spa-font));
+    font-family: var(--font-family-sans);
     font-size: var(--font-size-body, 1rem);
     line-height: var(--line-height-body, 1.5);
-    color: var(--color-text-default, var(--spa-text-main));
-    background-color: var(--color-canvas, var(--spa-bg-main));
+    color: var(--color-text-default);
+    background-color: var(--color-canvas);
     text-rendering: optimizeLegibility;
 }
 
@@ -162,7 +123,7 @@ h3,
 h4,
 h5,
 h6 {
-    color: var(--color-text-strong, var(--spa-text-main));
+    color: var(--color-text-strong, var(--color-text-default));
     line-height: var(--line-height-heading, 1.25);
     font-weight: var(--font-weight-semibold, 600);
 }
@@ -181,7 +142,7 @@ h6 {
 .app-small,
 .app-muted,
 .app-small-text {
-    color: var(--color-text-muted, var(--spa-text-muted));
+    color: var(--color-text-muted, var(--color-text-subtle));
 }
 
 /* Keep operational figures stable as values update. */
@@ -200,8 +161,8 @@ h6 {
     z-index: var(--z-layer-modal, 1100);
     padding: var(--space-2, 8px) var(--space-4, 16px);
     border-radius: var(--radius-control, 4px);
-    background: var(--color-primary-active, var(--spa-primary));
-    color: var(--color-surface, #fff);
+    background: var(--color-primary-active, var(--color-primary));
+    color: var(--color-surface);
     font-weight: var(--font-weight-semibold, 600);
     text-decoration: none;
     transform: translateY(-200%);
@@ -231,11 +192,11 @@ h6 {
    1. CARD SYSTEM (.app-card)
    ========================================================================== */
 .app-card {
-    background-color: var(--component-surface, var(--spa-white)) !important;
-    border: 1px solid var(--component-border, var(--spa-border-color)) !important;
-    border-radius: var(--radius-card, var(--spa-radius-lg)) !important;
-    box-shadow: var(--elevation-card, var(--spa-shadow-light)) !important;
-    transition: var(--spa-transition) !important;
+    background-color: var(--component-surface, var(--color-surface)) !important;
+    border: 1px solid var(--component-border, var(--color-border)) !important;
+    border-radius: var(--radius-card, var(--radius-surface)) !important;
+    box-shadow: var(--elevation-card) !important;
+    transition: var(--motion-transition) !important;
     overflow: hidden;
     margin-bottom: 24px;
     display: flex;
@@ -243,13 +204,13 @@ h6 {
 }
 
 .app-card:hover {
-    box-shadow: var(--spa-shadow-normal) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     transform: translateY(-2px);
 }
 
 .app-card-header {
-    background-color: var(--component-surface, var(--spa-white)) !important;
-    border-bottom: 1px solid var(--component-border, #edf2f9) !important;
+    background-color: var(--component-surface, var(--color-surface)) !important;
+    border-bottom: 1px solid var(--component-border, var(--color-border)) !important;
     padding: 16px 20px !important;
     height: 56px !important;
     display: flex !important;
@@ -261,8 +222,8 @@ h6 {
     margin: 0 !important;
     font-size: 15px !important;
     font-weight: 600 !important;
-    color: var(--spa-primary) !important;
-    font-family: var(--spa-font) !important;
+    color: var(--color-primary) !important;
+    font-family: var(--font-family-sans) !important;
 }
 
 .app-card-body {
@@ -272,23 +233,23 @@ h6 {
 
 /* Backwards compatibility for dashboard classes */
 .dashboard-card {
-    background-color: var(--spa-white) !important;
-    border: 1px solid var(--spa-border-color) !important;
-    border-radius: var(--spa-radius-lg) !important;
-    box-shadow: var(--spa-shadow-light) !important;
-    transition: var(--spa-transition) !important;
+    background-color: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-surface) !important;
+    box-shadow: var(--elevation-card) !important;
+    transition: var(--motion-transition) !important;
     overflow: hidden;
     margin-bottom: 24px;
 }
 
 .dashboard-card:hover {
-    box-shadow: var(--spa-shadow-normal) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     transform: translateY(-2px);
 }
 
 .dashboard-card .card-header {
-    background-color: var(--spa-white) !important;
-    border-bottom: 1px solid #edf2f9 !important;
+    background-color: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border) !important;
     padding: 16px 20px !important;
     height: 56px !important;
     display: flex !important;
@@ -300,7 +261,7 @@ h6 {
     margin: 0 !important;
     font-size: 15px !important;
     font-weight: 600 !important;
-    color: var(--spa-primary) !important;
+    color: var(--color-primary) !important;
 }
 
 .dashboard-card .card-body {
@@ -309,20 +270,20 @@ h6 {
 
 /* Stat Card layout */
 .stat-card {
-    background-color: var(--spa-white) !important;
-    border: 1px solid var(--spa-border-color) !important;
-    border-radius: var(--spa-radius-lg) !important;
-    box-shadow: var(--spa-shadow-light) !important;
+    background-color: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-surface) !important;
+    box-shadow: var(--elevation-card) !important;
     padding: 20px !important;
     display: flex !important;
     align-items: center !important;
     gap: 20px !important;
     margin-bottom: 12px;
-    transition: var(--spa-transition) !important;
+    transition: var(--motion-transition) !important;
 }
 
 .stat-card:hover {
-    box-shadow: var(--spa-shadow-normal) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     transform: translateY(-2px);
 }
 
@@ -330,17 +291,17 @@ h6 {
    2. BUTTON SYSTEM (.app-btn)
    ========================================================================== */
 .app-btn {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 13px !important;
     font-weight: 500 !important;
     min-height: 44px !important;
     padding: 8px 16px !important;
-    border-radius: var(--spa-radius-md) !important;
+    border-radius: var(--radius-card) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
-    transition: var(--spa-transition) !important;
+    transition: var(--motion-transition) !important;
     border: 1px solid transparent !important;
     cursor: pointer;
     text-decoration: none !important;
@@ -348,7 +309,7 @@ h6 {
 
 .app-btn:hover {
     transform: translateY(-1px);
-    box-shadow: var(--spa-shadow-light) !important;
+    box-shadow: var(--elevation-card) !important;
 }
 
 .app-btn i {
@@ -358,63 +319,63 @@ h6 {
 
 /* Button Colors */
 .app-btn-primary {
-    background-color: var(--spa-primary) !important;
-    border-color: var(--spa-primary) !important;
-    color: var(--spa-white) !important;
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-surface) !important;
 }
 .app-btn-primary:hover {
-    background-color: var(--spa-primary-hover) !important;
-    border-color: var(--spa-primary-hover) !important;
+    background-color: var(--color-primary-hover) !important;
+    border-color: var(--color-primary-hover) !important;
 }
 
 .app-btn-warning {
-    background-color: var(--spa-warning) !important;
-    border-color: var(--spa-warning) !important;
-    color: #333333 !important;
+    background-color: var(--status-warning) !important;
+    border-color: var(--status-warning) !important;
+    color: var(--color-text-default) !important;
 }
 .app-btn-warning:hover {
-    background-color: #dfae2a !important;
-    border-color: #dfae2a !important;
+    background-color: var(--color-text-default) !important;
+    border-color: var(--color-text-default) !important;
 }
 
 .app-btn-danger {
-    background-color: var(--spa-danger) !important;
-    border-color: var(--spa-danger) !important;
-    color: var(--spa-white) !important;
+    background-color: var(--status-danger) !important;
+    border-color: var(--status-danger) !important;
+    color: var(--color-surface) !important;
 }
 .app-btn-danger:hover {
-    background-color: #be3226 !important;
-    border-color: #be3226 !important;
+    background-color: var(--color-text-default) !important;
+    border-color: var(--color-text-default) !important;
 }
 
 .app-btn-secondary {
-    background-color: var(--spa-secondary) !important;
-    border-color: var(--spa-border-color) !important;
-    color: var(--spa-text-main) !important;
+    background-color: var(--color-surface-elevated) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text-default) !important;
 }
 .app-btn-secondary:hover {
-    background-color: var(--spa-secondary-hover) !important;
-    border-color: var(--spa-border-color) !important;
+    background-color: var(--color-selected-bg) !important;
+    border-color: var(--color-border) !important;
 }
 
 .app-btn-success {
-    background-color: var(--spa-success) !important;
-    border-color: var(--spa-success) !important;
-    color: var(--spa-white) !important;
+    background-color: var(--status-success) !important;
+    border-color: var(--status-success) !important;
+    color: var(--color-surface) !important;
 }
 .app-btn-success:hover {
-    background-color: #17a673 !important;
-    border-color: #17a673 !important;
+    background-color: var(--color-text-default) !important;
+    border-color: var(--color-text-default) !important;
 }
 
 .app-btn-outline-danger {
     background-color: transparent !important;
-    border-color: var(--spa-danger) !important;
-    color: var(--spa-danger) !important;
+    border-color: var(--status-danger) !important;
+    color: var(--status-danger) !important;
 }
 .app-btn-outline-danger:hover {
-    background-color: var(--spa-danger) !important;
-    color: var(--spa-white) !important;
+    background-color: var(--status-danger) !important;
+    color: var(--color-surface) !important;
 }
 
 /* Small Button Specific Override */
@@ -422,7 +383,7 @@ h6 {
     min-height: 36px !important;
     padding: 4px 10px !important;
     font-size: 12px !important;
-    border-radius: var(--spa-radius-sm) !important;
+    border-radius: var(--radius-control) !important;
 }
 
 /* ==========================================================================
@@ -430,7 +391,7 @@ h6 {
    ========================================================================== */
 .app-badge {
     padding: 6px 12px !important;
-    border-radius: var(--spa-radius-sm) !important;
+    border-radius: var(--radius-control) !important;
     font-size: 11px !important;
     font-weight: 600 !important;
     display: inline-flex !important;
@@ -449,36 +410,36 @@ h6 {
 .app-badge-confirmed,
 .badge.status-confirmed,
 .badge.bg-primary {
-    background-color: rgba(78, 115, 223, 0.1) !important;
-    color: #4e73df !important;
-    border-color: rgba(78, 115, 223, 0.2) !important;
+    background-color: color-mix(in srgb, var(--color-primary) 10.0%, transparent) !important;
+    color: var(--color-text-default) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 20.0%, transparent) !important;
 }
 
 /* Hoàn thành -> Xanh lá */
 .app-badge-completed,
 .badge.status-completed,
 .badge.bg-success {
-    background-color: rgba(28, 200, 138, 0.1) !important;
-    color: #1cc88a !important;
-    border-color: rgba(28, 200, 138, 0.2) !important;
+    background-color: color-mix(in srgb, var(--status-success) 10.0%, transparent) !important;
+    color: var(--status-success) !important;
+    border-color: color-mix(in srgb, var(--status-success) 20.0%, transparent) !important;
 }
 
 /* Chờ xác nhận -> Vàng */
 .app-badge-pending,
 .badge.status-pending,
 .badge.bg-warning {
-    background-color: rgba(246, 194, 62, 0.1) !important;
-    color: #f6c23e !important;
-    border-color: rgba(246, 194, 62, 0.2) !important;
+    background-color: color-mix(in srgb, var(--status-warning) 10.0%, transparent) !important;
+    color: var(--status-warning) !important;
+    border-color: color-mix(in srgb, var(--status-warning) 20.0%, transparent) !important;
 }
 
 /* Đã hủy -> Đỏ */
 .app-badge-cancelled,
 .badge.status-cancelled,
 .badge.bg-danger {
-    background-color: rgba(231, 74, 59, 0.1) !important;
-    color: #e74a3b !important;
-    border-color: rgba(231, 74, 59, 0.2) !important;
+    background-color: color-mix(in srgb, var(--status-danger) 10.0%, transparent) !important;
+    color: var(--status-danger) !important;
+    border-color: color-mix(in srgb, var(--status-danger) 20.0%, transparent) !important;
 }
 
 /* ==========================================================================
@@ -486,23 +447,23 @@ h6 {
    ========================================================================== */
 .app-form-control,
 .app-form-select {
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
     font-size: 14px !important;
     height: 38px !important;
-    border-radius: var(--spa-radius-md) !important;
-    border: 1px solid var(--spa-border-color) !important;
+    border-radius: var(--radius-card) !important;
+    border: 1px solid var(--color-border) !important;
     padding: 6px 12px !important;
-    color: var(--spa-text-main) !important;
-    background-color: var(--spa-white) !important;
-    transition: var(--spa-transition) !important;
+    color: var(--color-text-default) !important;
+    background-color: var(--color-surface) !important;
+    transition: var(--motion-transition) !important;
     box-shadow: none !important;
 }
 
 .app-form-control:focus,
 .app-form-select:focus {
-    border-color: var(--spa-primary) !important;
-    background-color: var(--spa-white) !important;
-    box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.15) !important;
+    border-color: var(--color-primary) !important;
+    background-color: var(--color-surface) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15.0%, transparent) !important;
     outline: none !important;
 }
 
@@ -511,7 +472,7 @@ h6 {
    Presentation-only layer scoped to the frozen operational form hooks.
    ========================================================================== */
 .app-core-form {
-    color: var(--form-text, var(--component-text, var(--spa-text-main)));
+    color: var(--form-text, var(--component-text, var(--color-text-default)));
 }
 
 .app-core-form .form-group,
@@ -525,7 +486,7 @@ h6 {
     align-items: baseline;
     gap: var(--space-1, 4px);
     margin-bottom: var(--space-2, 8px);
-    color: var(--form-text, var(--component-text, var(--spa-text-main)));
+    color: var(--form-text, var(--component-text, var(--color-text-default)));
     font-size: var(--font-size-label, 0.875rem);
     font-weight: var(--font-weight-semibold, 600);
     line-height: 1.35;
@@ -541,18 +502,18 @@ h6 {
 .app-core-form .form-select,
 .app-core-form textarea {
     min-width: 0;
-    color: var(--form-text, var(--component-text, var(--spa-text-main)));
-    border-color: var(--form-border, var(--component-border, var(--spa-border-color)));
-    border-radius: var(--radius-control, var(--spa-radius-md));
+    color: var(--form-text, var(--component-text, var(--color-text-default)));
+    border-color: var(--form-border, var(--component-border, var(--color-border)));
+    border-radius: var(--radius-control, var(--radius-card));
 }
 
 .app-core-form .form-control:hover,
 .app-core-form .form-select:hover {
-    border-color: var(--form-border-hover, var(--spa-primary));
+    border-color: var(--form-border-hover, var(--color-primary));
 }
 
 .app-core-form .form-control::placeholder {
-    color: var(--form-placeholder, var(--spa-text-muted));
+    color: var(--form-placeholder, var(--color-text-subtle));
     opacity: 1;
 }
 
@@ -560,7 +521,7 @@ h6 {
 .app-core-form .form-select:focus-visible,
 .app-core-form .form-check-input:focus-visible,
 .app-core-form button:focus-visible {
-    outline: var(--border-width-focus, 2px) solid var(--form-focus, var(--component-focus, var(--spa-primary)));
+    outline: var(--border-width-focus, 2px) solid var(--form-focus, var(--component-focus, var(--color-primary)));
     outline-offset: 2px;
 }
 
@@ -569,7 +530,7 @@ h6 {
 .app-core-form small:not(.text-danger) {
     display: block;
     margin-top: var(--space-1, 4px);
-    color: var(--form-help, var(--component-text-muted, var(--spa-text-muted)));
+    color: var(--form-help, var(--component-text-muted, var(--color-text-subtle)));
     font-size: var(--font-size-body-sm, 0.875rem);
     line-height: 1.45;
 }
@@ -658,7 +619,7 @@ h6 {
 }
 
 .app-core-modal .btn-close:focus-visible {
-    outline: var(--border-width-focus, 2px) solid var(--form-focus, var(--component-focus, var(--spa-primary)));
+    outline: var(--border-width-focus, 2px) solid var(--form-focus, var(--component-focus, var(--color-primary)));
     outline-offset: 2px;
 }
 
@@ -698,12 +659,12 @@ textarea.app-form-control {
    5. TABLE SYSTEM (.app-table)
    ========================================================================== */
 .app-table-container {
-    border: 1px solid var(--spa-border-color) !important;
-    border-radius: var(--spa-radius-lg) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-surface) !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    background-color: var(--spa-white) !important;
-    box-shadow: var(--spa-shadow-light) !important;
+    background-color: var(--color-surface) !important;
+    box-shadow: var(--elevation-card) !important;
 }
 
 .app-table {
@@ -714,38 +675,38 @@ textarea.app-form-control {
 }
 
 .app-table thead th {
-    background-color: var(--spa-card-bg) !important;
-    color: var(--spa-text-main) !important;
+    background-color: var(--color-surface) !important;
+    color: var(--color-text-default) !important;
     font-size: 12px !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
     padding: 14px 16px !important;
-    border-bottom: 2px solid var(--spa-border-color) !important;
+    border-bottom: 2px solid var(--color-border) !important;
     vertical-align: middle !important;
 }
 
 .app-table tbody tr:nth-of-type(odd) {
-    background-color: var(--spa-white) !important;
+    background-color: var(--color-surface) !important;
 }
 
 .app-table tbody tr:nth-of-type(even) {
-    background-color: #fbfbfc !important;
+    background-color: var(--color-canvas) !important;
 }
 
 .app-table tbody tr {
-    transition: var(--spa-transition) !important;
+    transition: var(--motion-transition) !important;
 }
 
 .app-table tbody tr:hover {
-    background-color: #f1f3f9 !important;
+    background-color: var(--color-canvas) !important;
 }
 
 .app-table tbody td {
     padding: 14px 16px !important;
     vertical-align: middle !important;
-    color: var(--spa-text-main) !important;
-    border-bottom: 1px solid #edf2f9 !important;
+    color: var(--color-text-default) !important;
+    border-bottom: 1px solid var(--color-border) !important;
 }
 
 /* ==========================================================================
@@ -753,14 +714,14 @@ textarea.app-form-control {
    ========================================================================== */
 .modal-content {
     border: none !important;
-    border-radius: var(--spa-radius-lg) !important;
-    box-shadow: var(--spa-shadow-normal) !important;
+    border-radius: var(--radius-surface) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     overflow: hidden !important;
 }
 
 .modal-header {
-    background-color: var(--spa-white) !important;
-    border-bottom: 1px solid #edf2f9 !important;
+    background-color: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border) !important;
     padding: 18px 24px !important;
 }
 
@@ -769,20 +730,20 @@ textarea.app-form-control {
 }
 
 .modal-footer {
-    background-color: var(--spa-bg) !important;
-    border-top: 1px solid var(--spa-border-color) !important;
+    background-color: var(--color-canvas) !important;
+    border-top: 1px solid var(--color-border) !important;
     padding: 16px 24px !important;
 }
 
 /* Offcanvas custom style */
 .offcanvas {
     border: none !important;
-    box-shadow: var(--spa-shadow-normal) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     transition: transform 0.25s ease-in-out !important;
 }
 
 .offcanvas-header {
-    border-bottom: 1px solid #edf2f9 !important;
+    border-bottom: 1px solid var(--color-border) !important;
     padding: 18px 24px !important;
 }
 
@@ -792,9 +753,9 @@ textarea.app-form-control {
 
 /* Dropdown styling */
 .dropdown-menu {
-    border: 1px solid #edf2f9 !important;
-    border-radius: var(--spa-radius-lg) !important;
-    box-shadow: var(--spa-shadow-normal) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-surface) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     padding: 8px 0 !important;
     animation: dropdownFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: top left;
@@ -814,18 +775,18 @@ textarea.app-form-control {
 .dropdown-item {
     font-size: 13px;
     padding: 8px 16px !important;
-    color: var(--spa-text-main);
-    transition: var(--spa-transition) !important;
+    color: var(--color-text-default);
+    transition: var(--motion-transition) !important;
 }
 
 .dropdown-item:hover {
-    background-color: var(--spa-secondary) !important;
-    color: var(--spa-primary) !important;
+    background-color: var(--color-surface-elevated) !important;
+    color: var(--color-primary) !important;
 }
 
 /* Alert Styling */
 .alert {
-    border-radius: var(--spa-radius-md) !important;
+    border-radius: var(--radius-card) !important;
     padding: 12px 20px;
     font-size: 13px;
     margin-bottom: 20px;
@@ -834,7 +795,7 @@ textarea.app-form-control {
     gap: 8px;
     z-index: 10;
     width: 100%;
-    box-shadow: var(--spa-shadow-light);
+    box-shadow: var(--elevation-card);
 }
 
 .alert-success {
@@ -913,13 +874,13 @@ textarea.app-form-control {
 }
 
 .app-search-box .input-group-text {
-    background-color: var(--spa-white) !important;
-    border: 1px solid var(--spa-border-color) !important;
+    background-color: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
     border-right: none !important;
-    border-top-left-radius: var(--spa-radius-md) !important;
-    border-bottom-left-radius: var(--spa-radius-md) !important;
+    border-top-left-radius: var(--radius-card) !important;
+    border-bottom-left-radius: var(--radius-card) !important;
     padding: 6px 12px !important;
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
     display: flex;
     align-items: center;
 }
@@ -964,12 +925,12 @@ textarea.app-form-control {
 .app-filter-bar a.app-btn {
     height: 38px !important;
     font-size: 13px !important;
-    font-family: var(--spa-font) !important;
+    font-family: var(--font-family-sans) !important;
 }
 
 /* Input placeholder styling */
 .app-filter-bar input::placeholder {
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
     opacity: 0.8;
 }
 
@@ -977,7 +938,7 @@ textarea.app-form-control {
 .app-filter-bar label {
     font-size: 12px !important;
     font-weight: 600 !important;
-    color: var(--spa-text-muted) !important;
+    color: var(--color-text-subtle) !important;
     margin-bottom: 6px !important;
     display: block;
 }
@@ -1029,16 +990,16 @@ textarea.app-form-control {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border: 1px solid var(--spa-border-color);
-    background-color: var(--spa-white);
-    border-radius: var(--spa-radius-lg);
-    box-shadow: var(--spa-shadow-sm);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-surface);
+    box-shadow: var(--elevation-card);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .app-kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: var(--spa-shadow-md);
+    box-shadow: var(--elevation-dropdown);
 }
 
 .app-kpi-card .app-card-body {
@@ -1067,36 +1028,36 @@ textarea.app-form-control {
 
 /* Color thematic left border options */
 .app-kpi-border-primary {
-    border-left: 4px solid var(--spa-primary) !important;
+    border-left: 4px solid var(--color-primary) !important;
 }
 .app-kpi-border-success {
-    border-left: 4px solid var(--spa-success) !important;
+    border-left: 4px solid var(--status-success) !important;
 }
 .app-kpi-border-warning {
-    border-left: 4px solid var(--spa-warning) !important;
+    border-left: 4px solid var(--status-warning) !important;
 }
 .app-kpi-border-info {
-    border-left: 4px solid var(--spa-info) !important;
+    border-left: 4px solid var(--status-information) !important;
 }
 .app-kpi-border-danger {
-    border-left: 4px solid var(--spa-danger) !important;
+    border-left: 4px solid var(--status-danger) !important;
 }
 
 /* Layout Grid for KPIs - Uses .app-card-grid defined in layout-spacing.css */
 /* .app-card-grid is defined in layout-spacing.css - no duplicate needed here */
 
 .btn-light-brown {
-    background-color: rgba(166, 124, 82, 0.1) !important;
-    border: 1px solid rgba(166, 124, 82, 0.25) !important;
-    color: #a67c52 !important;
+    background-color: color-mix(in srgb, var(--color-primary) 10.0%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25.0%, transparent) !important;
+    color: var(--color-primary) !important;
     transition: background-color 0.2s ease, border-color 0.2s ease,
         color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     font-weight: 500;
 }
 .btn-light-brown:hover {
-    background-color: #a67c52 !important;
-    border-color: #a67c52 !important;
-    color: #ffffff !important;
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-surface) !important;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1136,7 +1097,7 @@ textarea.app-form-control {
     border: none;
     padding: 4px;
     font-size: 16px;
-    color: var(--spa-text-muted, #858796);
+    color: var(--color-text-subtle, var(--color-text-muted));
     cursor: pointer;
     z-index: 5;
     display: none;
@@ -1146,7 +1107,7 @@ textarea.app-form-control {
 }
 
 .stf-search-clear:hover {
-    color: var(--spa-danger, #e74a3b);
+    color: var(--status-danger);
     transform: translateY(-50%) scale(1.1);
 }
 
@@ -1156,8 +1117,8 @@ textarea.app-form-control {
 
 /* Highlight matching search keywords */
 mark.search-highlight {
-    background-color: rgba(246, 194, 62, 0.3) !important;
-    color: var(--spa-text-main, #2b2b2b) !important;
+    background-color: color-mix(in srgb, var(--status-warning) 30.0%, transparent) !important;
+    color: var(--color-text-default) !important;
     padding: 0 2px;
     border-radius: 2px;
     font-weight: 600;
@@ -1171,7 +1132,7 @@ mark.search-highlight {
 
 .stf-empty-state-icon {
     font-size: 48px;
-    color: var(--component-empty-icon, var(--spa-text-muted, #858796));
+    color: var(--component-empty-icon, var(--color-text-subtle, var(--color-text-muted)));
     opacity: 0.5;
     margin-bottom: 1rem;
     display: inline-block;
@@ -1180,13 +1141,13 @@ mark.search-highlight {
 .stf-empty-state-title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--component-text, var(--spa-text-main, #2b2b2b));
+    color: var(--component-text, var(--color-text-default));
     margin-bottom: 0.5rem;
 }
 
 .stf-empty-state-desc {
     font-size: 14px;
-    color: var(--component-text-muted, var(--spa-text-muted, #858796));
+    color: var(--component-text-muted, var(--color-text-subtle, var(--color-text-muted)));
     margin-bottom: 1rem;
 }
 
@@ -1204,9 +1165,9 @@ mark.search-highlight {
 .btn:not(.btn-link):focus-visible,
 .app-btn:focus-visible,
 .stf-search-clear:focus-visible {
-    outline: var(--border-width-focus, 2px) solid var(--component-focus, var(--spa-primary));
+    outline: var(--border-width-focus, 2px) solid var(--component-focus, var(--color-primary));
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--component-focus, var(--spa-primary)) 22%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--component-focus, var(--color-primary)) 22%, transparent);
 }
 
 .btn:disabled,
@@ -1236,11 +1197,11 @@ mark.search-highlight {
 
 .stf-empty-state,
 .empty-state {
-    color: var(--component-text-muted, var(--spa-text-muted));
+    color: var(--component-text-muted, var(--color-text-subtle));
 }
 
 #page-loader {
-    background-color: var(--component-loading-surface, rgba(255, 255, 255, 0.9));
+    background-color: var(--component-loading-surface, color-mix(in srgb, var(--color-surface) 90.0%, transparent));
 }
 
 #toast-container.toast-container {

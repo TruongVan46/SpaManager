@@ -5,16 +5,16 @@
 
 /* 1. Card Layout */
 .backup-center-card {
-    border-radius: var(--spa-border-radius-lg, 12px);
-    border: 1px solid var(--spa-border-color, var(--spa-border-color));
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 120, 0.05);
-    background: var(--spa-card-bg);
+    border-radius: var(--radius-surface, 12px);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 0.15rem 1.75rem 0 color-mix(in srgb, var(--color-ink) 5.0%, transparent);
+    background: var(--color-surface);
     margin-bottom: 1.5rem;
 }
 
 .backup-center-card .app-card-header {
-    background-color: var(--spa-bg);
-    border-bottom: 1px solid var(--spa-border-color, var(--spa-border-color));
+    background-color: var(--color-canvas);
+    border-bottom: 1px solid var(--color-border);
     padding: 0.75rem 1.25rem;
     display: flex;
     align-items: center;
@@ -24,7 +24,7 @@
 .backup-center-card .app-card-header-title {
     font-size: 16px;
     font-weight: 700;
-    color: var(--spa-primary, var(--spa-primary));
+    color: var(--color-primary);
     display: flex;
     align-items: center;
     margin: 0;
@@ -44,9 +44,9 @@
 }
 
 .backup-center-card .backup-ux-hint {
-    border: 1px solid rgba(var(--bs-info-rgb), 0.15);
-    background: rgba(var(--bs-info-rgb), 0.06);
-    color: var(--spa-text-main);
+    border: 1px solid color-mix(in srgb, var(--status-information) 15%, transparent);
+    background: color-mix(in srgb, var(--status-information) 6%, transparent);
+    color: var(--color-text-default);
 }
 
 .backup-center-card .backup-toolbar-left {
@@ -72,15 +72,15 @@
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--spa-text-muted, var(--spa-text-secondary));
+    color: var(--color-text-subtle, var(--color-text-muted));
     font-size: 14px;
 }
 
 .backup-center-card .search-box-container input {
     padding-left: 32px;
     height: 38px;
-    border-radius: var(--spa-border-radius, 6px);
-    border: 1px solid var(--spa-border-color, var(--spa-border-color));
+    border-radius: var(--radius-control, 6px);
+    border: 1px solid var(--color-border);
     font-size: 14px;
     width: 100%;
 }
@@ -91,37 +91,37 @@
 
 .backup-center-card .sort-container select {
     height: 38px;
-    border-radius: var(--spa-border-radius, 6px);
-    border: 1px solid var(--spa-border-color, var(--spa-border-color));
+    border-radius: var(--radius-control, 6px);
+    border: 1px solid var(--color-border);
     font-size: 14px;
     width: 100%;
 }
 
 .backup-center-card .btn-create-backup {
-    background-color: var(--spa-primary, var(--spa-primary));
-    border-color: var(--spa-primary, var(--spa-primary));
-    color: #fff;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-surface);
     font-weight: 600;
     height: 38px;
     padding: 0 16px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    border-radius: var(--spa-border-radius, 6px);
+    border-radius: var(--radius-control, 6px);
     transition: all 0.2s ease-in-out;
 }
 
 .backup-center-card .btn-create-backup:hover {
-    background-color: var(--spa-primary-hover);
-    border-color: var(--spa-primary-hover);
-    color: #fff;
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    color: var(--color-surface);
     transform: translateY(-1px);
 }
 
 /* 3. Table style */
 .backup-center-card .backup-table-container {
-    border-radius: var(--spa-border-radius, 6px);
-    border: 1px solid var(--spa-border-color, var(--spa-border-color));
+    border-radius: var(--radius-control, 6px);
+    border: 1px solid var(--color-border);
     overflow: hidden;
 }
 
@@ -131,21 +131,21 @@
 }
 
 .backup-center-card .backup-table th {
-    background-color: var(--spa-bg);
-    color: var(--spa-text-muted, var(--spa-info));
+    background-color: var(--color-canvas);
+    color: var(--color-text-subtle, var(--status-information));
     font-weight: 700;
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 12px 16px;
-    border-bottom: 2px solid var(--spa-border-color, var(--spa-border-color));
+    border-bottom: 2px solid var(--color-border);
 }
 
 .backup-center-card .backup-table td {
     padding: 12px 16px;
     font-size: 14px;
     vertical-align: middle;
-    border-bottom: 1px solid var(--spa-border-color, var(--spa-border-color));
+    border-bottom: 1px solid var(--color-border);
 }
 
 .backup-center-card .backup-note-preview {
@@ -167,35 +167,35 @@
 }
 
 .backup-center-card .badge-backup-db {
-    background-color: var(--spa-info-light) !important;
-    color: var(--spa-info) !important;
-    border: 1px solid var(--spa-info-border) !important;
+    background-color: var(--status-information-surface) !important;
+    color: var(--status-information) !important;
+    border: 1px solid var(--status-information-border) !important;
 }
 
 .backup-center-card .badge-backup-manual {
-    background-color: var(--spa-success-light) !important;
-    color: var(--spa-success) !important;
-    border: 1px solid var(--spa-success-border) !important;
+    background-color: var(--status-success-surface) !important;
+    color: var(--status-success) !important;
+    border: 1px solid var(--status-success-border) !important;
 }
 
 .backup-center-card .badge-backup-auto {
-    background-color: var(--spa-info-light) !important;
-    color: var(--spa-info) !important;
-    border: 1px solid var(--spa-info-border) !important;
+    background-color: var(--status-information-surface) !important;
+    color: var(--status-information) !important;
+    border: 1px solid var(--status-information-border) !important;
 }
 
 /* 5. Empty State */
 .backup-center-card .backup-empty-state {
     padding: 3rem 1.5rem;
     text-align: center;
-    border-radius: var(--spa-border-radius, 6px);
-    border: 1px dashed var(--spa-border-color, var(--spa-border-color));
-    background: #fdfdfd;
+    border-radius: var(--radius-control, 6px);
+    border: 1px dashed var(--color-border);
+    background: var(--color-surface);
 }
 
 .backup-center-card .backup-empty-state-icon {
     font-size: 48px;
-    color: var(--spa-text-muted, var(--spa-text-secondary));
+    color: var(--color-text-subtle, var(--color-text-muted));
     margin-bottom: 16px;
     display: inline-block;
 }
@@ -203,13 +203,13 @@
 .backup-center-card .backup-empty-state-title {
     font-size: 18px;
     font-weight: 700;
-    color: var(--spa-text-main, #2e2f3a);
+    color: var(--color-text-default, var(--color-surface-raised));
     margin-bottom: 8px;
 }
 
 .backup-center-card .backup-empty-state-description {
     font-size: 14px;
-    color: var(--spa-text-muted, var(--spa-text-secondary));
+    color: var(--color-text-subtle, var(--color-text-muted));
     max-width: 400px;
     margin: 0 auto 20px auto;
 }

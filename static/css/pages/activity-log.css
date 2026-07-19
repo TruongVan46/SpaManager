@@ -10,7 +10,7 @@
 }
 
 .activity-log-page .search-highlight {
-    background-color: rgba(166, 124, 82, 0.2); /* Soft highlight matching theme */
+    background-color: color-mix(in srgb, var(--color-primary) 20.0%, transparent); /* Soft highlight matching theme */
     color: inherit;
     padding: 0 2px;
     border-radius: 2px;
@@ -45,7 +45,7 @@
 
 .activity-log-page .filter-item label {
     font-weight: 600;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
 }
 
 .activity-log-page .filter-buttons {
@@ -72,7 +72,7 @@
 .activity-log-page .input-group-custom-search i {
     position: absolute;
     left: 12px;
-    color: #858796;
+    color: var(--color-text-muted);
     z-index: 10;
     pointer-events: none;
     font-size: 14px;
@@ -85,7 +85,7 @@
 .activity-log-page .activity-log-custom-date-row {
     display: flex;
     gap: 12px;
-    border-top: 1px dashed var(--spa-border-color);
+    border-top: 1px dashed var(--color-border);
     padding-top: 12px;
 }
 
@@ -97,18 +97,18 @@
 
 .activity-log-page .custom-date-item label {
     font-weight: 600;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
 }
 
 /* --------------------------------------------------------------------------
    3. Table
    -------------------------------------------------------------------------- */
 .activity-log-page .activity-log-table-container {
-    border: 1px solid var(--spa-border-color);
-    border-radius: var(--spa-radius-lg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-surface);
     overflow-x: auto;
-    background-color: var(--spa-white);
-    box-shadow: var(--spa-shadow-light);
+    background-color: var(--color-surface);
+    box-shadow: var(--elevation-card);
     position: relative;
 }
 
@@ -124,9 +124,9 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: var(--spa-card-bg) !important; /* Matches --spa-secondary or layout background */
-    border-bottom: 2px solid var(--spa-border-color) !important;
-    box-shadow: inset 0 -2px 0 var(--spa-border-color); /* Avoid gap between border and sticky th */
+    background-color: var(--color-surface) !important; /* Matches --color-surface-elevated or layout background */
+    border-bottom: 2px solid var(--color-border) !important;
+    box-shadow: inset 0 -2px 0 var(--color-border); /* Avoid gap between border and sticky th */
 }
 
 /* Row Hover Effects */
@@ -136,7 +136,7 @@
 }
 
 .activity-log-page .activity-log-table tbody tr:hover {
-    background-color: rgba(166, 124, 82, 0.05) !important; /* Subtle primary color tint matching other pages */
+    background-color: color-mix(in srgb, var(--color-primary) 5.0%, transparent) !important; /* Subtle primary color tint matching other pages */
 }
 
 /* Column Widths Definition */
@@ -188,13 +188,13 @@
 
 .activity-log-page .log-date {
     font-size: 13px;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     font-weight: 500;
 }
 
 .activity-log-page .log-time {
     font-size: 12px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
 }
 
 /* Empty State Styling */
@@ -210,20 +210,20 @@
 
 .activity-log-page .empty-state-icon {
     font-size: 48px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     opacity: 0.5;
 }
 
 .activity-log-page .empty-state-title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     margin: 0;
 }
 
 .activity-log-page .empty-state-description {
     font-size: 14px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     max-width: 400px;
     margin: 0 0 8px 0;
 }
@@ -233,53 +233,53 @@
    -------------------------------------------------------------------------- */
 /* Severity Badges (softer, in harmony with Design System) */
 .activity-log-page .badge-severity-success {
-    background-color: rgba(28, 200, 138, 0.08) !important;
-    color: #1cc88a !important;
-    border: 1px solid rgba(28, 200, 138, 0.15) !important;
+    background-color: color-mix(in srgb, var(--status-success) 8.0%, transparent) !important;
+    color: var(--status-success) !important;
+    border: 1px solid color-mix(in srgb, var(--status-success) 15.0%, transparent) !important;
 }
 
 .activity-log-page .badge-severity-info {
-    background-color: rgba(54, 185, 204, 0.08) !important;
-    color: #36b9cc !important;
-    border: 1px solid rgba(54, 185, 204, 0.15) !important;
+    background-color: color-mix(in srgb, var(--status-information) 8.0%, transparent) !important;
+    color: var(--status-information) !important;
+    border: 1px solid color-mix(in srgb, var(--status-information) 15.0%, transparent) !important;
 }
 
 .activity-log-page .badge-severity-warning {
-    background-color: rgba(246, 194, 62, 0.08) !important;
-    color: #f6c23e !important;
-    border: 1px solid rgba(246, 194, 62, 0.15) !important;
+    background-color: color-mix(in srgb, var(--status-warning) 8.0%, transparent) !important;
+    color: var(--status-warning) !important;
+    border: 1px solid color-mix(in srgb, var(--status-warning) 15.0%, transparent) !important;
 }
 
 .activity-log-page .badge-severity-error {
-    background-color: rgba(231, 74, 59, 0.08) !important;
-    color: #e74a3b !important;
-    border: 1px solid rgba(231, 74, 59, 0.15) !important;
+    background-color: color-mix(in srgb, var(--status-danger) 8.0%, transparent) !important;
+    color: var(--status-danger) !important;
+    border: 1px solid color-mix(in srgb, var(--status-danger) 15.0%, transparent) !important;
 }
 
 /* Action Badges */
 .activity-log-page .badge-action-create {
-    background-color: rgba(28, 200, 138, 0.08) !important;
-    color: #1cc88a !important;
-    border: 1px solid rgba(28, 200, 138, 0.15) !important;
+    background-color: color-mix(in srgb, var(--status-success) 8.0%, transparent) !important;
+    color: var(--status-success) !important;
+    border: 1px solid color-mix(in srgb, var(--status-success) 15.0%, transparent) !important;
 }
 
 .activity-log-page .badge-action-update {
-    background-color: rgba(78, 115, 223, 0.08) !important;
-    color: #4e73df !important;
-    border: 1px solid rgba(78, 115, 223, 0.15) !important;
+    background-color: color-mix(in srgb, var(--color-primary) 8.0%, transparent) !important;
+    color: var(--color-text-default) !important;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 15.0%, transparent) !important;
 }
 
 .activity-log-page .badge-action-delete {
-    background-color: rgba(231, 74, 59, 0.08) !important;
-    color: #e74a3b !important;
-    border: 1px solid rgba(231, 74, 59, 0.15) !important;
+    background-color: color-mix(in srgb, var(--status-danger) 8.0%, transparent) !important;
+    color: var(--status-danger) !important;
+    border: 1px solid color-mix(in srgb, var(--status-danger) 15.0%, transparent) !important;
 }
 
 /* Neutral Actions (Backup, Restore, Login, etc. mapped to neutral gray badge) */
 .activity-log-page .badge-action-neutral {
-    background-color: rgba(133, 135, 150, 0.08) !important;
-    color: #858796 !important;
-    border: 1px solid rgba(133, 135, 150, 0.15) !important;
+    background-color: color-mix(in srgb, var(--color-ink) 8.0%, transparent) !important;
+    color: var(--color-text-muted) !important;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 15.0%, transparent) !important;
 }
 
 .activity-log-page .activity-action-badge {
@@ -308,13 +308,13 @@
    -------------------------------------------------------------------------- */
 .activity-log-page .modal-detail-label {
     font-weight: 600;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     font-size: 13px;
     margin-bottom: 2px;
 }
 
 .activity-log-page .modal-detail-value {
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     font-size: 15px;
     font-weight: 500;
     word-break: break-word;
@@ -479,6 +479,6 @@
         overflow: hidden;
     }
     .activity-log-page .activity-log-table-container {
-        border-radius: var(--spa-radius-md);
+        border-radius: var(--radius-card);
     }
 }

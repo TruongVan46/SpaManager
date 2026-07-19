@@ -81,7 +81,7 @@
             </div>
             <div class="app-card-body dashboard-chart-body position-relative" style="min-height: 320px;">
                 <!-- pulsing skeleton overlay while loading chart -->
-                <div id="chart-skeleton" class="dashboard-chart-skeleton position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-3" style="z-index: 10; background-color: var(--dashboard-chart-loading, var(--spa-white, #ffffff));">
+                <div id="chart-skeleton" class="dashboard-chart-skeleton position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-3" style="z-index: 10; background-color: var(--dashboard-chart-loading, var(--color-surface));">
                     <div class="d-flex justify-content-between mb-3">
                         <div class="stf-skeleton stf-skeleton-text" style="width: 120px; height: 20px;"></div>
                         <div class="stf-skeleton stf-skeleton-text" style="width: 160px; height: 20px;"></div>
@@ -134,7 +134,7 @@
                             {% if not latest_invoices %}
                             <tr id="invoices-empty-state">
                                 <td colspan="5" class="dashboard-empty-state text-center py-4 text-muted">
-                                    <div class="mb-2"><i class="bi bi-receipt" style="font-size: 32px; color: #ccc;"></i></div>
+                                    <div class="mb-2"><i class="bi bi-receipt" style="font-size: 32px; color: var(--color-text-subtle);"></i></div>
                                     <p class="app-text m-0">Không có hóa đơn gần đây</p>
                                 </td>
                             </tr>
@@ -299,7 +299,7 @@
     function render(page) {
         currentPage = page;
         if (appointments.length === 0) {
-            listEl.innerHTML = '<div class="text-center py-4 text-muted"><div class="mb-2"><i class="bi bi-calendar-check" style="font-size: 32px; color: #ccc;"></i></div><p class="app-text m-0">Không có lịch hẹn nào cho hôm nay</p></div>';
+            listEl.innerHTML = '<div class="text-center py-4 text-muted"><div class="mb-2"><i class="bi bi-calendar-check" style="font-size: 32px; color: var(--color-text-subtle);"></i></div><p class="app-text m-0">Không có lịch hẹn nào cho hôm nay</p></div>';
             footerEl.style.display = 'none';
             return;
         }

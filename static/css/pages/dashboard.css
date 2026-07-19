@@ -22,7 +22,7 @@
     overflow: hidden;
     background: var(--dashboard-surface);
     border-color: var(--dashboard-border);
-    box-shadow: var(--elevation-card, var(--spa-shadow-sm));
+    box-shadow: var(--elevation-card);
 }
 
 .dashboard-page .dashboard-kpi-card .app-card-body {
@@ -60,7 +60,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-card, var(--spa-radius-md));
+    border-radius: var(--radius-card);
     background: var(--dashboard-icon-surface);
     font-size: 1.25rem;
 }
@@ -71,7 +71,7 @@
 .dashboard-page .dashboard-admin-summary-card {
     background: var(--dashboard-surface);
     border-color: var(--dashboard-border);
-    box-shadow: var(--elevation-card, var(--spa-shadow-sm));
+    box-shadow: var(--elevation-card);
 }
 
 .dashboard-page .dashboard-chart-body {
@@ -93,10 +93,10 @@
     color: var(--dashboard-supporting);
 }
 
-.dashboard-page .stat-card.revenue .icon { background: var(--spa-primary-light); color: var(--spa-primary); }
-.dashboard-page .stat-card.customers .icon { background: var(--spa-info-light); color: var(--spa-info); }
-.dashboard-page .stat-card.appointments .icon { background: var(--spa-success-light); color: var(--spa-success); }
-.dashboard-page .stat-card.invoices .icon { background: var(--spa-danger-light); color: var(--spa-danger); }
+.dashboard-page .stat-card.revenue .icon { background: var(--color-primary-tint); color: var(--color-primary); }
+.dashboard-page .stat-card.customers .icon { background: var(--status-information-surface); color: var(--status-information); }
+.dashboard-page .stat-card.appointments .icon { background: var(--status-success-surface); color: var(--status-success); }
+.dashboard-page .stat-card.invoices .icon { background: var(--status-danger-surface); color: var(--status-danger); }
 
 .dashboard-page .stat-card .icon {
     width: 56px;
@@ -106,19 +106,19 @@
     align-items: center;
     justify-content: center;
     font-size: 24px;
-    transition: var(--spa-transition);
+    transition: var(--motion-transition);
 }
 
 .dashboard-page .stat-card:hover .icon {
     transform: scale(1.08);
-    background: var(--spa-primary);
-    color: var(--spa-white);
+    background: var(--color-primary);
+    color: var(--color-surface);
 }
 
 .dashboard-page .stat-card .info span {
     display: block;
     font-size: 14px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     font-weight: 500;
     margin-bottom: 4px;
 }
@@ -127,7 +127,7 @@
     margin: 0;
     font-size: 24px;
     font-weight: 700;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
 }
 
 .dashboard-page .chart-card {
@@ -152,16 +152,16 @@
     align-items: center;
     gap: 14px;
     padding: 14px 16px;
-    border: 1px solid var(--spa-border-color);
-    border-radius: var(--spa-radius-lg);
-    background: var(--spa-white);
-    transition: var(--spa-transition);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-surface);
+    background: var(--color-surface);
+    transition: var(--motion-transition);
 }
 
 .dashboard-page .appointment-item:hover,
 .dashboard-page .schedule-item:hover {
-    background: var(--spa-secondary);
-    border-color: var(--spa-primary-light);
+    background: var(--color-surface-elevated);
+    border-color: var(--color-primary-tint);
     transform: translateY(-1px);
 }
 
@@ -171,8 +171,8 @@
     min-width: 72px;
     padding: 6px 10px;
     border-radius: 999px;
-    background: rgba(166, 124, 82, 0.1);
-    color: var(--spa-primary);
+    background: color-mix(in srgb, var(--color-primary) 10.0%, transparent);
+    color: var(--color-primary);
     font-weight: 700;
     font-size: 13px;
     text-align: center;
@@ -189,7 +189,7 @@
 .dashboard-page .schedule-customer {
     font-weight: 700;
     font-size: 14px;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     line-height: 1.35;
     margin-bottom: 4px;
 }
@@ -197,7 +197,7 @@
 .dashboard-page .appointment-service,
 .dashboard-page .schedule-service {
     font-size: 13px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     line-height: 1.35;
 }
 
@@ -218,7 +218,7 @@
 .dashboard-page .empty-state {
     text-align: center;
     padding: 30px 15px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -229,7 +229,7 @@
     font-size: 32px;
     display: block;
     margin-bottom: 12px;
-    color: var(--spa-accent);
+    color: var(--color-accent);
     opacity: 0.7;
 }
 
@@ -250,9 +250,9 @@
 }
 
 .dashboard-page .admin-summary-card {
-    border: 1px solid var(--spa-border-color);
-    border-radius: var(--spa-radius-lg);
-    background: var(--spa-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-surface);
+    background: var(--color-surface);
     padding: 1rem;
     display: flex;
     flex-direction: column;
@@ -264,27 +264,27 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     margin-bottom: 0.65rem;
 }
 
 .dashboard-page .admin-summary-card-value {
     font-size: 22px;
     font-weight: 800;
-    color: var(--spa-text-main);
+    color: var(--color-text-default);
     line-height: 1.2;
 }
 
 .dashboard-page .admin-summary-card-meta {
     font-size: 13px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     margin-top: 0.35rem;
     line-height: 1.45;
 }
 
 .dashboard-page .admin-summary-empty {
     font-size: 14px;
-    color: var(--spa-text-muted);
+    color: var(--color-text-subtle);
     line-height: 1.5;
 }
 
@@ -298,21 +298,21 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.7rem 0.85rem;
-    border-radius: var(--spa-radius-md);
-    border: 1px solid var(--spa-border-color);
-    color: var(--spa-text-main);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-default);
     text-decoration: none;
-    transition: var(--spa-transition);
+    transition: var(--motion-transition);
 }
 
 .dashboard-page .admin-shortcut-link:hover {
-    border-color: var(--spa-primary-light);
-    background: var(--spa-secondary);
-    color: var(--spa-primary);
+    border-color: var(--color-primary-tint);
+    background: var(--color-surface-elevated);
+    color: var(--color-primary);
 }
 
 .dashboard-page .admin-shortcut-link i {
-    color: var(--spa-primary);
+    color: var(--color-primary);
 }
 
 @media (max-width: 768px) {

@@ -211,7 +211,7 @@
     "templates/setting/index.html:257:<div class=\"backup-toolbar\">",
     "templates/setting/index.html:258:<div class=\"backup-toolbar-left d-flex gap-2\">",
     "templates/setting/index.html:259:<button type=\"button\" class=\"btn btn-create-backup\" data-bs-toggle=\"modal\" data-bs-target=\"#createBackupModal\" {% if backup_engine == 'postgresql' %}disabled aria-disabled=\"true\" title=\"Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL\"{% endif %}>",
-    "templates/setting/index.html:262:<button type=\"button\" class=\"btn btn-outline-primary\" data-bs-toggle=\"modal\" data-bs-target=\"#uploadBackupModal\" style=\"border-radius: var(--spa-radius-md); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;\" {% if backup_engine == 'postgresql' %}disabled aria-disabled=\"true\" title=\"Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL\"{% endif %}>",
+    "templates/setting/index.html:262:<button type=\"button\" class=\"btn btn-outline-primary\" data-bs-toggle=\"modal\" data-bs-target=\"#uploadBackupModal\" style=\"border-radius: var(--radius-control); padding: 8px 16px; font-size: 0.9rem; font-weight: 600;\" {% if backup_engine == 'postgresql' %}disabled aria-disabled=\"true\" title=\"Trung tâm sao lưu đang bị khóa khi chạy PostgreSQL\"{% endif %}>",
     "templates/setting/index.html:266:<div class=\"backup-toolbar-right\">",
     "templates/setting/index.html:270:<input type=\"text\" id=\"backup-search\" placeholder=\"Tìm theo tên, ghi chú...\" aria-label=\"Tìm kiếm bản sao lưu\">",
     "templates/setting/index.html:275:<select id=\"backup-sort\" class=\"form-select form-select-sm\" aria-label=\"Sắp xếp bản sao lưu\">",

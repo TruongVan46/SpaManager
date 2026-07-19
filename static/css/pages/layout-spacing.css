@@ -87,9 +87,9 @@
 /* Card layout spacing classes */
 .app-card {
     border: none !important;
-    border-radius: var(--spa-radius-lg, 16px) !important;
-    box-shadow: var(--spa-shadow-sm) !important;
-    background-color: var(--spa-white, #ffffff) !important;
+    border-radius: var(--radius-surface, 16px) !important;
+    box-shadow: var(--elevation-card) !important;
+    background-color: var(--color-surface) !important;
     overflow: hidden !important;
     width: 100%;
     max-width: none !important;
@@ -97,8 +97,8 @@
 
 .app-card-header {
     padding: var(--app-space-16) var(--app-space-20) !important;
-    background-color: var(--spa-white, #ffffff) !important;
-    border-bottom: 1px solid var(--spa-border-color, #edf2f9) !important;
+    background-color: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border) !important;
 }
 
 .app-card-body {

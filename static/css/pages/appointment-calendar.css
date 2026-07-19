@@ -5,21 +5,21 @@
 
 /* === CSS Variables === */
 :root {
-    --fc-border-color: #e3e6f0;
-    --fc-button-text-color: var(--spa-info);
-    --fc-button-bg-color: #ffffff;
-    --fc-button-border-color: #dddfeb;
-    --fc-button-hover-bg-color: var(--spa-border-color);
-    --fc-button-hover-border-color: #d1d3e2;
-    --fc-button-active-bg-color: var(--spa-info);
-    --fc-button-active-border-color: var(--spa-info);
-    --fc-button-active-text-color: #ffffff;
-    --fc-today-bg-color: rgba(78, 115, 223, 0.05);
+    --fc-border-color: var(--color-border);
+    --fc-button-text-color: var(--status-information);
+    --fc-button-bg-color: var(--color-surface);
+    --fc-button-border-color: var(--color-text-default);
+    --fc-button-hover-bg-color: var(--color-border);
+    --fc-button-hover-border-color: var(--color-text-default);
+    --fc-button-active-bg-color: var(--status-information);
+    --fc-button-active-border-color: var(--status-information);
+    --fc-button-active-text-color: var(--color-surface);
+    --fc-today-bg-color: color-mix(in srgb, var(--color-primary) 5.0%, transparent);
     --cal-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --status-confirmed: #1e88e5;
-    --status-pending: #f9a825;
-    --status-completed: #43a047;
-    --status-cancelled: #e53935;
+    --status-confirmed: var(--status-information);
+    --status-pending: var(--status-warning);
+    --status-completed: var(--status-success);
+    --status-cancelled: var(--status-danger);
 }
 
 /* === Calendar Container === */
@@ -34,8 +34,8 @@
 
 #calendar {
     font-family: var(--cal-font);
-    color: var(--spa-text-secondary);
-    background: var(--spa-card-bg);
+    color: var(--color-text-muted);
+    background: var(--color-surface);
 }
 
 /* === Header Toolbar === */
@@ -49,7 +49,7 @@
 .fc .fc-toolbar-title {
     font-size: 1.2rem !important;
     font-weight: 700;
-    color: var(--spa-info);
+    color: var(--status-information);
 }
 
 /* === Button Override === */
@@ -107,12 +107,12 @@
 }
 
 .fc .fc-col-header-cell {
-    background-color: var(--spa-bg) !important;
+    background-color: var(--color-canvas) !important;
     padding: 0.65rem 0 !important;
 }
 
 .fc .fc-col-header-cell-cushion {
-    color: #4e5154 !important;
+    color: var(--color-text-default) !important;
     font-weight: 700 !important;
     font-size: 0.82rem !important;
     text-decoration: none !important;
@@ -121,14 +121,14 @@
 /* === Day Number === */
 .fc .fc-daygrid-day-number {
     font-weight: 600;
-    color: #5a5c69;
+    color: var(--color-text-default);
     padding: 5px 7px !important;
     text-decoration: none !important;
     font-size: 0.82rem;
 }
 
 .fc .fc-daygrid-day-number:hover {
-    color: var(--spa-info);
+    color: var(--status-information);
 }
 
 /* === Today Highlight === */
@@ -137,8 +137,8 @@
 }
 
 .fc .fc-day-today .fc-daygrid-day-number {
-    background-color: var(--spa-info);
-    color: #fff !important;
+    background-color: var(--status-information);
+    color: var(--color-surface) !important;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -152,7 +152,7 @@
 
 /* === Day Cell Hover === */
 .fc-daygrid-day:hover {
-    background-color: var(--spa-bg);
+    background-color: var(--color-canvas);
 }
 
 /* ============================================================
@@ -180,31 +180,31 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    box-shadow: var(--spa-shadow-sm);
+    box-shadow: var(--elevation-card);
 }
 
 .spa-summary-card:hover {
     transform: translateY(-1px);
-    box-shadow: var(--spa-shadow-md);
+    box-shadow: var(--elevation-dropdown);
 }
 
 /* Color levels */
 .spa-summary-card.summary-green {
-    background-color: #e8f5e9 !important;
-    border-left-color: #2e7d32 !important;
-    color: #1b5e20 !important;
+    background-color: var(--status-success-surface) !important;
+    border-left-color: var(--status-success) !important;
+    color: var(--color-text-default) !important;
 }
 
 .spa-summary-card.summary-yellow {
-    background-color: #fff8e1 !important;
-    border-left-color: #f9a825 !important;
-    color: #e65100 !important;
+    background-color: var(--color-text-default) !important;
+    border-left-color: var(--status-warning) !important;
+    color: var(--status-warning) !important;
 }
 
 .spa-summary-card.summary-red {
-    background-color: #ffebee !important;
-    border-left-color: #c62828 !important;
-    color: #b71c1c !important;
+    background-color: var(--status-danger-surface) !important;
+    border-left-color: var(--status-danger) !important;
+    color: var(--color-text-default) !important;
 }
 
 .spa-summary-count {
@@ -230,7 +230,7 @@
 .fc-v-event {
     border-radius: 6px !important;
     border: none !important;
-    box-shadow: var(--spa-shadow-sm) !important;
+    box-shadow: var(--elevation-card) !important;
     padding: 0 !important;
     margin: 1px 2px !important;
     overflow: hidden !important;
@@ -241,7 +241,7 @@
 .fc-timegrid-event:hover,
 .fc-v-event:hover {
     transform: scale(1.02) !important;
-    box-shadow: var(--spa-shadow-md) !important;
+    box-shadow: var(--elevation-dropdown) !important;
     z-index: 10 !important;
 }
 
@@ -252,22 +252,22 @@
 
 /* Status color classes for events */
 .fc-evt-confirmed {
-    background-color: #e3f2fd !important;
+    background-color: var(--color-text-default) !important;
     border-left: 4px solid var(--status-confirmed) !important;
 }
 
 .fc-evt-pending {
-    background-color: #fff8e1 !important;
+    background-color: var(--color-text-default) !important;
     border-left: 4px solid var(--status-pending) !important;
 }
 
 .fc-evt-completed {
-    background-color: #e8f5e9 !important;
+    background-color: var(--status-success-surface) !important;
     border-left: 4px solid var(--status-completed) !important;
 }
 
 .fc-evt-cancelled {
-    background-color: #ffebee !important;
+    background-color: var(--status-danger-surface) !important;
     border-left: 4px solid var(--status-cancelled) !important;
 }
 
@@ -306,7 +306,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #2e3033;
+    color: var(--color-text-default);
 }
 
 .cal-evt-icon {
@@ -316,14 +316,14 @@
 }
 
 /* Status text colors inside events */
-.fc-evt-confirmed .cal-evt-time { color: #0d47a1; }
-.fc-evt-confirmed .cal-evt-name { color: #0d47a1; }
-.fc-evt-pending .cal-evt-time { color: #e65100; }
-.fc-evt-pending .cal-evt-name { color: #795548; }
-.fc-evt-completed .cal-evt-time { color: #1b5e20; }
-.fc-evt-completed .cal-evt-name { color: #1b5e20; }
-.fc-evt-cancelled .cal-evt-time { color: #b71c1c; }
-.fc-evt-cancelled .cal-evt-name { color: #b71c1c; opacity: 0.7; text-decoration: line-through; }
+.fc-evt-confirmed .cal-evt-time { color: var(--color-text-default); }
+.fc-evt-confirmed .cal-evt-name { color: var(--color-text-default); }
+.fc-evt-pending .cal-evt-time { color: var(--status-warning); }
+.fc-evt-pending .cal-evt-name { color: var(--color-text-default); }
+.fc-evt-completed .cal-evt-time { color: var(--color-text-default); }
+.fc-evt-completed .cal-evt-name { color: var(--color-text-default); }
+.fc-evt-cancelled .cal-evt-time { color: var(--color-text-default); }
+.fc-evt-cancelled .cal-evt-name { color: var(--color-text-default); opacity: 0.7; text-decoration: line-through; }
 
 /* ============================================================
    POPOVER - Event Detail on Hover (Desktop)
@@ -331,18 +331,18 @@
 
 .cal-popover {
     border-radius: 10px !important;
-    box-shadow: var(--spa-shadow-lg) !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: var(--elevation-modal) !important;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 8.0%, transparent) !important;
     max-width: 300px !important;
     font-family: var(--cal-font);
     z-index: var(--z-index-popover) !important;
 }
 
 .cal-popover .popover-header {
-    background-color: var(--spa-bg) !important;
-    border-bottom: 1px solid var(--spa-border-color) !important;
+    background-color: var(--color-canvas) !important;
+    border-bottom: 1px solid var(--color-border) !important;
     font-weight: 700 !important;
-    color: var(--spa-info) !important;
+    color: var(--status-information) !important;
     border-top-left-radius: 9px !important;
     border-top-right-radius: 9px !important;
     font-size: 0.82rem !important;
@@ -358,7 +358,7 @@
 .cal-pop-row {
     display: flex;
     padding: 5px 12px;
-    border-bottom: 1px solid var(--spa-border-color);
+    border-bottom: 1px solid var(--color-border);
     gap: 8px;
     align-items: flex-start;
 }
@@ -368,7 +368,7 @@
 }
 
 .cal-pop-label {
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
     font-size: 0.72rem;
     font-weight: 600;
     min-width: 70px;
@@ -376,7 +376,7 @@
 }
 
 .cal-pop-value {
-    color: #2e3033;
+    color: var(--color-text-default);
     font-weight: 500;
     font-size: 0.78rem;
     word-break: break-word;
@@ -393,10 +393,10 @@
     font-weight: 700;
 }
 
-.cal-status-confirmed { background-color: #cfe2ff; color: #084298; }
-.cal-status-pending { background-color: #fff3cd; color: #856404; }
-.cal-status-completed { background-color: #d1e7dd; color: #0f5132; }
-.cal-status-cancelled { background-color: #f8d7da; color: #842029; }
+.cal-status-confirmed { background-color: var(--color-text-default); color: var(--color-text-default); }
+.cal-status-pending { background-color: var(--color-text-default); color: var(--color-text-default); }
+.cal-status-completed { background-color: var(--color-text-default); color: var(--color-text-default); }
+.cal-status-cancelled { background-color: var(--status-danger-surface); color: var(--color-text-default); }
 
 /* ============================================================
    MONTH VIEW POPOVER - Day Summary Hover
@@ -404,18 +404,18 @@
 
 .cal-day-popover {
     border-radius: 10px !important;
-    box-shadow: var(--spa-shadow-lg) !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: var(--elevation-modal) !important;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 8.0%, transparent) !important;
     max-width: 340px !important;
     font-family: var(--cal-font);
     z-index: var(--z-index-popover) !important;
 }
 
 .cal-day-popover .popover-header {
-    background-color: var(--spa-bg) !important;
-    border-bottom: 1px solid var(--spa-border-color) !important;
+    background-color: var(--color-canvas) !important;
+    border-bottom: 1px solid var(--color-border) !important;
     font-weight: 700 !important;
-    color: var(--spa-info) !important;
+    color: var(--status-information) !important;
     font-size: 0.82rem !important;
     padding: 8px 12px !important;
 }
@@ -428,8 +428,8 @@
 
 .cal-day-pop-summary {
     padding: 8px 12px;
-    background-color: #fafbfc;
-    border-bottom: 1px solid var(--spa-border-color);
+    background-color: var(--color-text-default);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -444,7 +444,7 @@
 
 .cal-day-pop-item {
     padding: 8px 12px;
-    border-bottom: 1px solid var(--spa-border-color);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -457,7 +457,7 @@
 .cal-day-pop-time {
     font-size: 0.72rem;
     font-weight: 700;
-    color: var(--spa-info);
+    color: var(--status-information);
     min-width: 38px;
 }
 
@@ -469,12 +469,12 @@
 .cal-day-pop-name {
     font-weight: 700;
     font-size: 0.78rem;
-    color: #2e3033;
+    color: var(--color-text-default);
 }
 
 .cal-day-pop-service {
     font-size: 0.7rem;
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
 }
 
 /* ============================================================
@@ -491,12 +491,12 @@
     flex-direction: column !important;
     overflow: hidden !important;
     z-index: 1065 !important;
-    background: var(--spa-card-bg);
+    background: var(--color-surface);
 }
 
 .cal-offcanvas .offcanvas-header {
-    background: linear-gradient(135deg, var(--spa-info) 0%, #224abe 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--status-information) 0%, var(--color-text-default) 100%);
+    color: var(--color-surface);
     padding: 1rem 1.25rem;
 }
 
@@ -521,8 +521,8 @@
 /* Offcanvas day header */
 .cal-oc-day-header {
     padding: 1rem 1.25rem;
-    background: var(--spa-bg);
-    border-bottom: 1px solid var(--spa-border-color);
+    background: var(--color-canvas);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -531,13 +531,13 @@
 .cal-oc-day-header h6 {
     margin: 0;
     font-weight: 700;
-    color: var(--spa-info);
+    color: var(--status-information);
     font-size: 0.9rem;
 }
 
 .cal-oc-day-stats {
     font-size: 0.78rem;
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
 }
 
 /* Offcanvas appointment list */
@@ -547,7 +547,7 @@
 
 .cal-oc-item {
     padding: 0.85rem 1.25rem;
-    border-bottom: 1px solid var(--spa-border-color);
+    border-bottom: 1px solid var(--color-border);
     transition: background-color 0.15s ease;
 }
 
@@ -556,7 +556,7 @@
 }
 
 .cal-oc-item:hover {
-    background-color: var(--spa-bg);
+    background-color: var(--color-canvas);
 }
 
 .cal-oc-item-header {
@@ -567,8 +567,8 @@
 }
 
 .cal-oc-time-badge {
-    background: var(--spa-info);
-    color: #fff;
+    background: var(--status-information);
+    color: var(--color-surface);
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 0.72rem;
@@ -578,7 +578,7 @@
 .cal-oc-customer {
     font-weight: 700;
     font-size: 0.88rem;
-    color: #2e3033;
+    color: var(--color-text-default);
 }
 
 .cal-oc-detail-grid {
@@ -590,12 +590,12 @@
 }
 
 .cal-oc-label {
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
     font-weight: 600;
 }
 
 .cal-oc-value {
-    color: #2e3033;
+    color: var(--color-text-default);
 }
 
 .cal-oc-actions {
@@ -620,13 +620,13 @@
     gap: 10px;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--spa-border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .cal-oc-single-name {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #2e3033;
+    color: var(--color-text-default);
 }
 
 .cal-oc-single-grid {
@@ -637,13 +637,13 @@
 }
 
 .cal-oc-single-label {
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
     font-weight: 600;
     font-size: 0.78rem;
 }
 
 .cal-oc-single-value {
-    color: #2e3033;
+    color: var(--color-text-default);
     font-weight: 500;
 }
 
@@ -652,7 +652,7 @@
     gap: 8px;
     margin-top: 1.25rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--spa-border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .cal-oc-single-actions .btn {
@@ -681,7 +681,7 @@
 .cal-oc-empty {
     text-align: center;
     padding: 2rem 1rem;
-    color: var(--spa-text-secondary);
+    color: var(--color-text-muted);
 }
 
 .cal-oc-empty i {
