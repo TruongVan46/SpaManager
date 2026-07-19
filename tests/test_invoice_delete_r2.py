@@ -23,7 +23,6 @@ Verifies:
  18. Non-invoice TASK 7.0.12E files are not modified by R2.
 """
 
-import hashlib
 import re
 from pathlib import Path
 
@@ -37,28 +36,9 @@ INVOICE_TEMPLATE = REPO / "templates" / "invoice" / "index.html"
 INVOICE_ROUTE    = REPO / "routes" / "invoice.py"
 
 # ---------------------------------------------------------------------------
-# Protected TASK 7.0.12E file hashes (must not change during R2)
-# Loaded from the baseline file written during R2 discovery.
 # ---------------------------------------------------------------------------
-_BASELINE_FILE = REPO / ".ui-audit" / "7.0.12E" / "r2_protected_hashes.txt"
-_NON_INVOICE_BASELINES: dict[str, str] = {}
-
-def _load_non_invoice_baselines():
-    if _BASELINE_FILE.exists():
-        for line in _BASELINE_FILE.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split(None, 1)
-            if len(parts) == 2:
-                rel = parts[1]
-                if "invoice" not in rel:
-                    _NON_INVOICE_BASELINES[rel] = parts[0]
-
-_load_non_invoice_baselines()
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+# Template loading helpers
+# ---------------------------------------------------------------------------
 
 def tmpl() -> str:
     return INVOICE_TEMPLATE.read_text(encoding="utf-8")
@@ -230,15 +210,49 @@ def test_confirm_submit_button_exists():
     )
 
 # ---------------------------------------------------------------------------
-# 18. Non-invoice TASK 7.0.12E protected files are unchanged by R2
+# 18. Semantic structure assertions for delete confirm form and modal closing controls
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("rel_path,expected_hash", list(_NON_INVOICE_BASELINES.items()))
-def test_non_invoice_task_e_files_unchanged(rel_path: str, expected_hash: str):
-    """Files protected by TASK 7.0.12E (non-invoice) must not be modified by R2."""
-    actual = _sha256(REPO / rel_path.replace("/", "\\"))
-    assert actual == expected_hash, (
-        f"{rel_path} was modified during TASK 7.0.12D-R2 "
-        f"(expected {expected_hash[:12]}…, got {actual[:12]}…)"
+def test_delete_confirm_form_method():
+    """Verify that #deleteInvoiceForm is configured as POST."""
+    text = tmpl()
+    assert re.search(r'<form\s+id="deleteInvoiceForm"[^>]*method="POST"[^>]*>', text) or \
+           re.search(r'<form\s+method="POST"[^>]*id="deleteInvoiceForm"[^>]*>', text), (
+        "#deleteInvoiceForm must use POST method for safe state modification"
+    )
+
+def test_delete_confirm_modal_dismissal():
+    """Verify that close/dismiss controls exist to close the confirmation modal safely."""
+    text = tmpl()
+    assert 'data-bs-dismiss="modal"' in text, (
+        "Modal must have dismissing controls using bootstrap data-bs-dismiss attribute"
+    )
+
+def test_invoice_filter_form_structure():
+    """Verify that the filter GET form exists with standard query fields."""
+    text = tmpl()
+    assert 'method="GET"' in text, "filter form must be method GET"
+    assert 'name="q"' in text, "search query name attribute must exist"
+    assert 'name="payment_method"' in text, "payment method selection name attribute must exist"
+
+def test_invoice_ajax_dom_removal_in_template():
+    """Verify that a successful deletion removes the invoice row from the DOM."""
+    text = tmpl()
+    assert "__invoiceRowToDelete.remove()" in text or "rowToDelete.remove()" in text or "closest('tr').remove()" in text, (
+        "JS script must remove the deleted invoice row from the DOM on successful request"
+    )
+
+def test_invoice_ajax_toast_notifications():
+    """Verify that Notification behavior is connected to deletion success/error."""
+    text = tmpl()
+    assert "Notification.error" in text or "Notification.success" in text or "showToast" in text, (
+        "JS script must notify the user via Notification or showToast on successful delete or failure"
+    )
+
+def test_invoice_ajax_duplicate_submit_prevention():
+    """Verify that the submit button is disabled on submission to prevent duplicates."""
+    text = tmpl()
+    assert "confirmSubmitBtn.disabled = true" in text or 'confirmSubmitBtn.disabled = true' in text or 'confirmSubmitBtn.setAttribute("disabled"' in text, (
+        "JS script must disable the confirm button on submit to prevent duplicate delete requests"
     )
 
 

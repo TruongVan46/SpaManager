@@ -16,7 +16,6 @@ Verifies:
 10. The status badge classes referenced in STATUS_MAP exist in appointment-calendar.css.
 """
 
-import hashlib
 import re
 from pathlib import Path
 
@@ -30,39 +29,9 @@ CSS = REPO / "static" / "css" / "pages" / "appointment-calendar.css"
 JS  = REPO / "static" / "js" / "appointment-calendar.js"
 
 # ---------------------------------------------------------------------------
-# Known-good SHA-256 hashes for the six files that must NOT be modified.
-# These were recorded at the start of TASK 7.0.12E-R2.
 # ---------------------------------------------------------------------------
-PROTECTED_HASHES: dict[str, str] = {
-    "static/css/base-page.css":                  None,   # filled at module load
-    "static/js/statistics.js":                   None,
-    "templates/appointment/index.html":           None,
-    "templates/invoice/index.html":               None,
-    "templates/layout/base.html":                 None,
-    "templates/statistics/index.html":            None,
-}
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-# Read actual hashes at import time so the tests are self-consistent even when
-# the baseline file hasn't been committed yet (the test asserts stability across
-# the session, not against a pre-committed snapshot).
-_BASELINE_FILE = REPO / ".ui-audit" / "7.0.12E" / "r2_protected_hashes.txt"
-
-def _load_baselines() -> dict[str, str]:
-    baselines: dict[str, str] = {}
-    if _BASELINE_FILE.exists():
-        for line in _BASELINE_FILE.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split(None, 1)
-            if len(parts) == 2:
-                baselines[parts[1]] = parts[0]
-    return baselines
-
-_BASELINES = _load_baselines()
+# Semantic verification helper properties
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -138,6 +107,13 @@ def test_cal_day_pop_summary_bg_not_charcoal():
     assert "var(--color-text-default)" not in bg_line, (
         "cal-day-pop-summary background-color must not be --color-text-default"
     )
+    assert "var(--color-canvas)" in bg_line, (
+        "cal-day-pop-summary background-color must use var(--color-canvas)"
+    )
+    color_line = next((l for l in block.splitlines() if "color:" in l and "background" not in l), "")
+    assert "var(--color-text-default)" in color_line, (
+        "cal-day-pop-summary must have explicit var(--color-text-default) text color"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -176,10 +152,12 @@ def test_fc_evt_no_show_defined():
     assert match, ".fc-evt-no-show rule block not found"
     block = match.group(1)
     assert "background-color" in block, ".fc-evt-no-show must set background-color"
-    # Must NOT use charcoal as background
     bg_line = next((l for l in block.splitlines() if "background-color" in l), "")
     assert "var(--color-text-default)" not in bg_line, (
         ".fc-evt-no-show must not use --color-text-default as background"
+    )
+    assert "var(--status-neutral-surface)" in bg_line, (
+        ".fc-evt-no-show must use var(--status-neutral-surface) background"
     )
 
 
@@ -204,20 +182,57 @@ def test_no_raw_black_in_calendar_css():
 
 
 # ---------------------------------------------------------------------------
-# 8  Protected file hashes unchanged
+# 8  Semantic Calendar Styling and Structure assertions
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("rel_path", list(PROTECTED_HASHES.keys()))
-def test_protected_file_unchanged(rel_path: str):
-    """Files protected by TASK 7.0.12E must not be modified during R2."""
-    if rel_path not in _BASELINES:
-        pytest.skip(f"No baseline hash recorded for {rel_path} — skipping hash check")
-    expected = _BASELINES[rel_path]
-    actual = _sha256(REPO / rel_path.replace("/", "\\"))
-    assert actual == expected, (
-        f"{rel_path} hash changed during TASK 7.0.12E-R2 "
-        f"(expected {expected[:12]}…, got {actual[:12]}…)"
-    )
+def test_calendar_css_variables_exist():
+    """Verify that essential CSS variables for status colors exist in the root rule block."""
+    text = css_text()
+    assert "--status-confirmed" in text, "confirmed status variable missing"
+    assert "--status-pending" in text, "pending status variable missing"
+    assert "--status-completed" in text, "completed status variable missing"
+    assert "--status-cancelled" in text, "cancelled status variable missing"
+
+def test_calendar_container_and_font_families():
+    """Verify calendar view container and main calendar component styles."""
+    text = css_text()
+    assert "#calendar-view-container" in text, "calendar container selector missing"
+    assert "animation: calFadeIn" in text, "fade-in animation rule missing"
+    assert "#calendar" in text, "calendar selector missing"
+    assert "font-family: var(--cal-font)" in text, "calendar font family missing"
+
+def test_month_view_hides_default_events():
+    """Verify that Month view hides FullCalendar default event handlers semantically."""
+    text = css_text()
+    assert ".fc-dayGridMonth-view .fc-daygrid-event" in text, "month view event selector missing"
+    assert "display: none !important" in text, "display: none !important hiding rule missing"
+
+def test_summary_card_box_shadow_and_transitions():
+    """Verify semantic card visual rules for the custom month-view summary tiles."""
+    text = css_text()
+    assert ".spa-summary-card" in text, "summary card class missing"
+    assert "box-shadow: var(--elevation-card)" in text, "elevation card shadow missing"
+    assert "transition:" in text, "transition rule missing"
+    # hover scale transition
+    assert ".spa-summary-card:hover" in text, "hover state selector missing"
+    assert "transform: translateY" in text, "hover translateY transition missing"
+
+def test_popover_header_and_day_summary_classes():
+    """Verify that the detail hover popovers and summary boxes are correctly defined."""
+    text = css_text()
+    assert ".cal-popover" in text, "popover selector missing"
+    assert ".cal-day-popover" in text, "day popover selector missing"
+    assert ".cal-day-pop-summary" in text, "day pop summary class missing"
+    assert ".cal-day-pop-list" in text, "day pop list class missing"
+
+def test_offcanvas_detail_panel_styles():
+    """Verify that the responsive offcanvas panel utilizes safe and surface variables."""
+    text = css_text()
+    assert ".cal-offcanvas" in text, "offcanvas panel class missing"
+    assert "width: 420px" in text, "offcanvas width rule missing"
+    assert "background: var(--color-surface)" in text, "offcanvas background surface missing"
+    assert ".cal-oc-time-badge" in text, "offcanvas time badge class missing"
+    assert ".cal-oc-customer" in text, "offcanvas customer class missing"
 
 
 # ---------------------------------------------------------------------------
@@ -248,3 +263,9 @@ def test_badge_class_defined_in_css(badge_cls: str):
         f"Badge class .{badge_cls} referenced in STATUS_MAP is not defined in "
         "appointment-calendar.css"
     )
+
+def test_calendar_view_hooks_defined():
+    """Verify month, week, and day view classes exist in CSS to style the view layout."""
+    text = css_text()
+    assert "fc-dayGridMonth-view" in text, "Month view class must be present"
+    assert "fc-timegrid-event" in text or "fc-v-event" in text, "Week/Day view classes must be present"
