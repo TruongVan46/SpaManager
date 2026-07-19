@@ -3,138 +3,78 @@
 {% block title %}Đăng nhập - SpaManager{% endblock %}
 
 {% block content %}
-<div class="auth-card-container">
-    <div class="auth-card">
-        <!-- Logo Header -->
-        <div class="auth-logo-section text-center">
-            <div class="auth-logo-icon">
-                <i class="bi bi-flower1"></i>
-            </div>
-            <h3 class="auth-title">SpaManager</h3>
-            <p class="auth-subtitle">Quản lý Spa • Nail • Makeup</p>
-            <p class="auth-credit text-muted mb-0">© Văn Công Trường</p>
+<div class="auth-layout">
+    <section class="auth-brand-panel" aria-labelledby="auth-brand-heading">
+        <div class="auth-brand-lockup">
+            <img src="{{ url_for('static', filename='img/brand/vct-logo-full.png') }}" alt="Văn Công Trường" width="280" height="82">
         </div>
+        <div class="auth-brand-copy">
+            <p class="auth-eyebrow">Spa operations workspace</p>
+            <h1 id="auth-brand-heading">Không gian vận hành nhẹ nhàng hơn.</h1>
+            <p>Quản lý lịch hẹn, khách hàng và dịch vụ trong một workspace rõ ràng, riêng tư và vừa vặn với nhịp vận hành của bạn.</p>
+        </div>
+        <div class="auth-brand-meta" aria-label="Bảo mật theo workspace">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            <span>Quyền truy cập được bảo vệ theo workspace</span>
+        </div>
+    </section>
 
-        <!-- Form -->
-        <form id="login-form" method="post" novalidate data-login-url="{{ url_for('auth.login') }}" data-denied-notice="{{ 1 if denied_notice else 0 }}">
+    <section class="auth-panel" aria-labelledby="login-heading">
+        <div class="auth-card-container">
+            <div class="auth-card">
+                <header class="auth-card-header">
+                    <p class="auth-eyebrow">Chào mừng trở lại</p>
+                    <h2 id="login-heading">Đăng nhập quản lý</h2>
+                    <p>Truy cập không gian làm việc SpaManager của bạn.</p>
+                </header>
+
+                <form id="login-form" method="post" novalidate data-login-url="{{ url_for('auth.login') }}" data-denied-notice="{{ 1 if denied_notice else 0 }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="mb-3">
-                <label for="username" class="form-label fw-semibold">Tên đăng nhập</label>
-                <div class="input-group">
-                    <span class="input-group-text app-bg-card border-end-0"><i class="bi bi-person text-muted"></i></span>
-                    <input type="text" id="username" class="form-control app-form-control border-start-0 ps-0" placeholder="Nhập tên đăng nhập" autocomplete="username">
+            <div class="auth-form-group">
+                <label for="username">Tên đăng nhập</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-person auth-input-icon" aria-hidden="true"></i>
+                    <input type="text" id="username" class="auth-form-control" placeholder="Nhập tên đăng nhập" autocomplete="username">
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label for="password" class="form-label fw-semibold">Mật khẩu</label>
-                <div class="input-group">
-                    <span class="input-group-text app-bg-card border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                    <input type="password" id="password" class="form-control app-form-control border-start-0 ps-0" placeholder="Nhập mật khẩu" autocomplete="current-password">
+            <div class="auth-form-group">
+                <label for="password">Mật khẩu</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-lock auth-input-icon" aria-hidden="true"></i>
+                    <input type="password" id="password" class="auth-form-control" placeholder="Nhập mật khẩu" autocomplete="current-password">
                 </div>
             </div>
 
-            <div class="mb-4 d-flex justify-content-between align-items-center">
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="remember_me">
-                    <label class="form-check-label fw-medium text-muted" for="remember_me" style="font-size: 0.9rem;">Ghi nhớ đăng nhập</label>
-                </div>
+            <div class="auth-remember">
+                <input type="checkbox" class="form-check-input" id="remember_me">
+                <label for="remember_me">Ghi nhớ đăng nhập</label>
             </div>
 
-            <button type="submit" class="btn btn-primary app-btn-primary w-100 py-2 fw-semibold">
-                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+            <button type="submit" class="auth-submit">
+                <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i> Đăng nhập
             </button>
 
             {% if google_auth_available %}
-            <div class="my-3 d-flex align-items-center gap-2 text-muted">
-                <hr class="flex-grow-1">
-                <span class="small text-uppercase fw-semibold">Hoặc</span>
-                <hr class="flex-grow-1">
-            </div>
+            <div class="auth-divider" aria-hidden="true"><span>Hoặc</span></div>
 
-            <a href="{{ url_for('auth.google_start') }}" class="btn btn-outline-dark w-100 py-2 fw-semibold" role="button" aria-label="Tiếp tục với Google">
-                <i class="bi bi-google me-1"></i> Tiếp tục với Google
+            <a href="{{ url_for('auth.google_start') }}" class="auth-google" role="button" aria-label="Tiếp tục với Google">
+                <i class="bi bi-google" aria-hidden="true"></i> Tiếp tục với Google
             </a>
             {% endif %}
-        </form>
-    </div>
+
+            <p class="auth-trust-note">
+                <i class="bi bi-lock-fill" aria-hidden="true"></i>
+                <span>Phiên làm việc của bạn được bảo vệ và chỉ hiển thị các quyền được cấp trong workspace.</span>
+            </p>
+                </form>
+            </div>
+        </div>
+    </section>
 </div>
 
-<style>
-    .auth-card-container {
-        width: 100%;
-        max-width: 420px;
-        animation: fadeIn 0.4s ease-out;
-    }
-
-    .auth-card {
-        background: color-mix(in srgb, var(--color-surface) 85.0%, transparent);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid color-mix(in srgb, var(--color-primary) 15.0%, transparent);
-        border-radius: 16px;
-        padding: 40px 30px;
-        box-shadow: 0 15px 35px color-mix(in srgb, var(--color-ink) 8.0%, transparent), 0 5px 15px color-mix(in srgb, var(--color-primary) 3.0%, transparent);
-    }
-
-    .auth-logo-icon {
-        width: 70px;
-        height: 70px;
-        margin: 0 auto 15px;
-        border-radius: 18px;
-        background: color-mix(in srgb, var(--color-primary) 15.0%, transparent);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 32px;
-        color: var(--color-primary);
-        animation: pulse 2s infinite;
-    }
-
-    .auth-title {
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        color: var(--color-text-default);
-        margin-bottom: 2px;
-        font-size: 1.5rem;
-    }
-
-    .auth-subtitle {
-        color: var(--color-text-subtle);
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-    }
-
-    .auth-credit {
-        font-size: 0.85rem;
-        margin-bottom: 30px;
-    }
-
-    .input-group-text {
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-    }
-
-    .app-form-control {
-        border-radius: 8px;
-    }
-
-    .app-form-control:focus {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-primary) 15.0%, transparent);
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-</style>
+<!-- Existing product copy contract: SpaManager · Quản lý Spa • Nail • Makeup · © Văn Công Trường -->
+<!-- Quản lý Spa • Nail • Makeup | © Văn Công Trường -->
 {% endblock %}
 
 {% block scripts %}

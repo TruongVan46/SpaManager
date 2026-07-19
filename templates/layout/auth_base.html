@@ -11,29 +11,20 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/notification.css') }}?v=1.0.5">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v=1.0.5">
-    
-    <style>
-        body {
-            background-color: var(--color-canvas, var(--color-surface-muted)) !important;
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth.css', v='7.0.11d2') }}">
 </head>
-<body>
+<body class="auth-page">
 
     {% include 'layout/flash.html' %}
 
-    {% block content %}{% endblock %}
+    <main id="main-content" class="auth-shell" tabindex="-1">
+        {% block content %}{% endblock %}
+    </main>
 
     <!-- Bootstrap Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
