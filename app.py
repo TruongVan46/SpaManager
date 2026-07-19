@@ -40,7 +40,7 @@ from core.auth.permissions import (
 from core.csrf import validate_csrf_request, csrf_token, CSRFError, clear_csrf_token
 from core.auth.google_oauth import init_google_oauth, is_google_auth_available
 from core.auth.constants import AUTH_SESSION_KEY
-from utils.display_labels import display_role, display_status
+from utils.display_labels import display_role, display_status; from utils.navigation import safe_return_url
 from core.migration_cli import register_migration_commands
 from core.data_audit_cli import register_data_audit_commands
 from core.performance_cli import register_performance_profile_commands
@@ -280,7 +280,7 @@ def inject_asset_helpers():
             return None
         return url_for('media_file', path=normalized_path)
 
-    return dict(asset_version=asset_version, media_url=media_url)
+    return dict(asset_version=asset_version, media_url=media_url, safe_return_url=safe_return_url)
 
 @app.context_processor
 def inject_csrf_helper():

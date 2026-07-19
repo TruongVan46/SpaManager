@@ -17,7 +17,7 @@
             <h1 class="app-title mb-0">Chi tiết dịch vụ</h1>
             <h2 class="h5 text-muted mt-2">{{ service.name }}</h2>
         </div>
-        <a href="{{ url_for('statistics.index', from_date=from_date, to_date=to_date) }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+        <a href="{{ back_url }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
             <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
         </a>
     </div>
@@ -80,7 +80,7 @@
                                     <td>{{ inv.line_total | format_currency }}</td>
                                     <td>{{ inv.invoice_total | format_currency }}</td>
                                     <td>
-                                        <a href="{{ url_for('invoice.detail', invoice_id=inv.invoice_id, return_url=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary">
+                                        <a href="{{ url_for('invoice.detail', invoice_id=inv.invoice_id, return_url=safe_return_url(request.full_path)) }}" class="app-btn app-btn-sm app-btn-primary">
                                             <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem
                                         </a>
                                     </td>

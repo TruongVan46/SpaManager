@@ -10,20 +10,20 @@ from core.exceptions import BusinessException
 from services.notification_service import NotificationService
 from utils.timezone_utils import local_now
 from services.auth_service import AuthService
+from utils.navigation import safe_return_url
 
 
-def _sanitize_return_to(return_to):
-    if not return_to:
-        return None
 
-    candidate = return_to.strip()
-    if not candidate.startswith('/') or candidate.startswith('//'):
-        return None
-    if '://' in candidate:
-        return None
-    if not candidate.startswith(('/customers/', '/appointments', '/invoices')):
-        return None
-    return candidate
+
+
+
+
+
+
+
+
+
+
 
 @appointment_bp.route('/appointments')
 def index():
@@ -55,7 +55,7 @@ def index():
 
 @appointment_bp.route('/appointments/create', methods=['GET', 'POST'])
 def create():
-    return_to = _sanitize_return_to(request.args.get('return_to') or request.form.get('return_to'))
+    return_to = safe_return_url(request.args.get('return_to') or request.form.get('return_to'))
     if request.method == 'GET':
         customers = CustomerService.get_all()
         services = ServiceService.get_all_services()
@@ -131,7 +131,7 @@ def create():
 
 @appointment_bp.route('/appointments/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id):
-    return_to = _sanitize_return_to(request.args.get('return_to') or request.form.get('return_to'))
+    return_to = safe_return_url(request.args.get('return_to') or request.form.get('return_to'))
     if request.method == 'GET':
         appointment = AppointmentService.get_by_id(id)
         if not appointment:
@@ -220,7 +220,7 @@ def detail(id):
         flash('Không tìm thấy lịch hẹn.', 'danger')
         return redirect(url_for('appointment.index'))
     
-    back_url = _sanitize_return_to(request.args.get('return_to')) or url_for('appointment.index')
+    back_url = safe_return_url(request.args.get('return_to')) or url_for('appointment.index')
     return render_template('appointment/detail.html', appointment=appointment, back_url=back_url)
 
 @appointment_bp.route('/appointments/update_status', methods=['POST'])

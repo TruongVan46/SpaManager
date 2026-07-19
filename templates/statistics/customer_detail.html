@@ -7,7 +7,7 @@
 <div class="container-fluid app-page statistics-page statistics-detail-page">
     <div class="app-page-header">
         <h1 class="app-title mb-0">Chi tiết khách hàng</h1>
-        <a href="{{ url_for('statistics.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+        <a href="{{ back_url }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
             <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
         </a>
     </div>
@@ -86,7 +86,7 @@
                                         <span class="app-badge badge bg-info text-dark">{{ invoice.display_payment_method or invoice.payment_method or 'Không rõ' }}</span>
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-sm app-btn-primary">
+                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=safe_return_url(request.full_path)) }}" class="app-btn app-btn-sm app-btn-primary">
                                             <i class="bi bi-eye" style="margin-right: 8px;"></i>Xem chi tiết
                                         </a>
                                     </td>

@@ -12,20 +12,21 @@ from utils.pagination import get_pagination_params
 from utils.timezone_utils import local_now
 from services.auth_service import AuthService
 from core.exceptions import BusinessException
+from utils.navigation import safe_return_url
 
 
-def _sanitize_return_to(return_to):
-    if not return_to:
-        return None
 
-    candidate = return_to.strip()
-    if not candidate.startswith('/') or candidate.startswith('//'):
-        return None
-    if '://' in candidate:
-        return None
-    if not candidate.startswith(('/customers/', '/appointments', '/invoices')):
-        return None
-    return candidate
+
+
+
+
+
+
+
+
+
+
+
 
 
 def _build_invoice_create_url(customer_id=None, return_to=None):
@@ -42,7 +43,6 @@ def _apply_pdf_download_headers(response):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
-
 @invoice_bp.route('/invoices')
 def index():
     q = request.args.get('q', '').strip()
@@ -87,7 +87,7 @@ def index():
 
 @invoice_bp.route('/invoices/create', methods=['GET', 'POST'])
 def create():
-    return_to = _sanitize_return_to(request.args.get('return_to') or request.form.get('return_to'))
+    return_to = safe_return_url(request.args.get('return_to') or request.form.get('return_to'))
     back_url = return_to or url_for('invoice.index')
 
     if request.method == 'POST':
@@ -190,7 +190,7 @@ def detail(invoice_id):
     if not invoice:
         flash("Hóa đơn không tồn tại.", "danger")
         return redirect(url_for('invoice.index'))
-    return_to = _sanitize_return_to(request.args.get('return_to') or request.args.get('return_url'))
+    return_to = safe_return_url(request.args.get('return_to') or request.args.get('return_url'))
     back_url = return_to or url_for('invoice.index')
     return render_template('invoice/detail.html', invoice=invoice, back_url=back_url)
 
@@ -202,7 +202,7 @@ def print_invoice(invoice_id):
         return redirect(url_for('invoice.index'))
     
     settings = Setting.get_workspace_settings_dict()
-    return_to = _sanitize_return_to(request.args.get('return_to') or request.args.get('return_url'))
+    return_to = safe_return_url(request.args.get('return_to') or request.args.get('return_url'))
     back_url = return_to or url_for('invoice.index')
     return render_template('invoice/print.html', invoice=invoice, settings=settings, back_url=back_url)
 
@@ -222,7 +222,7 @@ def delete(invoice_id):
         else:
             flash('Xóa hóa đơn thành công', 'success')
 
-        return_url = request.args.get('return_url') or request.form.get('return_url')
+        return_url = safe_return_url(request.args.get('return_url') or request.form.get('return_url'))
         if return_url:
             return redirect(return_url)
         return redirect(url_for('invoice.index'))

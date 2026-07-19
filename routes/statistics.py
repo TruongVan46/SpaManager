@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, send_file, abort
+from flask import render_template, request, jsonify, send_file, abort, url_for
 from routes import statistics_bp
 from services.statistics_service import StatisticsService
 from services.auth_service import AuthService
@@ -6,6 +6,7 @@ from core.auth.permissions import can_manage_settings
 from datetime import datetime, date
 from utils.pagination import get_pagination_params
 from utils.timezone_utils import local_now
+from utils.navigation import safe_return_url
 
 
 def parse_date(date_val):
@@ -45,7 +46,6 @@ def _apply_download_headers(response):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
-
 
 @statistics_bp.before_request
 def _require_statistics_permission():
@@ -166,7 +166,7 @@ def customer_detail(customer_id):
         invoices=stats.get('invoices'),
         summary=stats.get('summary'),
         from_date=from_date,
-        to_date=to_date
+        to_date=to_date, back_url=safe_return_url(request.args.get('return_url')) or url_for('statistics.index', from_date=from_date, to_date=to_date)
     )
 
 
@@ -190,7 +190,7 @@ def service_detail(service_id):
         service=service,
         service_invoices=service_invoices,
         from_date=from_date,
-        to_date=to_date
+        to_date=to_date, back_url=safe_return_url(request.args.get('return_url')) or url_for('statistics.index', from_date=from_date, to_date=to_date)
     )
 
 

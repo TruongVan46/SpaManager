@@ -4,7 +4,7 @@ from services.customer_service import CustomerService
 from services.auth_service import AuthService
 from utils.pagination import get_pagination_params
 from core.exceptions import BusinessException, NotFoundException
-from services.notification_service import NotificationService
+from services.notification_service import NotificationService; from utils.navigation import safe_return_url
 
 CUSTOMER_DETAIL_PARTIAL_TEMPLATES = {
     'appointments': 'customer/_appointment_history.html',
@@ -20,7 +20,7 @@ def _build_customer_detail_url(customer_id, appointment_page, appointment_per_pa
         appointment_per_page=appointment_per_page,
         invoice_page=invoice_page,
         invoice_per_page=invoice_per_page,
-    )
+    ); detail_data['back_url'] = safe_return_url(request.args.get('return_url') or request.args.get('return_to')) or url_for('customer.index')
 
 
 @customer_bp.route('/customers')

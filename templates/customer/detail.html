@@ -48,7 +48,7 @@
             <div class="text-muted">Xem thông tin, lịch hẹn và hóa đơn liên quan của khách hàng.</div>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{{ url_for('customer.index') }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
+            <a href="{{ back_url }}" class="app-btn app-btn-secondary btn btn-outline-secondary">
                 <i class="bi bi-arrow-left" style="margin-right: 8px;"></i>Quay lại
             </a>
             <a href="{{ url_for('customer.edit', id=customer.id) }}" class="app-btn app-btn-primary btn btn-primary">

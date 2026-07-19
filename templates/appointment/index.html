@@ -282,10 +282,10 @@
                                     </td>
                                     <td class="text-center">
                                          <div class="btn-group btn-group-sm">
-                                             <a href="{{ url_for('appointment.detail', id=appointment.id, return_to=request.full_path) }}" class="btn btn-outline-secondary" title="Chi tiết">
+                                             <a href="{{ url_for('appointment.detail', id=appointment.id, return_to=safe_return_url(request.full_path)) }}" class="btn btn-outline-secondary" title="Chi tiết">
                                                  <i class="bi bi-eye"></i>
                                              </a>
-                                             <a href="{{ url_for('appointment.edit', id=appointment.id, return_to=request.full_path) }}" class="btn btn-outline-primary" title="Sửa">
+                                             <a href="{{ url_for('appointment.edit', id=appointment.id, return_to=safe_return_url(request.full_path)) }}" class="btn btn-outline-primary" title="Sửa">
                                                  <i class="bi bi-pencil-square"></i>
                                              </a>
                                              <form action="{{ url_for('appointment.delete', id=appointment.id) }}" method="POST" class="d-inline">

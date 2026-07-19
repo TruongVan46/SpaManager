@@ -156,7 +156,7 @@
                             <td>{{ stat.total_spent | format_currency }}</td>
                             <td class="text-center">
                                 {% if stat.id %}
-                                    <a href="{{ url_for('statistics.customer_detail', customer_id=stat.id, from_date=from_date, to_date=to_date) }}" class="btn btn-sm btn-light-brown d-inline-flex align-items-center gap-1" title="Xem chi tiết">
+                                    <a href="{{ url_for('statistics.customer_detail', customer_id=stat.id, from_date=from_date, to_date=to_date, return_url=safe_return_url(request.full_path)) }}" class="btn btn-sm btn-light-brown d-inline-flex align-items-center gap-1" title="Xem chi tiết">
                                         <i class="bi bi-eye"></i> Xem
                                     </a>
                                 {% else %}
@@ -249,7 +249,7 @@
                             <td>{{ stat.quantity_sold }}</td>
                             <td>{{ stat.revenue | format_currency }}</td>
                             <td class="text-center">
-                                <a href="{{ url_for('statistics.service_detail', service_id=stat.service_id, from_date=from_date, to_date=to_date) }}" class="btn btn-sm btn-light-brown d-inline-flex align-items-center gap-1" title="Xem chi ti?t">
+                                <a href="{{ url_for('statistics.service_detail', service_id=stat.service_id, from_date=from_date, to_date=to_date, return_url=safe_return_url(request.full_path)) }}" class="btn btn-sm btn-light-brown d-inline-flex align-items-center gap-1" title="Xem chi ti?t">
                                     <i class="bi bi-eye"></i> Xem
                                 </a>
                             </td>

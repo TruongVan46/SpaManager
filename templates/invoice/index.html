@@ -185,10 +185,10 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-primary btn btn-outline-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="Xem chi tiết">
+                                        <a href="{{ url_for('invoice.detail', invoice_id=invoice.id, return_to=safe_return_url(request.full_path)) }}" class="app-btn app-btn-primary btn btn-outline-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="Xem chi tiết">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id, return_to=request.full_path) }}" class="app-btn app-btn-secondary btn btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="In hóa đơn">
+                                        <a href="{{ url_for('invoice.print_invoice', invoice_id=invoice.id, return_to=safe_return_url(request.full_path)) }}" class="app-btn app-btn-secondary btn btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="In hóa đơn">
                                             <i class="bi bi-printer"></i>
                                         </a>
                                         <button type="button" class="app-btn app-btn-outline-danger btn btn-outline-danger" 
