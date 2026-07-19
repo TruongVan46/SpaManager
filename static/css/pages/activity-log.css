@@ -19,9 +19,10 @@
 /* --------------------------------------------------------------------------
    2. Toolbar
    -------------------------------------------------------------------------- */
+
 .activity-log-page .activity-log-toolbar-row {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: flex-end;
     gap: 12px;
 }
@@ -29,18 +30,8 @@
 .activity-log-page .filter-item {
     display: flex;
     flex-direction: column;
-    flex: 1 1 12%;
-    min-width: 110px;
-}
-
-.activity-log-page .filter-item.flex-grow-1 {
-    flex: 2 1 25%;
-    min-width: 200px;
-}
-
-.activity-log-page .filter-item.actor-box {
-    flex: 1 1 16%;
-    min-width: 170px;
+    width: 100%;
+    min-width: 0;
 }
 
 .activity-log-page .filter-item label {
@@ -49,9 +40,36 @@
 }
 
 .activity-log-page .filter-buttons {
-    flex: 0 0 auto;
     display: flex;
     gap: 8px;
+    width: 100%;
+}
+
+@media (min-width: 576px) {
+    .activity-log-page .activity-log-toolbar-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .activity-log-page .filter-item.flex-grow-1 {
+        grid-column: span 2;
+    }
+}
+
+@media (min-width: 768px) {
+    .activity-log-page .activity-log-toolbar-row {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .activity-log-page .filter-item.flex-grow-1 {
+        grid-column: auto;
+    }
+}
+
+@media (min-width: 1200px) {
+    .activity-log-page .activity-log-toolbar-row {
+        grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1fr auto;
+    }
+    .activity-log-page .filter-buttons {
+        width: auto;
+    }
 }
 
 .activity-log-page .filter-buttons button,
