@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const ctx = document.getElementById('revenueChart');
+    const ctx = document.getElementById('revenueChart') || document['getElementById']('statisticsRevenueChart');
     if (!ctx) return;
 
-    // Parse data from data-chart attribute
-    const chartDataAttr = ctx.getAttribute('data-chart');
+    // Parse data from data-chart attribute || data-revenue-chart
+    const chartDataAttr = ctx.getAttribute('data-chart') || ctx.getAttribute('data-revenue-chart');
     let chartData = { labels: [], values: [] };
     
     try {
@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const style = getComputedStyle(document.body);
-    const primaryColor = style.getPropertyValue('--color-primary').trim() || 'var(--color-primary)';
+    const primaryColor = style.getPropertyValue('--color-primary').trim() || '#B76E79';
     const primaryLight = style.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
     const textSecondary = style.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
     const borderColor = style.getPropertyValue('--color-border').trim() || 'var(--color-border)';

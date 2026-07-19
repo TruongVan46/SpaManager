@@ -196,9 +196,9 @@
 }
 
 .spa-summary-card.summary-yellow {
-    background-color: var(--color-text-default) !important;
+    background-color: var(--status-warning-surface) !important;
     border-left-color: var(--status-warning) !important;
-    color: var(--status-warning) !important;
+    color: var(--color-text-default) !important;
 }
 
 .spa-summary-card.summary-red {
@@ -252,13 +252,18 @@
 
 /* Status color classes for events */
 .fc-evt-confirmed {
-    background-color: var(--color-text-default) !important;
+    background-color: var(--status-information-surface) !important;
     border-left: 4px solid var(--status-confirmed) !important;
 }
 
 .fc-evt-pending {
-    background-color: var(--color-text-default) !important;
+    background-color: var(--status-warning-surface) !important;
     border-left: 4px solid var(--status-pending) !important;
+}
+
+.fc-evt-no-show {
+    background-color: var(--status-neutral-surface) !important;
+    border-left: 4px solid var(--status-neutral) !important;
 }
 
 .fc-evt-completed {
@@ -393,10 +398,10 @@
     font-weight: 700;
 }
 
-.cal-status-confirmed { background-color: var(--color-text-default); color: var(--color-text-default); }
-.cal-status-pending { background-color: var(--color-text-default); color: var(--color-text-default); }
-.cal-status-completed { background-color: var(--color-text-default); color: var(--color-text-default); }
-.cal-status-cancelled { background-color: var(--status-danger-surface); color: var(--color-text-default); }
+.cal-status-confirmed { background-color: var(--status-information-surface); color: var(--status-information); }
+.cal-status-pending { background-color: var(--status-warning-surface); color: var(--status-warning); }
+.cal-status-completed { background-color: var(--status-success-surface); color: var(--status-success); }
+.cal-status-cancelled { background-color: var(--status-danger-surface); color: var(--status-danger); }
 
 /* ============================================================
    MONTH VIEW POPOVER - Day Summary Hover
@@ -428,7 +433,8 @@
 
 .cal-day-pop-summary {
     padding: 8px 12px;
-    background-color: var(--color-text-default);
+    background-color: var(--color-canvas) !important;
+    color: var(--color-text-default) !important;
     border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;

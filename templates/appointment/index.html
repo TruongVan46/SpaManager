@@ -47,7 +47,7 @@
         <div class="app-kpi-card app-kpi-border-primary">
             <div class="app-card-body text-primary">
                 <div class="app-small text-uppercase mb-1 fw-medium text-primary">Tổng lịch hẹn</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.total }}</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.total }}</div> Stashed changes
                 <i class="bi bi-calendar-event app-kpi-icon text-primary"></i>
             </div>
         </div>
@@ -56,7 +56,7 @@
         <div class="app-kpi-card app-kpi-border-warning">
             <div class="app-card-body text-warning">
                 <div class="app-small text-uppercase mb-1 fw-medium text-warning">Chờ xử lý</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.pending }}</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.pending }}</div> Stashed changes
                 <i class="bi bi-clock-history app-kpi-icon text-warning"></i>
             </div>
         </div>
@@ -65,7 +65,7 @@
         <div class="app-kpi-card app-kpi-border-info">
             <div class="app-card-body text-info">
                 <div class="app-small text-uppercase mb-1 fw-medium text-info">Đã xác nhận</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.confirmed }}</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.confirmed }}</div> Stashed changes
                 <i class="bi bi-check-circle app-kpi-icon text-info"></i>
             </div>
         </div>
@@ -74,7 +74,7 @@
         <div class="app-kpi-card app-kpi-border-success">
             <div class="app-card-body text-success">
                 <div class="app-small text-uppercase mb-1 fw-medium text-success">Hoàn thành</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.completed }}</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.completed }}</div> Stashed changes
                 <i class="bi bi-check-all app-kpi-icon text-success"></i>
             </div>
         </div>
@@ -83,7 +83,7 @@
         <div class="app-kpi-card app-kpi-border-danger">
             <div class="app-card-body text-danger">
                 <div class="app-small text-uppercase mb-1 fw-medium text-danger">Đã hủy</div>
-                <div class="h5 mb-0 fw-semibold app-title">{{ summary.cancelled }}</div>
+                <div class="h5 mb-0 fw-semibold app-title">{{ summary.cancelled }}</div> Stashed changes
                 <i class="bi bi-x-circle app-kpi-icon text-danger"></i>
             </div>
         </div>
@@ -102,7 +102,7 @@
                 <form method="GET" action="{{ url_for('appointment.index') }}" class="app-filter-bar">
                     <!-- Hàng 1: Ô tìm kiếm và Quick Range / Date Range -->
                     <div class="app-filter-main">
-                        <div class="app-search-box" style="flex: 0 0 calc(80% - 12.8px); min-width: 280px;">
+                        <div class="app-search-box">
                             <label>Tìm kiếm</label>
                             <div class="input-group">
                                 <span class="input-group-text">
@@ -112,7 +112,7 @@
                             </div>
                         </div>
                         
-                        <div class="app-select-group" style="flex: 0 0 calc(20% - 3.2px); min-width: 120px;">
+                        <div class="app-select-group">
                             <label class="d-flex align-items-center gap-1">
                                 Khoảng thời gian 
                                 <i class="bi bi-info-circle text-primary cursor-pointer" data-bs-toggle="tooltip" data-bs-placement="top" title="Hai ô ngày chỉ xuất hiện khi chọn 'Tùy chọn'."></i>
@@ -127,7 +127,7 @@
                         </div>
 
                         <!-- Date inputs inside main row if period is custom, otherwise toggled by JS -->
-                        <div class="app-date-group transition-collapse" id="customDatesRow" style="display: none; flex: 1 1 30%; min-width: 280px;">
+                        <div class="app-date-group transition-collapse" id="customDatesRow" style="display: none;">
                             <div class="date-item">
                                 <label>Từ ngày</label>
                                 <input type="date" name="from_date" id="from_date" class="app-form-control form-control" value="{{ request.args.get('from_date', '') }}">

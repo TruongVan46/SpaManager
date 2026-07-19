@@ -362,6 +362,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let myChart = createChart(canvas, chartData);
 
     function createChart(ctx, data) {
+        const style = getComputedStyle(document.body);
+        const primaryColor = style.getPropertyValue('--color-primary').trim() || '#B76E79';
+        const primaryLight = style.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
+        const textSecondary = style.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
+        const borderColor = style.getPropertyValue('--color-border').trim() || 'var(--color-border)';
+
         return new Chart(ctx, {
             type: 'line',
             data: {
@@ -369,13 +375,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Doanh thu (VND)',
                     data: data.values,
-                    borderColor: 'var(--color-primary)',
-                    backgroundColor: 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)',
+                    borderColor: primaryColor,
+                    backgroundColor: primaryLight,
                     borderWidth: 3,
                     tension: 0,
                     fill: true,
                     pointRadius: 4,
-                    pointBackgroundColor: 'var(--color-primary)'
+                    pointBackgroundColor: primaryColor
                 }]
             },
             options: {
@@ -404,21 +410,58 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         beginAtZero: true,
                         ticks: {
+                            color: textSecondary,
                             callback: function(value) {
                                 return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
                             }
                         },
                         grid: {
                             drawBorder: false,
-                            color: 'color-mix(in srgb, var(--color-ink) 5.0%, transparent)'
+                            color: borderColor
                         }
                     },
                     x: {
+                        ticks: {
+                            color: textSecondary
+                        },
                         grid: {
                             display: false
                         }
                     }
                 }
+            }
+        });
+    }
+
+    if (window.ThemeManager) {
+        window.ThemeManager.onThemeChanged(function() {
+            if (myChart) {
+                const currentStyle = getComputedStyle(document.body);
+                const currentPrimary = currentStyle.getPropertyValue('--color-primary').trim() || '#B76E79';
+                const currentPrimaryLight = currentStyle.getPropertyValue('--color-primary-tint').trim() || 'color-mix(in srgb, var(--color-primary) 10.0%, transparent)';
+                const currentTextSecondary = currentStyle.getPropertyValue('--color-text-muted').trim() || 'var(--color-text-muted)';
+                const currentBorder = currentStyle.getPropertyValue('--color-border').trim() || 'var(--color-border)';
+
+                if (myChart.data.datasets && myChart.data.datasets[0]) {
+                    myChart.data.datasets[0].borderColor = currentPrimary;
+                    myChart.data.datasets[0].backgroundColor = currentPrimaryLight;
+                    myChart.data.datasets[0].pointBackgroundColor = currentPrimary;
+                }
+
+                if (myChart.options.scales) {
+                    if (myChart.options.scales.x) {
+                        if (!myChart.options.scales.x.ticks) myChart.options.scales.x.ticks = {};
+                        myChart.options.scales.x.ticks.color = currentTextSecondary;
+                    }
+                    if (myChart.options.scales.y) {
+                        if (!myChart.options.scales.y.ticks) myChart.options.scales.y.ticks = {};
+                        myChart.options.scales.y.ticks.color = currentTextSecondary;
+                        if (myChart.options.scales.y.grid) {
+                            myChart.options.scales.y.grid.color = currentBorder;
+                        }
+                    }
+                }
+                myChart.update();
             }
         });
     }
