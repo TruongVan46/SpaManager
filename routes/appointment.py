@@ -249,7 +249,20 @@ def delete(id):
         success, error = AppointmentService.delete(id, actor=AuthService.require_current_username())
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
             if success:
-                return jsonify({'success': True, 'message': 'Đã xóa lịch hẹn thành công.'})
+                search = request.args.get('search', '')
+                status = request.args.get('status', '')
+                from_date = request.args.get('from_date', '')
+                to_date = request.args.get('to_date', '')
+                period = request.args.get('period', '')
+                summary = AppointmentService.get_appointment_summary(
+                    search=search, status=status,
+                    from_date=from_date, to_date=to_date, period=period
+                )
+                return jsonify({
+                    'success': True,
+                    'message': 'Đã xóa lịch hẹn thành công.',
+                    'counts': summary
+                })
             return jsonify({'success': False, 'message': error or 'Không thể xóa lịch hẹn.'})
         if success:
             flash('Đã xóa lịch hẹn thành công.', 'success')

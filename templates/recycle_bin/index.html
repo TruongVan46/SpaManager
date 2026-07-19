@@ -78,25 +78,22 @@
                 <span class="recycle-bin-stats-bar">
                     Tổng: <strong>{{ stats.total }}</strong> | Khách hàng: <strong>{{ stats.customer }}</strong> | Dịch vụ: <strong>{{ stats.service }}</strong> | Lịch hẹn: <strong>{{ stats.appointment }}</strong> | Hóa đơn: <strong>{{ stats.invoice }}</strong>
                 </span>
-                {% if items.total > 0 %}
-                <span class="text-muted small">
+                <span class="text-muted small {% if items.total == 0 %}d-none{% endif %}" id="recycle-bin-pagination-info">
                     Hiển thị từ <strong>{{ (items.page - 1) * items.per_page + 1 }}</strong> đến <strong>{{ [items.page * items.per_page, items.total]|min }}</strong> trong tổng số <strong>{{ items.total }}</strong> bản ghi.
                 </span>
-                {% endif %}
             </div>
 
-            {% if items.total == 0 %}
             <!-- Empty State -->
-            <div class="empty-state">
+            <div class="empty-state {% if items.total > 0 %}d-none{% endif %}" id="recycle-bin-empty-state">
                 <div class="empty-state-icon">
                     <i class="bi bi-trash3"></i>
                 </div>
                 <h4 class="empty-state-title">Thùng rác đang trống</h4>
                 <p class="empty-state-description">Các dữ liệu đã xóa sẽ xuất hiện tại đây.</p>
             </div>
-            {% else %}
+
             <!-- Data Table -->
-            <div class="table-responsive app-table-container recycle-bin-table-container">
+            <div class="table-responsive app-table-container recycle-bin-table-container {% if items.total == 0 %}d-none{% endif %}" id="recycle-bin-table-container">
                 <table class="app-table table table-hover align-middle recycle-bin-table">
                     <thead class="app-table-header">
                         <tr>
@@ -150,12 +147,13 @@
                 </table>
             </div>
 
-            {%- from 'layout/table_macros.html' import pagination_widget %}
-            {{ pagination_widget(items, 'recycle_bin.index', {
-                'q': q, 'item_type': item_type,
-                'sort_by': sort_by, 'per_page': per_page
-            }) }}
-            {% endif %}
+            <div id="recycle-bin-pagination-container" class="{% if items.total == 0 %}d-none{% endif %}">
+                {%- from 'layout/table_macros.html' import pagination_widget %}
+                {{ pagination_widget(items, 'recycle_bin.index', {
+                    'q': q, 'item_type': item_type,
+                    'sort_by': sort_by, 'per_page': per_page
+                }) }}
+            </div>
         </div>
     </div>
 </div>
@@ -292,8 +290,16 @@
                                         urlParams.set('page', currentPage - 1);
                                         window.location.href = window.location.pathname + '?' + urlParams.toString();
                                     } else {
-                                        // Reload to trigger Empty State view
-                                        window.location.reload();
+                                        // Show Empty State dynamically using Bootstrap d-none class
+                                        const tableCont = document.getElementById('recycle-bin-table-container');
+                                        if (tableCont) tableCont.classList.add('d-none');
+                                        const emptyState = document.getElementById('recycle-bin-empty-state');
+                                        if (emptyState) emptyState.classList.remove('d-none');
+                                        const pagContainer = document.getElementById('recycle-bin-pagination-container');
+                                        if (pagContainer) pagContainer.classList.add('d-none');
+                                        const pagInfo = document.getElementById('recycle-bin-pagination-info');
+                                        if (pagInfo) pagInfo.classList.add('d-none');
+                                        updateStatsBar(itemToRestore.type);
                                     }
                                 } else {
                                     // Update statistics counters dynamically
@@ -348,7 +354,24 @@
                         setTimeout(() => {
                             rowToDelete.remove();
                             updateStatsBar(itemToDelete.type);
-                            if (!document.querySelectorAll('.recycle-bin-table tbody tr').length) window.location.reload();
+                            const remainingRows = document.querySelectorAll('.recycle-bin-table tbody tr');
+                            if (remainingRows.length === 0) {
+                                const urlParams = new URLSearchParams(window.location.search);
+                                let currentPage = parseInt(urlParams.get('page')) || 1;
+                                if (currentPage > 1) {
+                                    urlParams.set('page', currentPage - 1);
+                                    window.location.href = window.location.pathname + '?' + urlParams.toString();
+                                } else {
+                                    const tableCont = document.getElementById('recycle-bin-table-container');
+                                    if (tableCont) tableCont.classList.add('d-none');
+                                    const emptyState = document.getElementById('recycle-bin-empty-state');
+                                    if (emptyState) emptyState.classList.remove('d-none');
+                                    const pagContainer = document.getElementById('recycle-bin-pagination-container');
+                                    if (pagContainer) pagContainer.classList.add('d-none');
+                                    const pagInfo = document.getElementById('recycle-bin-pagination-info');
+                                    if (pagInfo) pagInfo.classList.add('d-none');
+                                }
+                            }
                         }, 400);
                     }
                 }).catch(() => {

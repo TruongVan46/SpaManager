@@ -321,9 +321,9 @@
                 <div class="cal-oc-single-actions">
                     <a href="${e.edit_url || '#'}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Sửa</a>
                     <a href="${e.detail_url || '#'}" class="btn btn-outline-secondary"><i class="bi bi-eye me-1"></i>Xem</a>
-                    <form action="${e.delete_url || '#'}" method="POST" class="d-inline" onsubmit="return confirm('Bạn chắc chắn muốn xóa?')">
+                    <form action="${e.delete_url || '#'}" method="POST" class="d-inline">
                         <input type="hidden" name="csrf_token" value="${csrfToken}">
-                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Xóa</button>
+                        <button type="submit" class="btn btn-outline-danger btn-delete"><i class="bi bi-trash me-1"></i>Xóa</button>
                     </form>
                 </div>
             </div>
