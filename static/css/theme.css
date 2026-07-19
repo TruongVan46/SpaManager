@@ -695,6 +695,8 @@ textarea:focus-visible,
     --z-layer-sticky: 20;
     --z-layer-overlay: 40;
     --z-layer-dropdown: 1000;
+    --z-layer-toast: 1040;
+    --z-index-toast: var(--z-layer-toast);
     --z-layer-modal: 1100;
 }
 

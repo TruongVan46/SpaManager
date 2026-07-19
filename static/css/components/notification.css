@@ -7,7 +7,7 @@
 /* Toast Container positioning */
 .toast-container {
     position: fixed;
-    top: 24px;
+    top: 170px; /* Positioned below the desktop top header */
     right: 24px;
     display: flex;
     flex-direction: column;
@@ -247,12 +247,27 @@ body.dark-mode .spa-toast-info .spa-toast-progress-bar,
 }
 
 /* Mobile responsive adjustments */
+@media (max-width: 991.98px) {
+    .toast-container {
+        top: 108px; /* Positioned below the tablet/mobile top header */
+        right: 16px;
+    }
+}
+
 @media (max-width: 576px) {
     .toast-container {
-        top: 12px;
+        top: 108px; /* Positioned below the small mobile top header */
         right: 12px;
         left: 12px;
         width: auto;
         max-width: none;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .spa-toast {
+        transition: opacity 100ms ease-in-out !important;
+        transform: none !important;
     }
 }
