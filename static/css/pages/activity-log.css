@@ -20,11 +20,13 @@
    2. Toolbar
    -------------------------------------------------------------------------- */
 
+/* Base: mobile — single column stack */
 .activity-log-page .activity-log-toolbar-row {
     display: grid;
     grid-template-columns: 1fr;
     align-items: flex-end;
-    gap: 12px;
+    column-gap: 12px;
+    row-gap: 12px;
 }
 
 .activity-log-page .filter-item {
@@ -43,32 +45,65 @@
     display: flex;
     gap: 8px;
     width: 100%;
+    min-width: 0;
+    flex-shrink: 0;
 }
 
+/* Bottom-align buttons with input/select controls in adjacent labelled filter-items. */
+.activity-log-page .filter-item.filter-buttons {
+    justify-content: flex-end;
+}
+
+/* Small: 2 columns — search spans full width */
 @media (min-width: 576px) {
     .activity-log-page .activity-log-toolbar-row {
         grid-template-columns: repeat(2, 1fr);
     }
-    .activity-log-page .filter-item.flex-grow-1 {
+    .activity-log-page .filter-item.search-box {
         grid-column: span 2;
     }
 }
 
+/* Medium / tablet: 4 columns, 2 rows */
 @media (min-width: 768px) {
     .activity-log-page .activity-log-toolbar-row {
         grid-template-columns: repeat(4, 1fr);
+        column-gap: 12px;
+        row-gap: 12px;
     }
-    .activity-log-page .filter-item.flex-grow-1 {
+    .activity-log-page .filter-item.search-box {
         grid-column: auto;
+    }
+    .activity-log-page .filter-buttons {
+        width: 100%;
     }
 }
 
-@media (min-width: 1200px) {
+/* Desktop: deliberate two-row layout — row 1: search actor module action,
+   row 2: severity time sort buttons.
+   Activates at >=1400px viewport (sidebar reduces content to ~1040px). */
+@media (min-width: 1400px) {
     .activity-log-page .activity-log-toolbar-row {
-        grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1fr auto;
+        grid-template-columns: 2fr 1.5fr 1fr 1fr;
+        column-gap: 16px;
+        row-gap: 16px;
+    }
+    .activity-log-page .filter-buttons {
+        width: 100%;
+    }
+}
+
+/* Very wide desktop: single row only when container is ~1240px+.
+   Activates at >=1700px viewport. Each track gets >=120px. */
+@media (min-width: 1700px) {
+    .activity-log-page .activity-log-toolbar-row {
+        grid-template-columns: 2fr 1.4fr 1fr 1fr 1fr 1fr 1fr auto;
+        column-gap: 16px;
+        row-gap: 0;
     }
     .activity-log-page .filter-buttons {
         width: auto;
+        min-width: 80px;
     }
 }
 
@@ -341,37 +376,6 @@
 /* --------------------------------------------------------------------------
    6. Responsive
    -------------------------------------------------------------------------- */
-/* Desktop layout constraint (strict nowrap on very wide screens) */
-@media (min-width: 1300px) {
-    .activity-log-page .activity-log-toolbar-row {
-        flex-wrap: nowrap;
-    }
-}
-
-/* Laptop layout constraint (balanced wrapping to prevent cut-off) */
-@media (min-width: 992px) and (max-width: 1299.98px) {
-    .activity-log-page .activity-log-toolbar-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    .activity-log-page .filter-item {
-        flex: 1 1 calc(20% - 10px);
-        min-width: 100px;
-    }
-    .activity-log-page .filter-item.search-box {
-        flex: 2 1 calc(40% - 10px);
-        min-width: 180px;
-    }
-    .activity-log-page .filter-item.actor-box {
-        flex: 1 1 calc(20% - 10px);
-        min-width: 150px;
-    }
-    .activity-log-page .filter-buttons {
-        flex: 1 1 auto;
-        justify-content: flex-end;
-    }
-}
 
 /* Tablet layout (2-row grid) */
 @media (min-width: 768px) and (max-width: 991.98px) {
