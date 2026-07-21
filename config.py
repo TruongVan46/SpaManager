@@ -1,6 +1,5 @@
 # config.py - SpaManager Project
 import os
-import sys
 from datetime import timedelta
 from dotenv import load_dotenv
 from sqlalchemy.engine import make_url
@@ -34,14 +33,6 @@ def is_permanent_purge_ui_enabled(value):
 
 def is_permanent_purge_execution_enabled(value):
     return value is True
-
-
-def _is_test_process():
-    return (
-        os.getenv("SPAMANAGER_TEST_PROCESS") == "1"
-        or any("unittest" in str(arg).lower() or "pytest" in str(arg).lower() for arg in sys.argv)
-        or os.getenv("PYTEST_CURRENT_TEST") is not None
-    )
 
 
 def _safe_test_database_url():
@@ -262,14 +253,38 @@ config_by_name = {
     "production": ProductionConfig
 }
 
+# Accepted APP_ENV values and their canonical names (for error messages)
+_ACCEPTED_ENVIRONMENTS = ("development", "testing", "production")
+
+
 def get_active_config():
     """
     Resolve the active configuration instance based on the APP_ENV environment variable.
-    Defaults to DevelopmentConfig instance if not defined.
+
+    APP_ENV must be explicitly set to one of: development, testing, production.
+    Missing, empty, whitespace-only or unrecognized values raise RuntimeError
+    to prevent silent selection of a default environment.
     """
-    env_name = "testing" if _is_test_process() else os.getenv("APP_ENV", "development").lower()
-    config_cls = config_by_name.get(env_name, DevelopmentConfig)
+    raw_value = os.getenv("APP_ENV")
+    if raw_value is None:
+        raise RuntimeError(
+            "APP_ENV is not set. "
+            "Set APP_ENV to one of: development, testing, production."
+        )
+    normalized = raw_value.strip().lower()
+    if not normalized:
+        raise RuntimeError(
+            "APP_ENV is empty or contains only whitespace. "
+            "Set APP_ENV to one of: development, testing, production."
+        )
+    config_cls = config_by_name.get(normalized)
+    if config_cls is None:
+        raise RuntimeError(
+            f"APP_ENV={raw_value!r} is not a recognized environment. "
+            f"Accepted values are: development, testing, production."
+        )
     return config_cls()
+
 
 # Instantiate active config to preserve Config import usage
 Config = get_active_config()

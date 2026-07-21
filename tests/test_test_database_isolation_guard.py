@@ -28,10 +28,11 @@ class TestDatabaseIsolationGuardTestCase(unittest.TestCase):
         )
 
     def test_missing_test_database_url_fails_before_connection(self):
-        result = self._run_config_import({"APP_ENV": None, "TEST_DATABASE_URL": None})
+        result = self._run_config_import({"APP_ENV": "testing", "TEST_DATABASE_URL": None})
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Test database safety guard", result.stderr)
         self.assertNotIn("hidden", result.stderr)
+
 
     def test_postgresql_test_database_requires_opt_in_and_test_name(self):
         result = self._run_config_import({"TEST_DATABASE_URL": "postgresql://hidden:hidden@127.0.0.1:1/spamanager_dev"})
