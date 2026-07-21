@@ -26,7 +26,7 @@ from utils.database_engine import (
 
 class BackupService:
     """Service for backing up the SQLite database and managing its metadata."""
-    APP_VERSION = "6.6"
+    APP_VERSION = "7.0"
 
     @staticmethod
     def get_database_engine(app):

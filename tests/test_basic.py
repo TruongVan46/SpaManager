@@ -2736,7 +2736,7 @@ class BasicTestCase(unittest.TestCase):
         )
         self.assertEqual(config.DEFAULT_OWNER_USERNAME, "owner")
         self.assertEqual(config.DEFAULT_OWNER_PASSWORD, "owner123")
-        self.assertEqual(config.APP_VERSION, "6.6")
+        self.assertEqual(config.APP_VERSION, "7.0")
 
     def test_local_config_can_use_explicit_legacy_sqlite_fallback(self):
         with patch.dict(
@@ -2794,10 +2794,10 @@ class BasicTestCase(unittest.TestCase):
         self.assertIn("GOOGLE_AUTH_ENABLED=false", env_example)
         self.assertIn("GOOGLE_ALLOWED_DOMAIN=", env_example)
         self.assertIn("# DATABASE_URL=<Railway PostgreSQL reference variable>", env_example)
-        self.assertIn("APP_VERSION=6.6", env_example)
+        self.assertIn("APP_VERSION=7.0", env_example)
         self.assertIn("v5.9.0", changelog)
-        self.assertIn("Current version: `6.6`", readme)
-        self.assertIn("Version 6.6 status: **CLOSED / DONE**", readme)
+        self.assertIn("Current version: `7.0`", readme)
+        self.assertIn("Version 7.0 status: **CLOSED / DONE**", readme)
         self.assertIn("0009_immediate_purge_eligibility", readme)
         current_release_heading = readme.index("## Current release")
         postgres_docs_heading = readme.index("## PostgreSQL migration & production docs")
@@ -2944,16 +2944,16 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         response = self.client.get("/settings")
         html = response.get_data(as_text=True)
-        self.assertIn("SpaManager v6.6", html)
-        self.assertIn("v6.6", html)
-        self.assertIn(">6.6<", html)
+        self.assertIn("SpaManager v7.0", html)
+        self.assertIn("v7.0", html)
+        self.assertIn(">7.0<", html)
 
     def test_sidebar_footer_shows_current_version(self):
         owner = AuthService.seed_owner_if_empty()
         self.login_as(owner)
         response = self.client.get("/")
         html = response.get_data(as_text=True)
-        self.assertIn("SpaManager v6.6", html)
+        self.assertIn("SpaManager v7.0", html)
         self.assertNotIn("SpaManager v5.9.0", html)
         self.assertNotIn("SpaManager v4.0", html)
 
@@ -2976,7 +2976,21 @@ class BasicTestCase(unittest.TestCase):
         self.assertNotIn("Hard-delete User rows are complete", closure)
         self.assertIn("Version 6.5", historical)
 
+    def test_version_7_0_closure_contract_is_documented(self):
+        closure = Path("docs/workspace/VERSION_7_0_CLOSURE.md").read_text(encoding="utf-8")
+        readme = Path("README.md").read_text(encoding="utf-8")
+
+        self.assertIn("Version 7.0", closure)
+        self.assertIn("Status: CLOSED / DONE", closure)
+        self.assertIn("4bbe7a8c302657515e30231244c71252868bab6d", closure)
+        self.assertIn("0009_immediate_purge_eligibility", closure)
+        self.assertIn("APP_ENV is now mandatory", closure)
+        self.assertIn("No migration was required for Version 7.0 closure", closure)
+        self.assertIn("Version 7.0", readme)
+        self.assertIn("VERSION_7_0_CLOSURE.md", readme)
+
     def test_workspace_models_expose_expected_metadata(self):
+
         self.assertEqual(Workspace.__tablename__, "workspaces")
         self.assertEqual(WorkspaceMember.__tablename__, "workspace_members")
 
@@ -3436,7 +3450,7 @@ class BasicTestCase(unittest.TestCase):
         self.login_as(owner)
         backup_id, backup_meta, backup_path = self.create_settings_backup_via_route(owner, notes="")
         try:
-            self.assertEqual(backup_meta["app_version"], "SpaManager v6.6")
+            self.assertEqual(backup_meta["app_version"], "SpaManager v7.0")
             self.assertIn("Backup ngày", backup_meta["display_name"])
             self.assertIn("Backup tạo lúc", backup_meta["notes"])
 
@@ -3554,7 +3568,7 @@ class BasicTestCase(unittest.TestCase):
 
         first_backup_meta["database_version"] = "v5.1.0"
         first_backup_meta["app_version"] = "SpaManager v5.1.0"
-        self.assertEqual(second_backup_meta["app_version"], "SpaManager v6.6")
+        self.assertEqual(second_backup_meta["app_version"], "SpaManager v7.0")
         second_backup_meta["database_version"] = "v5.9.0"
         second_backup_meta["app_version"] = "SpaManager v6.6"
 

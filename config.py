@@ -59,7 +59,7 @@ class BaseConfig:
     """
     # Application identity
     APP_NAME = os.getenv("APP_NAME", "SpaManager")
-    APP_VERSION = os.getenv("APP_VERSION", "6.6")
+    APP_VERSION = os.getenv("APP_VERSION", "7.0")
     APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
     PERMANENT_PURGE_UI_ENABLED = _parse_bool_env(os.getenv("PERMANENT_PURGE_UI_ENABLED"), False)
     PERMANENT_PURGE_EXECUTION_ENABLED = _parse_bool_env(os.getenv("PERMANENT_PURGE_EXECUTION_ENABLED"), False)

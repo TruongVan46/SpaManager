@@ -237,11 +237,11 @@ GitHub: [truongvan46](https://github.com/truongvan46)
 
 ## Current release
 
-- Current version: `6.6`
-- Version 6.6 status: **CLOSED / DONE**
+- Current version: `7.0`
+- Version 7.0 status: **CLOSED / DONE**
 - Current database revision: `0009_immediate_purge_eligibility`
-- [Version 6.6 closure](docs/workspace/VERSION_6_6_CLOSURE.md)
-- Next version: Not yet assigned
+- [Version 7.0 closure](docs/workspace/VERSION_7_0_CLOSURE.md)
+- Previous release: [Version 6.6 closure](docs/workspace/VERSION_6_6_CLOSURE.md)
 
 ## PostgreSQL migration & production docs
 
