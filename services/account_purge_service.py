@@ -152,10 +152,17 @@ class AccountPurgeService:
         )
 
     @staticmethod
-    def _load_state(session, requester_id, target_user_id, managing_workspace_id, lock=False):
+    def _load_state(
+        session,
+        requester_id,
+        target_user_id,
+        managing_workspace_id,
+        lock=False,
+        exclude_request_id=None,
+    ):
         """Load all mutable resources in the service's deterministic lock order."""
         def locked(query):
-            return query.with_for_update() if lock else query
+            return query.populate_existing().with_for_update() if lock else query
 
         workspace = locked(session.query(Workspace).filter(Workspace.id == managing_workspace_id)).one_or_none()
         requester = locked(session.query(User).filter(User.id == requester_id)).one_or_none()
@@ -198,11 +205,12 @@ class AccountPurgeService:
             "memberships": memberships,
             "holds": holds,
             "requests": requests,
+            "exclude_request_id": exclude_request_id,
             "external_created_workspaces": external_created_workspaces,
         }
 
     @staticmethod
-    def _evaluate(state, requester_id, target_user_id, managing_workspace_id):
+    def _evaluate(state, requester_id, target_user_id, managing_workspace_id, exclude_request_id=None):
         target = state["target"]
         requester = state["requester"]
         workspace = state["workspace"]
@@ -354,7 +362,11 @@ class AccountPurgeService:
                 provenance_status="VALID", soft_delete_status="REMOVED",
                 external_workspace_history_status="CLEAR", legal_hold_status="ACTIVE",
             )
-        active_requests = [r for r in state["requests"] if r.state not in REQUEST_TERMINAL_STATES]
+        active_requests = [
+            r for r in state["requests"]
+            if r.state not in REQUEST_TERMINAL_STATES
+            and r.id != exclude_request_id
+        ]
         if active_requests:
             return AccountPurgeService._result(
                 "ACTIVE_REQUEST_EXISTS", target_user_id=target_user_id,
@@ -460,4 +472,3 @@ class AccountPurgeService:
             raise AccountPurgePersistenceError() from exc
         finally:
             session.close()
-
