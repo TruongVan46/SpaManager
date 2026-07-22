@@ -2932,7 +2932,7 @@ class BasicTestCase(unittest.TestCase):
 
         current_after = runner.invoke(args=["db", "current"])
         expected_head = _head_revision()
-        self.assertEqual(expected_head, "0009_immediate_purge_eligibility")
+        self.assertEqual(expected_head, "0010_account_purge_foundation")
         expected_current = expected_head if db.engine.dialect.name == "postgresql" else "0008_durable_purge_reauth_state"
         self.assertIn(expected_current, current_after.output)
         workspace_columns = {column["name"] for column in sa_inspect(db.engine).get_columns("workspaces")}
@@ -4105,7 +4105,7 @@ class BasicTestCase(unittest.TestCase):
         result = runner.invoke(args=["db", "stamp", "head"])
         self.assertEqual(result.exit_code, 0, result.output)
         expected_head = _head_revision()
-        self.assertEqual(expected_head, "0009_immediate_purge_eligibility")
+        self.assertEqual(expected_head, "0010_account_purge_foundation")
         self.assertIn(f"Stamped {expected_head}", result.output)
 
         tables_after = sorted(sa_inspect(db.engine).get_table_names())

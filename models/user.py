@@ -44,6 +44,19 @@ class User(db.Model):
     deleted_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     deletion_reason = db.Column(db.String(255), nullable=True)
 
+    account_purge_state = db.Column(
+        db.String(30), nullable=False, default="NOT_PURGED", server_default="NOT_PURGED"
+    )
+    account_purged_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    account_purge_request_id = db.Column(
+        db.Integer,
+        db.ForeignKey("account_purge_requests.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    session_revocation_version = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    session_revoked_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    account_purge_version = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+
     deleted_by = db.relationship("User", foreign_keys=[deleted_by_id], remote_side=[id], lazy=True)
 
     def _normalized_approval_status(self):
