@@ -208,7 +208,7 @@ def postgres_case(postgres_service_session_timeouts, postgres_runtime):
 def test_schema_and_runtime_identity(postgres_runtime):
     identity = postgres_runtime.identity()
     assert identity["database"] == "spamanager_purge_rehearsal_test"
-    assert identity["revision"] == "0008_durable_purge_reauth_state"
+    assert identity["revision"] == "0010_account_purge_foundation"
     assert identity["server_port"] == "5432"
     assert identity["workflow_tables"] == (
         "purge_legal_holds", "purge_lifecycle_events", "workspace_purge_requests"

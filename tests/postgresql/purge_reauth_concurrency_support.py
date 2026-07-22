@@ -26,7 +26,7 @@ from tests.postgresql.rehearsal_guard import (
 
 
 MIGRATION_METADATA_TABLE = "alembic_version"
-EXPECTED_REVISION = "0008_durable_purge_reauth_state"
+EXPECTED_REVISION = "0010_account_purge_foundation"
 
 CLEANUP_KIND_ORDER = (
     "authorization", "throttle", "lifecycle_event", "legal_hold", "activity_log",
@@ -254,12 +254,19 @@ APPLICATION_TABLE_NAMES = frozenset(
         "purge_lifecycle_events",
         "workspace_purge_execution_authorizations",
         "workspace_purge_reauth_actor_throttles",
+        "user_creation_provenance",
+        "account_purge_requests",
+        "account_purge_lifecycle_events",
+        "account_purge_legal_holds",
+        "account_purge_execution_authorizations",
+        "account_identity_reservations",
+        "account_purge_avatar_cleanups",
     }
 )
 
 
 def classify_public_tables(catalog_tables: Iterable[str], metadata_tables: Iterable[str]):
-    """Reconcile catalog tables against the revision-0008 table contract.
+    """Reconcile catalog tables against the revision-0010 table contract.
 
     The purge workflow models use a separate SQLAlchemy registry, so relying
     only on ``extensions.db.metadata`` is import-order dependent.  The

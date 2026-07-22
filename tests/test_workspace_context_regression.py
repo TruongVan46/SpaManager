@@ -26,6 +26,7 @@ os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").a
 from app import app
 from extensions import db
 from models.user import User
+from models.account_purge import UserCreationProvenance
 from models.activity_log import ActivityLog
 from models.workspace import Workspace, WorkspaceMember
 from services.user_service import UserService
@@ -61,6 +62,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
     def setUp(self):
         db.session.rollback()
         WorkspaceMember.query.delete()
+        UserCreationProvenance.query.delete()
         User.query.delete()
         Workspace.query.delete()
         ActivityLog.query.delete()

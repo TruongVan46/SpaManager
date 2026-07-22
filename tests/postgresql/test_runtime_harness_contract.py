@@ -75,7 +75,7 @@ def _patch_fake_preflight(monkeypatch, events, engine):
             "spamanager_purge_rehearsal_test",
             "spamanager",
             "5432",
-            "0008_durable_purge_reauth_state",
+            "0010_account_purge_foundation",
         ),
     )
     monkeypatch.setattr(
@@ -104,8 +104,8 @@ def test_preflight_success_closes_connection_and_disposes_engine_once(monkeypatc
     assert result.database == "spamanager_purge_rehearsal_test"
     assert result.role == "spamanager"
     assert result.server_port == "5432"
-    assert result.revision == "0008_durable_purge_reauth_state"
-    assert result.tables_checked == 15
+    assert result.revision == "0010_account_purge_foundation"
+    assert result.tables_checked == 22
     assert result.all_tables_zero is True
     assert result.hanging_transactions == 0
     assert result.connections_closed is True
@@ -163,7 +163,7 @@ def test_preflight_result_preserves_tuple_table_count_contract(monkeypatch):
     result = _run_fake_preflight(monkeypatch, events, _FakeEngine(events))
 
     counts = dict(result.table_counts)
-    assert len(counts) == 15
+    assert len(counts) == 22
     assert result.connections_closed is True
     assert result.engine_disposed is True
 
@@ -190,7 +190,7 @@ def test_postgresql_modules_have_no_top_level_runtime_imports():
 
 def test_reset_helper_has_explicit_allowlist_and_protects_revision():
     source = (ROOT / "rehearsal_runtime.py").read_text(encoding="utf-8")
-    assert 'EXPECTED_PURGE_REHEARSAL_REVISION = "0008_durable_purge_reauth_state"' in source
+    assert 'EXPECTED_PURGE_REHEARSAL_REVISION = "0010_account_purge_foundation"' in source
     assert 'revision_rows != [(EXPECTED_PURGE_REHEARSAL_REVISION,)]' in source
     assert "0007_permanent_purge_workflow" not in source
     assert "EXPECTED_APPLICATION_TABLES" in source
@@ -803,7 +803,7 @@ def _preflight_test_doubles(monkeypatch, *, users_count=0, database="spamanager_
             if "current_database()" in sql:
                 return Result(row=(database, "spamanager", "5432"))
             if "version_num" in sql:
-                return Result(rows=[("0008_durable_purge_reauth_state",)])
+                return Result(rows=[("0010_account_purge_foundation",)])
             if "information_schema.tables" in sql:
                 return Result(values=sorted(runtime_module.EXPECTED_SCHEMA_TABLES))
             if "pg_stat_activity" in sql:
@@ -853,7 +853,7 @@ def _preflight_test_doubles(monkeypatch, *, users_count=0, database="spamanager_
 def test_no_bootstrap_preflight_does_not_import_application(monkeypatch):
     result, engine = _preflight_test_doubles(monkeypatch)
     assert result.all_tables_zero is True
-    assert result.tables_checked == 15
+    assert result.tables_checked == 22
     assert result.connections_closed is True
     assert engine.connection.closed is True
     assert engine.disposed is True

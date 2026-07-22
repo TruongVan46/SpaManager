@@ -1,18 +1,24 @@
 from sqlalchemy import func, inspect, or_, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from extensions import db
 from core.auth.enums import UserRole, normalize_role_value
 from core.auth.security import PasswordPolicy
 from core.activity_log_utils import build_activity_log_entry, get_activity_actor_display_name
-from core.exceptions import ConflictException, NotFoundException, PermissionDeniedException, ValidationException
+from core.exceptions import BusinessException, ConflictException, NotFoundException, PermissionDeniedException, ValidationException
 from models.user import User
-from models.workspace import WorkspaceMember
+from models.account_purge import UserCreationProvenance
+from models.workspace import Workspace, WorkspaceMember
 from utils.timezone_utils import utc_now
 from services.workspace_service import WorkspaceService
 
 
 class UserService:
+    PROVENANCE_VERSION = 1
+    PROVENANCE_SOURCE_BY_MEMBERSHIP_ROLE = {
+        "owner": "WORKSPACE_OWNER",
+        "admin": "WORKSPACE_ADMIN",
+    }
     ROLE_LABELS = {
         UserRole.OWNER.value: "Chủ cơ sở",
         UserRole.ADMIN.value: "Quản trị viên",
@@ -234,6 +240,60 @@ class UserService:
             raise ValidationException("Dữ liệu người dùng không hợp lệ.", field_errors=errors)
 
     @staticmethod
+    def _resolve_creation_provenance_context(actor, workspace_id, target_role):
+        """Resolve authoritative creator/workspace state for a new workspace user."""
+        if not workspace_id:
+            return None
+
+        workspace = db.session.get(Workspace, workspace_id)
+        if not workspace or workspace.deleted_at is not None or workspace.status != "active":
+            raise ValidationException("Workspace hiện tại không hợp lệ.", code="INVALID_WORKSPACE")
+
+        persisted_actor = db.session.get(User, getattr(actor, "id", None))
+        if (
+            not persisted_actor
+            or not persisted_actor.is_active
+            or not persisted_actor.is_approval_active
+            or persisted_actor.deleted_at is not None
+        ):
+            raise PermissionDeniedException("Người tạo không còn quyền hoạt động.")
+
+        creator_membership = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id,
+            user_id=persisted_actor.id,
+            status="active",
+        ).one_or_none()
+        if not creator_membership:
+            raise PermissionDeniedException("Người tạo không thuộc workspace hiện tại.")
+
+        source = UserService.PROVENANCE_SOURCE_BY_MEMBERSHIP_ROLE.get(
+            (creator_membership.role or "").strip().lower()
+        )
+        expected_global_role = {
+            "WORKSPACE_OWNER": UserRole.OWNER.value,
+            "WORKSPACE_ADMIN": UserRole.ADMIN.value,
+        }.get(source)
+        if not source or persisted_actor.role != expected_global_role:
+            raise PermissionDeniedException("Vai trò creator và membership workspace không nhất quán.")
+
+        if target_role not in (UserRole.STAFF.value, UserRole.ADMIN.value):
+            raise ValidationException(
+                "Vai trò tài khoản mới không được hỗ trợ.",
+                field_errors={"role": "Chỉ STAFF hoặc ADMIN được phép."},
+            )
+
+        if target_role == UserRole.ADMIN.value and source != "WORKSPACE_OWNER":
+            raise PermissionDeniedException("Chỉ OWNER được phép tạo tài khoản ADMIN.")
+
+        return {
+            "created_by_user_id": persisted_actor.id,
+            "created_in_workspace_id": workspace.id,
+            "creation_source": source,
+            "created_role": target_role,
+            "provenance_version": UserService.PROVENANCE_VERSION,
+        }
+
+    @staticmethod
     def _log_user_action(actor, action, description, target_user, severity="SUCCESS"):
         log_entry = build_activity_log_entry(
             module="Users",
@@ -376,6 +436,11 @@ class UserService:
         UserService._ensure_unique_fields(username=username, email=email)
 
         workspace_id = UserService._resolve_current_workspace_id_for_create()
+        provenance_context = UserService._resolve_creation_provenance_context(
+            actor=actor,
+            workspace_id=workspace_id,
+            target_role=role,
+        )
 
         user = User(
             username=username,
@@ -400,17 +465,51 @@ class UserService:
                     actor=actor,
                 )
 
+                db.session.add(UserCreationProvenance(
+                    user_id=user.id,
+                    **provenance_context,
+                ))
+                try:
+                    db.session.flush()
+                except SQLAlchemyError as exc:
+                    db.session.rollback()
+                    raise BusinessException(
+                        "Không thể lưu provenance cho tài khoản mới.",
+                        code="PROVENANCE_PERSISTENCE_ERROR",
+                        status_code=500,
+                        severity="CRITICAL",
+                    ) from exc
+
             UserService._log_user_action(
                 actor=actor,
                 action="CREATE_USER",
                 description=f"{actor_display_name} đã tạo tài khoản {user.username}.",
                 target_user=user,
             )
-            db.session.commit()
+            try:
+                db.session.commit()
+            except SQLAlchemyError as exc:
+                db.session.rollback()
+                raise BusinessException(
+                    "Không thể hoàn tất tạo tài khoản.",
+                    code="USER_CREATION_PERSISTENCE_ERROR",
+                    status_code=500,
+                    severity="CRITICAL",
+                ) from exc
             return user
         except IntegrityError as exc:
             db.session.rollback()
             raise ConflictException("Tên đăng nhập hoặc email đã tồn tại.") from exc
+        except BusinessException:
+            raise
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            raise BusinessException(
+                "Không thể hoàn tất tạo tài khoản.",
+                code="USER_CREATION_PERSISTENCE_ERROR",
+                status_code=500,
+                severity="CRITICAL",
+            ) from exc
         except Exception:
             db.session.rollback()
             raise
@@ -1012,6 +1111,8 @@ class UserService:
             )
             db.session.commit()
             return user
+        except BusinessException:
+            raise
         except Exception:
             db.session.rollback()
             raise

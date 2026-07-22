@@ -363,7 +363,7 @@ def test_d3e_metadata_source_table_set_does_not_omit_known_application_tables():
         tables = {name: object() for name in APPLICATION_TABLE_NAMES | {MIGRATION_METADATA_TABLE}}
 
     assert source_application_table_names(Metadata()) == APPLICATION_TABLE_NAMES
-    assert EXPECTED_REVISION == "0008_durable_purge_reauth_state"
+    assert EXPECTED_REVISION == "0010_account_purge_foundation"
 
 
 def test_d3e_worker_result_repr_contains_no_secret_fields():

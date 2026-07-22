@@ -26,6 +26,7 @@ os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").a
 from app import app
 from extensions import db
 from models.user import User
+from models.account_purge import UserCreationProvenance
 from models.workspace import Workspace, WorkspaceMember
 from models.customer import Customer
 from models.service import Service
@@ -71,6 +72,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         Customer.query.delete()
         Service.query.delete()
         WorkspaceMember.query.delete()
+        UserCreationProvenance.query.delete()
         User.query.delete()
         Workspace.query.delete()
         db.session.commit()

@@ -21,10 +21,17 @@ EXPECTED_APPLICATION_TABLES = frozenset({
     "purge_lifecycle_events",
     "workspace_purge_execution_authorizations",
     "workspace_purge_reauth_actor_throttles",
+    "user_creation_provenance",
+    "account_purge_requests",
+    "account_purge_lifecycle_events",
+    "account_purge_legal_holds",
+    "account_purge_execution_authorizations",
+    "account_identity_reservations",
+    "account_purge_avatar_cleanups",
 })
 EXPECTED_POSTGRES_SERVER_PORT = "5432"
 EXPECTED_SCHEMA_TABLES = EXPECTED_APPLICATION_TABLES | {"alembic_version"}
-EXPECTED_PURGE_REHEARSAL_REVISION = "0008_durable_purge_reauth_state"
+EXPECTED_PURGE_REHEARSAL_REVISION = "0010_account_purge_foundation"
 WORKFLOW_TABLES = frozenset({
     "workspace_purge_requests",
     "purge_legal_holds",

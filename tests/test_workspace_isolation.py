@@ -15,6 +15,7 @@ from flask import session
 from app import app
 from extensions import db
 from models.user import User
+from models.account_purge import UserCreationProvenance
 from models.workspace import Workspace, WorkspaceMember
 from models.customer import Customer
 from models.service import Service
@@ -343,6 +344,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         db.session.rollback()
         # Clean all tables (order matters for FK constraints)
         WorkspaceMember.query.delete()
+        UserCreationProvenance.query.delete()
         User.query.filter(User.role != "APPROVAL_OWNER").delete()
         Workspace.query.delete()
         db.session.commit()
