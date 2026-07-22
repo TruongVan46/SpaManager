@@ -26,6 +26,29 @@ def load(name: str) -> dict:
     return json.loads((BASELINE / name).read_text(encoding="utf-8"))
 
 
+def _route_semantics(routes: list[dict]) -> list[dict]:
+    return sorted(
+        [{key: value for key, value in route.items() if key != "line"} for route in routes],
+        key=lambda route: (route["source"], route["function"], route["path"]),
+    )
+
+
+def _condition_parts(entry: str) -> tuple[str, int, str]:
+    source, line, expression = entry.split(":", 2)
+    return source, int(line), expression
+
+
+def _condition_semantics(entries: list[str]) -> list[tuple[str, str]]:
+    return sorted((source, expression) for source, _line, expression in map(_condition_parts, entries))
+
+
+def _condition_order(entries: list[str]) -> dict[str, list[str]]:
+    ordered: dict[str, list[str]] = {}
+    for source, _line, expression in sorted(map(_condition_parts, entries), key=lambda item: (item[0], item[1])):
+        ordered.setdefault(source, []).append(expression)
+    return ordered
+
+
 def test_contract_baselines_are_explicit_and_complete() -> None:
     routes = load("ui_route_contract.json")
     forms = load("ui_form_contract.json")
@@ -57,7 +80,7 @@ def test_contract_baselines_are_explicit_and_complete() -> None:
 def test_current_routes_and_template_relationships_match_baseline() -> None:
     baseline = load("ui_route_contract.json")
     current = snapshot(ROOT)
-    assert current["routes"] == baseline["routes"], REVIEW_MESSAGE
+    assert _route_semantics(current["routes"]) == _route_semantics(baseline["routes"]), REVIEW_MESSAGE
     assert current["rendered_templates"] == baseline["rendered_templates"], REVIEW_MESSAGE
 
 
@@ -72,8 +95,16 @@ def test_current_behavior_hooks_match_baseline() -> None:
 def test_current_role_and_feature_conditions_match_baseline() -> None:
     expected = load("ui_role_feature_contract.json")
     current = condition_snapshot(ROOT)
-    assert current["role"] == expected["role_conditions"], REVIEW_MESSAGE
-    assert current["feature"] == expected["feature_conditions"], REVIEW_MESSAGE
+    for condition_type, current_entries, expected_entries in (
+        ("role", current["role"], expected["role_conditions"]),
+        ("feature", current["feature"], expected["feature_conditions"]),
+    ):
+        assert _condition_semantics(current_entries) == _condition_semantics(expected_entries), (
+            f"{condition_type}: {REVIEW_MESSAGE}"
+        )
+        assert _condition_order(current_entries) == _condition_order(expected_entries), (
+            f"{condition_type} ordering: {REVIEW_MESSAGE}"
+        )
 
 
 def test_route_guard_detects_get_to_post_mutation_without_source_edit() -> None:

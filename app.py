@@ -86,6 +86,32 @@ BASELINE_TABLES = [
 ]
 
 
+def _is_flask_database_migration_cli(argv=None):
+    """Return whether the process is running a Flask-Migrate ``db`` command."""
+    arguments = [str(argument).strip().lower() for argument in (sys.argv if argv is None else argv)]
+    flask_cli = any(
+        argument in {"flask", "flask.exe"}
+        or argument.replace("\\", "/").endswith("/flask/__main__.py")
+        or argument.replace("\\", "/").endswith("/flask/__main__.pyc")
+        for argument in arguments
+    ) or any(
+        argument == "-m" and index + 1 < len(arguments) and arguments[index + 1] == "flask"
+        for index, argument in enumerate(arguments)
+    )
+    if not flask_cli:
+        return False
+
+    migration_commands = {
+        "upgrade", "downgrade", "current", "history", "heads", "stamp",
+        "edit", "merge", "show", "check",
+    }
+    return any(
+        argument == "db" and index + 1 < len(arguments)
+        and arguments[index + 1] in migration_commands
+        for index, argument in enumerate(arguments)
+    )
+
+
 def _should_skip_owner_seed_for_cli():
     argv = [argument.lower() for argument in sys.argv]
     cli_pairs = [
@@ -317,16 +343,31 @@ def _baseline_schema_is_ready():
     return all(table in existing_tables for table in BASELINE_TABLES)
 
 
-with app.app_context():
-    if _baseline_schema_is_ready():
-        if app.config.get("BOOTSTRAP_ACCOUNTS_ENABLED", True) and not _should_skip_owner_seed_for_cli():
-            AuthService.seed_owner_if_empty()
-            AuthService.seed_approval_owner_if_configured()
-    else:
-        app_logger.warning(
-            "Database schema is not initialized. Run 'flask db upgrade' before using the app.",
+def _run_startup_database_bootstrap():
+    with app.app_context():
+        if _baseline_schema_is_ready():
+            if app.config.get("BOOTSTRAP_ACCOUNTS_ENABLED", True) and not _should_skip_owner_seed_for_cli():
+                AuthService.seed_owner_if_empty()
+                AuthService.seed_approval_owner_if_configured()
+        else:
+            app_logger.warning(
+                "Database schema is not initialized. Run 'flask db upgrade' before using the app.",
+                module="MIGRATION"
+            )
+
+
+def _initialize_startup_database_bootstrap(argv=None):
+    if _is_flask_database_migration_cli(argv):
+        app_logger.info(
+            "Startup database bootstrap skipped for Flask migration CLI.",
             module="MIGRATION"
         )
+        return False
+    _run_startup_database_bootstrap()
+    return True
+
+
+_initialize_startup_database_bootstrap()
 
 @app.template_filter('format_currency')
 def format_currency(value):
