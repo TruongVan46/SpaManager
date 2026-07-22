@@ -108,7 +108,9 @@ def test_complete_candidate_surface_has_no_remaining_confirmed_ui_defects():
             )
     candidates.append(ROOT / "app.py")
 
-    assert len(set(candidates)) == 154
+    # Account-purge eligibility is an internal service, but it is still part
+    # of the candidate surface scanned for accidental user-facing English.
+    assert len(set(candidates)) == 155
     combined = "\n".join(path.read_text(encoding="utf-8") for path in set(candidates))
     forbidden = (
         'aria-label="Close"',
