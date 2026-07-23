@@ -3,7 +3,7 @@ import secrets
 
 from flask import current_app, flash, has_app_context, has_request_context, redirect, session, url_for
 
-from core.auth.constants import AUTH_SESSION_KEY
+from core.auth.constants import AUTH_SESSION_KEY, SESSION_REVOCATION_VERSION_KEY
 from core.auth.enums import UserRole
 from extensions import db
 from models.user import User
@@ -244,6 +244,7 @@ def _rotate_session_csrf():
 
 def _set_pending_session(user):
     session[AUTH_SESSION_KEY] = user.id
+    session[SESSION_REVOCATION_VERSION_KEY] = int(user.session_revocation_version)
     _rotate_session_csrf()
 
 
@@ -258,6 +259,7 @@ def _login_active_google_user(user):
         return redirect(url_for("auth.login"))
 
     session[AUTH_SESSION_KEY] = user.id
+    session[SESSION_REVOCATION_VERSION_KEY] = int(user.session_revocation_version)
     session.permanent = False
     _rotate_session_csrf()
 

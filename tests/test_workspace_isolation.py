@@ -12,6 +12,7 @@ os.environ["APP_ENV"] = "testing"
 os.environ["TEST_DATABASE_URL"] = f"sqlite:///{test_db.as_posix()}"
 
 from flask import session
+from tests.session_helpers import set_authenticated_session
 from app import app
 from extensions import db
 from models.user import User
@@ -93,7 +94,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
             # Workspace A context
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_a.id
+            set_authenticated_session(session, self.user_a.id)
             session["user_id"] = self.user_a.id
 
             cust_a = CustomerService.create(name="Customer A", phone="0901111111", email="a@cust.com")
@@ -107,7 +108,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
             # Workspace B context
             session["current_workspace_id"] = self.workspace_b.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_b.id
+            set_authenticated_session(session, self.user_b.id)
             session["user_id"] = self.user_b.id
 
             cust_b = CustomerService.create(name="Customer B", phone="0902222222", email="b@cust.com")
@@ -131,7 +132,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
             # Workspace A context
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_a.id
+            set_authenticated_session(session, self.user_a.id)
             session["user_id"] = self.user_a.id
 
             serv_a = ServiceService.create_service({"name": "Service A", "price": 100000, "duration": 60})
@@ -143,7 +144,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
             # Workspace B context
             session["current_workspace_id"] = self.workspace_b.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_b.id
+            set_authenticated_session(session, self.user_b.id)
             session["user_id"] = self.user_b.id
 
             serv_b = ServiceService.create_service({"name": "Service B", "price": 200000, "duration": 45})
@@ -162,7 +163,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_a.id
+            set_authenticated_session(session, self.user_a.id)
             session["user_id"] = self.user_a.id
 
             cust_a = CustomerService.create(name="Customer A", phone="0901111111", email="a@cust.com")
@@ -178,7 +179,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_b.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_b.id
+            set_authenticated_session(session, self.user_b.id)
             session["user_id"] = self.user_b.id
 
             cust_b = CustomerService.create(name="Customer B", phone="0902222222", email="b@cust.com")
@@ -215,7 +216,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_a.id
+            set_authenticated_session(session, self.user_a.id)
             session["user_id"] = self.user_a.id
 
             cust_a = CustomerService.create(name="Customer A", phone="0901111111", email="a@cust.com")
@@ -230,7 +231,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_b.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_b.id
+            set_authenticated_session(session, self.user_b.id)
             session["user_id"] = self.user_b.id
 
             cust_b = CustomerService.create(name="Customer B", phone="0902222222", email="b@cust.com")
@@ -264,7 +265,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_a.id
+            set_authenticated_session(session, self.user_a.id)
             session["user_id"] = self.user_a.id
 
             cust_a = CustomerService.create(name="Customer A", phone="0901111111", email="a@cust.com")
@@ -284,7 +285,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_b.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_b.id
+            set_authenticated_session(session, self.user_b.id)
             session["user_id"] = self.user_b.id
 
             dashboard_cache.clear()
@@ -303,7 +304,7 @@ class WorkspaceIsolationTestCase(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.user_a.id
+            set_authenticated_session(session, self.user_a.id)
             session["user_id"] = self.user_a.id
             CustomerService.create(name="Secret Customer", phone="0909999999", email="secret@spa.com")
 
@@ -381,7 +382,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             new_user = UserService.create_user(
@@ -409,7 +410,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             results = UserService.search_paginated()
@@ -441,7 +442,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             with self.assertRaises(NotFoundException):
@@ -459,7 +460,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             with self.assertRaises(NotFoundException):
@@ -476,7 +477,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             with self.assertRaises(NotFoundException):
@@ -493,7 +494,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             staff = UserService.create_user(
@@ -521,7 +522,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             with self.assertRaises(ValidationException):
@@ -549,7 +550,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.admin_a.id
+            set_authenticated_session(session, self.admin_a.id)
             session["user_id"] = self.admin_a.id
 
             staff = UserService.create_user(
@@ -587,7 +588,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             staff = UserService.create_user(
@@ -602,7 +603,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.admin_a.id
+            set_authenticated_session(session, self.admin_a.id)
             session["user_id"] = self.admin_a.id
 
             # ADMIN tries to update staff to ADMIN
@@ -626,7 +627,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
                 )
 
             # OWNER tries to update staff to OWNER
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
             with self.assertRaises(ValidationException):
                 UserService.update_user(
@@ -645,7 +646,7 @@ class TestWorkspaceUserManagement(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace_a.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner_a.id
+            set_authenticated_session(session, self.owner_a.id)
             session["user_id"] = self.owner_a.id
 
             # owner_a already has a membership — we test add_member_for_user directly with admin_a

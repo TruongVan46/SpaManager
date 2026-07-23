@@ -187,11 +187,12 @@ class AccountPurgeService:
                  | (AccountPurgeLegalHold.managing_workspace_id == managing_workspace_id)),
             ).order_by(AccountPurgeLegalHold.id)
         ).all()
-        requests = locked(
-            session.query(AccountPurgeRequest).filter(
-                AccountPurgeRequest.target_user_id == target_user_id,
-            ).order_by(AccountPurgeRequest.id)
-        ).all()
+        request_query = session.query(AccountPurgeRequest).filter(
+            AccountPurgeRequest.target_user_id == target_user_id,
+        )
+        if exclude_request_id is not None:
+            request_query = request_query.filter(AccountPurgeRequest.id != exclude_request_id)
+        requests = locked(request_query.order_by(AccountPurgeRequest.id)).all()
         external_created_workspaces = session.query(Workspace).filter(
             Workspace.created_by_id == target_user_id,
             Workspace.id != managing_workspace_id,
@@ -208,6 +209,20 @@ class AccountPurgeService:
             "exclude_request_id": exclude_request_id,
             "external_created_workspaces": external_created_workspaces,
         }
+
+    @staticmethod
+    def _load_existing_request_state_after_request_lock(session, request, lock=True):
+        """Load request-adjacent state after the request row has been locked first."""
+        return AccountPurgeService._load_state(
+            session,
+            request.requester_id,
+            request.target_user_id,
+            request.managing_workspace_id,
+            lock=lock,
+            exclude_request_id=request.id,
+        )
+
+    _load_state_after_request_lock = _load_existing_request_state_after_request_lock
 
     @staticmethod
     def _evaluate(state, requester_id, target_user_id, managing_workspace_id, exclude_request_id=None):

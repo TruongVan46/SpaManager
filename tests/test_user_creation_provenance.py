@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import tempfile
 import unittest
@@ -83,7 +84,7 @@ class UserCreationProvenanceTests(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = actor.id
+            set_authenticated_session(session, actor.id)
             session["user_id"] = actor.id
             return UserService.create_user(
                 actor=actor,
@@ -152,7 +153,7 @@ class UserCreationProvenanceTests(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner.id
+            set_authenticated_session(session, self.owner.id)
             session["user_id"] = self.owner.id
             UserService.soft_delete_user(self.owner, target.id, reason="retired")
 
@@ -173,7 +174,7 @@ class UserCreationProvenanceTests(unittest.TestCase):
         with app.test_request_context():
             session["current_workspace_id"] = self.workspace.id
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = self.owner.id
+            set_authenticated_session(session, self.owner.id)
             session["user_id"] = self.owner.id
             UserService.restore_user(self.owner, target.id)
         provenance_after = UserCreationProvenance.query.filter_by(user_id=target.id).one()

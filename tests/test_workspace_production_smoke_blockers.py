@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import shutil
 import tempfile
@@ -109,7 +110,7 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
     def login_as(self, user, workspace_id):
         from core.auth.constants import AUTH_SESSION_KEY
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(sess, user.id)
             sess["current_workspace_id"] = workspace_id
             sess["_enable_workspace_isolation"] = True
 
@@ -369,7 +370,7 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = ws_a.id
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
 
             stats = RecycleBinService.get_statistics()
             self.assertEqual(stats["total"], 1)
@@ -386,7 +387,7 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = ws_b.id
-            session["auth_user_id"] = owner_b.id
+            set_authenticated_session(session, owner_b.id)
 
             stats = RecycleBinService.get_statistics()
             self.assertEqual(stats["total"], 1)
@@ -409,7 +410,7 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = ws_a.id
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
 
             logs = ActivityLogService.get_filtered_logs().items
             self.assertEqual(len(logs), 1)
@@ -423,7 +424,7 @@ class TestWorkspaceProductionSmokeBlockers(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = ws_b.id
-            session["auth_user_id"] = owner_b.id
+            set_authenticated_session(session, owner_b.id)
 
             logs = ActivityLogService.get_filtered_logs().items
             self.assertEqual(len(logs), 1)

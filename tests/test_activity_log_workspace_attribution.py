@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import shutil
 import tempfile
@@ -67,14 +68,14 @@ class ActivityLogWorkspaceAttributionTestCase(unittest.TestCase):
 
     def _use_workspace(self, user, workspace):
         with self.client.session_transaction() as client_session:
-            client_session["auth_user_id"] = user.id
+            set_authenticated_session(client_session, user.id)
             client_session["current_workspace_id"] = workspace.id
             client_session["_enable_workspace_isolation"] = True
 
     def test_write_log_uses_trusted_workspace_and_allows_explicit_system_null(self):
         workspace, owner = self._workspace_owner("workspace-a")
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner.id)
             session["current_workspace_id"] = workspace.id
             self.assertTrue(ActivityLogService.write_log("Customer", "CREATE", "workspace log"))
 
@@ -98,7 +99,7 @@ class ActivityLogWorkspaceAttributionTestCase(unittest.TestCase):
         db.session.commit()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
             session["current_workspace_id"] = workspace_a.id
             logs_a = ActivityLogService.get_filtered_logs().items
             self.assertEqual([log.description for log in logs_a], ["A log"])

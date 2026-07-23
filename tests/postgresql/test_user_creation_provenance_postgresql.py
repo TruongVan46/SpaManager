@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from tests.session_helpers import set_authenticated_session
 from flask import session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -51,7 +52,7 @@ def _request_context(workspace, actor):
     context = session
     context["current_workspace_id"] = workspace.id
     context["_enable_workspace_isolation"] = True
-    context["auth_user_id"] = actor.id
+    set_authenticated_session(context, actor)
     context["user_id"] = actor.id
 
 

@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import shutil
 import tempfile
@@ -20,7 +21,7 @@ from flask import redirect
 from unittest.mock import patch
 
 from openpyxl import Workbook
-from sqlalchemy import event, text, inspect as sa_inspect
+from sqlalchemy import MetaData, event, text, inspect as sa_inspect
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 TEST_DB_FILE = Path(tempfile.gettempdir()) / "spamanager_owner_seed_test.sqlite"
@@ -134,7 +135,11 @@ class BasicTestCase(unittest.TestCase):
                 for tbl in tables:
                     connection.execute(text(f"DROP TABLE IF EXISTS {tbl} CASCADE"))
         else:
-            db.drop_all()
+            # Reflect the disposable SQLite schema so migration-only tables that
+            # are absent from the active ORM metadata are removed as well.
+            reflected_metadata = MetaData()
+            reflected_metadata.reflect(bind=db.engine)
+            reflected_metadata.drop_all(bind=db.engine, checkfirst=True)
         db.session.commit()
         with db.engine.begin() as connection:
             connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
@@ -199,7 +204,7 @@ class BasicTestCase(unittest.TestCase):
 
     def login_as(self, user):
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(sess, user.id)
 
     def get_session_user_id(self):
         with self.client.session_transaction() as sess:

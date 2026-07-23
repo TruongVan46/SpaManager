@@ -35,6 +35,7 @@ from utils.timezone_utils import utc_now
 from flask import session
 from core.auth.enums import UserRole
 from core.auth.constants import AUTH_SESSION_KEY
+from tests.session_helpers import set_authenticated_session
 from core.exceptions import AuthenticationException
 
 
@@ -99,7 +100,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
 
     def _login_as(self, user):
         with self.client.session_transaction() as sess:
-            sess["auth_user_id"] = user.id
+            set_authenticated_session(sess, user)
             sess["_enable_workspace_isolation"] = True
 
     def test_owner_user_page_shows_staff_created_in_same_workspace(self):
@@ -113,7 +114,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         db.session.commit()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["current_workspace_id"] = workspace.id
             session["_enable_workspace_isolation"] = True
             
@@ -129,7 +130,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         db.session.commit()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["current_workspace_id"] = workspace.id
             session["_enable_workspace_isolation"] = True
             
@@ -148,7 +149,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         # Staff A logs in
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
-            session["auth_user_id"] = staff.id
+            set_authenticated_session(session, staff)
             WorkspaceService.ensure_current_workspace_session(staff)
             self.assertEqual(session.get("current_workspace_id"), workspace.id)
 
@@ -484,7 +485,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
             f"/approval/users/{staff.id}/restore",
             method="POST",
         ):
-            session[AUTH_SESSION_KEY] = owner.id
+            set_authenticated_session(session, owner)
             session["current_workspace_id"] = workspace.id
             session["_enable_workspace_isolation"] = True
             UserService.restore_user(owner, staff.id)
@@ -647,7 +648,7 @@ class TestWorkspaceContextRegression(unittest.TestCase):
         # Try to ensure current workspace session for staff
         with app.test_request_context():
             from flask import session
-            session["auth_user_id"] = staff.id
+            set_authenticated_session(session, staff)
             ws = WorkspaceService.ensure_current_workspace_session(staff)
             self.assertIsNotNone(ws)
             self.assertEqual(ws.id, workspace_a.id)

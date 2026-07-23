@@ -16,6 +16,7 @@ os.environ["TEST_DATABASE_URL"] = f"sqlite:///{TEST_DB_FILE.as_posix()}"
 
 from app import app
 from core.auth.constants import AUTH_SESSION_KEY
+from tests.session_helpers import set_authenticated_session
 from core.exceptions import ValidationException
 from extensions import db
 from models.activity_log import ActivityLog
@@ -140,7 +141,7 @@ class BusinessPermanentDeleteDisabledTestCase(unittest.TestCase):
 
     def _login_as(self, role):
         with self.client.session_transaction() as session:
-            session[AUTH_SESSION_KEY] = self.user_ids[role]
+            set_authenticated_session(session, self.user_ids[role])
             session["current_workspace_id"] = self.workspace.id
             session["_enable_workspace_isolation"] = True
 

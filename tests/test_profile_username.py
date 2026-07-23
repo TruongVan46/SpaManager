@@ -34,6 +34,7 @@ from app import app
 from extensions import db
 from flask import session
 from core.auth.constants import AUTH_SESSION_KEY
+from tests.session_helpers import set_authenticated_session
 from core.auth.enums import UserRole
 from models.user import User
 from models.workspace import Workspace, WorkspaceMember
@@ -78,7 +79,7 @@ class TestProfileUsername(unittest.TestCase):
 
     def _login_as(self, user):
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(sess, user)
 
     def _grant_active_workspace_access(self, user):
         workspace = Workspace(

@@ -91,21 +91,8 @@ class AccountPurgeApprovalService:
         ).one_or_none()
         if request is None:
             raise AccountPurgeApprovalNotFoundError()
-        state = AccountPurgeService._load_state(
-            session,
-            request.requester_id,
-            request.target_user_id,
-            request.managing_workspace_id,
-            lock=lock,
-            exclude_request_id=request.id,
-        )
-        fresh_request = next(
-            (item for item in state["requests"] if item.id == request.id),
-            None,
-        )
-        if fresh_request is None:
-            raise AccountPurgeApprovalNotFoundError()
-        return state, fresh_request
+        state = AccountPurgeService._load_existing_request_state_after_request_lock(session, request, lock=lock)
+        return state, request
 
     @staticmethod
     def _approver(session, approver_user_id, requester_id, target_user_id, executor_id=None):

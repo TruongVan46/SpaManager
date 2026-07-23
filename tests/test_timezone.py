@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import shutil
 import tempfile
@@ -83,7 +84,7 @@ class TimezoneTestCase(unittest.TestCase):
         # Push request context and set workspace session
         self.req_context = app.test_request_context()
         self.req_context.push()
-        session["auth_user_id"] = self.user.id
+        set_authenticated_session(session, self.user.id)
         session["user_id"] = self.user.id
         session["current_workspace_id"] = self.workspace.id
         session["_enable_workspace_isolation"] = True

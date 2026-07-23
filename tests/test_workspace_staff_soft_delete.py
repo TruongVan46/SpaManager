@@ -33,6 +33,7 @@ from services.user_service import UserService
 from services.workspace_service import WorkspaceService
 from utils.timezone_utils import utc_now
 from flask import session
+from tests.session_helpers import set_authenticated_session
 from core.auth.enums import UserRole
 
 
@@ -94,7 +95,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
 
     def _login_as(self, user, workspace_id=None):
         with self.client.session_transaction() as sess:
-            sess["auth_user_id"] = user.id
+            set_authenticated_session(sess, user)
             sess["_enable_workspace_isolation"] = True
             if workspace_id:
                 sess["current_workspace_id"] = workspace_id
@@ -146,7 +147,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
         self._login_as(owner, workspace.id)
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -368,7 +369,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
         db.session.commit()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -388,7 +389,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             with self.assertRaises(Exception):
                 UserService.toggle_active(actor=owner, user_id=owner.id, is_active=False)
 
-            session["auth_user_id"] = admin.id
+            set_authenticated_session(session, admin)
             for target in (owner, second_owner, second_admin, self.approval_owner, admin):
                 before_active = User.query.get(target.id).is_active
                 with self.assertRaises(Exception):
@@ -564,7 +565,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
         self._login_as(owner_1, workspace_1.id)
 
         with app.test_request_context():
-            session["auth_user_id"] = owner_1.id
+            set_authenticated_session(session, owner_1)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_1.id
 
@@ -591,7 +592,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
             # 6. OWNER cannot restore a user from another workspace (Test 11)
             # First, owner_2 soft deletes staff_2 in workspace_2
             with app.test_request_context():
-                session["auth_user_id"] = owner_2.id
+                set_authenticated_session(session, owner_2)
                 session["_enable_workspace_isolation"] = True
                 session["current_workspace_id"] = workspace_2.id
                 UserService.soft_delete_user(actor=owner_2, user_id=staff_2.id)
@@ -622,7 +623,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
         self._login_as(owner, workspace.id)
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -656,7 +657,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
 
         self._login_as(owner, workspace.id)
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -677,7 +678,7 @@ class TestWorkspaceStaffSoftDelete(unittest.TestCase):
         db.session.commit()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 

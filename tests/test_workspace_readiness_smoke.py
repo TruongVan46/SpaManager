@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import shutil
 import tempfile
@@ -164,7 +165,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
 
             # Create STAFF
             staff = UserService.create_user(
@@ -254,7 +255,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
 
             # Try get customer B details
             res = CustomerService.get_by_id(cust_b.id)
@@ -290,7 +291,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
 
             # Users returned
             users_paginated = UserService.search_paginated()
@@ -315,7 +316,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
-            session["auth_user_id"] = admin_a.id
+            set_authenticated_session(session, admin_a.id)
 
             # ADMIN A tries to create ADMIN -> raises ValidationException
             with self.assertRaises(ValidationException):
@@ -332,7 +333,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
-            session["auth_user_id"] = staff_a.id
+            set_authenticated_session(session, staff_a.id)
 
             # STAFF A and APPROVAL_OWNER must be blocked from user management
             from core.auth.permissions import can_manage_users
@@ -384,7 +385,7 @@ class TestWorkspaceReadinessSmoke(unittest.TestCase):
         with app.test_request_context():
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a.id)
 
             # Create OWNER -> raises ValidationException
             with self.assertRaises(ValidationException):

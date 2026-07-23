@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from models.user import User
 from core.auth.enums import UserRole, normalize_role_value
-from core.auth.constants import AUTH_SESSION_KEY
+from core.auth.constants import AUTH_SESSION_KEY, SESSION_REVOCATION_VERSION_KEY
 from core.auth.security import PasswordPolicy
 from core.logger import app_logger
 from core.exceptions import AuthenticationException, PermissionDeniedException, ValidationException
@@ -31,6 +31,38 @@ from services.login_rate_limit_service import (
 
 class AuthService:
     MANAGER_ROLES = {UserRole.OWNER.value, UserRole.ADMIN.value}
+
+    @staticmethod
+    def _write_authenticated_session(user, remember=False):
+        session[AUTH_SESSION_KEY] = user.id
+        session[SESSION_REVOCATION_VERSION_KEY] = int(user.session_revocation_version)
+        session.permanent = remember
+
+    @staticmethod
+    def _clear_authenticated_session_state():
+        AuthService.clear_authentication_session()
+
+    @staticmethod
+    def _session_version_is_valid(user):
+        value = session.get(SESSION_REVOCATION_VERSION_KEY)
+        if isinstance(value, bool) or not isinstance(value, int):
+            return False
+        return value == int(user.session_revocation_version)
+
+    @staticmethod
+    def _session_user_is_blocked(user):
+        if user is None or user.deleted_at is not None:
+            return True
+        if user.account_purge_state == "PURGED_TOMBSTONE":
+            return True
+        # Approval status pages intentionally use a versioned, limited session
+        # while the account is pending/rejected/disabled; app access remains
+        # gated by can_access_app and the route-level status handling.
+        if not user.is_active and not (
+            user.is_pending_approval or user.is_rejected_approval or user.is_disabled_approval
+        ):
+            return True
+        return False
 
     @staticmethod
     def _user_schema_has_approval_columns():
@@ -98,8 +130,7 @@ class AuthService:
             if not getattr(user, "can_access_app", False):
                 from flask import has_request_context
                 if has_request_context():
-                    session[AUTH_SESSION_KEY] = user.id
-                    session.permanent = remember
+                    AuthService._write_authenticated_session(user, remember=remember)
                     from core.csrf import rotate_csrf_token
                     rotate_csrf_token()
                 if getattr(user, "is_pending_approval", False):
@@ -141,8 +172,7 @@ class AuthService:
                 )
             from flask import has_request_context
             if has_request_context():
-                session[AUTH_SESSION_KEY] = user.id
-                session.permanent = remember
+                AuthService._write_authenticated_session(user, remember=remember)
                 from core.csrf import rotate_csrf_token
                 rotate_csrf_token()
             user.last_login = utc_now()
@@ -171,7 +201,9 @@ class AuthService:
         from core.csrf import clear_csrf_token
 
         session.pop(AUTH_SESSION_KEY, None)
+        session.pop(SESSION_REVOCATION_VERSION_KEY, None)
         session.pop("current_workspace_id", None)
+        session.pop("purge_reauth_transport_v1", None)
         clear_csrf_token()
 
     @staticmethod
@@ -190,6 +222,7 @@ class AuthService:
             except Exception as exc:
                 app_logger.error("Purge re-auth logout revocation failed safely.", module="AUTHENTICATION", exc_info=False)
         session.pop(AUTH_SESSION_KEY, None)
+        session.pop(SESSION_REVOCATION_VERSION_KEY, None)
         session.pop("current_workspace_id", None)
         from core.csrf import clear_csrf_token
         clear_csrf_token()
@@ -250,7 +283,11 @@ class AuthService:
         user_id = session.get(AUTH_SESSION_KEY)
         if user_id:
             # Querying the database to fetch the latest state
-            return User.query.get(user_id)
+            user = User.query.get(user_id)
+            if AuthService._session_user_is_blocked(user) or not AuthService._session_version_is_valid(user):
+                AuthService._clear_authenticated_session_state()
+                return None
+            return user
         return None
 
     @staticmethod

@@ -44,6 +44,7 @@ from app import app
 from extensions import db
 from flask import session
 from core.auth.constants import AUTH_SESSION_KEY
+from tests.session_helpers import set_authenticated_session
 
 from models.user import User
 from models.workspace import Workspace, WorkspaceMember
@@ -142,7 +143,7 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
     def _login_as(self, user, workspace_id, isolation=True):
         """Set session with workspace context and isolation flag."""
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(sess, user, workspace_id=workspace_id, enable_workspace_isolation=isolation)
             sess["current_workspace_id"] = workspace_id
             sess["_enable_workspace_isolation"] = isolation
 
@@ -228,14 +229,14 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
 
         # Simulate: no workspace context (isolation active but no workspace_id).
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = owner_a.id
+            set_authenticated_session(sess, owner_a)
             sess["_enable_workspace_isolation"] = True
             # Deliberately omit "current_workspace_id"
 
         # Setting.get must return default, not the tenant's real value.
         with app.test_request_context("/"):
             with app.test_client().session_transaction() as sess:
-                sess[AUTH_SESSION_KEY] = owner_a.id
+                set_authenticated_session(sess, owner_a)
                 sess["_enable_workspace_isolation"] = True
             # Direct model call without workspace context.
             result = Setting.get("spa_name", "SAFE_DEFAULT")
@@ -458,7 +459,7 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
         # Login as staff but WITHOUT setting current_workspace_id.
         # The global guard must select the sole active membership.
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = staff.id
+            set_authenticated_session(sess, staff)
             sess["_enable_workspace_isolation"] = True
             # Deliberately no current_workspace_id
 
@@ -511,7 +512,7 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
         db.session.commit()
 
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = staff.id
+            set_authenticated_session(sess, staff)
             sess["_enable_workspace_isolation"] = True
 
         resp = self.client.get("/invoices/export/excel")
@@ -643,7 +644,7 @@ class TestWorkspaceSettingsExports(unittest.TestCase):
 
         # Login without workspace ID
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = staff.id
+            set_authenticated_session(sess, staff)
             sess["_enable_workspace_isolation"] = True
             # no current_workspace_id
 

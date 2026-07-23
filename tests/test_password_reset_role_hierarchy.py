@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from app import app
 from core.auth.constants import AUTH_SESSION_KEY
+from tests.session_helpers import set_authenticated_session
 from extensions import db
 from models.activity_log import ActivityLog
 from models.user import User
@@ -71,7 +72,7 @@ class PasswordResetRoleHierarchyTest(unittest.TestCase):
 
     def _login(self, user, workspace, csrf_token=None):
         with self.client.session_transaction() as session:
-            session[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(session, user, workspace_id=workspace.id if workspace else None)
             session["_enable_workspace_isolation"] = True
             if csrf_token is not None:
                 session["_csrf_token"] = csrf_token

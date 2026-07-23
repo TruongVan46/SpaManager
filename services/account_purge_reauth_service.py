@@ -327,10 +327,7 @@ class AccountPurgeReauthService:
             if expected_request_version is not None and request.version != expected_request_version:
                 raise AccountPurgeReauthError("The request version is stale.", "AUTHORIZATION_VERSION_CONFLICT")
             actors, executor = AccountPurgeReauthService._load_actors(session, request, executor_user_id)
-            state = AccountPurgeService._load_state(
-                session, request.requester_id, request.target_user_id, request.managing_workspace_id,
-                lock=True, exclude_request_id=request.id,
-            )
+            state = AccountPurgeService._load_existing_request_state_after_request_lock(session, request, lock=True)
             AccountPurgeReauthService._recheck(request, state)
             throttle = AccountPurgeReauthService._throttle(session, executor.id)
             now = AccountPurgeReauthService._database_now(session)
@@ -422,7 +419,7 @@ class AccountPurgeReauthService:
             expected_hash = hashlib.sha256(str(raw_nonce).encode("utf-8")).hexdigest()
             if not authorization.nonce_hash or not hmac.compare_digest(authorization.nonce_hash, expected_hash):
                 raise AccountPurgeReauthError("Authorization nonce is invalid.", "AUTHORIZATION_NONCE_MISMATCH")
-            state = AccountPurgeService._load_state(session, request.requester_id, request.target_user_id, request.managing_workspace_id, lock=True, exclude_request_id=request.id)
+            state = AccountPurgeService._load_existing_request_state_after_request_lock(session, request, lock=True)
             AccountPurgeReauthService._recheck(request, state)
             previous_state = authorization.state
             previous_generation = authorization.generation

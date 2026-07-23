@@ -34,6 +34,7 @@ from services.user_service import UserService
 from services.workspace_service import WorkspaceService
 from services.auth_service import AuthService
 from flask import session
+from tests.session_helpers import set_authenticated_session
 from core.auth.enums import UserRole
 
 
@@ -96,7 +97,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
 
     def _login_as(self, user, workspace_id=None):
         with self.client.session_transaction() as sess:
-            sess["auth_user_id"] = user.id
+            set_authenticated_session(sess, user)
             sess["_enable_workspace_isolation"] = True
             if workspace_id:
                 sess["current_workspace_id"] = workspace_id
@@ -144,7 +145,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
 
         with app.test_request_context():
             # Setup session manually
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -172,7 +173,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
         self._login_as(owner, workspace.id)
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -204,7 +205,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
         # Logged into workspace A, should see customer A but not B
         self._login_as(owner_a, workspace_a.id)
         with app.test_request_context():
-            session["auth_user_id"] = owner_a.id
+            set_authenticated_session(session, owner_a)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
             custs = WorkspaceService.scoped_query(Customer).all()
@@ -214,7 +215,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
         # Logged into workspace B, should see customer B but not A
         self._login_as(owner_b, workspace_b.id)
         with app.test_request_context():
-            session["auth_user_id"] = owner_b.id
+            set_authenticated_session(session, owner_b)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_b.id
             custs = WorkspaceService.scoped_query(Customer).all()
@@ -241,7 +242,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
 
         # 1. Active workspace: assign_workspace gán workspace_id đúng
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 
@@ -254,7 +255,7 @@ class TestWorkspaceDeletedGuard(unittest.TestCase):
         db.session.commit()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
 

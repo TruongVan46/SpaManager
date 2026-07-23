@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import tempfile
 import unittest
@@ -91,7 +92,7 @@ class DashboardAdminSummaryWorkspaceScopeTest(unittest.TestCase):
         db.session.commit()
         self.request_context = app.test_request_context()
         self.request_context.push()
-        session["auth_user_id"] = self.manager.id
+        set_authenticated_session(session, self.manager.id)
         session["user_id"] = self.manager.id
         session["_enable_workspace_isolation"] = True
 
@@ -143,7 +144,7 @@ class DashboardAdminSummaryWorkspaceScopeTest(unittest.TestCase):
     def test_dashboard_query_string_cannot_override_current_workspace(self):
         client = app.test_client()
         with client.session_transaction() as client_session:
-            client_session["auth_user_id"] = self.manager.id
+            set_authenticated_session(client_session, self.manager.id)
             client_session["user_id"] = self.manager.id
             client_session["current_workspace_id"] = self.workspace_a.id
             client_session["_enable_workspace_isolation"] = True

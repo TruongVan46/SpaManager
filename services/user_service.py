@@ -52,6 +52,14 @@ class UserService:
         return cleaned or None
 
     @staticmethod
+    def _ensure_not_terminal_tombstone(user):
+        if getattr(user, "account_purge_state", None) == "PURGED_TOMBSTONE":
+            raise ValidationException(
+                "TÃ i khoáº£n Ä‘Ã£ káº¿t thÃºc vÃ²ng Ä‘á»i vÃ  khÃ´ng thá»ƒ khÃ´i phá»¥c.",
+                code="TERMINAL_ACCOUNT_NOT_RESTORABLE",
+            )
+
+    @staticmethod
     def _normalize_full_name(full_name):
         return (full_name or "").strip()
 
@@ -334,7 +342,8 @@ class UserService:
     @staticmethod
     def search_paginated(query_text="", page=1, per_page=25, sort_by="created_at", sort_dir="desc"):
         query = UserService._get_workspace_scoped_base_query().filter(
-            User.role != UserRole.APPROVAL_OWNER.value
+            User.role != UserRole.APPROVAL_OWNER.value,
+            or_(User.account_purge_state.is_(None), User.account_purge_state != "PURGED_TOMBSTONE"),
         )
         search = (query_text or "").strip()
         if search:
@@ -433,6 +442,11 @@ class UserService:
         if not policy_result.valid:
             raise ValidationException(policy_result.message, field_errors=policy_result.errors)
 
+        from services.account_identity_reservation_service import AccountIdentityReservationService
+
+        AccountIdentityReservationService.assert_identity_available(
+            db.session, username=username, email=email
+        )
         UserService._ensure_unique_fields(username=username, email=email)
 
         workspace_id = UserService._resolve_current_workspace_id_for_create()
@@ -911,6 +925,8 @@ class UserService:
     def restore_user(actor, user_id):
         user, membership = UserService._authorize_workspace_user_action(actor, user_id, "restore")
 
+        UserService._ensure_not_terminal_tombstone(user)
+
         membership.status = "active"
         membership.removed_at = None
         membership.removed_by_id = None
@@ -984,6 +1000,7 @@ class UserService:
             raise PermissionDeniedException("Chỉ quản trị hệ thống mới có quyền khôi phục tài khoản.")
 
         user = User.query.get(user_id)
+        UserService._ensure_not_terminal_tombstone(user)
         if not user:
             raise NotFoundException("Không tìm thấy người dùng.")
 
@@ -1130,6 +1147,7 @@ class UserService:
             raise ValidationException("Không thể tự khôi phục chính mình bằng chức năng này.")
 
         user = User.query.get(user_id)
+        UserService._ensure_not_terminal_tombstone(user)
         if not user:
             raise NotFoundException("Không tìm thấy người dùng.")
 

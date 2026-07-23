@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import tempfile
 import unittest
@@ -145,7 +146,7 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
         try:
             client = app.test_client()
             with client.session_transaction() as session:
-                session[AUTH_SESSION_KEY] = ids["approver"]
+                set_authenticated_session(session, ids["approver"])
             previous_purge_ui = app.config.get("PERMANENT_PURGE_UI_ENABLED")
             app.config["PERMANENT_PURGE_UI_ENABLED"] = True
             approval_response = client.get("/approval/accounts?status=deleted")
@@ -157,7 +158,7 @@ class PermanentPurgePlaceholderTestCase(unittest.TestCase):
             self.assertNotIn("/permanent-delete", approval_html)
 
             with client.session_transaction() as session:
-                session[AUTH_SESSION_KEY] = ids["owner"]
+                set_authenticated_session(session, ids["owner"])
                 session["current_workspace_id"] = ids["workspace"]
                 session["_enable_workspace_isolation"] = True
             user_response = client.get("/users")

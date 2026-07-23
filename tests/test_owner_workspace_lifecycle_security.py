@@ -18,6 +18,7 @@ os.environ["LOGO_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "logos").as_po
 os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").as_posix()
 
 from flask import session
+from tests.session_helpers import set_authenticated_session
 from werkzeug.exceptions import Forbidden
 
 from app import app
@@ -104,7 +105,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
 
     def _login_as(self, user, workspace_id=None):
         with self.client.session_transaction() as client_session:
-            client_session["auth_user_id"] = user.id
+            set_authenticated_session(client_session, user)
             client_session["_enable_workspace_isolation"] = True
             if workspace_id is not None:
                 client_session["current_workspace_id"] = workspace_id
@@ -128,7 +129,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         workspace_count = Workspace.query.count()
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
             self.assertEqual(WorkspaceService.get_current_workspace_id(), workspace.id)
@@ -163,7 +164,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertIsNone(db.session.get(Customer, customer_id).deleted_at)
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
             self.assertEqual([row.id for row in WorkspaceService.scoped_query(Customer).all()], [customer_id])
@@ -197,13 +198,13 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertTrue(WorkspaceService.is_user_in_workspace(co_owner.id, workspace.id))
 
         with app.test_request_context():
-            session["auth_user_id"] = co_owner.id
+            set_authenticated_session(session, co_owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
             self.assertEqual([row.id for row in WorkspaceService.scoped_query(Customer).all()], [customer.id])
 
         with app.test_request_context():
-            session["auth_user_id"] = target.id
+            set_authenticated_session(session, target)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
             self.assertIsNone(WorkspaceService.get_current_workspace_id())
@@ -255,7 +256,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertEqual(older_membership.status, "removed")
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = matching_workspace.id
             self.assertEqual(
@@ -328,7 +329,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertFalse(WorkspaceService.is_user_in_workspace(owner.id, mismatch_workspace.id))
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = mismatch_workspace.id
             self.assertEqual(WorkspaceService.scoped_query(Customer).count(), 0)
@@ -374,7 +375,7 @@ class TestOwnerWorkspaceLifecycleSecurity(unittest.TestCase):
         self.assertEqual(db.session.get(Customer, unrelated_customer.id).id, unrelated_customer.id)
 
         with app.test_request_context():
-            session["auth_user_id"] = target.id
+            set_authenticated_session(session, target)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace_a.id
             self.assertNotIn(

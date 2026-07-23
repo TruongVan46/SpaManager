@@ -35,6 +35,7 @@ from services.user_service import UserService
 from services.workspace_service import WorkspaceService
 from services.auth_service import AuthService
 from flask import session
+from tests.session_helpers import set_authenticated_session
 from core.exceptions import PermissionDeniedException, ValidationException
 
 
@@ -99,7 +100,7 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
 
     def _login_as(self, user):
         with self.client.session_transaction() as sess:
-            sess["auth_user_id"] = user.id
+            set_authenticated_session(sess, user)
             sess["_enable_workspace_isolation"] = True
 
     def test_approval_owner_soft_delete_owner_success(self):
@@ -146,7 +147,7 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
         self.assertFalse(WorkspaceService.is_user_in_workspace(owner.id, workspace.id))
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
             custs = WorkspaceService.scoped_query(Customer).all()
@@ -294,7 +295,7 @@ class TestApprovalOwnerWorkspaceSoftDelete(unittest.TestCase):
         self.assertTrue(WorkspaceService.is_user_in_workspace(owner.id, workspace.id))
 
         with app.test_request_context():
-            session["auth_user_id"] = owner.id
+            set_authenticated_session(session, owner)
             session["_enable_workspace_isolation"] = True
             session["current_workspace_id"] = workspace.id
             self.assertEqual(WorkspaceService.scoped_query(Customer).all(), [customer])

@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 from datetime import datetime
 from pathlib import Path
 import re
@@ -158,7 +159,7 @@ def _soft_delete(runtime, model, item_id, actor="recycle-owner"):
 
 def _workspace_session(client, fixture, user_id):
     with client.session_transaction() as session:
-        session[AUTH_SESSION_KEY] = user_id
+        set_authenticated_session(session, user_id)
         session["current_workspace_id"] = fixture["workspace_id"]
         session["_enable_workspace_isolation"] = True
 
@@ -183,7 +184,7 @@ def _post(client, item_type, item_id, csrf=True):
 def _service_call(runtime, fixture, item_type, item_id, workspace_id=None):
     with runtime.app.test_request_context():
         from flask import session
-        session[AUTH_SESSION_KEY] = fixture["owner_id"]
+        set_authenticated_session(session, fixture["owner_id"])
         session["current_workspace_id"] = workspace_id or fixture["workspace_id"]
         session["_enable_workspace_isolation"] = True
         runtime.prepare_scoped_session()
@@ -217,7 +218,7 @@ def test_appointment_soft_deleted_record_is_hard_deleted_and_related_rows_remain
     _soft_delete(recycle_case, recycle_case.models.Appointment, fixture["appointment_id"])
     with recycle_case.app.test_request_context():
         with recycle_case.app.test_client().session_transaction() as session:
-            session[AUTH_SESSION_KEY] = fixture["owner_id"]
+            set_authenticated_session(session, fixture["owner_id"])
             session["current_workspace_id"] = fixture["workspace_id"]
             session["_enable_workspace_isolation"] = True
         recycle_case.prepare_scoped_session()
@@ -270,7 +271,7 @@ def test_invoice_success_deletes_details_atomically_and_preserves_related_rows(r
     recycle_case.prepare_scoped_session()
     with recycle_case.app.test_request_context():
         from flask import session
-        session[AUTH_SESSION_KEY] = fixture["owner_id"]
+        set_authenticated_session(session, fixture["owner_id"])
         session["current_workspace_id"] = fixture["workspace_id"]
         session["_enable_workspace_isolation"] = True
         result = _service_call(recycle_case, fixture, "Invoice", fixture["invoice_id"])

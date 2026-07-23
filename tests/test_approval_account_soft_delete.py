@@ -34,6 +34,7 @@ os.environ["AVATAR_UPLOAD_FOLDER"] = (TEST_MEDIA_ROOT / "uploads" / "avatars").a
 from app import app
 from extensions import db
 from core.auth.constants import AUTH_SESSION_KEY
+from tests.session_helpers import set_authenticated_session
 from core.auth.enums import UserRole
 from core.exceptions import ValidationException, PermissionDeniedException
 from models.user import User
@@ -78,7 +79,7 @@ class TestApprovalAccountSoftDelete(unittest.TestCase):
 
     def _login_as(self, user):
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(sess, user)
 
     def _create_user(self, username, role, is_active=True, approval_status="active"):
         user = User(
@@ -223,7 +224,7 @@ class TestApprovalAccountSoftDelete(unittest.TestCase):
         # Login is checked by looking at AuthService
         from flask import session
         with app.test_request_context():
-            session[AUTH_SESSION_KEY] = db_user.id
+            set_authenticated_session(session, db_user)
             self.assertFalse(db_user.can_access_app)
             self.assertIsNone(AuthService.get_current_active_user())
 

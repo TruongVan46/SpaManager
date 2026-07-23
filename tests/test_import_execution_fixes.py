@@ -1,3 +1,4 @@
+from tests.session_helpers import set_authenticated_session
 import os
 import tempfile
 import shutil
@@ -102,7 +103,7 @@ class TestImportExecutionFixes(unittest.TestCase):
     def login_as(self, user):
         from core.auth.constants import AUTH_SESSION_KEY
         with self.client.session_transaction() as sess:
-            sess[AUTH_SESSION_KEY] = user.id
+            set_authenticated_session(sess, user.id)
 
     def create_customer_import_xlsx_unique(self, valid_count, invalid_count):
         workbook = Workbook()
